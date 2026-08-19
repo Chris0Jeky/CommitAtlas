@@ -2,7 +2,7 @@
   "name": "@commit-atlas/svg",
   "version": "0.1.0",
   "description": "Accessible, deterministic SVG cards for GitHub portfolio signals.",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "type": "module",
   "sideEffects": false,
   "files": ["src", "README.md", "LICENSE"],
