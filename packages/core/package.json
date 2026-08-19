@@ -2,9 +2,9 @@
   "name": "@commit-atlas/core",
   "version": "0.1.0",
   "description": "Validated GitHub portfolio metrics and project-state contracts for CommitAtlas",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "type": "module",
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
