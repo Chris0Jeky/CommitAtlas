@@ -12,23 +12,39 @@ import {
   truncateText,
 } from "../src/index.ts";
 
-const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'`;
+const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
+
+function assertXml10(output) {
+  for (const character of output) {
+    const codePoint = character.codePointAt(0);
+    assert.ok(
+      codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d ||
+      (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+      (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+      (codePoint >= 0x10000 && codePoint <= 0x10ffff),
+      `forbidden XML 1.0 character U+${codePoint.toString(16).toUpperCase()}`,
+    );
+  }
+}
 
 function assertSafeSvg(output) {
   assert.match(output, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" role="img"/);
-  assert.match(output, /aria-labelledby="title desc"/);
-  assert.match(output, /<title id="title">/);
-  assert.match(output, /<desc id="desc">/);
+  assert.match(output, /aria-label="[^"]+"/);
+  assert.match(output, /<title>/);
+  assert.match(output, /<desc>/);
+  assert.doesNotMatch(output, /\bid=/);
   assert.match(output, /viewBox="0 0 \d+ \d+"/);
   assert.match(output, /<\/svg>$/);
-  for (const forbidden of [/<script/i, /<foreignObject/i, /<style/i, /<image/i, /<(?:svg|rect|text|a|circle|line|path)\b[^>]*\bon[a-z]+\s*=/i, /javascript:/i, /data:/i]) {
+  for (const forbidden of [/<script/i, /<foreignObject/i, /<style/i, /<image/i, /\bon[a-z]+\s*=\s*["']/i, /javascript:/i, /data:/i]) {
     assert.doesNotMatch(output, forbidden, `forbidden SVG construct matched: ${forbidden}`);
   }
+  assertXml10(output);
   assert.ok(output.length < 30_000, `SVG exceeded 30KB budget (${output.length})`);
 }
 
 test("primitives are deterministic and safe", () => {
-  assert.equal(escapeXml(`<>&\"'`), "&lt;&gt;&amp;&quot;&apos;");
+  assert.equal(escapeXml(`<>&"'`), "&lt;&gt;&amp;&quot;&apos;");
+  assert.equal(escapeXml(`a\u0000b\u0008c\ud800d`), "a�b�c�d");
   assert.equal(truncateText("hello", 5), "hello");
   assert.equal(truncateText("hello world", 6), "hello…");
   assert.equal(truncateText("😀😀😀", 2), "😀…");
@@ -47,7 +63,7 @@ test("all renderers emit accessible safe SVG", () => {
   const days = Array.from({ length: 90 }, (_, index) => ({ date: `2026-08-${String((index % 28) + 1).padStart(2, "0")}`, count: index % 8 }));
   const activity = renderActivityCard({ days, total: 300, periodLabel: injection });
   const languages = renderLanguagesCard({ languages: [
-    { name: injection, percentage: 66, color: `#123456\" onload=\"alert(1)` },
+    { name: injection, percentage: 66, color: `#123456" onload="alert(1)` },
     { name: "TypeScript", percentage: 34 },
   ] });
   const board = renderProjectBoard({ projects: [
@@ -68,6 +84,22 @@ test("rendering is a stable snapshot for identical presentation data", () => {
   assert.equal(first, second);
   assert.match(first, /fill="#f8fafc"/);
   assert.match(first, /fill="#0f766e"/);
+});
+
+test("multiple inline cards compose without duplicate accessibility identifiers", () => {
+  const profile = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4,
+  }, { title: "Ada profile", description: "Profile summary" });
+  const streak = renderStreakCard({ current: 7, longest: 19 }, {
+    title: "Ada streak", description: "Contribution streak summary",
+  });
+  const composed = `${profile}${streak}`;
+  assert.equal((composed.match(/<svg\b/g) ?? []).length, 2);
+  assert.doesNotMatch(composed, /\bid=/);
+  assert.match(profile, /aria-label="Ada profile"/);
+  assert.match(streak, /aria-label="Ada streak"/);
+  assert.match(profile, /<title>Ada profile<\/title><desc>Profile summary<\/desc>/);
+  assert.match(streak, /<title>Ada streak<\/title><desc>Contribution streak summary<\/desc>/);
 });
 
 test("labels expose signal state without depending on color", () => {

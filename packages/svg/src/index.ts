@@ -125,7 +125,15 @@ const DEFAULT_OPTIONS: Required<Pick<RenderOptions, "theme" | "width" | "height"
 
 /** Escape text and attribute values before they enter an SVG document. */
 export function escapeXml(value: unknown): string {
-  return String(value ?? "")
+  const xmlSafe = [...String(value ?? "")].map((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    const allowed = codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d ||
+      (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+      (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+      (codePoint >= 0x10000 && codePoint <= 0x10ffff);
+    return allowed ? character : "�";
+  }).join("");
+  return xmlSafe
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -187,8 +195,8 @@ function optionsFor(options: RenderOptions | undefined, defaultHeight: number): 
 }
 
 function svgStart(width: number, height: number, theme: SvgTheme, title: string, description: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" fill="none">` +
-    `<title id="title">${escapeXml(title)}</title><desc id="desc">${escapeXml(description)}</desc>` +
+  return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(title)}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" fill="none">` +
+    `<title>${escapeXml(title)}</title><desc>${escapeXml(description)}</desc>` +
     `<rect width="${width}" height="${height}" rx="18" fill="${theme.background}"/>`;
 }
 
