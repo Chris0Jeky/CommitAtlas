@@ -25,11 +25,13 @@ test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseRepositoryNames("../secret"), /invalid/);
 });
 
-test("parses only explicit lifecycle values", () => {
-  const states = parseLifecycleMap("alpha:active,beta:maintenance,gamma:unknown");
+test("requires an explicit core lifecycle for every requested repository", () => {
+  const states = parseLifecycleMap("alpha:active,beta:maintenance,gamma:planned", ["alpha", "beta", "gamma"]);
   assert.equal(states.get("alpha"), "active");
   assert.equal(states.get("beta"), "maintenance");
-  assert.throws(() => parseLifecycleMap("alpha:healthy"), /invalid/);
+  assert.equal(states.get("gamma"), "planned");
+  assert.throws(() => parseLifecycleMap("alpha:active", ["alpha", "beta"]), /exactly one/);
+  assert.throws(() => parseLifecycleMap("alpha:healthy", ["alpha"]), /invalid/);
 });
 
 test("rejects unknown query parameters", () => {
@@ -41,4 +43,5 @@ test("permits only bounded HTTPS links", () => {
   assert.equal(safeHttpsUrl("https://example.com/docs"), "https://example.com/docs");
   assert.equal(safeHttpsUrl("http://example.com"), null);
   assert.equal(safeHttpsUrl("javascript:alert(1)"), null);
+  assert.equal(safeHttpsUrl("https://token@example.com/docs"), null);
 });

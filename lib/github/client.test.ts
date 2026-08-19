@@ -3,6 +3,7 @@ import test from "node:test";
 import { GitHubApiError, GitHubClient } from "./client";
 
 const NOW = new Date("2026-08-19T00:00:00.000Z");
+const LIFECYCLES = new Map([["atlas", "active" as const], ["old", "maintenance" as const]]);
 
 test("normalizes a public profile without inventing contribution data", async () => {
   const calls: URL[] = [];
@@ -37,6 +38,43 @@ test("requires a server-side token for contribution calendars", async () => {
   await assert.rejects(
     new GitHubClient({ now: () => NOW }).fetchContributions("octocat"),
     (error: unknown) => error instanceof GitHubApiError && error.code === "token_required",
+  );
+});
+
+test("exposes only the validated public contribution calendar schema", async () => {
+  let graphQlBody = "";
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    graphQlBody = String(init?.body);
+    return json({
+      data: {
+        user: {
+          contributionsCollection: {
+            totalCommitContributions: 2,
+            totalIssueContributions: 1,
+            totalPullRequestContributions: 1,
+            totalPullRequestReviewContributions: 1,
+            restrictedContributionsCount: 99,
+            contributionCalendar: {
+              totalContributions: 101,
+              weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }],
+            },
+          },
+        },
+      },
+    });
+  };
+
+  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 7);
+  assert.equal(graphQlBody.includes("restrictedContributionsCount"), false);
+  assert.equal(contributions.totalContributions, 2);
+  assert.equal("restrictedContributions" in contributions, false);
+});
+
+test("rejects private repository responses instead of projecting them", async () => {
+  const fetchImpl: typeof fetch = async () => json({ private: true });
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["private-repo"], new Map([["private-repo", "active"]])),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403,
   );
 });
 
@@ -77,7 +115,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
   const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
     "acme",
     ["atlas"],
-    new Map([["atlas", "active"]]),
+    LIFECYCLES,
   );
   assert.equal(board.projects[0].lifecycle, "active");
   assert.equal(board.projects[0].ci.state, "passing");
@@ -97,7 +135,7 @@ test("marks old successful CI as stale", async () => {
       workflow_runs: [{ status: "completed", conclusion: "success", updated_at: "2025-01-01T00:00:00Z" }],
     });
   };
-  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["old"]);
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["old"], LIFECYCLES);
   assert.equal(board.projects[0].ci.state, "stale");
 });
 

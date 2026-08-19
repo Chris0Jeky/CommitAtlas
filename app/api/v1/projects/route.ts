@@ -17,7 +17,7 @@ export async function GET(request: Request): Promise<Response> {
     rejectUnknownParameters(url.searchParams, ["owner", "repos", "states", "demo"]);
     const owner = parseGitHubHandle(url.searchParams.get("owner"), "owner");
     const repos = parseRepositoryNames(url.searchParams.get("repos"));
-    const states = parseLifecycleMap(url.searchParams.get("states"));
+    const states = parseLifecycleMap(url.searchParams.get("states"), repos);
     const demo = parseDemo(url.searchParams.get("demo"));
     const snapshot = demo
       ? demoProjects(owner, repos, states)

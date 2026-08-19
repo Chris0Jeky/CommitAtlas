@@ -45,7 +45,6 @@ export function demoContributions(login: string, now = new Date()): Contribution
     issues: 23,
     pullRequests: 61,
     reviews: 74,
-    restrictedContributions: 0,
     days,
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
@@ -57,7 +56,7 @@ export function demoProjects(
   lifecycles: ReadonlyMap<string, ProjectLifecycle>,
   now = new Date(),
 ): ProjectBoardSnapshot {
-  const ciStates = ["passing", "running", "unconfigured", "stale", "failing", "unavailable"] as const;
+  const ciStates = ["passing", "pending", "unconfigured", "stale", "failing", "unavailable"] as const;
   return {
     version: 1,
     owner,
@@ -67,7 +66,7 @@ export function demoProjects(
       description: "Synthetic project data for the CommitAtlas preview.",
       sourceUrl: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
       websiteUrl: null,
-      lifecycle: lifecycles.get(name.toLowerCase()) ?? (index === 0 ? "active" : "unknown"),
+      lifecycle: lifecycleFor(name, lifecycles),
       primaryLanguage: ["TypeScript", "Python", "Rust"][index % 3],
       stars: 42 - index * 3,
       forks: 8 + index,
@@ -76,7 +75,7 @@ export function demoProjects(
       license: "GPL-3.0-only",
       ci: {
         state: ciStates[index % ciStates.length],
-        label: ["Passing", "Running", "Not configured", "Stale result", "Failing", "CI unavailable"][index % 6],
+        label: ["Passing", "Pending", "Not configured", "Stale result", "Failing", "CI unavailable"][index % 6],
         url: null,
         checkedAt: now.toISOString(),
         headSha: null,
@@ -93,4 +92,10 @@ export function demoProjects(
     })),
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
+}
+
+function lifecycleFor(name: string, lifecycles: ReadonlyMap<string, ProjectLifecycle>): ProjectLifecycle {
+  const lifecycle = lifecycles.get(name.toLowerCase());
+  if (!lifecycle) throw new Error("Every project requires an explicit core lifecycle");
+  return lifecycle;
 }

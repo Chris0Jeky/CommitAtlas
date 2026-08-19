@@ -1,15 +1,7 @@
-import type { ProjectLifecycle } from "./types";
+import { ProjectLifecycleSchema, type ProjectLifecycle } from "@/packages/core/src/index";
 
 const HANDLE = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
-const LIFECYCLES = new Set<ProjectLifecycle>([
-  "active",
-  "maintenance",
-  "paused",
-  "archived",
-  "unknown",
-]);
-
 export class InputError extends Error {
   readonly code = "invalid_input";
 }
@@ -41,8 +33,11 @@ export function parseRepositoryNames(value: string | null): string[] {
   return deduplicated;
 }
 
-export function parseLifecycleMap(value: string | null): ReadonlyMap<string, ProjectLifecycle> {
-  if (!value) return new Map();
+export function parseLifecycleMap(
+  value: string | null,
+  repositories: readonly string[],
+): ReadonlyMap<string, ProjectLifecycle> {
+  if (!value) throw new InputError("states must declare a lifecycle for every repository");
   if (value.length > 500) throw new InputError("states is too long");
 
   const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);
@@ -51,12 +46,16 @@ export function parseLifecycleMap(value: string | null): ReadonlyMap<string, Pro
     const separator = entry.lastIndexOf(":");
     if (separator <= 0) throw new InputError("states must use repo:lifecycle entries");
     const repo = entry.slice(0, separator);
-    const lifecycle = entry.slice(separator + 1) as ProjectLifecycle;
-    if (!REPOSITORY.test(repo) || !LIFECYCLES.has(lifecycle)) {
+    const lifecycleValue = entry.slice(separator + 1);
+    const lifecycle = ProjectLifecycleSchema.safeParse(lifecycleValue);
+    if (!REPOSITORY.test(repo) || !lifecycle.success) {
       throw new InputError("states contains an invalid repository or lifecycle");
     }
     if (result.has(repo.toLowerCase())) throw new InputError("states contains duplicate repositories");
-    result.set(repo.toLowerCase(), lifecycle);
+    result.set(repo.toLowerCase(), lifecycle.data);
+  }
+  if (result.size !== repositories.length || repositories.some((repository) => !result.has(repository.toLowerCase()))) {
+    throw new InputError("states must declare exactly one lifecycle for every repository");
   }
   return result;
 }
@@ -81,7 +80,7 @@ export function safeHttpsUrl(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 500) return null;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
+    return url.protocol === "https:" && !url.username && !url.password ? url.toString() : null;
   } catch {
     return null;
   }

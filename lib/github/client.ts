@@ -1,5 +1,12 @@
+import {
+  parseContributionCalendar,
+  type CiObservation,
+} from "@/packages/core/src/index";
+import {
+  calculateGitHubCiState,
+  toJsonCiSignal,
+} from "./adapters";
 import type {
-  CiState,
   ContributionDay,
   ContributionSnapshot,
   LanguageSignal,
@@ -24,7 +31,7 @@ const MAX_RESPONSE_BYTES = 1_500_000;
 
 export class GitHubApiError extends Error {
   constructor(
-    readonly code: "github_unavailable" | "github_rate_limited" | "token_required" | "invalid_response",
+    readonly code: "github_unavailable" | "github_rate_limited" | "token_required" | "invalid_response" | "private_data",
     message: string,
     readonly status = 502,
     readonly retryAfter: string | null = null,
@@ -60,6 +67,9 @@ export class GitHubClient {
     }
 
     const parsedRepositories = repositories.filter(isRecord);
+    if (parsedRepositories.some((repository) => repository.private === true)) {
+      throw privateDataError("GitHub returned a private repository in a public profile response");
+    }
     const languageCounts = new Map<string, number>();
     let stars = 0;
     let forks = 0;
@@ -135,16 +145,16 @@ export class GitHubClient {
       }
     }
 
+    const calendarDays = parseContributionCalendar({ version: 1, days: contributionDays }).days;
     return {
       version: 1,
       login,
-      totalContributions: numberField(calendar, "totalContributions"),
+      totalContributions: calendarDays.reduce((total, day) => total + day.count, 0),
       commits: numberField(collection, "totalCommitContributions"),
       issues: numberField(collection, "totalIssueContributions"),
       pullRequests: numberField(collection, "totalPullRequestContributions"),
       reviews: numberField(collection, "totalPullRequestReviewContributions"),
-      restrictedContributions: numberField(collection, "restrictedContributionsCount"),
-      days: contributionDays.sort((a, b) => a.date.localeCompare(b.date)),
+      days: calendarDays.map(({ date, count }) => ({ date, count })),
       freshness: {
         generatedAt: this.now().toISOString(),
         source: "github-graphql",
@@ -156,11 +166,15 @@ export class GitHubClient {
   async fetchProjects(
     owner: string,
     repositories: readonly string[],
-    lifecycles: ReadonlyMap<string, ProjectLifecycle> = new Map(),
+    lifecycles: ReadonlyMap<string, ProjectLifecycle>,
   ): Promise<ProjectBoardSnapshot> {
     const projects: ProjectSnapshot[] = [];
     for (const repository of repositories) {
-      projects.push(await this.fetchProject(owner, repository, lifecycles.get(repository.toLowerCase())));
+      const lifecycle = lifecycles.get(repository.toLowerCase());
+      if (!lifecycle) {
+        throw new GitHubApiError("invalid_response", "Every project requires an explicit core lifecycle", 400);
+      }
+      projects.push(await this.fetchProject(owner, repository, lifecycle));
     }
     return {
       version: 1,
@@ -177,15 +191,15 @@ export class GitHubClient {
   private async fetchProject(
     owner: string,
     repository: string,
-    configuredLifecycle: ProjectLifecycle = "unknown",
+    configuredLifecycle: ProjectLifecycle,
   ): Promise<ProjectSnapshot> {
     const repo = await this.getJson(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`);
     if (!isRecord(repo)) throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository");
+    if (repo.private === true) throw privateDataError("CommitAtlas only serves public GitHub repositories");
 
     const defaultBranch = stringField(repo, "default_branch") ?? "main";
     const release = await this.fetchLatestRelease(owner, repository);
     const ci = await this.fetchLatestRun(owner, repository, defaultBranch);
-    const archived = repo.archived === true;
     const license = isRecord(repo.license) ? stringField(repo.license, "spdx_id") : null;
 
     return {
@@ -194,7 +208,7 @@ export class GitHubClient {
       description: stringField(repo, "description"),
       sourceUrl: safeHttpsUrl(repo.html_url) ?? `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
       websiteUrl: safeHttpsUrl(repo.homepage),
-      lifecycle: archived ? "archived" : configuredLifecycle,
+      lifecycle: configuredLifecycle,
       primaryLanguage: stringField(repo, "language"),
       stars: numberField(repo, "stargazers_count"),
       forks: numberField(repo, "forks_count"),
@@ -237,21 +251,16 @@ export class GitHubClient {
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=1&exclude_pull_requests=true`,
       true,
     );
-    if (result === null || !isRecord(result)) return unavailableCi();
+    if (result === null || !isRecord(result)) {
+      return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: false }, this.now()), null, null);
+    }
     const runs = Array.isArray(result.workflow_runs) ? result.workflow_runs.filter(isRecord) : [];
     const run = runs[0];
     if (!run) {
-      return { state: "unconfigured", label: "No workflow run", url: null, checkedAt: null, headSha: null };
+      return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: false }, this.now()), null, null);
     }
-    const checkedAt = stringField(run, "updated_at");
-    const state = mapCiState(stringField(run, "status"), stringField(run, "conclusion"), checkedAt, this.now());
-    return {
-      state,
-      label: ciLabel(state),
-      url: safeHttpsUrl(run.html_url),
-      checkedAt,
-      headSha: stringField(run, "head_sha"),
-    };
+    const status = calculateGitHubCiState(workflowObservation(run), this.now());
+    return toJsonCiSignal(status, safeHttpsUrl(run.html_url), stringField(run, "head_sha"));
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<Record<string, unknown>> {
@@ -339,38 +348,27 @@ function toLanguageSignals(counts: ReadonlyMap<string, number>): LanguageSignal[
     }));
 }
 
-function unavailableCi(): ProjectCiSignal {
-  return { state: "unavailable", label: "CI unavailable", url: null, checkedAt: null, headSha: null };
+function privateDataError(message: string): GitHubApiError {
+  return new GitHubApiError("private_data", message, 403);
 }
 
-function mapCiState(status: string | null, conclusion: string | null, checkedAt: string | null, now: Date): CiState {
-  if (status === "queued" || status === "requested" || status === "waiting" || status === "pending") return "queued";
-  if (status === "in_progress") return "running";
-  if (status !== "completed") return "unavailable";
-  if (conclusion === "cancelled") return "cancelled";
-  if (conclusion === "skipped" || conclusion === "neutral") return "skipped";
-  if (conclusion === "stale") return "stale";
-  if (["failure", "timed_out", "action_required", "startup_failure"].includes(conclusion ?? "")) return "failing";
-  if (conclusion === "success") {
-    const age = checkedAt ? now.getTime() - new Date(checkedAt).getTime() : Number.POSITIVE_INFINITY;
-    return age > 30 * 24 * 60 * 60 * 1000 ? "stale" : "passing";
-  }
-  return "unavailable";
-}
-
-function ciLabel(state: CiState): string {
-  const labels: Record<CiState, string> = {
-    passing: "Passing",
-    failing: "Failing",
-    running: "Running",
-    queued: "Queued",
-    cancelled: "Cancelled",
-    skipped: "Skipped",
-    stale: "Stale result",
-    unconfigured: "Not configured",
-    unavailable: "CI unavailable",
+function workflowObservation(run: Record<string, unknown>): CiObservation {
+  return {
+    available: true,
+    configured: true,
+    conclusion: toCoreConclusion(stringField(run, "status"), stringField(run, "conclusion")),
+    updatedAt: stringField(run, "updated_at") ?? undefined,
   };
-  return labels[state];
+}
+
+function toCoreConclusion(status: string | null, conclusion: string | null): CiObservation["conclusion"] {
+  if (status === "queued" || status === "requested" || status === "waiting" || status === "pending") return "queued";
+  if (status === "in_progress") return "in_progress";
+  if (status !== "completed") return undefined;
+  if (conclusion === "success" || conclusion === "failure" || conclusion === "cancelled" || conclusion === "neutral" || conclusion === "timed_out" || conclusion === "action_required") return conclusion;
+  if (conclusion === "skipped") return "neutral";
+  if (conclusion === "startup_failure") return "failure";
+  return undefined;
 }
 
 const CONTRIBUTIONS_QUERY = `
@@ -381,9 +379,7 @@ const CONTRIBUTIONS_QUERY = `
         totalIssueContributions
         totalPullRequestContributions
         totalPullRequestReviewContributions
-        restrictedContributionsCount
         contributionCalendar {
-          totalContributions
           weeks {
             contributionDays { date contributionCount }
           }

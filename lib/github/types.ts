@@ -1,22 +1,12 @@
+import type {
+  CiState as CoreCiState,
+  ProjectLifecycle as CoreProjectLifecycle,
+} from "@/packages/core/src/index";
+
 export type DataMode = "live" | "demo" | "partial" | "unavailable";
 
-export type ProjectLifecycle =
-  | "active"
-  | "maintenance"
-  | "paused"
-  | "archived"
-  | "unknown";
-
-export type CiState =
-  | "passing"
-  | "failing"
-  | "running"
-  | "queued"
-  | "cancelled"
-  | "skipped"
-  | "stale"
-  | "unconfigured"
-  | "unavailable";
+/** Core owns the lifecycle vocabulary; GitHub only supplies observations. */
+export type ProjectLifecycle = CoreProjectLifecycle;
 
 export interface Freshness {
   generatedAt: string;
@@ -59,13 +49,12 @@ export interface ContributionSnapshot {
   issues: number;
   pullRequests: number;
   reviews: number;
-  restrictedContributions: number;
   days: ContributionDay[];
   freshness: Freshness;
 }
 
 export interface ProjectCiSignal {
-  state: CiState;
+  state: CoreCiState;
   label: string;
   url: string | null;
   checkedAt: string | null;
