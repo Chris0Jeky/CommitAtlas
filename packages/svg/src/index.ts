@@ -175,7 +175,8 @@ function safeHref(value: string | undefined): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+    const safeProtocol = url.protocol === "https:" || url.protocol === "http:";
+    return safeProtocol && !url.username && !url.password ? url.href : undefined;
   } catch {
     return undefined;
   }
@@ -235,12 +236,12 @@ function link(textValue: string, href: string | undefined, x: number, y: number,
 export function renderProfileCard(data: ProfileCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 220); const t = o.theme; const width = o.width;
   const name = truncateText(data.name, 30); const login = truncateText(data.login.replace(/^@/, ""), 32);
-  const bio = truncateText(data.bio ?? "Building in public, one useful commit at a time.", 78);
+  const bio = truncateText(data.bio ?? "", 78);
   let out = svgStart(width, o.height, t, o.title ?? `${name} profile`, o.description ?? `GitHub profile for ${name}.`);
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += `<circle cx="64" cy="73" r="31" fill="${t.accent}"/><text x="64" y="82" fill="${t.background}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="24" font-weight="800" text-anchor="middle">${escapeXml(([...name][0] ?? "?").toUpperCase())}</text>`;
   out += text(112, 54, name, 24, t.text, 750) + text(112, 77, `@${login}`, 13, t.muted);
-  out += text(112, 103, bio, 13, t.text);
+  if (bio) out += text(112, 103, bio, 13, t.text);
   if (data.location) out += text(112, 127, `⌖ ${truncateText(data.location, 35)}`, 12, t.muted);
   const stats = [["Repositories", data.repositories], ["Followers", data.followers], ["Following", data.following], ["Contributions", data.contributions]] as const;
   const statY = o.height - 46; const statWidth = (width - 64) / stats.length;
@@ -261,7 +262,9 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   out += text(34, 94, formatNumber(finite(data.current), false), 46, t.accent, 800) + text(34, 116, "days current", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
   out += text(width / 2 + 28, 65, "Personal best", 12, t.muted) + text(width / 2 + 28, 104, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
-  out += text(width / 2 + 28, 133, `Total ${formatNumber(finite(data.total))} · ${formatNumber(finite(data.activeDays))} active days`, 11, t.muted);
+  const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
+  const activeDaysLabel = Number.isFinite(data.activeDays) ? `${formatNumber(finite(data.activeDays))} active days` : "Active days unavailable";
+  out += text(width / 2 + 28, 133, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
   if (data.lastActive) out += text(width / 2 + 28, 153, `Last active ${truncateText(data.lastActive, 22)}`, 11, t.muted);
   return out + svgEnd();
 }
@@ -287,18 +290,23 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
 
 export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 230); const t = o.theme; const width = o.width;
-  const languages = data.languages.slice(0, 8); const percentages = languages.map((item) => finite(item.percentage));
-  const total = percentages.some(Boolean) ? percentages.reduce((sum, value) => sum + value, 0) : languages.reduce((sum, item) => sum + finite(item.bytes), 0);
+  const languages = data.languages.slice(0, 8);
+  const usesPercentages = languages.some((item) => Number.isFinite(item.percentage));
+  const sourceByteTotal = data.languages.reduce((sum, item) => sum + finite(item.bytes), 0);
+  const byteTotal = finite(data.totalBytes) > 0 ? finite(data.totalBytes) : sourceByteTotal;
+  const percentageFor = (item: LanguageStat): number => usesPercentages
+    ? finite(item.percentage)
+    : finite(item.bytes) / Math.max(1, byteTotal) * 100;
   let out = svgStart(width, o.height, t, o.title ?? "Languages", o.description ?? "Programming languages used across GitHub repositories.");
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, "LANGUAGES", 11, t.muted, 700);
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
   languages.forEach((item, index) => {
-    const raw = percentages.some(Boolean) ? finite(item.percentage) : finite(item.bytes) / Math.max(1, total) * 100;
+    const raw = percentageFor(item);
     const segment = barW * Math.max(0, Math.min(100, raw)) / 100;
     if (segment > 0) { out += `<rect x="${cursor.toFixed(2)}" y="${barY}" width="${segment.toFixed(2)}" height="${barH}" fill="${safeColor(item.color, t.languagePalette[index % t.languagePalette.length])}"/>`; cursor += segment; }
   });
   languages.forEach((item, index) => {
-    const raw = percentages.some(Boolean) ? finite(item.percentage) : finite(item.bytes) / Math.max(1, total) * 100;
+    const raw = percentageFor(item);
     const x = 34 + (index % 2) * (barW / 2); const y = 111 + Math.floor(index / 2) * 25;
     const color = safeColor(item.color, t.languagePalette[index % t.languagePalette.length]);
     out += `<circle cx="${x + 5}" cy="${y - 4}" r="4" fill="${color}"/>` + text(x + 16, y, truncateText(item.name, 19), 12, t.text, 600) + text(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 11, t.muted, 500, "end");
@@ -321,11 +329,6 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
     out += `<circle cx="${x + cardWidth - 19}" cy="${y + 20}" r="5" fill="${ciColor}"/>`;
     if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 10, t.muted);
     if (project.stars !== undefined) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
-    const links = project.links; if (links) {
-      const labels: [string, string | undefined][] = [["Repo", links.repository], ["Docs", links.docs], ["Install", links.install], ["Download", links.download]];
-      const available = labels.filter(([, href]) => safeHref(href));
-      if (available.length) out += available.slice(0, 2).map(([label, href], linkIndex) => link(label, href, x + cardWidth - 100 + linkIndex * 48, y + 23, t)).join("");
-    }
   });
   return out + svgEnd();
 }

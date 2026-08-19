@@ -10,7 +10,7 @@ import {
   renderStreakCard,
   themes,
   truncateText,
-} from "../src/index.ts";
+} from "../dist/index.js";
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
@@ -74,7 +74,61 @@ test("all renderers emit accessible safe SVG", () => {
   assert.match(profile, /&lt;img src=x onerror=/);
   assert.doesNotMatch(profile, /href=/);
   assert.doesNotMatch(languages, /onload=/);
-  assert.match(board, /href="https:\/\/example\.com\/repo"/);
+  assert.doesNotMatch(board, /<a\b|href=/);
+});
+
+test("project boards remain summary-only when action URLs are present", () => {
+  const board = renderProjectBoard({ projects: [{
+    name: "Atlas", lifecycle: "active", ci: "passing",
+    links: {
+      repository: "https://github.com/example/atlas",
+      docs: "https://example.com/docs",
+      install: "https://example.com/install",
+      download: "https://example.com/download",
+    },
+  }] });
+  assert.match(board, /Atlas/);
+  assert.match(board, /Active · CI Passing/);
+  assert.doesNotMatch(board, /<a\b|href=|Repo|Docs|Install|Download/);
+});
+
+test("credential-bearing URLs never enter public SVG output", () => {
+  const profile = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4,
+    website: "https://user:secret-token@example.com/private",
+  });
+  assert.doesNotMatch(profile, /href=|user|secret-token/);
+});
+
+test("language byte shares include omitted source languages and respect totalBytes", () => {
+  const languages = [
+    { name: "Primary", bytes: 80 },
+    { name: "Secondary", bytes: 20 },
+    ...Array.from({ length: 6 }, (_, index) => ({ name: `Visible ${index + 3}`, bytes: 0 })),
+    { name: "Omitted ninth", bytes: 100 },
+  ];
+  const derivedTotal = renderLanguagesCard({ languages });
+  assert.match(derivedTotal, />40%<\/text>/);
+  assert.match(derivedTotal, />10%<\/text>/);
+  assert.doesNotMatch(derivedTotal, />80%<\/text>|>20%<\/text>/);
+
+  const suppliedTotal = renderLanguagesCard({ languages, totalBytes: 400 });
+  assert.match(suppliedTotal, />20%<\/text>/);
+  assert.match(suppliedTotal, />5%<\/text>/);
+});
+
+test("missing profile and streak fields stay honestly unavailable", () => {
+  const profile = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4,
+  });
+  assert.doesNotMatch(profile, /Building in public|one useful commit/);
+
+  const unavailable = renderStreakCard({ current: 7, longest: 19 });
+  assert.match(unavailable, /Total unavailable · Active days unavailable/);
+  assert.doesNotMatch(unavailable, /Total 0|0 active days/);
+
+  const partial = renderStreakCard({ current: 7, longest: 19, total: 42 });
+  assert.match(partial, /Total 42 · Active days unavailable/);
 });
 
 test("rendering is a stable snapshot for identical presentation data", () => {

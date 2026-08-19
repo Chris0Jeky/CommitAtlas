@@ -21,5 +21,4 @@ const svg = renderProfileCard({
 }, { theme: "aurora" });
 ```
 
-The source entry point is intentionally TypeScript-first so a consuming build can compile
-it for its target runtime.
+Published packages contain compiled JavaScript and TypeScript declarations in `dist`.
