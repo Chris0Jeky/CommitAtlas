@@ -37,6 +37,22 @@ describe("core contracts", () => {
     expect(calculateStreaks(calendar, { asOf: "2024-03-03" })).toMatchObject({ current: 1, longest: 2 });
   });
 
+  it("excludes future dates from current and longest streaks", () => {
+    const calendarWithFutureRun = {
+      version: 1 as const,
+      days: [
+        { date: "2024-02-27", count: 1, level: 1 },
+        { date: "2024-02-28", count: 1, level: 1 },
+        { date: "2024-03-01", count: 1, level: 1 },
+        { date: "2024-03-02", count: 1, level: 1 },
+        { date: "2024-03-03", count: 1, level: 1 },
+        { date: "2024-03-04", count: 1, level: 1 },
+      ],
+    };
+
+    expect(calculateStreaks(calendarWithFutureRun, { asOf: "2024-02-28" })).toMatchObject({ current: 2, longest: 2 });
+  });
+
   it("bounds activity and fills missing dates deterministically", () => {
     const series = calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 5 });
     expect(series.from).toBe("2024-02-28");
