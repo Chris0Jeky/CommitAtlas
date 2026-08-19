@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a focused GitHub signal, utility, or usability improvement.
+title: "feat: "
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What portfolio or project-maintenance decision is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the smallest useful result, not only a proposed implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Best-fit surface
+      options:
+        - Existing SVG card
+        - New SVG card
+        - HTML dashboard
+        - Studio configurator
+        - JSON API
+        - Core package
+        - Static generator or Action
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: truth
+    attributes:
+      label: Data provenance and unknown states
+      description: What is the GitHub source, and how should missing, stale, or unavailable data appear?
+    validations:
+      required: true
+  - type: textarea
+    id: accessibility
+    attributes:
+      label: Accessibility considerations
+      description: Explain non-color labels, keyboard use, text alternatives, or other relevant needs.
