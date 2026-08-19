@@ -72,6 +72,15 @@ describe("core contracts", () => {
     expect(calculateProjectState({ repo: "owner/repo", label: "Repo", lifecycle: "planned", links: {} }, { available: true, configured: false }, "2024-03-03T00:00:00Z")).toMatchObject({ lifecycle: "planned", ci: { state: "unconfigured" } });
   });
 
+  it("does not treat future CI observations as fresh", () => {
+    const now = "2024-03-03T00:00:00Z";
+    const success = { available: true, configured: true, conclusion: "success" as const };
+
+    expect(calculateCiState({ ...success, updatedAt: now }, now)).toMatchObject({ state: "passing" });
+    expect(calculateCiState({ ...success, updatedAt: "2024-03-03T00:00:01Z" }, now)).toMatchObject({ state: "unavailable", reason: "CI observation is dated in the future" });
+    expect(calculateCiState({ ...success, updatedAt: "2024-03-02T23:59:59Z" }, now)).toMatchObject({ state: "passing" });
+  });
+
   it("canonicalizes and bounds option values", () => {
     expect(parseOptions({ theme: "light", days: "14", showTitle: "false" })).toEqual({ version: 1, theme: "light", locale: "en", showTitle: false, days: 14, limit: 6, staleAfterHours: 72 });
     expect(() => parseOptions({ days: 0 })).toThrow();
