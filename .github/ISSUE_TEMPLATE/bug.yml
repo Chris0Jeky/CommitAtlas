@@ -1,0 +1,55 @@
+name: Bug report
+description: Report reproducible incorrect behavior in a card, API, dashboard, or package.
+title: "bug: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve CommitAtlas. Never paste a GitHub token or private repository data.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - SVG card
+        - Project dashboard
+        - Studio configurator
+        - JSON API
+        - Core package
+        - Static generator or Action
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest public-data example that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed tokens, private repository data, and personal information.
+          required: true
