@@ -286,6 +286,9 @@ export function calculateCiState(input: unknown, now: string, staleAfterHours = 
   if (!Number.isInteger(staleAfterHours) || staleAfterHours < 1 || staleAfterHours > 8_760) throw new Error("staleAfterHours must be between 1 and 8760");
   if (!observation.available) return { state: "unavailable", reason: "CI data is unavailable" };
   if (!observation.configured) return { state: "unconfigured", reason: "No CI workflow is configured" };
+  if (observation.updatedAt && Date.parse(observation.updatedAt) > Date.parse(current)) {
+    return { state: "unavailable", updatedAt: observation.updatedAt, reason: "CI observation is dated in the future" };
+  }
   if (!observation.updatedAt || Date.parse(current) - Date.parse(observation.updatedAt) > staleAfterHours * 3_600_000) {
     return { state: observation.updatedAt ? "stale" : "unavailable", ...(observation.updatedAt ? { updatedAt: observation.updatedAt } : {}), reason: observation.updatedAt ? "CI data is older than the freshness window" : "CI has no observed run" };
   }
