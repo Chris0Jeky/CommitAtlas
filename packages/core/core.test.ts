@@ -90,4 +90,13 @@ describe("core contracts", () => {
   it("rejects duplicate contribution days", () => {
     expect(() => parseContributionCalendar({ version: 1, days: [{ date: "2024-02-29", count: 1 }, { date: "2024-02-29", count: 2 }] })).toThrow();
   });
+
+  it("rejects empty raw calendars while preserving explicit zero-contribution days", () => {
+    expect(() => calculateStreaks([], { asOf: "2024-03-03" })).toThrow();
+    expect(() => calculateStreaks({ version: 1, days: [] }, { asOf: "2024-03-03" })).toThrow();
+
+    const zeroDay = [{ date: "2024-03-03", count: 0, level: 0 }];
+    expect(calculateStreaks(zeroDay, { asOf: "2024-03-03" })).toMatchObject({ current: 0, longest: 0 });
+    expect(calculateActivitySeries(zeroDay, { asOf: "2024-03-03", days: 1 })).toMatchObject({ total: 0, points: [{ date: "2024-03-03", count: 0, level: 0 }] });
+  });
 });
