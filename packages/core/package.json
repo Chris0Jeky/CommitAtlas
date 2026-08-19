@@ -1,0 +1,22 @@
+{
+  "name": "@commit-atlas/core",
+  "version": "0.1.0",
+  "description": "Validated GitHub portfolio metrics and project-state contracts for CommitAtlas",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "files": ["dist", "LICENSE"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}
