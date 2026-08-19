@@ -168,14 +168,15 @@ export interface StreakSummary {
 export function calculateStreaks(input: unknown, options: StreakOptions): StreakSummary {
   const days = parseDays(input);
   const { asOf } = StreakOptionsSchema.parse(options);
-  const counts = new Map(days.map((day) => [day.date, day.count]));
+  const boundedDays = days.filter((day) => day.date <= asOf);
+  const counts = new Map(boundedDays.map((day) => [day.date, day.count]));
   let current = 0;
   for (let date = asOf; (counts.get(date) ?? 0) > 0; date = addUtcDays(date, -1)) current += 1;
 
   let longest = 0;
   let run = 0;
   let previous: string | undefined;
-  for (const day of days) {
+  for (const day of boundedDays) {
     if (day.count > 0 && previous !== undefined && dateDistance(previous, day.date) === 1) run += 1;
     else run = day.count > 0 ? 1 : 0;
     if (run > longest) longest = run;
