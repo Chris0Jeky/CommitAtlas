@@ -3,6 +3,8 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 
 interface Env {
+  /** Optional Worker secret: server-side GitHub API access only, never browser input. */
+  GITHUB_TOKEN?: string;
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };

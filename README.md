@@ -63,8 +63,10 @@ Open `http://localhost:3000`. Run the local gate before contributing:
 npm run check
 ```
 
-No GitHub token is required for the synthetic preview. Live contribution data requires a server or
-Action secret; never place a token in a URL, client-side setting, or committed file.
+No GitHub token is required for the synthetic preview. Live contribution data requires the optional
+`GITHUB_TOKEN` Worker secret (or an Action secret); set it with `npx wrangler secret put GITHUB_TOKEN`.
+It is read only by server-side GitHub requests — never put a token in a URL, client-side setting, or
+committed file.
 
 ## Design and evidence
 
