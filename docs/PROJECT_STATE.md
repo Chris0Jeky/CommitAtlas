@@ -1,12 +1,14 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-18
+Last verified: 2026-08-19
 
 ## Shipped
 
 - Product name, visual direction, public-by-default positioning, and first local preview.
 - Sites-compatible Vinext/Cloudflare workspace with Windows-safe npm scripts.
 - T1 authority declaration and repository-specific Codex guide.
+- `@commit-atlas/core` contracts for bounded GitHub inputs, UTC contributions, activity, languages,
+  project lifecycle, and explicit CI freshness states, with focused fixtures.
 
 ## Building now
 
