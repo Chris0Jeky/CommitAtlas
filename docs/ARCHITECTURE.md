@@ -82,6 +82,8 @@ The static package reads one tracked `.commitatlas.json`, fetches public data wi
 builds one `PortfolioSnapshot`, renders a selected subset of six cards, and writes `manifest.json`
 with byte sizes and SHA-256 hashes. Repository-contained path and symlink checks run before output.
 All data and payloads validate before staged per-file replacement; unrelated siblings survive.
+When `responsiveAtlas` is enabled, the same snapshot also renders the alternate Atlas layout into
+the same manifest, so responsive consumers never compare two independently fetched datasets.
 
 The root Node 24 Action calls that package and returns generated paths. It does not commit, push,
 upload, deploy, or receive `GITHUB_TOKEN`. A consumer workflow owns publication and can preserve the
@@ -98,6 +100,7 @@ last known-good committed cards when refresh fails. See
   "days": 365,
   "motion": "subtle",
   "layout": "wide",
+  "responsiveAtlas": true,
   "outputDir": "assets/commitatlas",
   "cards": ["atlas", "profile", "streak", "activity", "languages", "projects"],
   "projects": [

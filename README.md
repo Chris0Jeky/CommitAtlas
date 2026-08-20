@@ -16,7 +16,8 @@ live portfolio Studio.
 
 </div>
 
-> **v0.1 release candidate.** The hosted API and Studio, six-card static generator, and bundled
+> **v0.1 release candidate.** The hosted API and Studio, six-card static generator with an optional
+> same-snapshot responsive Atlas companion, and bundled
 > Node 24 Action are implemented. The GitHub `v0.1.0` release and npm publication are still separate
 > release decisions and are not claimed here.
 

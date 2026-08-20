@@ -108,7 +108,8 @@ node packages/static/dist/cli.js generate --config .commitatlas.json
 npm.cmd run test:action
 ```
 
-Inspect `outputs/commitatlas`: it should contain six SVGs and `manifest.json`. Confirm one window and
+Inspect `outputs/commitatlas`: with the example config it should contain the six canonical SVGs,
+`atlas-compact.svg`, and `manifest.json`. Confirm one window and
 generation time across the bundle, re-hash each asset against its manifest entry, and open every SVG.
 The Action proof must regenerate `action/dist/index.js` without a diff and must not accept or emit a
 credential.
