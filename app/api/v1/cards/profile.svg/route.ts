@@ -18,7 +18,9 @@ export async function GET(request: Request): Promise<Response> {
     const body = renderProfileCard(toProfileCard(snapshot), {
       theme: query.theme,
       title: `${snapshot.login} profile`,
-      description: `Public GitHub profile summary for ${snapshot.login}.`,
+      description: snapshot.repositoriesTruncated
+        ? `Public GitHub profile summary for ${snapshot.login}. Aggregate star totals are unavailable because the repository list is partial.`
+        : `Public GitHub profile summary for ${snapshot.login}.`,
     });
     return svgResponse(request, body, { edgeSeconds: 900, publicData: query.demo || !token });
   } catch (error) {
@@ -29,4 +31,3 @@ export async function GET(request: Request): Promise<Response> {
 export function OPTIONS(): Response {
   return optionsResponse();
 }
-

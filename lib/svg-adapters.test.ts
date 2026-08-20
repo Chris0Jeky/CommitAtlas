@@ -56,10 +56,14 @@ test("contribution adapters sort leap-day input and use its latest UTC day as as
   const snapshot = contributions([
     { date: "2024-03-02", count: 3 },
     { date: "2024-02-29", count: 1 },
-    { date: "2024-02-28", count: 1 },
+    { date: "2024-02-24", count: 10 },
+    { date: "2024-02-25", count: 0 },
     { date: "2024-03-01", count: 0 },
+    { date: "2024-02-28", count: 1 },
+    { date: "2024-02-27", count: 0 },
+    { date: "2024-02-26", count: 0 },
   ]);
-  assert.deepEqual(toStreakCard(snapshot), {
+  assert.deepEqual(toStreakCard(snapshot, 7), {
     current: 1, longest: 2, total: 5, activeDays: 3, lastActive: "2024-03-02",
   });
   const activity = toActivityCard(snapshot, 7);
@@ -74,12 +78,34 @@ test("contribution adapters sort leap-day input and use its latest UTC day as as
 
 test("an explicit all-zero calendar renders a zero streak rather than becoming unavailable", () => {
   const snapshot = contributions([
+    { date: "2026-08-13", count: 0 },
+    { date: "2026-08-14", count: 0 },
+    { date: "2026-08-15", count: 0 },
+    { date: "2026-08-16", count: 0 },
+    { date: "2026-08-17", count: 0 },
     { date: "2026-08-18", count: 0 },
     { date: "2026-08-19", count: 0 },
   ]);
-  assert.deepEqual(toStreakCard(snapshot), {
+  assert.deepEqual(toStreakCard(snapshot, 7), {
     current: 0, longest: 0, total: 0, activeDays: 0, lastActive: undefined,
   });
+});
+
+test("short or gapped contribution windows fail closed instead of being zero-filled", () => {
+  const incomplete = contributions([
+    { date: "2024-02-25", count: 0 },
+    { date: "2024-02-26", count: 0 },
+    { date: "2024-02-27", count: 0 },
+    { date: "2024-02-29", count: 1 },
+    { date: "2024-03-01", count: 0 },
+    { date: "2024-03-02", count: 3 },
+  ]);
+  for (const build of [
+    () => toStreakCard(incomplete, 7),
+    () => toActivityCard(incomplete, 7),
+  ]) {
+    assert.throws(build, (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response");
+  }
 });
 
 test("invalid or duplicate contribution days fail as bounded upstream data errors", () => {
@@ -138,4 +164,27 @@ test("language and project adapters preserve explicit semantics and omit SVG act
   assert.deepEqual(toProjectBoard(board), {
     projects: [{ name: "atlas", lifecycle: "experimental", ci: "unavailable", stars: 2 }],
   });
+});
+
+test("truncated profile repositories never render partial stars or language distributions", () => {
+  const truncated: ProfileSnapshot = {
+    version: 1,
+    login: "octocat",
+    name: "Octocat",
+    profileUrl: "https://github.com/octocat",
+    publicRepositories: 101,
+    followers: 1,
+    following: 2,
+    stars: 999,
+    forks: 0,
+    primaryLanguages: [{ name: "TypeScript", repositories: 100, share: 100 }],
+    latestPushAt: null,
+    repositoriesTruncated: true,
+    freshness,
+  };
+  assert.equal("stars" in toProfileCard(truncated), false);
+  assert.throws(
+    () => toLanguagesCard(truncated),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
 });

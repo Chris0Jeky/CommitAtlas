@@ -15,7 +15,7 @@ export async function GET(request: Request): Promise<Response> {
     const snapshot = query.demo
       ? demoContributions(query.user, 365)
       : await new GitHubClient({ token }).fetchContributions(query.user, 365);
-    const body = renderStreakCard(toStreakCard(snapshot), {
+    const body = renderStreakCard(toStreakCard(snapshot, 365), {
       theme: query.theme,
       title: `${snapshot.login} contribution streak`,
       description: `Current and longest public contribution streaks for ${snapshot.login}.`,
@@ -29,4 +29,3 @@ export async function GET(request: Request): Promise<Response> {
 export function OPTIONS(): Response {
   return optionsResponse();
 }
-

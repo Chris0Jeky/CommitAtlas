@@ -29,7 +29,7 @@ export function toProfileCard(snapshot: ProfileSnapshot): ProfileCardData {
     repositories: snapshot.publicRepositories,
     followers: snapshot.followers,
     following: snapshot.following,
-    stars: snapshot.stars,
+    ...(snapshot.repositoriesTruncated ? {} : { stars: snapshot.stars }),
   };
 }
 
@@ -47,13 +47,14 @@ export function contributionCalendar(snapshot: ContributionSnapshot): Contributi
   }
 }
 
-export function toStreakCard(snapshot: ContributionSnapshot): StreakCardData {
+export function toStreakCard(snapshot: ContributionSnapshot, expectedDays: number): StreakCardData {
   const calendar = contributionCalendar(snapshot);
   const asOf = latestContributionDate(calendar);
-  const summary = calculateStreaks(calendar, { asOf });
-  const total = calendar.days.reduce((sum, day) => sum + day.count, 0);
-  const activeDays = calendar.days.filter((day) => day.count > 0).length;
-  const lastActive = [...calendar.days].reverse().find((day) => day.count > 0)?.date;
+  const window = completeContributionWindow(calendar, asOf, expectedDays);
+  const summary = calculateStreaks(window, { asOf });
+  const total = window.days.reduce((sum, day) => sum + day.count, 0);
+  const activeDays = window.days.filter((day) => day.count > 0).length;
+  const lastActive = [...window.days].reverse().find((day) => day.count > 0)?.date;
   return {
     current: summary.current,
     longest: summary.longest,
@@ -66,7 +67,8 @@ export function toStreakCard(snapshot: ContributionSnapshot): StreakCardData {
 export function toActivityCard(snapshot: ContributionSnapshot, days: number): ActivityCardData {
   const calendar = contributionCalendar(snapshot);
   const asOf = latestContributionDate(calendar);
-  const series = calculateActivitySeries(calendar, { asOf, days });
+  const window = completeContributionWindow(calendar, asOf, days);
+  const series = calculateActivitySeries(window, { asOf, days });
   return {
     days: series.points.map(({ date, count }) => ({ date, count })),
     total: series.total,
@@ -76,6 +78,12 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
 
 /** Profile language signals are a repository-count distribution, not proficiency. */
 export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
+  if (snapshot.repositoriesTruncated) {
+    throw new GitHubApiError(
+      "invalid_response",
+      "GitHub returned a truncated repository list; language distribution is unavailable",
+    );
+  }
   return {
     languages: snapshot.primaryLanguages.map((language) => ({
       name: language.name,
@@ -107,4 +115,31 @@ function latestContributionDate(calendar: ContributionCalendar): string {
   const latest = calendar.days.at(-1)?.date;
   if (!latest) throw new GitHubApiError("invalid_response", "GitHub returned an empty contribution calendar");
   return latest;
+}
+
+function completeContributionWindow(
+  calendar: ContributionCalendar,
+  asOf: string,
+  expectedDays: number,
+): ContributionCalendar {
+  if (!Number.isInteger(expectedDays) || expectedDays < 1 || expectedDays > 366) {
+    throw new GitHubApiError("invalid_response", "CommitAtlas received an invalid contribution window");
+  }
+  const available = new Set(calendar.days.map((day) => day.date));
+  const first = shiftUtcDate(asOf, -(expectedDays - 1));
+  for (let offset = 0; offset < expectedDays; offset += 1) {
+    if (!available.has(shiftUtcDate(first, offset))) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
+    }
+  }
+  return {
+    version: calendar.version,
+    days: calendar.days.filter((day) => day.date >= first && day.date <= asOf),
+  };
+}
+
+function shiftUtcDate(date: string, offset: number): string {
+  const shifted = new Date(`${date}T00:00:00.000Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + offset);
+  return shifted.toISOString().slice(0, 10);
 }

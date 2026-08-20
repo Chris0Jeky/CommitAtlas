@@ -113,17 +113,80 @@ test("renders a live out-of-order leap-day calendar using its latest valid UTC d
         restrictedContributionsCount: 0,
         contributionCalendar: { weeks: [{ contributionDays: [
           { date: "2024-03-02", contributionCount: 3 },
+          { date: "2024-03-01", contributionCount: 0 },
           { date: "2024-02-29", contributionCount: 1 },
           { date: "2024-02-28", contributionCount: 1 },
-          { date: "2024-03-01", contributionCount: 0 },
+          { date: "2024-02-27", contributionCount: 0 },
+          { date: "2024-02-26", contributionCount: 0 },
+          { date: "2024-02-25", contributionCount: 0 },
         ] }] },
       } } },
     });
   }, () => request("/api/v1/cards/activity.svg?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
   assert.equal(response.status, 200);
   const body = await response.text();
-  assert.match(body, /2024-02-28 1; 2024-02-29 1; 2024-03-01 0; 2024-03-02 3/);
+  assert.match(body, /2024-02-25 0; 2024-02-26 0; 2024-02-27 0; 2024-02-28 1; 2024-02-29 1; 2024-03-01 0; 2024-03-02 3/);
   assert.match(body, /2024-02-25 → 2024-03-02/);
+});
+
+test("rejects a gapped live contribution window as bounded JSON", async () => {
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    assert.equal(url.pathname, "/graphql");
+    return githubJson({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 1,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: [
+          { date: "2024-02-25", contributionCount: 0 },
+          { date: "2024-02-26", contributionCount: 0 },
+          { date: "2024-02-27", contributionCount: 0 },
+          { date: "2024-02-29", contributionCount: 1 },
+          { date: "2024-03-01", contributionCount: 0 },
+          { date: "2024-03-02", contributionCount: 0 },
+        ] }] },
+      } } },
+    });
+  }, () => request("/api/v1/cards/activity.svg?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_response");
+});
+
+test("marks truncated profiles and refuses partial language distributions", async () => {
+  const profileResponse = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") return githubJson({
+      login: "octocat", name: "Octocat", public_repos: 101, followers: 1, following: 2,
+    });
+    if (url.pathname.endsWith("/repos")) return githubJson([
+      { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
+    ]);
+    assert.fail(`unexpected GitHub route ${url.pathname}`);
+  }, () => request("/api/v1/cards/profile.svg?user=octocat"));
+  assert.equal(profileResponse.status, 200);
+  const profileBody = await profileResponse.text();
+  assert.match(profileBody, /star totals are unavailable because the repository list is partial/);
+  assert.doesNotMatch(profileBody, />Stars<\/text>/);
+
+  const languagesResponse = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") return githubJson({
+      login: "octocat", name: "Octocat", public_repos: 101, followers: 1, following: 2,
+    });
+    if (url.pathname.endsWith("/repos")) return githubJson([
+      { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
+    ]);
+    assert.fail(`unexpected GitHub route ${url.pathname}`);
+  }, () => request("/api/v1/cards/languages.svg?user=octocat"));
+  assert.equal(languagesResponse.status, 502);
+  assert.equal(languagesResponse.headers.get("cache-control"), "no-store");
+  assert.equal((await languagesResponse.json()).error.code, "invalid_response");
 });
 
 test("renders empty languages and partial projects without inventing actions or health", async () => {
@@ -161,4 +224,3 @@ async function withMockedFetch(fetchImpl, operation) {
 function githubJson(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
 }
-
