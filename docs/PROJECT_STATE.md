@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 17:00 BST
+Last verified: 2026-08-20 17:11 BST
 
 This is the authoritative local checkpoint for the demonstration milestone. It is not a deployment,
 merge, package-publication, or `v0.1.0` release claim. Fetch before resuming because GitHub, CI, and
@@ -19,9 +19,10 @@ demonstration is in [DEMO_GUIDE.md](./DEMO_GUIDE.md).
   `9f80a03043fb3b293d2b3c16f9b79aa2f450b1be`.
 - Ready [PR #47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) targets `main` and remains
   intentionally unmerged for the owner's visual demonstration.
-- The remote branch still pointed to `984cd97a8c53b73c1b1f7019fb8c274cb5da25e3` when this local
-  checkpoint was written. Do not treat the older hosted run as proof for the new implementation;
-  push and inspect exact-head CI.
+- Implementation plus consolidated demo documentation were pushed as
+  `806df8b9912f8eec884d8b04a03df3f1473d60d7`. Local and remote refs matched exactly, and hosted
+  [Quality gate run 32390274491](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32390274491)
+  passed the full repository gate and production dependency audit.
 - No Sites deployment, GitHub release, or npm publication has been verified.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
@@ -81,8 +82,8 @@ and Paper small text passes WCAG AA contrast.
 
 The twelve concerns present when this session resumed were reproduced and classified. The code now
 covers every confirmed seam, and both independent post-fix reviews found no CRITICAL/HIGH issue.
-Remote review replies and thread resolutions were not posted; that is a separate GitHub write and
-should be reconciled once after the final branch push.
+One evidence-backed reply was posted to each thread after the exact push; all twelve threads were
+resolved and a follow-up GraphQL read confirmed no unresolved thread remained.
 
 The earlier thread links and their original wording remain preserved in
 [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). GitHub review state, not this prose, is the
@@ -97,7 +98,6 @@ work is not on `main` until PR #47 is merged.
 
 ## NOT completed or verified
 
-- Exact-head hosted CI and remote review reconciliation for the new branch head.
 - PR #47 merge, Sites deployment, a public production URL, repository homepage update, or release.
 - Full sequential keyboard-only traversal. Landmarks, names, labels, legends, live status, focus
   styling, and reduced motion were inspected, but the browser-control layer could not reliably move
@@ -122,13 +122,11 @@ work is not on `main` until PR #47 is merged.
 
 ## Next safe slice
 
-1. Commit and push this documentation checkpoint with the four implementation commits.
-2. Confirm PR #47 points to the exact pushed head, inspect hosted CI, and reconcile every remaining
-   review thread once.
-3. Keep the local production demo open for owner inspection. Apply only a confirmed CRITICAL/HIGH
+1. Keep the local production demo open for owner inspection. Apply only a confirmed CRITICAL/HIGH
    correction from that inspection; otherwise preserve the verified head.
-4. After owner acceptance and the three-minute head-aging floor, merge PR #47 with a merge commit.
-5. Continue the ordered static-generator/Action work in
+2. After owner acceptance and the three-minute head-aging floor, re-read exact PR/CI/thread state and
+   merge PR #47 with a merge commit.
+3. Continue the ordered static-generator/Action work in
    [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), then finish deployment and release.
 
 ## Clean resume commands

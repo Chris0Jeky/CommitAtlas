@@ -2,9 +2,9 @@
 
 Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
 and all five versioned routes are merged. The Studio demonstration is complete on
-`feat/studio-dashboard`, has passed the full local gate, desktop/mobile production QA, and two fresh
-independent reviews, and remains open as PR #47 for exact-head hosted proof, remote thread
-reconciliation, owner visual acceptance, and merge.
+`feat/studio-dashboard`, has passed the full local and hosted gates, desktop/mobile production QA,
+and two fresh independent reviews. All twelve review threads were reconciled once. PR #47 remains
+open for owner visual acceptance and merge.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live PR checks and unresolved review threads.
 
@@ -149,10 +149,10 @@ Production desktop/mobile browser QA covered:
 The complete evidence and browser-control limitation are in
 [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). The previously confirmed live contribution-card
 copy blocker and the causally confirmed late-review seams are closed in code and tests. Ready PR #47
-remains intentionally unmerged until the exact head is pushed, hosted CI passes, remote threads are
-reconciled once, the owner visually accepts the demo, and the renewed aging floor passes. Full
-keyboard-only traversal remains a separate unverified pre-release check because the available
-browser controller could not reliably move focus.
+remains intentionally unmerged until the owner visually accepts the demo and the renewed aging floor
+passes. The exact pushed demonstration head passed hosted CI and all twelve review threads were
+replied to and resolved once. Full keyboard-only traversal remains a separate unverified pre-release
+check because the available browser controller could not reliably move focus.
 
 ### 5. Build the static generator package
 
@@ -260,6 +260,6 @@ gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the Studio branch, inspect the exact remote head and current threads, finish exact-head hosted
-proof and one-time reconciliation, then merge only after owner demonstration acceptance and the
-aging floor. Continue with the static-generator plan rather than reopening nonblocking Studio ideas.
+Resume the Studio branch, inspect the exact remote head, current CI, and current threads, then merge
+only after owner demonstration acceptance and the aging floor. Continue with the static-generator
+plan rather than reopening nonblocking Studio ideas.
