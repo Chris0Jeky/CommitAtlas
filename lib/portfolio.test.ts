@@ -28,6 +28,7 @@ const contributions: ContributionSnapshot = {
   issues: 1,
   pullRequests: 1,
   reviews: 2,
+  breakdownBasis: "exact-counts",
   days: [
     { date: "2026-08-18", count: 2, level: 2 },
     { date: "2026-08-19", count: 0, level: 0 },

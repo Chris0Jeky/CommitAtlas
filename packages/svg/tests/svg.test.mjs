@@ -180,6 +180,15 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
   assert.match(narrowAtlas, /viewBox="0 0 420 570"/);
+
+  const publicProfileAtlas = renderAtlasCard({
+    ...data,
+    breakdownBasis: "public-profile-percentages",
+    breakdown: { commits: 77.8, issues: 6.7, pullRequests: 12.6, reviews: 2.9 },
+  });
+  assert.match(publicProfileAtlas, /PUBLIC PROFILE ACTIVITY MIX/);
+  assert.match(publicProfileAtlas, />77\.8%<\/text>/);
+  assert.match(publicProfileAtlas, /Public profile activity mix: 77\.8% commits/);
 });
 
 test("credential-bearing URLs never enter public SVG output", () => {

@@ -25,6 +25,7 @@ import {
 } from "./validation.js";
 
 const API_ORIGIN = "https://api.github.com";
+const WEB_ORIGIN = "https://github.com";
 const GRAPHQL_URL = "https://api.github.com/graphql";
 const API_VERSION = "2026-03-10";
 const MAX_RESPONSE_BYTES = 1_500_000;
@@ -203,10 +204,81 @@ export class GitHubClient {
       issues: requiredMetric(collection, "totalIssueContributions"),
       pullRequests: requiredMetric(collection, "totalPullRequestContributions"),
       reviews: requiredMetric(collection, "totalPullRequestReviewContributions"),
+      breakdownBasis: "exact-counts",
       days: calendarDays.map(({ date, count, level }) => ({ date, count, level })),
       freshness: {
         generatedAt: to.toISOString(),
         source: "github-graphql",
+        mode: "live",
+      },
+    };
+  }
+
+  /**
+   * Read the same contribution calendar GitHub deliberately exposes to a
+   * logged-out profile visitor. No credential is sent, even when this client
+   * also has one for another operation. The activity breakdown is the
+   * percentage mix published by that view, not a fabricated exact count.
+   */
+  async fetchPublicProfileContributions(login: string, days = 365): Promise<ContributionSnapshot> {
+    const requestedDays = Math.min(Math.max(days, 1), 365);
+    const to = this.now();
+    const toDate = to.toISOString().slice(0, 10);
+    const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+    from.setUTCDate(from.getUTCDate() - (requestedDays - 1));
+    const fromDate = from.toISOString().slice(0, 10);
+    const years = Array.from(
+      { length: to.getUTCFullYear() - from.getUTCFullYear() + 1 },
+      (_, index) => from.getUTCFullYear() + index,
+    );
+
+    const pages = await Promise.all(years.map(async (year) => {
+      const url = new URL(`/users/${encodeURIComponent(login)}/contributions`, WEB_ORIGIN);
+      url.searchParams.set("from", `${year}-01-01`);
+      url.searchParams.set("to", `${year}-12-31`);
+      if (url.origin !== WEB_ORIGIN || !url.pathname.startsWith("/users/")) {
+        throw new GitHubApiError("invalid_response", "Refused a non-GitHub profile target");
+      }
+      const response = await this.fetchWithDeadline(url, {
+        redirect: "error",
+        headers: new Headers({
+          Accept: "text/html",
+          "Accept-Language": "en-US,en;q=0.9",
+          "User-Agent": "CommitAtlas/0.2 (+https://github.com/Chris0Jeky/CommitAtlas)",
+        }),
+      });
+      const html = await this.readHtmlResponse(response);
+      return parsePublicContributionPage(html, year);
+    }));
+
+    const byDate = new Map<string, ContributionDay>();
+    for (const page of pages) {
+      for (const day of page.days) {
+        if (day.date < fromDate || day.date > toDate) continue;
+        if (byDate.has(day.date)) {
+          throw new GitHubApiError("invalid_response", "GitHub returned duplicate public contribution days");
+        }
+        byDate.set(day.date, day);
+      }
+    }
+    const calendarDays = [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date));
+    assertRequestedContributionWindow(calendarDays, to, requestedDays);
+    const totalContributions = calendarDays.reduce((total, day) => total + day.count, 0);
+    const weightedMix = weightedPublicActivityMix(pages, fromDate, toDate);
+
+    return {
+      version: 1,
+      login,
+      totalContributions,
+      commits: weightedMix.commits,
+      issues: weightedMix.issues,
+      pullRequests: weightedMix.pullRequests,
+      reviews: weightedMix.reviews,
+      breakdownBasis: "public-profile-percentages",
+      days: calendarDays,
+      freshness: {
+        generatedAt: to.toISOString(),
+        source: "github-profile-html",
         mode: "live",
       },
     };
@@ -426,6 +498,30 @@ export class GitHubClient {
     return payload;
   }
 
+  private async readHtmlResponse(response: Response): Promise<string> {
+    if (!response.ok) {
+      await response.body?.cancel();
+      const limited = response.status === 403 || response.status === 429;
+      throw new GitHubApiError(
+        limited ? "github_rate_limited" : "github_unavailable",
+        limited ? "GitHub rate limit reached; retry after the reset window" : "GitHub public profile is currently unavailable",
+        limited ? 429 : 502,
+        retryAfterValue(response.headers, this.now()),
+      );
+    }
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (contentType && !contentType.startsWith("text/html")) {
+      await response.body?.cancel();
+      throw new GitHubApiError("invalid_response", "GitHub returned a non-HTML public profile response");
+    }
+    const declaredLength = response.headers.get("content-length");
+    if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > MAX_RESPONSE_BYTES) {
+      await response.body?.cancel();
+      throw new GitHubApiError("invalid_response", "GitHub response exceeded the allowed size");
+    }
+    return this.readBoundedText(response);
+  }
+
   private async fetchWithDeadline(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
     const timeout = AbortSignal.timeout(this.remainingDeadline());
     try {
@@ -437,6 +533,15 @@ export class GitHubClient {
   }
 
   private async readBoundedJson(response: Response): Promise<unknown> {
+    const payloadText = await this.readBoundedText(response);
+    try {
+      return JSON.parse(payloadText) as unknown;
+    } catch {
+      throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
+    }
+  }
+
+  private async readBoundedText(response: Response): Promise<string> {
     if (!response.body) {
       throw new GitHubApiError("invalid_response", "GitHub returned an empty response body");
     }
@@ -458,11 +563,10 @@ export class GitHubClient {
       if (error instanceof GitHubApiError) throw error;
       throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
     }
-    const payloadText = new TextDecoder().decode(concatChunks(chunks, byteLength));
     try {
-      return JSON.parse(payloadText) as unknown;
+      return new TextDecoder("utf-8", { fatal: true }).decode(concatChunks(chunks, byteLength));
     } catch {
-      throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
+      throw new GitHubApiError("invalid_response", "GitHub returned invalid UTF-8 data");
     }
   }
 
@@ -557,6 +661,106 @@ function requiredMetric(record: Record<string, unknown>, key: string): number {
     throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} metric`);
   }
   return value;
+}
+
+interface PublicContributionPage {
+  readonly year: number;
+  readonly days: ContributionDay[];
+  readonly mix: { commits: number; issues: number; pullRequests: number; reviews: number };
+}
+
+function parsePublicContributionPage(html: string, expectedYear: number): PublicContributionPage {
+  const dayPattern = /<td\b([^>]*\bdata-date="(\d{4}-\d{2}-\d{2})"[^>]*)><\/td>\s*<tool-tip\b[^>]*>([\s\S]*?)<\/tool-tip>/g;
+  const days: ContributionDay[] = [];
+  const seen = new Set<string>();
+  for (const match of html.matchAll(dayPattern)) {
+    const attributes = match[1] ?? "";
+    const date = match[2] ?? "";
+    if (!date.startsWith(`${expectedYear}-`)) continue;
+    if (seen.has(date)) throw new GitHubApiError("invalid_response", "GitHub returned duplicate public contribution days");
+    const levelMatch = /\bdata-level="([0-4])"/.exec(attributes);
+    if (!levelMatch) throw new GitHubApiError("invalid_response", "GitHub returned a public contribution day without an intensity");
+    const tooltip = stripHtml(decodeHtml(match[3] ?? "")).trim();
+    const countMatch = /^(?:No contributions|([\d,]+) contributions?)\s+on\b/.exec(tooltip);
+    if (!countMatch) throw new GitHubApiError("invalid_response", "GitHub returned an unrecognized public contribution count");
+    const count = countMatch[1] ? Number(countMatch[1].replaceAll(",", "")) : 0;
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an invalid public contribution count");
+    }
+    seen.add(date);
+    days.push({ date, count, level: Number(levelMatch[1]) });
+  }
+  if (days.length < 365) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an incomplete public contribution year");
+  }
+
+  const mixMatch = /\bdata-percentages="([^"]+)"/.exec(html);
+  if (!mixMatch) throw new GitHubApiError("invalid_response", "GitHub returned no public activity breakdown");
+  let rawMix: unknown;
+  try {
+    rawMix = JSON.parse(decodeHtml(mixMatch[1] ?? ""));
+  } catch {
+    throw new GitHubApiError("invalid_response", "GitHub returned an invalid public activity breakdown");
+  }
+  if (!isRecord(rawMix)) throw new GitHubApiError("invalid_response", "GitHub returned an invalid public activity breakdown");
+  const mix = {
+    commits: publicPercentage(rawMix, "Commits"),
+    issues: publicPercentage(rawMix, "Issues"),
+    pullRequests: publicPercentage(rawMix, "Pull requests"),
+    reviews: publicPercentage(rawMix, "Code review"),
+  };
+  const totalPercentage = Object.values(mix).reduce((sum, value) => sum + value, 0);
+  if (totalPercentage < 99 || totalPercentage > 101) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an inconsistent public activity breakdown");
+  }
+  return { year: expectedYear, days, mix };
+}
+
+function weightedPublicActivityMix(
+  pages: readonly PublicContributionPage[],
+  from: string,
+  to: string,
+): PublicContributionPage["mix"] {
+  const weighted = { commits: 0, issues: 0, pullRequests: 0, reviews: 0 };
+  let total = 0;
+  for (const page of pages) {
+    const pageTotal = page.days
+      .filter((day) => day.date >= from && day.date <= to)
+      .reduce((sum, day) => sum + day.count, 0);
+    total += pageTotal;
+    weighted.commits += pageTotal * page.mix.commits;
+    weighted.issues += pageTotal * page.mix.issues;
+    weighted.pullRequests += pageTotal * page.mix.pullRequests;
+    weighted.reviews += pageTotal * page.mix.reviews;
+  }
+  if (total === 0) return { commits: 0, issues: 0, pullRequests: 0, reviews: 0 };
+  return {
+    commits: Number((weighted.commits / total).toFixed(1)),
+    issues: Number((weighted.issues / total).toFixed(1)),
+    pullRequests: Number((weighted.pullRequests / total).toFixed(1)),
+    reviews: Number((weighted.reviews / total).toFixed(1)),
+  };
+}
+
+function publicPercentage(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) {
+    throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} activity percentage`);
+  }
+  return value;
+}
+
+function decodeHtml(value: string): string {
+  return value
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ");
 }
 
 function contributionLevel(value: unknown): number {

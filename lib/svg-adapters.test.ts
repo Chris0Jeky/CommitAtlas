@@ -26,6 +26,7 @@ function contributions(days: ContributionSnapshot["days"]): ContributionSnapshot
     issues: 0,
     pullRequests: 0,
     reviews: 0,
+    breakdownBasis: "exact-counts",
     days,
     freshness,
   };

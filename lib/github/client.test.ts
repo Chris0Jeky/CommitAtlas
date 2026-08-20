@@ -43,6 +43,67 @@ test("requires a server-side token for contribution calendars", async () => {
   );
 });
 
+test("reads the credential-free public profile calendar and labelled activity percentages", async () => {
+  const calls: { url: URL; authorization: string | null }[] = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push({ url, authorization: new Headers(init?.headers).get("authorization") });
+    return html(publicContributionHtml(2026, {
+      "2026-08-17": 3,
+      "2026-08-18": 0,
+      "2026-08-19": 7,
+    }, { Commits: 70, "Pull requests": 15, Issues: 10, "Code review": 5 }));
+  };
+
+  const contributions = await new GitHubClient({
+    token: "must-not-leave-process",
+    fetchImpl,
+    now: () => NOW,
+  }).fetchPublicProfileContributions("octocat", 3);
+
+  assert.deepEqual(calls.map(({ url }) => url.origin), ["https://github.com"]);
+  assert.equal(calls[0]?.url.pathname, "/users/octocat/contributions");
+  assert.equal(calls[0]?.authorization, null);
+  assert.equal(contributions.totalContributions, 10);
+  assert.equal(contributions.breakdownBasis, "public-profile-percentages");
+  assert.deepEqual(
+    { commits: contributions.commits, pullRequests: contributions.pullRequests, issues: contributions.issues, reviews: contributions.reviews },
+    { commits: 70, pullRequests: 15, issues: 10, reviews: 5 },
+  );
+  assert.deepEqual(contributions.days.map(({ date, count }) => ({ date, count })), [
+    { date: "2026-08-17", count: 3 },
+    { date: "2026-08-18", count: 0 },
+    { date: "2026-08-19", count: 7 },
+  ]);
+  assert.equal(contributions.freshness.source, "github-profile-html");
+});
+
+test("fails closed when GitHub public contribution markup is incomplete", async () => {
+  await assert.rejects(
+    new GitHubClient({
+      fetchImpl: async () => html('<div data-percentages="{&quot;Commits&quot;:100,&quot;Pull requests&quot;:0,&quot;Issues&quot;:0,&quot;Code review&quot;:0}"></div>'),
+      now: () => NOW,
+    }).fetchPublicProfileContributions("octocat", 1),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("weights public activity percentages across a year boundary", async () => {
+  const yearBoundary = new Date("2026-01-02T09:00:00.000Z");
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    const year = Number(url.searchParams.get("from")?.slice(0, 4));
+    return year === 2025
+      ? html(publicContributionHtml(2025, { "2025-12-31": 10 }, { Commits: 100, "Pull requests": 0, Issues: 0, "Code review": 0 }))
+      : html(publicContributionHtml(2026, { "2026-01-01": 10 }, { Commits: 0, "Pull requests": 0, Issues: 100, "Code review": 0 }));
+  };
+  const value = await new GitHubClient({ fetchImpl, now: () => yearBoundary })
+    .fetchPublicProfileContributions("octocat", 3);
+  assert.deepEqual(value.days.map(({ date }) => date), ["2025-12-31", "2026-01-01", "2026-01-02"]);
+  assert.equal(value.commits, 50);
+  assert.equal(value.issues, 50);
+});
+
 test("exposes only a scope-proven public contribution calendar", async () => {
   let graphQlBody = "";
   const fetchImpl: typeof fetch = async (input, init) => {
@@ -607,6 +668,32 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
     status,
     headers: { "content-type": "application/json", ...headers },
   });
+}
+
+function html(body: string, status = 200, headers: HeadersInit = {}): Response {
+  return new Response(body, {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8", ...headers },
+  });
+}
+
+function publicContributionHtml(
+  year: number,
+  counts: Readonly<Record<string, number>>,
+  mix: Readonly<Record<"Commits" | "Pull requests" | "Issues" | "Code review", number>>,
+): string {
+  const start = new Date(Date.UTC(year, 0, 1));
+  const end = new Date(Date.UTC(year, 11, 31));
+  const cells: string[] = [];
+  for (const date = new Date(start); date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
+    const day = date.toISOString().slice(0, 10);
+    const count = counts[day] ?? 0;
+    const level = count === 0 ? 0 : count < 3 ? 1 : count < 6 ? 2 : count < 9 ? 3 : 4;
+    const label = count === 0 ? `No contributions on ${day}.` : `${count.toLocaleString("en-US")} contribution${count === 1 ? "" : "s"} on ${day}.`;
+    cells.push(`<td data-date="${day}" data-level="${level}"></td><tool-tip>${label}</tool-tip>`);
+  }
+  const encodedMix = JSON.stringify(mix).replaceAll('"', "&quot;");
+  return `<div data-percentages="${encodedMix}">${cells.join("")}</div>`;
 }
 
 function projectRepository(name: string): Record<string, unknown> {

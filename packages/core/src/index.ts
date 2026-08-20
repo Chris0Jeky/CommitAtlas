@@ -267,6 +267,7 @@ export const ContributionMetricsOptionsSchema = ContributionBreakdownSchema.exte
   asOf: UtcDateSchema,
   days: z.number().int().min(1).max(366),
   trendWeeks: z.number().int().min(1).max(16).default(12),
+  breakdownBasis: z.enum(["exact-counts", "public-profile-percentages"]).default("exact-counts"),
 }).strict();
 export type ContributionMetricsOptions = z.input<typeof ContributionMetricsOptionsSchema>;
 
@@ -293,6 +294,7 @@ export interface ContributionMetrics {
   peakDay: { date: string; count: number };
   streak: StreakSummary & { basis: "returned-window" };
   breakdown: ContributionBreakdown;
+  breakdownBasis: "exact-counts" | "public-profile-percentages";
   trend: {
     buckets: ContributionTrendBucket[];
     recent28Days: number;
@@ -392,6 +394,7 @@ export function calculateContributionMetrics(
       pullRequests: parsed.pullRequests,
       reviews: parsed.reviews,
     },
+    breakdownBasis: parsed.breakdownBasis,
     trend: { buckets, recent28Days, previous28Days, changePercent, direction },
     rhythm: {
       score: rhythmScore,

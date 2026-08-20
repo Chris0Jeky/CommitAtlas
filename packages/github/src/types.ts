@@ -11,9 +11,11 @@ export type ProjectLifecycle = CoreProjectLifecycle;
 
 export interface Freshness {
   generatedAt: string;
-  source: "github-rest" | "github-graphql" | "synthetic-demo";
+  source: "github-rest" | "github-graphql" | "github-profile-html" | "synthetic-demo";
   mode: DataMode;
 }
+
+export type ContributionBreakdownBasis = "exact-counts" | "public-profile-percentages";
 
 export interface LanguageSignal {
   name: string;
@@ -52,6 +54,8 @@ export interface ContributionSnapshot {
   issues: number;
   pullRequests: number;
   reviews: number;
+  /** Whether the four activity-mix values are exact counts or public-profile percentages. */
+  breakdownBasis: ContributionBreakdownBasis;
   days: ContributionDay[];
   freshness: Freshness;
 }

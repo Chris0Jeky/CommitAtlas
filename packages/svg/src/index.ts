@@ -148,6 +148,7 @@ export interface AtlasCardData {
     readonly pullRequests: number;
     readonly reviews: number;
   };
+  readonly breakdownBasis?: "exact-counts" | "public-profile-percentages";
   readonly trend: {
     readonly buckets: readonly number[];
     readonly recent28Days: number;
@@ -490,6 +491,13 @@ function atlasTrendLabel(data: AtlasCardData): string {
   return `${formatNumber(data.trend.recent28Days)} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28d`;
 }
 
+function atlasBreakdownValue(value: number, basis: AtlasCardData["breakdownBasis"]): string {
+  if (basis === "public-profile-percentages") {
+    return `${finite(value).toFixed(1).replace(/\.0$/, "")}%`;
+  }
+  return formatNumber(value);
+}
+
 /** Render the compact, source-labelled CommitAtlas overview card. */
 export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): string {
   const normalizedWidth = dimension(options?.width, 860, MIN_WIDTH, MAX_WIDTH);
@@ -509,7 +517,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const name = truncateText(data.profile.name || data.profile.login || "GitHub user", narrow ? 22 : 30);
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
   const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW" : "PUBLIC GITHUB";
-  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Breakdown: ${formatNumber(data.breakdown.commits, false)} commits, ${formatNumber(data.breakdown.pullRequests, false)} pull requests, ${formatNumber(data.breakdown.reviews, false)} reviews, and ${formatNumber(data.breakdown.issues, false)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const breakdownQualifier = data.breakdownBasis === "public-profile-percentages" ? "Public profile activity mix" : "Breakdown";
+  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
   out += atlasMotionStyle(options?.motion);
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
@@ -578,7 +587,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Issues", data.breakdown.issues, t.negative],
   ] as const;
   const breakdownMax = Math.max(1, ...breakdown.map(([, value]) => finite(value)));
-  out += text(breakdownX, breakdownY, "CONTRIBUTION MIX", 10, t.muted, 700);
+  out += text(breakdownX, breakdownY, data.breakdownBasis === "public-profile-percentages" ? "PUBLIC PROFILE ACTIVITY MIX" : "CONTRIBUTION MIX", 10, t.muted, 700);
   breakdown.forEach(([label, value, color], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);
@@ -586,7 +595,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     out += text(breakdownX, y + 8, label, 9, t.muted, 550);
     out += `<rect x="${breakdownX + 76}" y="${y}" width="${trackWidth}" height="8" rx="4" fill="${t.surface}"/>`;
     out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y}" width="${barWidth.toFixed(2)}" height="8" rx="4" fill="${color}"/>`;
-    out += text(width - 24, y + 8, formatNumber(value), 9, t.text, 650, "end");
+    out += text(width - 24, y + 8, atlasBreakdownValue(value, data.breakdownBasis), 9, t.text, 650, "end");
   });
 
   const footerTop = narrow ? 408 : 282;

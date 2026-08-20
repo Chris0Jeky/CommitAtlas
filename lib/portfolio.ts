@@ -66,6 +66,7 @@ export function assemblePortfolioSnapshot(
     issues: contributions.issues,
     pullRequests: contributions.pullRequests,
     reviews: contributions.reviews,
+    breakdownBasis: contributions.breakdownBasis,
   });
   if (!metrics.window.complete) {
     throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
@@ -108,6 +109,7 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     streakBasis: metrics.streak.basis,
     peakDay: metrics.peakDay,
     breakdown: metrics.breakdown,
+    breakdownBasis: metrics.breakdownBasis,
     trend: {
       buckets: metrics.trend.buckets.map((bucket) => bucket.total),
       recent28Days: metrics.trend.recent28Days,

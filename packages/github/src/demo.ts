@@ -49,6 +49,7 @@ export function demoContributions(login: string, requestedDays = 365, now = new 
     issues: 23,
     pullRequests: 61,
     reviews: 74,
+    breakdownBasis: "exact-counts",
     days,
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
