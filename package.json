@@ -16,7 +16,7 @@
     "build:core": "npm --prefix packages/core run build",
     "pack:core": "npm --prefix packages/core run pack:dry-run",
     "pack:svg": "npm --prefix packages/svg run pack:dry-run",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern packages/core/dist",
     "check": "npm run typecheck && npm run lint && npm run test:core && npm run test:github && npm run test:svg && npm run pack:core && npm run pack:svg && npm test"
   },

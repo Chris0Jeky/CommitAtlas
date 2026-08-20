@@ -94,10 +94,10 @@ function toProjectSignal(project: ProjectSnapshot): ProjectSignal {
     lifecycle: toSvgLifecycle(project.lifecycle),
     ci: toSvgCiState(project.ci.state),
     stars: project.stars,
+    ...(project.description ? { description: project.description } : {}),
+    ...(project.release?.tag ? { version: project.release.tag } : {}),
+    ...(project.pushedAt ? { updatedAt: project.pushedAt } : {}),
   };
-  if (project.description) signal.description = project.description;
-  if (project.release?.tag) signal.version = project.release.tag;
-  if (project.pushedAt) signal.updatedAt = project.pushedAt;
   // Project actions deliberately stay in HTML; README SVGs are portable
   // summaries and must not imply interactive install/download controls.
   return signal;
@@ -105,6 +105,6 @@ function toProjectSignal(project: ProjectSnapshot): ProjectSignal {
 
 function latestContributionDate(calendar: ContributionCalendar): string {
   const latest = calendar.days.at(-1)?.date;
-  if (!latest) throw new Error("Contribution calendar has no valid days");
+  if (!latest) throw new GitHubApiError("invalid_response", "GitHub returned an empty contribution calendar");
   return latest;
 }

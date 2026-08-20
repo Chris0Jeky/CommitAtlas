@@ -90,6 +90,10 @@ test("invalid or duplicate contribution days fail as bounded upstream data error
     ])),
     (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
   );
+  assert.throws(
+    () => contributionCalendar(contributions([])),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
 });
 
 test("language and project adapters preserve explicit semantics and omit SVG actions", () => {
@@ -135,4 +139,3 @@ test("language and project adapters preserve explicit semantics and omit SVG act
     projects: [{ name: "atlas", lifecycle: "experimental", ci: "unavailable", stars: 2 }],
   });
 });
-
