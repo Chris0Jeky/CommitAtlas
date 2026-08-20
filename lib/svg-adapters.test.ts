@@ -65,7 +65,8 @@ test("contribution adapters sort leap-day input and use its latest UTC day as as
     { date: "2024-02-26", count: 0 },
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
-    current: 1, longest: 2, total: 5, activeDays: 3, lastActive: "2024-03-02",
+    current: 1, longest: 2, windowDays: 7, boundary: { current: "closed", longest: "closed" },
+    total: 5, activeDays: 3, lastActive: "2024-03-02",
   });
   const activity = toActivityCard(snapshot, 7);
   assert.equal(activity.periodLabel, "2024-02-25 → 2024-03-02");
@@ -88,7 +89,8 @@ test("an explicit all-zero calendar renders a zero streak rather than becoming u
     { date: "2026-08-19", count: 0 },
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
-    current: 0, longest: 0, total: 0, activeDays: 0, lastActive: undefined,
+    current: 0, longest: 0, windowDays: 7, boundary: { current: "closed", longest: "closed" },
+    total: 0, activeDays: 0, lastActive: undefined,
   });
 });
 

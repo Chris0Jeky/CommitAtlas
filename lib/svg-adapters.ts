@@ -58,6 +58,8 @@ export function toStreakCard(snapshot: ContributionSnapshot, expectedDays: numbe
   return {
     current: summary.current,
     longest: summary.longest,
+    windowDays: expectedDays,
+    boundary: summary.boundary,
     total,
     activeDays,
     lastActive,

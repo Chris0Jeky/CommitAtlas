@@ -94,8 +94,9 @@ test("renders a complete logged-out public profile streak without a contribution
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
     const body = await response.text();
-    assert.match(body, />365<\/text>/);
-    assert.match(body, /Longest in window/);
+    assert.match(body, />365\+<\/text>/);
+    assert.match(body, /Longest in 365-day window/);
+    assert.match(body, /earlier history not observed/);
   } finally {
     if (previous === undefined) delete process.env.GITHUB_TOKEN;
     else process.env.GITHUB_TOKEN = previous;

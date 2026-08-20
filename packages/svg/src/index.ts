@@ -72,6 +72,11 @@ export interface StreakCardData {
   readonly total?: number;
   readonly activeDays?: number;
   readonly lastActive?: string;
+  readonly windowDays?: number;
+  readonly boundary?: {
+    readonly current: "closed" | "open";
+    readonly longest: "closed" | "open";
+  };
 }
 
 export interface ActivityDay {
@@ -141,6 +146,10 @@ export interface AtlasCardData {
   readonly currentStreak: number;
   readonly longestStreak: number;
   readonly streakBasis: "returned-window";
+  readonly streakBoundary?: {
+    readonly current: "closed" | "open";
+    readonly longest: "closed" | "open";
+  };
   readonly peakDay: { readonly date: string; readonly count: number };
   readonly breakdown: {
     readonly commits: number;
@@ -371,16 +380,28 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   const longestY = compact ? 88 : 104;
   const statusY = compact ? 110 : 133;
   const lastActiveY = compact ? 128 : 153;
-  let out = svgStart(width, o.height, t, o.title ?? "Contribution streak", o.description ?? "Current and longest GitHub contribution streaks.");
+  const windowDays = Number.isFinite(data.windowDays)
+    ? Math.max(1, Math.min(MAX_ACTIVITY_DAYS, Math.round(data.windowDays as number)))
+    : null;
+  const windowLabel = windowDays ? `${windowDays}-day window` : "returned window";
+  const currentOpen = data.boundary?.current === "open";
+  const currentValue = `${formatNumber(finite(data.current), false)}${currentOpen ? "+" : ""}`;
+  const accessibleDescription = data.boundary
+    ? `${o.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(finite(data.current), false)} days. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
+    : o.description;
+  let out = svgStart(width, o.height, t, o.title ?? "Contribution streak", o.description ?? "Current and longest GitHub contribution streaks.", accessibleDescription);
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
-  out += text(34, 94, formatNumber(finite(data.current), false), 46, t.accent, 800) + text(34, 116, "days current", 12, t.text, 600);
+  out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
-  out += text(width / 2 + 28, personalBestY, "Longest in window", 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
+  out += text(width / 2 + 28, personalBestY, `Longest in ${windowLabel}`, 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
   const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
   const activeDaysLabel = Number.isFinite(data.activeDays) ? `${formatNumber(finite(data.activeDays))} active days` : "Active days unavailable";
   out += text(width / 2 + 28, statusY, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
-  if (data.lastActive) out += text(width / 2 + 28, lastActiveY, `Last active ${truncateText(data.lastActive, 22)}`, 11, t.muted);
+  const historyLabel = width < 560
+    ? "Earlier history not observed"
+    : `${data.lastActive ? `Last active ${truncateText(data.lastActive, 10)} · ` : ""}earlier history not observed`;
+  out += text(width / 2 + 28, lastActiveY, historyLabel, width < 560 ? 9 : 10, t.muted);
   return out + svgEnd();
 }
 
@@ -520,7 +541,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
       : "PUBLIC GITHUB";
   const breakdownQualifier = data.breakdownBasis === "public-profile-percentages" ? "Public profile activity mix" : "Breakdown";
-  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const currentStreakOpen = data.streakBoundary?.current === "open";
+  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
   out += atlasMotionStyle(options?.motion);
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
@@ -536,7 +558,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Active days", formatNumber(data.activeDays, false)],
     ["Density", `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%`],
     ["Average / day", finite(data.averagePerDay).toFixed(1)],
-    ["Current streak", `${formatNumber(data.currentStreak, false)}d`],
+    ["Current streak", `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d`],
     ["Longest in window", `${formatNumber(data.longestStreak, false)}d`],
   ] as const;
   if (narrow) {

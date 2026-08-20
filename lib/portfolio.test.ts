@@ -71,6 +71,7 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.deepEqual(atlas.activity.map(({ level }) => level), [2, 0, 4]);
   assert.deepEqual(atlas.projects, { total: 2, passing: 1, attention: 0, unavailable: 1 });
   assert.equal(atlas.streakBasis, "returned-window");
+  assert.deepEqual(atlas.streakBoundary, { current: "closed", longest: "open" });
   assert.equal(atlas.source, "public-github");
 });
 

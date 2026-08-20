@@ -105,6 +105,31 @@ test("all renderers emit accessible safe SVG", () => {
   assert.doesNotMatch(board, /<a\b|href=/);
 });
 
+test("streak cards distinguish boundary-open values from observed-window values", () => {
+  const open = renderStreakCard({
+    current: 365,
+    longest: 365,
+    windowDays: 365,
+    boundary: { current: "open", longest: "open" },
+    total: 900,
+    activeDays: 365,
+    lastActive: "2026-08-20",
+  });
+  assert.match(open, />365\+<\/text>/);
+  assert.match(open, /Longest in 365-day window/);
+  assert.match(open, /Earlier history is not observed|earlier history not observed/);
+  assert.match(open, /Current streak: at least 365 days/);
+
+  const closed = renderStreakCard({
+    current: 42,
+    longest: 61,
+    windowDays: 365,
+    boundary: { current: "closed", longest: "closed" },
+  });
+  assert.match(closed, />42<\/text>/);
+  assert.doesNotMatch(closed, />42\+<\/text>/);
+});
+
 test("project boards remain summary-only when action URLs are present", () => {
   const board = renderProjectBoard({ projects: [{
     name: "Atlas", lifecycle: "active", ci: "passing",
@@ -153,6 +178,7 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
     currentStreak: 30,
     longestStreak: 53,
     streakBasis: "returned-window",
+    streakBoundary: { current: "open", longest: "open" },
     peakDay: { date: activity[11].date, count: 8 },
     breakdown: { commits: 740, issues: 18, pullRequests: 64, reviews: 90 },
     trend: { buckets: [30, 44, 39, 52, 61, 48, 73, 66, 82, 70, 88, 95], recent28Days: 335, previous28Days: 280, changePercent: 19.6, direction: "up" },
@@ -177,6 +203,8 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.match(staticAtlas, /RHYTHM/);
   assert.match(staticAtlas, /not a GitHub rank/);
   assert.match(staticAtlas, /longest streak is window-bounded/);
+  assert.match(staticAtlas, />30\+d<\/text>/);
+  assert.match(staticAtlas, /at least 30 day current streak/);
   assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
   assert.match(narrowAtlas, /viewBox="0 0 420 570"/);

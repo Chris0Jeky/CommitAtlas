@@ -89,6 +89,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     artifacts["streak.svg"] = renderStreakCard({
       current: metrics.streak.current,
       longest: metrics.streak.longest,
+      windowDays: metrics.window.days,
+      boundary: metrics.streak.boundary,
       total: metrics.total,
       activeDays: metrics.activeDays,
       ...(lastActive ? { lastActive } : {}),
@@ -134,6 +136,7 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     currentStreak: metrics.streak.current,
     longestStreak: metrics.streak.longest,
     streakBasis: metrics.streak.basis,
+    streakBoundary: metrics.streak.boundary,
     peakDay: metrics.peakDay,
     breakdown: metrics.breakdown,
     breakdownBasis: metrics.breakdownBasis,

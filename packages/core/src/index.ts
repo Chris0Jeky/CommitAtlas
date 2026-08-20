@@ -191,12 +191,17 @@ function dateDistance(left: string, right: string): number {
 
 export const StreakOptionsSchema = z.object({ asOf: UtcDateSchema }).strict();
 export type StreakOptions = z.infer<typeof StreakOptionsSchema>;
+export type StreakBoundary = "closed" | "open";
 
 export interface StreakSummary {
   version: typeof CORE_VERSION;
   asOf: string;
   current: number;
   longest: number;
+  boundary: {
+    current: StreakBoundary;
+    longest: StreakBoundary;
+  };
 }
 
 export function calculateStreaks(input: unknown, options: StreakOptions): StreakSummary {
@@ -216,7 +221,18 @@ export function calculateStreaks(input: unknown, options: StreakOptions): Streak
     if (run > longest) longest = run;
     previous = day.date;
   }
-  return { version: CORE_VERSION, asOf, current, longest };
+  const oldest = boundedDays[0];
+  const currentStart = current > 0 ? addUtcDays(asOf, -(current - 1)) : null;
+  return {
+    version: CORE_VERSION,
+    asOf,
+    current,
+    longest,
+    boundary: {
+      current: oldest && oldest.count > 0 && currentStart === oldest.date ? "open" : "closed",
+      longest: oldest && oldest.count > 0 ? "open" : "closed",
+    },
+  };
 }
 
 export const ActivityOptionsSchema = z.object({

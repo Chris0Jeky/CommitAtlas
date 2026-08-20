@@ -75,6 +75,37 @@ describe("core contracts", () => {
     expect(calculateStreaks(calendar, { asOf: "2024-03-03" })).toMatchObject({ current: 1, longest: 2 });
   });
 
+  it("discloses streaks that can continue before the returned boundary", () => {
+    const allActive = [
+      { date: "2024-03-01", count: 1, level: 1 },
+      { date: "2024-03-02", count: 1, level: 1 },
+      { date: "2024-03-03", count: 1, level: 1 },
+    ];
+    expect(calculateStreaks(allActive, { asOf: "2024-03-03" })).toMatchObject({
+      current: 3,
+      longest: 3,
+      boundary: { current: "open", longest: "open" },
+    });
+
+    const boundaryRunOnly = [
+      { date: "2024-03-01", count: 1, level: 1 },
+      { date: "2024-03-02", count: 0, level: 0 },
+      { date: "2024-03-03", count: 1, level: 1 },
+    ];
+    expect(calculateStreaks(boundaryRunOnly, { asOf: "2024-03-03" })).toMatchObject({
+      current: 1,
+      longest: 1,
+      boundary: { current: "closed", longest: "open" },
+    });
+
+    const closed = [{ date: "2024-03-01", count: 0, level: 0 }, ...allActive.slice(1)];
+    expect(calculateStreaks(closed, { asOf: "2024-03-03" })).toMatchObject({
+      current: 2,
+      longest: 2,
+      boundary: { current: "closed", longest: "closed" },
+    });
+  });
+
   it("excludes future dates from current and longest streaks", () => {
     const calendarWithFutureRun = {
       version: 1 as const,
