@@ -123,6 +123,23 @@ test("preserves user, theme, days, and demo query semantics", () => {
   assert.equal(project.searchParams.get("demo"), "true");
 });
 
+test("emits card URLs in the public route canonical order", () => {
+  assert.equal(buildStudioRouteUrl("activity", {
+    owner: "octocat",
+    theme: "paper",
+    demo: true,
+    days: 90,
+  }), "/api/v1/cards/activity.svg?user=octocat&demo=true&theme=paper&days=90");
+  assert.equal(buildStudioRouteUrl("atlas", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    days: 365,
+    motion: "none",
+    layout: "compact",
+  }), "/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=none&layout=compact");
+});
+
 test("binds a successful origin to the exact route-affecting configuration", () => {
   const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };
   const key = buildStudioConfigurationKey(baseline);

@@ -84,18 +84,18 @@ export function buildStudioRouteUrl(
       })
       .filter((workflow): workflow is string => Boolean(workflow));
     if (workflows.length > 0) query.set("workflows", workflows.join(","));
-    if (kind === "atlas") {
-      if (options.days !== undefined) query.set("days", String(options.days));
-      query.set("motion", options.motion ?? "subtle");
-      query.set("layout", options.layout ?? "wide");
-    }
   } else {
     query.set("user", options.owner);
-    if (kind === "activity" && options.days !== undefined) query.set("days", String(options.days));
   }
 
   query.set("demo", String(options.demo));
   if (kind !== "projects" || projectSurface === "svg") query.set("theme", options.theme);
+  if (kind === "atlas") {
+    if (options.days !== undefined) query.set("days", String(options.days));
+    query.set("motion", options.motion ?? "subtle");
+    query.set("layout", options.layout ?? "wide");
+  }
+  if (kind === "activity" && options.days !== undefined) query.set("days", String(options.days));
 
   const path = kind === "projects"
     ? projectSurface === "json" ? "/api/v1/projects" : "/api/v1/projects.svg"
