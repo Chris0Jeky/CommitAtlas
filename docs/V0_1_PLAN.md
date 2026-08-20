@@ -191,9 +191,12 @@ package dry-run contents, and an ordinary clean Node/CLI consumer.
 ### 6. Add the repository-local GitHub Action
 
 Add `.github/actions/static-generator/action.yml` plus a deterministically bundled entry generated
-from `packages/static/src/action.ts`. Before selecting the runtime, verify the current supported
-JavaScript Action runtime in official GitHub documentation; do not rely on this plan's historical
-`node20` sketch.
+from `packages/static/src/action.ts`. Use `runs.using: node24`: the current
+[GitHub Action metadata reference](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#runs-for-javascript-actions)
+supports Node 24, and GitHub's
+[Node 20 deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)
+directs Action maintainers to migrate to it. Recheck those primary sources at implementation time
+if the runner contract changes again.
 
 Inputs: config, output directory, visibility, optional `as-of`, and `github-token`. The token is passed
 only through the environment. The Action validates tracked config/manifest, never echoes or serializes
