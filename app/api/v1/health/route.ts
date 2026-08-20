@@ -1,19 +1,20 @@
 import { jsonResponse, optionsResponse } from "@/lib/http";
+import { getGitHubToken } from "@/lib/runtime-env";
 
-export function GET(): Response {
-  return jsonResponse(
+export async function GET(request: Request): Promise<Response> {
+  return jsonResponse(request,
     {
       version: 1,
       service: "CommitAtlas",
       status: "ok",
       capabilities: {
         publicProfile: true,
-        contributions: Boolean(process.env.GITHUB_TOKEN),
+        contributions: Boolean(getGitHubToken()),
         projectBoard: true,
       },
       generatedAt: new Date().toISOString(),
     },
-    60,
+    { edgeSeconds: 60, publicData: !getGitHubToken() },
   );
 }
 

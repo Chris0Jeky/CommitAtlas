@@ -8,6 +8,7 @@ import {
   rejectUnknownParameters,
 } from "@/lib/github/validation";
 import { apiErrorResponse, jsonResponse, optionsResponse } from "@/lib/http";
+import { getGitHubToken } from "@/lib/runtime-env";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,8 @@ export async function GET(request: Request): Promise<Response> {
     const demo = parseDemo(url.searchParams.get("demo"));
     const snapshot = demo
       ? demoProjects(owner, repos, states)
-      : await new GitHubClient({ token: process.env.GITHUB_TOKEN }).fetchProjects(owner, repos, states);
-    return jsonResponse(snapshot, 300);
+      : await new GitHubClient({ token: getGitHubToken() }).fetchProjects(owner, repos, states);
+    return jsonResponse(request, snapshot, { edgeSeconds: 300, publicData: demo || !getGitHubToken() });
   } catch (error) {
     return apiErrorResponse(error);
   }

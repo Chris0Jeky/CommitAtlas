@@ -10,16 +10,19 @@ const BASE_HEADERS = {
   "X-Content-Type-Options": "nosniff",
 } as const;
 
-export function jsonResponse(value: unknown, edgeSeconds: number): Response {
+export async function jsonResponse(
+  request: Request,
+  value: unknown,
+  options: { edgeSeconds: number; publicData: boolean },
+): Promise<Response> {
   const body = JSON.stringify(value);
-  const etag = `W/"${fnv1a(body)}-${body.length}"`;
+  const etag = await canonicalEtag(value);
+  const headers = successHeaders(etag, options);
+  if (ifNoneMatch(request.headers.get("if-none-match"), etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   return new Response(body, {
-    headers: {
-      ...BASE_HEADERS,
-      "Cache-Control": `public, max-age=60, s-maxage=${edgeSeconds}`,
-      "Content-Type": "application/json; charset=utf-8",
-      ETag: etag,
-    },
+    headers,
   });
 }
 
@@ -38,7 +41,7 @@ export function apiErrorResponse(error: unknown): Response {
 }
 
 export function optionsResponse(): Response {
-  return new Response(null, { status: 204, headers: BASE_HEADERS });
+  return new Response(null, { status: 204, headers: { ...BASE_HEADERS, "Cache-Control": "no-store" } });
 }
 
 function errorJson(code: string, message: string, status: number, generatedAt: string): Response {
@@ -52,11 +55,50 @@ function errorJson(code: string, message: string, status: number, generatedAt: s
   });
 }
 
-function fnv1a(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
+function successHeaders(
+  etag: string,
+  options: { edgeSeconds: number; publicData: boolean },
+): Headers {
+  return new Headers({
+    ...BASE_HEADERS,
+    "Cache-Control": options.publicData
+      ? `public, max-age=60, s-maxage=${options.edgeSeconds}`
+      : "private, no-store",
+    "Content-Type": "application/json; charset=utf-8",
+    ETag: etag,
+  });
+}
+
+async function canonicalEtag(value: unknown): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(canonicalize(value))),
+  );
+  const hash = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return `W/"${hash}"`;
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        // Freshness timestamps change on every live read, but do not change
+        // the semantic representation validated by this weak ETag.
+        .filter(([key]) => key !== "generatedAt")
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalize(child)]),
+    );
   }
-  return (hash >>> 0).toString(16).padStart(8, "0");
+  return value;
+}
+
+function ifNoneMatch(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  return header.split(",").map((value) => value.trim()).some((candidate) => {
+    if (candidate === "*") return true;
+    return candidate.replace(/^W\//, "") === etag.replace(/^W\//, "");
+  });
 }

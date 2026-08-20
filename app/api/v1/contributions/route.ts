@@ -2,6 +2,7 @@ import { demoContributions } from "@/lib/github/demo";
 import { GitHubClient } from "@/lib/github/client";
 import { InputError, parseDemo, parseGitHubHandle, rejectUnknownParameters } from "@/lib/github/validation";
 import { apiErrorResponse, jsonResponse, optionsResponse } from "@/lib/http";
+import { getGitHubToken } from "@/lib/runtime-env";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,9 @@ export async function GET(request: Request): Promise<Response> {
     const demo = parseDemo(url.searchParams.get("demo"));
     const days = parseDays(url.searchParams.get("days"));
     const snapshot = demo
-      ? demoContributions(user)
-      : await new GitHubClient({ token: process.env.GITHUB_TOKEN }).fetchContributions(user, days);
-    return jsonResponse(snapshot, 3600);
+      ? demoContributions(user, days)
+      : await new GitHubClient({ token: getGitHubToken() }).fetchContributions(user, days);
+    return jsonResponse(request, snapshot, { edgeSeconds: 3600, publicData: demo });
   } catch (error) {
     return apiErrorResponse(error);
   }

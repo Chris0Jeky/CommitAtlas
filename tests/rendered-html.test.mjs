@@ -54,3 +54,26 @@ test("fails closed on unknown API parameters", async () => {
   const payload = await response.json();
   assert.equal(payload.error.code, "invalid_input");
 });
+
+test("returns stable conditional ETags for public demo data", async () => {
+  const first = await request("/api/v1/contributions?user=octocat&days=7&demo=true");
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
+  const etag = first.headers.get("etag");
+  assert.ok(etag);
+  const payload = await first.json();
+  assert.equal(payload.days.length, 7);
+
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-etag`);
+  const { default: worker } = await import(workerUrl.href);
+  const conditional = await worker.fetch(
+    new Request("http://localhost/api/v1/contributions?user=octocat&days=7&demo=true", {
+      headers: { "if-none-match": etag },
+    }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(conditional.status, 304);
+  assert.equal(await conditional.text(), "");
+});
