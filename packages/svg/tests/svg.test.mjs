@@ -49,9 +49,32 @@ test("primitives are deterministic and safe", () => {
   assert.equal(truncateText("hello world", 6), "hello…");
   assert.equal(truncateText("😀😀😀", 2), "😀…");
   assert.equal(formatNumber(1234), "1.2k");
+  assert.equal(formatNumber(999_999), "1M");
   assert.equal(formatNumber(1_200_000), "1.2M");
+  assert.equal(formatNumber(999_999_999), "1B");
   assert.equal(formatNumber(Number.NaN), "0");
   assert.deepEqual(Object.keys(themes), ["aurora", "midnight", "paper", "ember"]);
+});
+
+test("renderer defaults are specific and dimensions stay within safe bounds", () => {
+  const profile = renderProfileCard({ name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3 });
+  const streak = renderStreakCard({ current: 1, longest: 2 });
+  const activity = renderActivityCard({ days: [] });
+  const languages = renderLanguagesCard({ languages: [] });
+  const board = renderProjectBoard({ projects: [] });
+  assert.match(profile, /<title>Ada profile<\/title><desc>GitHub profile for Ada\.<\/desc>/);
+  assert.match(streak, /<title>Contribution streak<\/title><desc>Current and longest GitHub contribution streaks\.<\/desc>/);
+  assert.match(activity, /<title>Contribution activity<\/title><desc>A compact contribution activity map/);
+  assert.match(languages, /<title>Languages<\/title><desc>Programming languages used across GitHub repositories\.<\/desc>/);
+  assert.match(board, /<title>Project signals<\/title><desc>Project lifecycle and CI signals/);
+  const constrained = renderStreakCard({ current: 1, longest: 2 }, {
+    width: 1, height: 1, title: "T".repeat(200), description: "D".repeat(300),
+  });
+  assert.match(constrained, /viewBox="0 0 420 150" width="420" height="150"/);
+  assert.match(constrained, /<title>T{95}…<\/title>/);
+  assert.match(constrained, /<desc>D{179}…<\/desc>/);
+  const large = renderStreakCard({ current: 1, longest: 2 }, { width: 9_999, height: 9_999 });
+  assert.match(large, /viewBox="0 0 1200 260" width="1200" height="260"/);
 });
 
 test("all renderers emit accessible safe SVG", () => {
@@ -92,6 +115,15 @@ test("project boards remain summary-only when action URLs are present", () => {
   assert.doesNotMatch(board, /<a\b|href=|Repo|Docs|Install|Download/);
 });
 
+test("project boards report displayed and total project counts truthfully", () => {
+  const board = renderProjectBoard({ projects: Array.from({ length: 8 }, (_, index) => ({
+    name: `Project ${index + 1}`, lifecycle: "active", ci: "passing",
+  })) });
+  assert.match(board, />6 of 8 shown<\/text>/);
+  assert.match(board, /Project 6/);
+  assert.doesNotMatch(board, /Project 7|Project 8/);
+});
+
 test("credential-bearing URLs never enter public SVG output", () => {
   const profile = renderProfileCard({
     name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4,
@@ -115,6 +147,46 @@ test("language byte shares include omitted source languages and respect totalByt
   const suppliedTotal = renderLanguagesCard({ languages, totalBytes: 400 });
   assert.match(suppliedTotal, />20%<\/text>/);
   assert.match(suppliedTotal, />5%<\/text>/);
+});
+
+test("language renderers reject mixed byte and percentage bases and only accept CSS hex lengths", () => {
+  assert.throws(() => renderLanguagesCard({ languages: [
+    { name: "Rust", bytes: 80 }, { name: "TypeScript", percentage: 20 },
+  ] }), /either bytes or percentages/);
+  const output = renderLanguagesCard({ languages: [
+    { name: "Three", percentage: 25, color: "#abc" },
+    { name: "Four", percentage: 25, color: "#abcd" },
+    { name: "Six", percentage: 25, color: "#abcdef" },
+    { name: "Eight", percentage: 25, color: "#abcdef12" },
+    { name: "Invalid five", percentage: 0, color: "#12345" },
+    { name: "Invalid seven", percentage: 0, color: "#1234567" },
+  ] });
+  for (const color of ["#abc", "#abcd", "#abcdef", "#abcdef12"]) assert.match(output, new RegExp(`fill="${color}"`));
+  assert.doesNotMatch(output, /#12345|#1234567/);
+});
+
+test("profile stars are source-backed and absent stars stay unavailable", () => {
+  const absent = renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4 });
+  const present = renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4, stars: 1_250 });
+  assert.doesNotMatch(absent, /Stars/);
+  assert.match(present, />1.3k<\/text><text[^>]*>Stars<\/text>/);
+});
+
+test("activity dates are valid, bounded, and full supported windows stay below 30KB", () => {
+  const dates = (length) => Array.from({ length }, (_, index) => ({
+    date: new Date(Date.UTC(2025, 0, 1 + index)).toISOString().slice(0, 10), count: index % 9,
+  }));
+  const activity364 = renderActivityCard({ days: dates(364), periodLabel: "P".repeat(100) });
+  const activity366 = renderActivityCard({ days: [
+    { date: "2025-02-29", count: 99 },
+    ...dates(366),
+    { date: "not-a-date", count: 99 },
+  ] });
+  assert.ok(activity364.length < 30_000, `364-day SVG exceeded budget (${activity364.length})`);
+  assert.ok(activity366.length < 30_000, `366-day SVG exceeded budget (${activity366.length})`);
+  assert.match(activity366, /2026-01-01: 5 contributions/);
+  assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
+  assert.match(activity364, />P{31}…<\/text>/);
 });
 
 test("missing profile and streak fields stay honestly unavailable", () => {
