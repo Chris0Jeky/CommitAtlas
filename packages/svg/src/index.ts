@@ -770,7 +770,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW"
     : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
       : "PUBLIC GITHUB";
-  const breakdownQualifier = data.breakdownBasis === "public-profile-percentages" ? "Public profile activity mix" : "Breakdown";
+  const breakdownQualifier = data.breakdownBasis === "public-profile-percentages"
+    ? "Public profile activity percentage mix from calendar-year views, not scoped to this contribution window"
+    : "Breakdown";
   const currentStreakOpen = data.streakBoundary?.current === "open";
   const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
@@ -841,7 +843,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Issues", data.breakdown.issues, t.negative],
   ] as const;
   const breakdownMax = Math.max(1, ...breakdown.map(([, value]) => finite(value)));
-  out += text(breakdownX, breakdownY, data.breakdownBasis === "public-profile-percentages" ? "PUBLIC PROFILE ACTIVITY MIX" : "CONTRIBUTION MIX", 10, t.muted, 700);
+  out += text(breakdownX, breakdownY, data.breakdownBasis === "public-profile-percentages" ? "PUBLIC PROFILE MIX · NOT WINDOW-SCOPED" : "CONTRIBUTION MIX", 10, t.muted, 700);
   breakdown.forEach(([label, value, color], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);

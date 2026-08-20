@@ -286,9 +286,9 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
     breakdownBasis: "public-profile-percentages",
     breakdown: { commits: 77.8, issues: 6.7, pullRequests: 12.6, reviews: 2.9 },
   });
-  assert.match(publicProfileAtlas, /PUBLIC PROFILE ACTIVITY MIX/);
+  assert.match(publicProfileAtlas, /PUBLIC PROFILE MIX · NOT WINDOW-SCOPED/);
   assert.match(publicProfileAtlas, />77\.8%<\/text>/);
-  assert.match(publicProfileAtlas, /Public profile activity mix: 77\.8% commits/);
+  assert.match(publicProfileAtlas, /Public profile activity percentage mix from calendar-year views, not scoped to this contribution window: 77\.8% commits/);
 });
 
 test("credential-bearing URLs never enter public SVG output", () => {

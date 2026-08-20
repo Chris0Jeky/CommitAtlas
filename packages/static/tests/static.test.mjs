@@ -71,7 +71,7 @@ test("renders all rich widgets deterministically from one snapshot", () => {
     "activity.svg", "atlas.svg", "breakdown.svg", "languages.svg", "profile.svg", "projects.svg", "rhythm.svg", "streak.svg",
   ]);
   assert.match(first["atlas.svg"], /PUBLIC PROFILE VIEW/);
-  assert.match(first["atlas.svg"], /PUBLIC PROFILE ACTIVITY MIX/);
+  assert.match(first["atlas.svg"], /PUBLIC PROFILE MIX · NOT WINDOW-SCOPED/);
   assert.match(first["atlas.svg"], /CONTRIBUTION DENSITY/);
   assert.match(first["atlas.svg"], /RHYTHM/);
   assert.match(first["breakdown.svg"], /PUBLIC PROFILE %/);
