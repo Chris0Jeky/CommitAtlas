@@ -1,0 +1,29 @@
+{
+  "name": "@commit-atlas/github",
+  "version": "0.1.0",
+  "description": "Hardened public GitHub transport and normalized portfolio snapshots for CommitAtlas.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    "./adapters": { "types": "./dist/adapters.d.ts", "import": "./dist/adapters.js", "default": "./dist/adapters.js" },
+    "./client": { "types": "./dist/client.d.ts", "import": "./dist/client.js", "default": "./dist/client.js" },
+    "./demo": { "types": "./dist/demo.d.ts", "import": "./dist/demo.js", "default": "./dist/demo.js" },
+    "./types": { "types": "./dist/types.d.ts", "import": "./dist/types.js", "default": "./dist/types.js" },
+    "./validation": { "types": "./dist/validation.d.ts", "import": "./dist/validation.js", "default": "./dist/validation.js" },
+    "./workflow-map": { "types": "./dist/workflow-map.d.ts", "import": "./dist/workflow-map.js", "default": "./dist/workflow-map.js" }
+  },
+  "scripts": {
+    "prebuild": "npm --prefix ../core run build",
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "pack:dry-run": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "@commit-atlas/core": "0.1.0"
+  }
+}
