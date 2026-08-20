@@ -344,19 +344,20 @@ export class GitHubClient {
    * outside getJson/graphql so it cannot recursively preflight itself.
    */
   private async assertPublicCredentials(): Promise<void> {
-    if (!this.token) return;
-    this.publicCredentialProof ??= this.provePublicCredentials();
+    const token = this.token;
+    if (!token) return;
+    this.publicCredentialProof ??= this.provePublicCredentials(token);
     await this.publicCredentialProof;
   }
 
-  private async provePublicCredentials(): Promise<void> {
+  private async provePublicCredentials(token: string): Promise<void> {
     const response = await this.fetchWithDeadline(new URL("/rate_limit", API_ORIGIN), {
       headers: this.headers(),
     });
     const hasScopeEvidence = response.headers.has("x-oauth-scopes");
     const scopes = response.headers.get("x-oauth-scopes");
     await response.body?.cancel();
-    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(this.token, scopes)) {
+    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(token, scopes)) {
       throw privateDataError("Public GitHub routes require a token with explicit public-only classic OAuth scopes");
     }
   }
