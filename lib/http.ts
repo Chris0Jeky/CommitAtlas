@@ -5,7 +5,8 @@ const BASE_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Accept, If-None-Match",
-  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; sandbox",
+  "Content-Security-Policy": "default-src 'none'; script-src 'none'; style-src 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+  "Cross-Origin-Resource-Policy": "cross-origin",
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff",
 } as const;
@@ -24,6 +25,19 @@ export async function jsonResponse(
   return new Response(body, {
     headers,
   });
+}
+
+export async function svgResponse(
+  request: Request,
+  body: string,
+  options: { edgeSeconds: number; publicData: boolean },
+): Promise<Response> {
+  const etag = await bodyEtag(body);
+  const headers = successHeaders(etag, options, "image/svg+xml; charset=utf-8");
+  if (ifNoneMatch(request.headers.get("if-none-match"), etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(body, { headers });
 }
 
 export function apiErrorResponse(error: unknown): Response {
@@ -58,15 +72,24 @@ function errorJson(code: string, message: string, status: number, generatedAt: s
 function successHeaders(
   etag: string,
   options: { edgeSeconds: number; publicData: boolean },
+  contentType = "application/json; charset=utf-8",
 ): Headers {
   return new Headers({
     ...BASE_HEADERS,
     "Cache-Control": options.publicData
       ? `public, max-age=60, s-maxage=${options.edgeSeconds}`
       : "private, no-store",
-    "Content-Type": "application/json; charset=utf-8",
+    "Content-Type": contentType,
     ETag: etag,
   });
+}
+
+async function bodyEtag(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));
+  const hash = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return `W/"${hash}"`;
 }
 
 async function canonicalEtag(value: unknown): Promise<string> {
