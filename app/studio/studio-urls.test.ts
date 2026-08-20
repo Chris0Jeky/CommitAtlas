@@ -4,6 +4,7 @@ import { parseLifecycleMap, parseRepositoryNames, parseWorkflowMap } from "@/lib
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  isStudioPreviewCurrent,
   resolveStudioBaseUrl,
   type StudioCardKind,
 } from "./studio-urls";
@@ -129,6 +130,9 @@ test("binds a successful origin to the exact route-affecting configuration", () 
   }));
 
   const validated = { key, origin: "https://atlas.example" };
+  assert.equal(isStudioPreviewCurrent(key, validated), true);
+  assert.equal(isStudioPreviewCurrent("changed", validated), false);
+  assert.equal(isStudioPreviewCurrent(key, null), false);
   assert.equal(resolveStudioBaseUrl(key, validated, "https://placeholder.example"), "https://atlas.example");
   assert.equal(resolveStudioBaseUrl("changed", validated, "https://placeholder.example"), "https://placeholder.example");
 });

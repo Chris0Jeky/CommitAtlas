@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { hasCurrentLiveContributions, isStudioCardAvailable } from "./studio-card-availability";
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
-import { contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
+import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
 import {
   activityBarPercent,
   contributionMetricLabel,
@@ -17,6 +17,7 @@ import {
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  isStudioPreviewCurrent,
   resolveStudioBaseUrl,
   type StudioCardKind,
 } from "./studio-urls";
@@ -133,6 +134,11 @@ export default function StudioClient() {
     theme,
     demo,
   }), [activeProjects, demo, handle, theme]);
+  const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
+  const visibleBoard = configurationIsValidated ? board : null;
+  const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
+    ? configurationChangedNotice()
+    : notice;
   const hasCurrentContributions = hasCurrentLiveContributions({
     demo,
     currentConfigurationKey: configurationKey,
@@ -154,7 +160,6 @@ export default function StudioClient() {
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setValidatedPreview(null);
     const login = handle.trim();
     if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
       setPhase("error");
@@ -310,7 +315,7 @@ export default function StudioClient() {
 
         <section className="studio-preview-panel" id="preview" aria-labelledby="preview-title">
           <div className="panel-heading preview-heading"><span>03</span><div><p>Evidence preview</p><h2 id="preview-title">@{profile.login}</h2></div><div className={`mode-chip ${profile.freshness.mode}`}><i />{profile.freshness.mode === "demo" ? "Synthetic" : profile.freshness.mode}</div></div>
-          <p className={`studio-notice ${phase}`} role="status" aria-live="polite">{notice}</p>
+          <p className={`studio-notice ${phase}`} role="status" aria-live="polite">{visibleNotice}</p>
 
           <article className={`live-profile-card theme-${theme}`}>
             <header><div><p>Developer atlas</p><h3>{profile.name || `@${profile.login}`}</h3><a href={profile.profileUrl} target="_blank" rel="noreferrer">@{profile.login} <span aria-hidden="true">↗</span></a></div><span>{profile.freshness.source}</span></header>
@@ -321,10 +326,10 @@ export default function StudioClient() {
             <footer><span>{contributions ? contributionWindowLabel(contributions.days.length, activity.length) : "No contribution source"}</span><strong>{profile.freshness.generatedAt ? new Date(profile.freshness.generatedAt).toLocaleString() : "Starter fixture"}</strong></footer>
           </article>
 
-          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{board?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Actions are HTML, not SVG</span></div>
+          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Actions are HTML, not SVG</span></div>
           <div className="dashboard-list">
-            {(board?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
-            {!board && activeProjects.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
+            {(visibleBoard?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
+            {!visibleBoard && activeProjects.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
             {!activeProjects.length && <div className="empty-projects"><strong>No projects selected</strong><span>Add a repository to build a project-health dashboard.</span></div>}
           </div>
 

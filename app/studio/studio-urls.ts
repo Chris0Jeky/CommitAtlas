@@ -38,7 +38,16 @@ export function resolveStudioBaseUrl(
   validatedPreview: { key: string; origin: string } | null,
   placeholder: string,
 ): string {
-  return validatedPreview?.key === currentConfigurationKey ? validatedPreview.origin : placeholder;
+  return isStudioPreviewCurrent(currentConfigurationKey, validatedPreview)
+    ? validatedPreview.origin
+    : placeholder;
+}
+
+export function isStudioPreviewCurrent<T extends { key: string }>(
+  currentConfigurationKey: string,
+  validatedPreview: T | null,
+): validatedPreview is T {
+  return validatedPreview?.key === currentConfigurationKey;
 }
 
 const cardPaths: Record<Exclude<StudioCardKind, "projects">, string> = {

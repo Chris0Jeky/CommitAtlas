@@ -6,3 +6,7 @@ export function retainedPreviewNotice(reason: string, login: string): string {
 export function contributionUnavailableNotice(): string {
   return "Available public signals loaded. Streak and Activity are unavailable for this preview and were omitted from README Markdown; no value was guessed.";
 }
+
+export function configurationChangedNotice(): string {
+  return "Configuration changed. Run Preview to refresh the evidence and generated URLs.";
+}
