@@ -32,11 +32,21 @@ test("server-renders the CommitAtlas product surface", async () => {
   const html = await response.text();
   assert.match(html, /<title>CommitAtlas/);
   assert.match(html, /Your GitHub work/);
-  assert.match(html, /Project signals/);
-  assert.match(html, /Synthetic preview/);
+  for (const family of [
+    "/api/v1/cards/atlas.svg?",
+    "/api/v1/cards/profile.svg?",
+    "/api/v1/cards/streak.svg?",
+    "/api/v1/cards/activity.svg?",
+    "/api/v1/cards/languages.svg?",
+    "/api/v1/projects.svg?",
+  ]) assert.match(html, new RegExp(family.replace(/[.?]/g, "\\$&")));
+  assert.match(html, /Synthetic demo/);
+  assert.match(html, /No GitHub calls are made to render this page/);
+  assert.match(html, /Open SVG/);
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%/);
+  assert.doesNotMatch(html, /northstar-api|signal-canvas|archive-kit|Illustrative 90-day activity|Portfolio status/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
 });
 

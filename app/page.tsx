@@ -1,10 +1,5 @@
 import Link from "next/link";
-
-const previewProjects = [
-  { name: "northstar-api", state: "Active", ci: "Passing", tone: "good" },
-  { name: "signal-canvas", state: "Maintenance", ci: "Pending", tone: "warn" },
-  { name: "archive-kit", state: "Paused", ci: "Not configured", tone: "muted" },
-] as const;
+import { LandingCardShowcase, LandingHeroCard } from "./card-showcase";
 
 const capabilities = [
   {
@@ -59,48 +54,10 @@ export default function Home() {
           </ul>
         </div>
 
-        <div className="atlas-preview" aria-label="Clearly labelled synthetic CommitAtlas preview">
-          <div className="preview-glow" />
-          <div className="preview-label"><span /> Synthetic preview</div>
-          <article className="profile-card" id="cards">
-            <header>
-              <div>
-                <p className="card-kicker">Developer atlas</p>
-                <h2>octocat</h2>
-              </div>
-              <span className="freshness"><i /> Demo data</span>
-            </header>
-            <div className="metric-grid">
-              <div><strong>412</strong><span>Contributions</span></div>
-              <div><strong>61</strong><span>Pull requests</span></div>
-              <div><strong>24</strong><span>Repositories</span></div>
-            </div>
-            <div className="activity" aria-label="Synthetic contribution activity illustration">
-              {[34, 48, 28, 62, 45, 78, 56, 88, 67, 94, 74, 100, 82, 96, 76, 92].map((height, index) => (
-                <i key={index} style={{ height: `${height}%` }} />
-              ))}
-            </div>
-            <footer><span>Illustrative 90-day activity</span><strong>Source <small>synthetic</small></strong></footer>
-          </article>
-
-          <article className="projects-card" id="projects">
-            <header>
-              <div><p className="card-kicker">Project signals</p><h2>Portfolio status</h2></div>
-              <span className="project-count">3 projects</span>
-            </header>
-            <div className="project-list">
-              {previewProjects.map((project) => (
-                <div className="project-row" key={project.name}>
-                  <span className={`status-dot ${project.tone}`} aria-hidden="true" />
-                  <div><strong>{project.name}</strong><span>{project.state}</span></div>
-                  <span className={`ci-pill ${project.tone}`}>{project.ci}</span>
-                  <span className="row-arrow" aria-hidden="true">↗</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </div>
+        <LandingHeroCard />
       </section>
+
+      <LandingCardShowcase />
 
       <section className="capability-section" aria-labelledby="capability-title">
         <div className="section-heading">
