@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pretest": "npm --prefix ../core run build",
     "test": "npm run build && node --test tests/svg.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
