@@ -87,8 +87,9 @@ rendering without filesystem writes.
 
 Contribution history comes from GitHub's logged-out public profile view. That view may contain
 anonymous aggregates the account owner elected to display, but it exposes no private repository
-details to CommitAtlas. Activity type data is carried as public-profile percentages unless an exact
-categorized source is present; a percentage is never rendered as an exact count. Rhythm is a
+details to CommitAtlas. Activity type data from calendar-year profile views is carried as
+public-profile percentages and labelled as not window-scoped unless an exact categorized source is
+present; a percentage is never rendered as an exact count. Rhythm is a
 within-window personal consistency summary, not a GitHub rank. `motion: "none"` produces no
 animation keyframes; `motion: "subtle"` produces short load motion with a reduced-motion override.
 A malformed, incomplete, gapped, oversized, or unavailable response fails generation.

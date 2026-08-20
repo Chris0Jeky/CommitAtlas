@@ -12,9 +12,9 @@ commitatlas generate --config .commitatlas.json --output-dir assets/commitatlas 
 ```
 
 The generator sends no GitHub credential. GitHub's public profile view is the contribution source;
-its activity mix is labelled as public-profile percentages unless an explicitly exact source is
-available. A malformed, incomplete, or unavailable upstream response fails generation before output
-is staged. The tracked v1 config selects any subset of the eight cards for one public owner and up to
+its activity mix comes from calendar-year profile views and is labelled as public-profile percentages
+that are not window-scoped unless an explicitly exact source is available. A malformed, incomplete,
+or unavailable upstream response fails generation before output is staged. The tracked v1 config selects any subset of the eight cards for one public owner and up to
 six curated projects. `manifest.json` records the exact window, provenance, byte size, and SHA-256
 hash of every generated artifact.
 

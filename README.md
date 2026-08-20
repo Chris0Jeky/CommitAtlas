@@ -27,8 +27,8 @@ The primary Atlas condenses a full year of public activity into one `860 × 380`
 
 - 365-day contribution heatmap, total, active-day density, daily average, and peak day;
 - current and longest streak inside the displayed window;
-- commit, pull-request, issue, and review mix from GitHub's public profile percentages when exact
-  categorized counts are unavailable (the card labels the basis rather than inventing counts);
+- commit, pull-request, issue, and review mix from GitHub's calendar-year public-profile percentages
+  when exact categorized counts are unavailable (the mix is labelled as not window-scoped);
 - 12-bucket momentum, recent-versus-previous 28-day change, and a transparent rhythm score;
 - source-backed language distribution and configured project CI health;
 - four themes, wide/compact layouts, and `motion=none|subtle`; subtle load motion includes a
@@ -44,7 +44,7 @@ not presented as a universal GitHub ranking or a comparison with other developer
 | Atlas | Density, heatmap, streaks, collaboration mix, momentum, rhythm, languages, project health | `/api/v1/cards/atlas.svg` / `atlas.svg` |
 | Profile | Public repositories, followers, following, stars, contribution total | `/api/v1/cards/profile.svg` / `profile.svg` |
 | Streak | Current and longest-in-window streak, active days, last activity | `/api/v1/cards/streak.svg` / `streak.svg` |
-| Breakdown | Categorized contribution counts when exact, otherwise labelled public-profile percentages | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
+| Breakdown | Window-scoped categorized counts when exact; otherwise calendar-year profile percentages labelled as not window-scoped | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
 | Rhythm | Personal consistency from within-window density, streak, and momentum — not a GitHub rank | `/api/v1/cards/rhythm.svg` / `rhythm.svg` |
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language byte share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
@@ -143,8 +143,9 @@ data layer. A failed refresh leaves the last committed profile assets available.
 Credential-free contribution cards use GitHub's logged-out public profile view. That view can include
 anonymous aggregate contribution counts a user has elected to display, but CommitAtlas requests no
 private repository names, commits, URLs, or other private details. Activity-type values from that view
-are labelled as public-profile percentages; only an explicitly exact source is rendered as exact
-counts. A percentage is never presented as a count.
+come from calendar-year profile views and are labelled as public-profile percentages that are not
+scoped to the requested contribution window; only an explicitly exact source is rendered as
+window-scoped counts. A percentage is never presented as a count.
 
 Hosted requests may optionally use a server-side classic public-only token, but the client requires
 positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data

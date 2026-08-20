@@ -25,6 +25,8 @@ GitHub public evidence ──┼─ interactive HTML Studio
 | Atlas | 365-day density, heatmap, streaks, activity mix, momentum, rhythm, languages, project health | SVG + Studio |
 | Profile | Public repositories, stars, followers, following, contribution total | SVG + JSON |
 | Streak | Current and longest streak inside the exact displayed UTC window | SVG + JSON |
+| Breakdown | Exact categorized counts when available; otherwise non-window-scoped profile-view percentages | SVG + Studio |
+| Rhythm | Transparent within-window personal consistency, never a GitHub rank | SVG + Studio |
 | Activity | Bounded daily contribution graph and exact date window | SVG + JSON |
 | Languages | Complete repository-language byte share, not proficiency | SVG + JSON |
 | Projects | Explicit lifecycle, named-workflow CI, release, freshness, and configured actions | SVG summary + HTML actions + JSON |
@@ -38,8 +40,9 @@ Install, Download, Release, and CI actions remain keyboard-accessible HTML.
 
 - Public profile/repository/language/project data uses GitHub's public REST API.
 - Credential-free contributions use the logged-out GitHub profile contribution view. Daily counts
-  and levels must form the complete requested UTC window. Public activity-type percentages remain
-  percentages; they are not converted into fabricated exact event counts.
+  and levels must form the complete requested UTC window. Public activity-type percentages come
+  from calendar-year profile views, remain percentages, and are labelled as not window-scoped;
+  they are not converted into fabricated exact event counts.
 - Optional hosted token-backed contributions use GitHub GraphQL only after positive public-only
   classic-token scope evidence. Restricted contributions and broader/unknown credential types fail
   closed.
@@ -79,7 +82,7 @@ in HTML.
 ## Static delivery
 
 The static package reads one tracked `.commitatlas.json`, fetches public data without a credential,
-builds one `PortfolioSnapshot`, renders a selected subset of six cards, and writes `manifest.json`
+builds one `PortfolioSnapshot`, renders a selected subset of eight cards, and writes `manifest.json`
 with byte sizes and SHA-256 hashes. Repository-contained path and symlink checks run before output.
 All data and payloads validate before staged per-file replacement; unrelated siblings survive while
 stale files from the bounded set of CommitAtlas-managed artifact names are removed after success.
@@ -103,7 +106,7 @@ last known-good committed cards when refresh fails. See
   "layout": "wide",
   "responsiveAtlas": true,
   "outputDir": "assets/commitatlas",
-  "cards": ["atlas", "profile", "streak", "activity", "languages", "projects"],
+  "cards": ["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"],
   "projects": [
     {
       "repo": "Chris0Jeky/CommitAtlas",
