@@ -101,6 +101,13 @@ Exact-head local evidence at `69ecd13`:
 The route auxiliary worktree was tracked-clean, remotely preserved, merged, and removed without
 force. Its ignored dependency/build outputs were reproducible and needed no copy-out.
 
+The only registered Git worktree is the primary checkout. Reproducible scratch directories remain
+outside the repository at `review-artifacts`, `work/cf-types`, `work/workers-types-latest`,
+`work/package-review`, `work/svg-consumer`, and the three detached review clones under `work`. A
+read-only inventory found no unique source or dirty tracked files; an optional recursive cleanup was
+rejected by the sandbox policy and was not bypassed. They do not affect repository status and may be
+removed in a later user-approved local cleanup.
+
 ## Static generator and local Action
 
 No implementation branch exists. The approved design is durable in
