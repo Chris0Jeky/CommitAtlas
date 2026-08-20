@@ -205,21 +205,39 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
     const bytes = Buffer.byteLength(output, "utf8");
     assert.ok(bytes < 30_000, `${label} SVG exceeded budget (${bytes} UTF-8 bytes)`);
   }
-  assert.match(activity366, /aria-label="[^"]*2026-01-01: 5 contributions/);
-  assert.match(escapedOutputs[0][1], /aria-label="2025-01-01: 100,000 contributions/);
-  assert.match(escapedOutputs[2][1], /aria-label="2025-01-01: 100,000 contributions/);
-  assert.match(escapedOutputs[0][1], /2025-01-01: 100,000 contributions/);
+  assert.match(activity366, /<desc>[^<]*2026-01-01 5/);
+  assert.match(escapedOutputs[0][1], /<desc>[^<]*2025-01-01 100,000/);
+  assert.match(escapedOutputs[2][1], /<desc>[^<]*2025-01-01 100,000/);
+  assert.match(escapedOutputs[0][1], /2025-01-01 100,000/);
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
   assert.match(activity364, />P{31}…<\/text>/);
 });
 
-test("activity accessibility summary remains chronological while visual cells stay hidden", () => {
+test("activity accessibility summary belongs to the outer SVG description", () => {
   const output = renderActivityCard({ days: [
     { date: "2026-08-19", count: 9 }, { date: "2026-08-18", count: 1 },
   ] });
-  assert.match(output, /role="group" aria-label="2026-08-18: 1 contributions; 2026-08-19: 9 contributions"/);
-  assert.ok(output.indexOf("2026-08-18: 1 contributions") < output.indexOf("2026-08-19: 9 contributions"));
-  assert.match(output, /<g aria-hidden="true" fill=/);
+  assert.match(output, /<desc>A compact contribution activity map with text labels for accessible status\. Contributions by date, chronologically: 2026-08-18 1; 2026-08-19 9<\/desc>/);
+  assert.doesNotMatch(output, /<g role="group"/);
+  assert.match(output, /2026-08-18 1; 2026-08-19 9/);
+  assert.ok(output.indexOf("2026-08-18 1") < output.indexOf("2026-08-19 9"));
+  assert.match(output, /<g aria-hidden="true"><path fill=/);
+});
+
+test("activity cells preserve chronological DOM order across alternating intensities", () => {
+  const output = renderActivityCard({ days: [
+    { date: "2026-08-21", count: 9 }, { date: "2026-08-18", count: 0 },
+    { date: "2026-08-20", count: 5 }, { date: "2026-08-19", count: 1 },
+  ] }, { theme: "midnight" });
+  const paths = [...output.matchAll(/<path fill="([^"]+)" d="[^"]+"\/>/g)];
+  assert.equal(paths.length, 4);
+  assert.notEqual(paths[0][1], paths[1][1]);
+  assert.notEqual(paths[1][1], paths[2][1]);
+  assert.notEqual(paths[2][1], paths[3][1]);
+  assert.match(output, /<desc>[^<]*Contributions by date, chronologically: 2026-08-18 0; 2026-08-19 1; 2026-08-20 5; 2026-08-21 9<\/desc>/);
+  assert.ok(output.indexOf("2026-08-18 0") < output.indexOf("2026-08-19 1"));
+  assert.ok(output.indexOf("2026-08-19 1") < output.indexOf("2026-08-20 5"));
+  assert.ok(output.indexOf("2026-08-20 5") < output.indexOf("2026-08-21 9"));
 });
 
 test("missing profile and streak fields stay honestly unavailable", () => {
@@ -299,6 +317,6 @@ test("labels expose signal state without depending on color", () => {
   for (const label of ["Active", "Maintained", "Paused", "Archived", "Experimental", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
     assert.match(board, new RegExp(label));
   }
-  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /aria-label="2026-08-18: 0 contributions/);
+  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /<desc>[^<]*2026-08-18 0/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
 });

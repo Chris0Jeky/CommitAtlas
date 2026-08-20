@@ -236,9 +236,16 @@ function isValidIsoDate(value: unknown): value is string {
   return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1];
 }
 
-function svgStart(width: number, height: number, theme: SvgTheme, title: string, description: string): string {
+function svgStart(
+  width: number,
+  height: number,
+  theme: SvgTheme,
+  title: string,
+  description: string,
+  accessibleDescription = description,
+): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(title)}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" fill="none">` +
-    `<title>${escapeXml(title)}</title><desc>${escapeXml(description)}</desc>` +
+    `<title>${escapeXml(title)}</title><desc>${escapeXml(accessibleDescription)}</desc>` +
     `<rect width="${width}" height="${height}" rx="18" fill="${theme.background}"/>`;
 }
 
@@ -326,23 +333,23 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   const max = Math.max(1, ...days.map((day) => finite(day.count)));
   const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
   const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
-  let out = svgStart(width, o.height, t, o.title, o.description);
+  const accessibilitySummary = days.map((day) => `${day.date} ${formatNumber(day.count, false)}`).join("; ");
+  const accessibleDescription = accessibilitySummary
+    ? `${o.description} Contributions by date, chronologically: ${accessibilitySummary}`
+    : o.description;
+  let out = svgStart(width, o.height, t, o.title, o.description, accessibleDescription);
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, periodLabel, 11, t.muted, 700);
   out += text(width - 34, 48, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const columns = Math.min(53, Math.max(1, Math.ceil(days.length / 7))); const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
   const start = 40; const top = 66;
-  const accessibilitySummary = days.map((day) => `${day.date}: ${formatNumber(day.count, false)} contributions`).join("; ");
-  out += `<g role="group" aria-label="${escapeXml(accessibilitySummary)}"/>`;
-  const cellsByFill = new Map<string, string[]>();
+  const cells: string[] = [];
   days.forEach((day, index) => {
     const column = Math.floor(index / 7); const row = index % 7; const intensity = Math.min(1, finite(day.count) / max);
     const fill = intensity === 0 ? t.background : intensity < 0.34 ? t.border : intensity < 0.67 ? t.accent : t.positive;
     const x = start + column * (cell + 2); const y = top + row * (cell + 2);
-    const cells = cellsByFill.get(fill) ?? [];
-    cells.push(`<path d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
-    cellsByFill.set(fill, cells);
+    cells.push(`<path fill="${fill}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
   });
-  for (const [fill, cells] of cellsByFill) out += `<g aria-hidden="true" fill="${fill}">${cells.join("")}</g>`;
+  out += `<g aria-hidden="true">${cells.join("")}</g>`;
   out += text(40, top + 7 * (cell + 2) + 19, "Less", 10, t.muted) + text(78, top + 7 * (cell + 2) + 19, "More", 10, t.muted);
   out += `<rect x="${width - 94}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.background}"/><rect x="${width - 78}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.border}"/><rect x="${width - 62}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.accent}"/><rect x="${width - 46}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.positive}"/>`;
   return out + svgEnd();
