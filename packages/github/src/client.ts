@@ -695,7 +695,17 @@ function parsePublicContributionPage(html: string, expectedYear: number): Public
   }
 
   const mixMatch = /\bdata-percentages="([^"]+)"/.exec(html);
-  if (!mixMatch) throw new GitHubApiError("invalid_response", "GitHub returned no public activity breakdown");
+  if (!mixMatch) {
+    const total = days.reduce((sum, day) => sum + day.count, 0);
+    if (total === 0) {
+      return {
+        year: expectedYear,
+        days,
+        mix: { commits: 0, issues: 0, pullRequests: 0, reviews: 0 },
+      };
+    }
+    throw new GitHubApiError("invalid_response", "GitHub returned no public activity breakdown");
+  }
   let rawMix: unknown;
   try {
     rawMix = JSON.parse(decodeHtml(mixMatch[1] ?? ""));

@@ -88,6 +88,41 @@ test("fails closed when GitHub public contribution markup is incomplete", async 
   );
 });
 
+test("accepts a complete zero public profile calendar when GitHub omits activity percentages", async () => {
+  const body = publicContributionHtml(2026, {}, {
+    Commits: 0,
+    "Pull requests": 0,
+    Issues: 0,
+    "Code review": 0,
+  }).replace(/ data-percentages="[^"]+"/, "");
+  const contributions = await new GitHubClient({
+    fetchImpl: async () => html(body),
+    now: () => NOW,
+  }).fetchPublicProfileContributions("octocat", 3);
+
+  assert.equal(contributions.totalContributions, 0);
+  assert.deepEqual(
+    { commits: contributions.commits, pullRequests: contributions.pullRequests, issues: contributions.issues, reviews: contributions.reviews },
+    { commits: 0, pullRequests: 0, issues: 0, reviews: 0 },
+  );
+});
+
+test("rejects a nonzero public profile calendar without activity percentages", async () => {
+  const body = publicContributionHtml(2026, { "2026-08-19": 1 }, {
+    Commits: 100,
+    "Pull requests": 0,
+    Issues: 0,
+    "Code review": 0,
+  }).replace(/ data-percentages="[^"]+"/, "");
+  await assert.rejects(
+    new GitHubClient({ fetchImpl: async () => html(body), now: () => NOW })
+      .fetchPublicProfileContributions("octocat", 3),
+    (error: unknown) => error instanceof GitHubApiError
+      && error.code === "invalid_response"
+      && error.message.includes("no public activity breakdown"),
+  );
+});
+
 test("weights public activity percentages across a year boundary", async () => {
   const yearBoundary = new Date("2026-01-02T09:00:00.000Z");
   const fetchImpl: typeof fetch = async (input) => {
