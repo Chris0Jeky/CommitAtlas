@@ -4,17 +4,20 @@
   "description": "Validated GitHub portfolio metrics and project-state contracts for CommitAtlas",
   "license": "GPL-3.0-only",
   "type": "module",
-  "files": ["dist", "LICENSE"],
+  "files": ["dist", "LICENSE", "README.md"],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "pack:dry-run": "npm pack --dry-run"
   },
   "dependencies": {
     "zod": "^4.1.12"
