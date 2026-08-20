@@ -19,7 +19,8 @@
   },
   "scripts": {
     "prebuild": "npm --prefix ../core run build",
-    "build": "tsc -p tsconfig.json",
+    "clean": "node ../../scripts/clean-package-dist.mjs",
+    "build": "node ../../scripts/build-package.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },

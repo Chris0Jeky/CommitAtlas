@@ -7,6 +7,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "incremental": false,
     "noEmit": false
   },
   "include": ["src/**/*.ts"]

@@ -26,10 +26,11 @@
     "pack:github": "npm --prefix packages/github run pack:dry-run",
     "pack:svg": "npm --prefix packages/svg run pack:dry-run",
     "pack:static": "npm --prefix packages/static run pack:dry-run",
+    "test:packaging": "node --test tests/package-packaging.test.mjs",
     "test:action": "npm run build:action && node --test action/action.test.mjs && git diff --exit-code -- action/dist",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs",
     "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next",
-    "check": "npm run typecheck && npm run lint && npm run test:core && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run pack:core && npm run pack:github && npm run pack:svg && npm run pack:static && npm test"
+    "check": "npm run typecheck && npm run lint && npm run test:core && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
   },
   "dependencies": {
     "react": "^19.2.8",

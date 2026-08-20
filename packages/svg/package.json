@@ -16,7 +16,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "node ../../scripts/clean-package-dist.mjs",
+    "build": "node ../../scripts/build-package.mjs",
     "pretest": "npm --prefix ../core run build",
     "test": "npm run build && node --test tests/svg.test.mjs",
     "prepack": "npm run build",
