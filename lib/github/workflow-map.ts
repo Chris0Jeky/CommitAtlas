@@ -1,1 +1,1 @@
-export * from "@commit-atlas/github/workflow-map";
+export * from "@commit-atlas/github";

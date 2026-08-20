@@ -12,9 +12,12 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const query = parseSvgStreakQuery(new URL(request.url).searchParams);
     const token = getGitHubToken();
+    const client = new GitHubClient({ token });
     const snapshot = query.demo
       ? demoContributions(query.user, 365)
-      : await new GitHubClient({ token }).fetchContributions(query.user, 365);
+      : token
+        ? await client.fetchContributions(query.user, 365)
+        : await client.fetchPublicProfileContributions(query.user, 365);
     const body = renderStreakCard(toStreakCard(snapshot, 365), {
       theme: query.theme,
       title: `${snapshot.login} contribution streak`,

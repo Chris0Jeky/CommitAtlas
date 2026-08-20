@@ -13,10 +13,14 @@ export async function GET(request: Request): Promise<Response> {
     const user = parseGitHubHandle(url.searchParams.get("user"));
     const demo = parseDemo(url.searchParams.get("demo"));
     const days = parseDays(url.searchParams.get("days"));
+    const token = getGitHubToken();
+    const client = new GitHubClient({ token });
     const snapshot = demo
       ? demoContributions(user, days)
-      : await new GitHubClient({ token: getGitHubToken() }).fetchContributions(user, days);
-    return jsonResponse(request, snapshot, { edgeSeconds: 3600, publicData: demo });
+      : token
+        ? await client.fetchContributions(user, days)
+        : await client.fetchPublicProfileContributions(user, days);
+    return jsonResponse(request, snapshot, { edgeSeconds: 3600, publicData: demo || !token });
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -68,16 +68,22 @@ test("returns bounded no-store JSON for invalid, duplicate, and traversal querie
   }
 });
 
-test("does not turn a missing contribution token into a zero SVG", async () => {
+test("renders a complete logged-out public profile streak without a contribution token", async () => {
   const previous = process.env.GITHUB_TOKEN;
   delete process.env.GITHUB_TOKEN;
   try {
-    const response = await request("/api/v1/cards/streak.svg?user=octocat");
-    assert.equal(response.status, 503);
-    assert.equal(response.headers.get("cache-control"), "no-store");
-    assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
-    const payload = await response.json();
-    assert.equal(payload.error.code, "token_required");
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      assert.equal(url.origin, "https://github.com");
+      assert.equal(new Headers(init?.headers).get("authorization"), null);
+      const year = Number(url.searchParams.get("from")?.slice(0, 4));
+      return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
+    }, () => request("/api/v1/cards/streak.svg?user=octocat"));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
+    const body = await response.text();
+    assert.match(body, />365<\/text>/);
+    assert.match(body, /Longest in window/);
   } finally {
     if (previous === undefined) delete process.env.GITHUB_TOKEN;
     else process.env.GITHUB_TOKEN = previous;
@@ -236,7 +242,7 @@ test("renders empty languages and partial projects without inventing actions or 
   );
   assert.equal(projectsResponse.status, 200);
   const projectsBody = await projectsResponse.text();
-  assert.match(projectsBody, /1 of 1 shown/);
+  assert.doesNotMatch(projectsBody, /of 1 shown/);
   assert.match(projectsBody, /CI Passing/);
   assert.doesNotMatch(projectsBody, /<a\b|Install|Download|Docs/);
 });
@@ -259,4 +265,15 @@ function shiftUtcDate(date, offset) {
   const shifted = new Date(`${date}T00:00:00.000Z`);
   shifted.setUTCDate(shifted.getUTCDate() + offset);
   return shifted.toISOString().slice(0, 10);
+}
+
+function publicContributionHtml(year) {
+  const start = new Date(Date.UTC(year, 0, 1));
+  const end = new Date(Date.UTC(year, 11, 31));
+  const cells = [];
+  for (const date = new Date(start); date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
+    const day = date.toISOString().slice(0, 10);
+    cells.push(`<td data-date="${day}" data-level="1"></td><tool-tip>1 contribution on ${day}.</tool-tip>`);
+  }
+  return `<div data-percentages="{&quot;Commits&quot;:80,&quot;Pull requests&quot;:10,&quot;Issues&quot;:5,&quot;Code review&quot;:5}">${cells.join("")}</div>`;
 }

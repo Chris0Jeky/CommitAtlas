@@ -50,7 +50,7 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /Synthetic starter data/);
   assert.match(html, /Data source/);
   assert.match(html, /Declare lifecycle yourself/);
-  assert.match(html, /Actions are HTML, not SVG/);
+  assert.match(html, /Open links below/);
   assert.match(html, /README Markdown/);
   assert.match(html, /Run Preview to bind these URLs to this Studio origin/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%|Building in public, one useful commit/);

@@ -40,7 +40,9 @@ export async function fetchPortfolioSnapshot(request: PortfolioRequest): Promise
   const client = new GitHubClient({ token: request.token });
   const [profile, contributions, projects] = await Promise.all([
     client.fetchProfile(request.user),
-    client.fetchContributions(request.user, request.days),
+    request.token
+      ? client.fetchContributions(request.user, request.days)
+      : client.fetchPublicProfileContributions(request.user, request.days),
     repositories.length > 0
       ? client.fetchProjects(request.user, repositories, lifecycles, workflows)
       : Promise.resolve(null),
@@ -124,6 +126,8 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     }),
     ...(projects ? { projects: { total: projectStates.length, passing, attention, unavailable } } : {}),
     generatedAt: snapshot.freshness.generatedAt,
-    source: snapshot.freshness.mode === "demo" ? "synthetic-demo" : "public-github",
+    source: snapshot.freshness.mode === "demo" ? "synthetic-demo"
+      : snapshot.freshness.source === "github-profile-html" ? "public-profile"
+        : "public-github",
   };
 }

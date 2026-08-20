@@ -17,7 +17,6 @@
       "@/*": ["./*"],
       "@commit-atlas/core": ["./packages/core/src/index.ts"],
       "@commit-atlas/github": ["./packages/github/src/index.ts"],
-      "@commit-atlas/github/*": ["./packages/github/src/*.ts"],
       "@commit-atlas/svg": ["./packages/svg/src/index.ts"],
       "@commit-atlas/static": ["./packages/static/src/index.ts"]
     }

@@ -1,5 +1,5 @@
 import type { CiState, ProjectLifecycle } from "@/packages/core/src/index";
-import { calculateGitHubCiState, toJsonCiSignal } from "@commit-atlas/github/adapters";
+import { calculateGitHubCiState, toJsonCiSignal } from "@commit-atlas/github";
 import type {
   CiState as SvgCiState,
   Lifecycle as SvgLifecycle,

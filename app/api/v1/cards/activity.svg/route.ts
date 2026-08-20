@@ -12,9 +12,12 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const query = parseSvgActivityQuery(new URL(request.url).searchParams);
     const token = getGitHubToken();
+    const client = new GitHubClient({ token });
     const snapshot = query.demo
       ? demoContributions(query.user, query.days)
-      : await new GitHubClient({ token }).fetchContributions(query.user, query.days);
+      : token
+        ? await client.fetchContributions(query.user, query.days)
+        : await client.fetchPublicProfileContributions(query.user, query.days);
     const body = renderActivityCard(toActivityCard(snapshot, query.days), {
       theme: query.theme,
       title: `${snapshot.login} contribution activity`,

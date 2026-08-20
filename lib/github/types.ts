@@ -1,1 +1,1 @@
-export * from "@commit-atlas/github/types";
+export * from "@commit-atlas/github";
