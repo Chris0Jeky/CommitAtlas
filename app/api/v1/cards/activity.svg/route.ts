@@ -23,10 +23,11 @@ export async function GET(request: Request): Promise<Response> {
         : await client.fetchPublicProfileContributions(query.user, query.days);
     const body = renderActivityCard(toActivityCard(snapshot, query.days), {
       theme: query.theme,
+      motion: query.motion,
       title: `${snapshot.login} contribution activity`,
       description: `Public contribution activity for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

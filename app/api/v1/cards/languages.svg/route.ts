@@ -20,10 +20,11 @@ export async function GET(request: Request): Promise<Response> {
       : await new GitHubClient({ token }).fetchProfile(query.user);
     const body = renderLanguagesCard(toLanguagesCard(snapshot), {
       theme: query.theme,
+      motion: query.motion,
       title: `${snapshot.login} languages`,
       description: "Public repository-language distribution by repository count; this is not a measure of proficiency.",
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData });
+    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

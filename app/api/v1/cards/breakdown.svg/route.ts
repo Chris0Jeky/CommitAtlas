@@ -25,11 +25,12 @@ export async function GET(request: Request): Promise<Response> {
       toContributionMetricsCards(snapshot, query.days).breakdown,
       {
         theme: query.theme,
+        motion: query.motion,
         title: `${snapshot.login} contribution breakdown`,
         description: `Public contribution activity mix for ${snapshot.login}.`,
       },
     );
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

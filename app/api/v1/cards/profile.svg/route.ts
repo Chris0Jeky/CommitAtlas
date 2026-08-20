@@ -20,12 +20,13 @@ export async function GET(request: Request): Promise<Response> {
       : await new GitHubClient({ token }).fetchProfile(query.user);
     const body = renderProfileCard(toProfileCard(snapshot), {
       theme: query.theme,
+      motion: query.motion,
       title: `${snapshot.login} profile`,
       description: snapshot.repositoriesTruncated
         ? `Public GitHub profile summary for ${snapshot.login}. Aggregate star totals are unavailable because the repository list is partial.`
         : `Public GitHub profile summary for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData });
+    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

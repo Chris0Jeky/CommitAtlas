@@ -108,6 +108,9 @@ export function buildStudioRouteUrl(
   if ((kind === "activity" || kind === "breakdown" || kind === "rhythm") && options.days !== undefined) {
     query.set("days", String(options.days));
   }
+  if (kind !== "atlas" && (kind !== "projects" || projectSurface === "svg")) {
+    query.set("motion", options.motion ?? "none");
+  }
 
   const path = kind === "projects"
     ? projectSurface === "json" ? "/api/v1/projects" : "/api/v1/projects.svg"

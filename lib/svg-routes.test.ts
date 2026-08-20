@@ -5,6 +5,7 @@ import {
   parseActivityDays,
   parseAtlasLayout,
   parseMotion,
+  parseStandaloneMotion,
   parseSvgAtlasQuery,
   parseSvgActivityQuery,
   parseSvgLanguagesQuery,
@@ -51,24 +52,27 @@ test("parses a canonical atlas query with optional project health and motion", (
   assert.equal(query.layout, "compact");
   assert.equal(query.canonical, "user=octocat&repos=atlas%2Cquiet&states=atlas%3Aactive%2Cquiet%3Amaintenance&workflows=atlas%3Aci.yml&demo=true&theme=ember&days=365&motion=none&layout=compact");
   assert.equal(parseMotion(null), "subtle");
+  assert.equal(parseStandaloneMotion(null), "none");
+  assert.equal(parseStandaloneMotion("subtle"), "subtle");
   assert.equal(parseAtlasLayout(null), "wide");
   assert.throws(() => parseMotion("fast"), /motion/);
+  assert.throws(() => parseStandaloneMotion("fast"), /motion/);
   assert.throws(() => parseAtlasLayout("fluid"), /layout/);
   assert.throws(() => parseSvgAtlasQuery(new URLSearchParams("user=octocat&states=atlas:active")), /require repos/);
 });
 
 test("parses profile, streak, activity, and language contracts with canonical ordering", () => {
   const profile = parseSvgProfileQuery(new URLSearchParams("theme=paper&demo=true&user=octocat"));
-  assert.deepEqual(profile, { user: "octocat", demo: true, theme: "paper", canonical: "user=octocat&demo=true&theme=paper" });
+  assert.deepEqual(profile, { user: "octocat", demo: true, theme: "paper", motion: "none", canonical: "user=octocat&demo=true&theme=paper&motion=none" });
   assert.deepEqual(parseSvgStreakQuery(new URLSearchParams("user=octocat")), {
-    user: "octocat", demo: false, theme: "aurora", canonical: "user=octocat&demo=false&theme=aurora",
+    user: "octocat", demo: false, theme: "aurora", motion: "none", canonical: "user=octocat&demo=false&theme=aurora&motion=none",
   });
   assert.deepEqual(parseSvgLanguagesQuery(new URLSearchParams("user=octocat&theme=ember")), {
-    user: "octocat", demo: false, theme: "ember", canonical: "user=octocat&demo=false&theme=ember",
+    user: "octocat", demo: false, theme: "ember", motion: "none", canonical: "user=octocat&demo=false&theme=ember&motion=none",
   });
-  assert.deepEqual(parseSvgActivityQuery(new URLSearchParams("days=7&user=octocat&demo=false&theme=midnight")), {
-    user: "octocat", demo: false, theme: "midnight", days: 7,
-    canonical: "user=octocat&demo=false&theme=midnight&days=7",
+  assert.deepEqual(parseSvgActivityQuery(new URLSearchParams("days=7&user=octocat&demo=false&theme=midnight&motion=subtle")), {
+    user: "octocat", demo: false, theme: "midnight", days: 7, motion: "subtle",
+    canonical: "user=octocat&demo=false&theme=midnight&days=7&motion=subtle",
   });
 });
 
@@ -92,7 +96,7 @@ test("preserves project order and aligns explicit lifecycle and optional workflo
     { repository: "Beta", lifecycle: "active", workflow: null },
     { repository: "alpha", lifecycle: "planned", workflow: "release.yml" },
   ]);
-  assert.equal(query.canonical, "owner=acme&repos=Beta%2Calpha&states=Beta%3Aactive%2Calpha%3Aplanned&workflows=alpha%3Arelease.yml&demo=true&theme=ember");
+  assert.equal(query.canonical, "owner=acme&repos=Beta%2Calpha&states=Beta%3Aactive%2Calpha%3Aplanned&workflows=alpha%3Arelease.yml&demo=true&theme=ember&motion=none");
 });
 
 test("canonicalizes escaped workflow delimiters without semantic collisions", () => {
@@ -106,7 +110,7 @@ test("canonicalizes escaped workflow delimiters without semantic collisions", ()
     theme: "paper",
   }));
   assert.equal(query.workflows.get("alpha"), workflow);
-  assert.equal(query.canonical, "owner=acme&repos=alpha&states=alpha%3Aactive&workflows=alpha%3Aci%252Crelease%253Anightly.yml&demo=true&theme=paper");
+  assert.equal(query.canonical, "owner=acme&repos=alpha&states=alpha%3Aactive&workflows=alpha%3Aci%252Crelease%253Anightly.yml&demo=true&theme=paper&motion=none");
 });
 
 test("requires exact project inputs and rejects invalid workflow identities", () => {

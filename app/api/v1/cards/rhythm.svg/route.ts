@@ -23,10 +23,11 @@ export async function GET(request: Request): Promise<Response> {
         : await client.fetchPublicProfileContributions(query.user, query.days);
     const body = renderRhythmCard(toContributionMetricsCards(snapshot, query.days).rhythm, {
       theme: query.theme,
+      motion: query.motion,
       title: `${snapshot.login} contribution rhythm`,
       description: `Personal contribution consistency for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -19,6 +19,7 @@ export interface SvgProfileQuery {
   readonly user: string;
   readonly demo: boolean;
   readonly theme: ThemeName;
+  readonly motion: "none" | "subtle";
   readonly canonical: string;
 }
 
@@ -52,19 +53,22 @@ export interface SvgProjectsQuery {
   readonly projects: readonly SvgProjectQueryItem[];
   readonly demo: boolean;
   readonly theme: ThemeName;
+  readonly motion: "none" | "subtle";
   readonly canonical: string;
 }
 
 export function parseSvgProfileQuery(parameters: URLSearchParams): SvgProfileQuery {
-  const allowed = ["user", "demo", "theme"] as const;
+  const allowed = ["user", "demo", "theme", "motion"] as const;
   rejectUnknownParameters(parameters, allowed);
   const user = parseGitHubHandle(parameters.get("user"));
   const demo = parseDemo(parameters.get("demo"));
   const theme = parseTheme(parameters.get("theme"));
-  return { user, demo, theme, canonical: canonicalQuery([
+  const motion = parseStandaloneMotion(parameters.get("motion"));
+  return { user, demo, theme, motion, canonical: canonicalQuery([
     ["user", user],
     ["demo", String(demo)],
     ["theme", theme],
+    ["motion", motion],
   ]) };
 }
 
@@ -73,17 +77,19 @@ export function parseSvgStreakQuery(parameters: URLSearchParams): SvgStreakQuery
 }
 
 export function parseSvgActivityQuery(parameters: URLSearchParams): SvgActivityQuery {
-  const allowed = ["user", "demo", "theme", "days"] as const;
+  const allowed = ["user", "demo", "theme", "days", "motion"] as const;
   rejectUnknownParameters(parameters, allowed);
   const user = parseGitHubHandle(parameters.get("user"));
   const demo = parseDemo(parameters.get("demo"));
   const theme = parseTheme(parameters.get("theme"));
   const days = parseActivityDays(parameters.get("days"));
-  return { user, demo, theme, days, canonical: canonicalQuery([
+  const motion = parseStandaloneMotion(parameters.get("motion"));
+  return { user, demo, theme, days, motion, canonical: canonicalQuery([
     ["user", user],
     ["demo", String(demo)],
     ["theme", theme],
     ["days", String(days)],
+    ["motion", motion],
   ]) };
 }
 
@@ -127,7 +133,7 @@ export function parseSvgAtlasQuery(parameters: URLSearchParams): SvgAtlasQuery {
 }
 
 export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQuery {
-  const allowed = ["owner", "repos", "states", "workflows", "demo", "theme"] as const;
+  const allowed = ["owner", "repos", "states", "workflows", "demo", "theme", "motion"] as const;
   rejectUnknownParameters(parameters, allowed);
   const owner = parseGitHubHandle(parameters.get("owner"), "owner");
   const repos = parseRepositoryNames(parameters.get("repos"));
@@ -135,6 +141,7 @@ export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQ
   const workflows = parseWorkflowMap(parameters.get("workflows"), repos);
   const demo = parseDemo(parameters.get("demo"));
   const theme = parseTheme(parameters.get("theme"));
+  const motion = parseStandaloneMotion(parameters.get("motion"));
   const projects = repos.map((repository) => ({
     repository,
     lifecycle: states.get(repository.toLowerCase())!,
@@ -151,8 +158,8 @@ export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQ
     ["states", stateValue],
   ];
   if (workflowValue) canonicalEntries.push(["workflows", workflowValue]);
-  canonicalEntries.push(["demo", String(demo)], ["theme", theme]);
-  return { owner, repos, states, workflows, projects, demo, theme, canonical: canonicalQuery(canonicalEntries) };
+  canonicalEntries.push(["demo", String(demo)], ["theme", theme], ["motion", motion]);
+  return { owner, repos, states, workflows, projects, demo, theme, motion, canonical: canonicalQuery(canonicalEntries) };
 }
 
 export function parseTheme(value: string | null): ThemeName {
@@ -172,6 +179,12 @@ export function parseActivityDays(value: string | null): number {
 export function parseMotion(value: string | null): "none" | "subtle" {
   if (value === null || value === "subtle") return "subtle";
   if (value === "none") return "none";
+  throw new InputError("motion must be subtle or none");
+}
+
+export function parseStandaloneMotion(value: string | null): "none" | "subtle" {
+  if (value === null || value === "none") return "none";
+  if (value === "subtle") return "subtle";
   throw new InputError("motion must be subtle or none");
 }
 

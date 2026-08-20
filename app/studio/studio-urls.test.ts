@@ -40,7 +40,9 @@ test("uses separate JSON and SVG project route paths", () => {
   assert.equal(json.pathname, "/api/v1/projects");
   assert.equal(svg.pathname, "/api/v1/projects.svg");
   assert.equal(json.searchParams.has("theme"), false);
+  assert.equal(json.searchParams.has("motion"), false);
   assert.equal(svg.searchParams.get("theme"), "paper");
+  assert.equal(svg.searchParams.get("motion"), "none");
 });
 
 test("propagates only aligned, nonblank workflows with URL encoding", () => {
@@ -100,6 +102,7 @@ test("preserves user, theme, days, and demo query semantics", () => {
   assert.equal(activity.searchParams.get("theme"), "aurora");
   assert.equal(activity.searchParams.get("days"), "120");
   assert.equal(activity.searchParams.get("demo"), "false");
+  assert.equal(activity.searchParams.get("motion"), "none");
 
   const atlas = new URL(`https://example.test${buildStudioRouteUrl("atlas", {
     owner: "octocat",
@@ -123,27 +126,34 @@ test("preserves user, theme, days, and demo query semantics", () => {
   })}`);
   assert.equal(project.searchParams.get("theme"), "paper");
   assert.equal(project.searchParams.get("demo"), "true");
+  assert.equal(project.searchParams.get("motion"), "none");
 });
 
 test("emits card URLs in the public route canonical order", () => {
+  assert.equal(buildStudioRouteUrl("profile", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    motion: "subtle",
+  }), "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember&motion=subtle");
   assert.equal(buildStudioRouteUrl("activity", {
     owner: "octocat",
     theme: "paper",
     demo: true,
     days: 90,
-  }), "/api/v1/cards/activity.svg?user=octocat&demo=true&theme=paper&days=90");
+  }), "/api/v1/cards/activity.svg?user=octocat&demo=true&theme=paper&days=90&motion=none");
   assert.equal(buildStudioRouteUrl("breakdown", {
     owner: "octocat",
     theme: "paper",
     demo: true,
     days: 30,
-  }), "/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=paper&days=30");
+  }), "/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=paper&days=30&motion=none");
   assert.equal(buildStudioRouteUrl("rhythm", {
     owner: "octocat",
     theme: "aurora",
     demo: false,
     days: 120,
-  }), "/api/v1/cards/rhythm.svg?user=octocat&demo=false&theme=aurora&days=120");
+  }), "/api/v1/cards/rhythm.svg?user=octocat&demo=false&theme=aurora&days=120&motion=none");
   assert.equal(buildStudioRouteUrl("atlas", {
     owner: "octocat",
     theme: "ember",

@@ -20,10 +20,11 @@ export async function GET(request: Request): Promise<Response> {
       : await new GitHubClient({ token }).fetchProjects(query.owner, query.repos, query.states, query.workflows);
     const body = renderProjectBoard(toProjectBoard(snapshot), {
       theme: query.theme,
+      motion: query.motion,
       title: `${query.owner} project signals`,
       description: "Project lifecycle and configured CI signals for selected public GitHub repositories.",
     });
-    return svgResponse(request, body, { edgeSeconds: 300, publicData });
+    return svgResponse(request, body, { edgeSeconds: 300, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

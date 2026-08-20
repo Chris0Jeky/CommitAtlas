@@ -23,10 +23,11 @@ export async function GET(request: Request): Promise<Response> {
         : await client.fetchPublicProfileContributions(query.user, 365);
     const body = renderStreakCard(toStreakCard(snapshot, 365), {
       theme: query.theme,
+      motion: query.motion,
       title: `${snapshot.login} contribution streak`,
       description: `Current and longest public contribution streaks for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
   } catch (error) {
     return apiErrorResponse(error);
   }

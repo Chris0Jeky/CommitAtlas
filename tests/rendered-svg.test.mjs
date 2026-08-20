@@ -19,13 +19,13 @@ async function request(path, extraEnv = {}, init = {}) {
 
 test("serves all seven synthetic SVG cards with their planned public cache windows", async () => {
   const cases = [
-    ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora", "900"],
-    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora", "3600"],
-    ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7", "3600"],
-    ["/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=aurora&days=7", "3600"],
-    ["/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=56", "3600"],
-    ["/api/v1/cards/languages.svg?user=octocat&demo=true&theme=aurora", "900"],
-    ["/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&demo=true&theme=aurora", "300"],
+    ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "900"],
+    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "3600"],
+    ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
+    ["/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
+    ["/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=56&motion=subtle", "3600"],
+    ["/api/v1/cards/languages.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "900"],
+    ["/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&demo=true&theme=aurora&motion=subtle", "300"],
   ];
   for (const [path, edgeSeconds] of cases) {
     const response = await request(path);
@@ -37,12 +37,14 @@ test("serves all seven synthetic SVG cards with their planned public cache windo
     assert.match(body, /aria-label="Synthetic demo: [^"]+"/);
     assert.match(body, /<title>Synthetic demo: [^<]+<\/title><desc>Synthetic demonstration data, not live GitHub data\./);
     assert.match(body, />SYNTHETIC DEMO<\/text>/);
+    assert.match(body, /prefers-reduced-motion:reduce/);
+    assert.match(response.headers.get("content-security-policy") ?? "", /style-src 'unsafe-inline'/);
     assert.doesNotMatch(body, /undefined|NaN/);
   }
 });
 
 test("keeps SVG security headers and ETag values identical for a matching 304", async () => {
-  const path = "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper";
+  const path = "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none";
   const first = await request(path);
   const etag = first.headers.get("etag");
   assert.match(etag ?? "", /^W\/"[a-f\d]{64}"$/);
@@ -64,7 +66,7 @@ test("redirects reordered, padded, and default-equivalent public SVG URLs before
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(
     response.headers.get("location"),
-    "http://localhost/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas%3Aplanned&demo=true&theme=aurora",
+    "http://localhost/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas%3Aplanned&demo=true&theme=aurora&motion=none",
   );
 
   const canonical = await request(new URL(response.headers.get("location")).pathname + new URL(response.headers.get("location")).search);
@@ -113,7 +115,7 @@ test("renders a complete logged-out public profile streak without a contribution
       assert.equal(new Headers(init?.headers).get("authorization"), null);
       const year = Number(url.searchParams.get("from")?.slice(0, 4));
       return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
-    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora"));
+    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora&motion=none"));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
     const body = await response.text();
@@ -136,7 +138,7 @@ test("keeps contribution breakdown basis truthful across public-profile and toke
       assert.equal(new Headers(init?.headers).get("authorization"), null);
       const year = Number(url.searchParams.get("from")?.slice(0, 4));
       return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
-    }, () => request("/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=paper&days=7"));
+    }, () => request("/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=paper&days=7&motion=none"));
     assert.equal(publicResponse.status, 200);
     assert.equal(publicResponse.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
     const publicBody = await publicResponse.text();
@@ -169,7 +171,7 @@ test("keeps contribution breakdown basis truthful across public-profile and toke
       } } },
     });
   }, () => request(
-    "/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=aurora&days=7",
+    "/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=aurora&days=7&motion=none",
     { GITHUB_TOKEN: "ghp_public-only" },
   ));
   assert.equal(exactResponse.status, 200);
@@ -295,7 +297,7 @@ test("marks truncated profiles and refuses partial language distributions", asyn
       { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
     ]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/profile.svg?user=octocat&demo=false&theme=aurora"));
+  }, () => request("/api/v1/cards/profile.svg?user=octocat&demo=false&theme=aurora&motion=none"));
   assert.equal(profileResponse.status, 200);
   const profileBody = await profileResponse.text();
   assert.match(profileBody, /star totals are unavailable because the repository list is partial/);
@@ -310,7 +312,7 @@ test("marks truncated profiles and refuses partial language distributions", asyn
       { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
     ]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora"));
+  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora&motion=none"));
   assert.equal(languagesResponse.status, 502);
   assert.equal(languagesResponse.headers.get("cache-control"), "no-store");
   assert.equal((await languagesResponse.json()).error.code, "invalid_response");
@@ -322,14 +324,14 @@ test("renders empty languages and partial projects without inventing actions or 
     if (url.pathname === "/users/octocat") return githubJson({ login: "octocat", public_repos: 0, followers: 0, following: 0 });
     if (url.pathname.endsWith("/repos")) return githubJson([]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora"));
+  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora&motion=none"));
   assert.equal(languageResponse.status, 200);
   const languageBody = await languageResponse.text();
   assert.match(languageBody, />LANGUAGES</);
   assert.doesNotMatch(languageBody, /Unknown language|NaN|undefined/);
 
   const projectsResponse = await request(
-    "/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml&demo=true&theme=aurora",
+    "/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml&demo=true&theme=aurora&motion=none",
   );
   assert.equal(projectsResponse.status, 200);
   const projectsBody = await projectsResponse.text();
