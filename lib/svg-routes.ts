@@ -1,0 +1,131 @@
+import type { ThemeName } from "@/packages/svg/src/index";
+import type { ProjectLifecycle, ProjectWorkflow } from "./github/types";
+import {
+  InputError,
+  parseDemo,
+  parseGitHubHandle,
+  parseLifecycleMap,
+  parseRepositoryNames,
+  parseWorkflowMap,
+  rejectUnknownParameters,
+} from "./github/validation";
+
+export type { ThemeName } from "@/packages/svg/src/index";
+
+const DEFAULT_THEME: ThemeName = "aurora";
+
+export interface SvgProfileQuery {
+  readonly user: string;
+  readonly demo: boolean;
+  readonly theme: ThemeName;
+  readonly canonical: string;
+}
+
+export type SvgStreakQuery = SvgProfileQuery;
+export type SvgLanguagesQuery = SvgProfileQuery;
+
+export interface SvgActivityQuery extends SvgProfileQuery {
+  readonly days: number;
+}
+
+export interface SvgProjectQueryItem {
+  readonly repository: string;
+  readonly lifecycle: ProjectLifecycle;
+  readonly workflow: ProjectWorkflow | null;
+}
+
+export interface SvgProjectsQuery {
+  readonly owner: string;
+  readonly repos: readonly string[];
+  readonly states: ReadonlyMap<string, ProjectLifecycle>;
+  readonly workflows: ReadonlyMap<string, ProjectWorkflow>;
+  readonly projects: readonly SvgProjectQueryItem[];
+  readonly demo: boolean;
+  readonly theme: ThemeName;
+  readonly canonical: string;
+}
+
+export function parseSvgProfileQuery(parameters: URLSearchParams): SvgProfileQuery {
+  const allowed = ["user", "demo", "theme"] as const;
+  rejectUnknownParameters(parameters, allowed);
+  const user = parseGitHubHandle(parameters.get("user"));
+  const demo = parseDemo(parameters.get("demo"));
+  const theme = parseTheme(parameters.get("theme"));
+  return { user, demo, theme, canonical: canonicalQuery([
+    ["user", user],
+    ["demo", String(demo)],
+    ["theme", theme],
+  ]) };
+}
+
+export function parseSvgStreakQuery(parameters: URLSearchParams): SvgStreakQuery {
+  return parseSvgProfileQuery(parameters);
+}
+
+export function parseSvgActivityQuery(parameters: URLSearchParams): SvgActivityQuery {
+  const allowed = ["user", "demo", "theme", "days"] as const;
+  rejectUnknownParameters(parameters, allowed);
+  const user = parseGitHubHandle(parameters.get("user"));
+  const demo = parseDemo(parameters.get("demo"));
+  const theme = parseTheme(parameters.get("theme"));
+  const days = parseActivityDays(parameters.get("days"));
+  return { user, demo, theme, days, canonical: canonicalQuery([
+    ["user", user],
+    ["demo", String(demo)],
+    ["theme", theme],
+    ["days", String(days)],
+  ]) };
+}
+
+export function parseSvgLanguagesQuery(parameters: URLSearchParams): SvgLanguagesQuery {
+  return parseSvgProfileQuery(parameters);
+}
+
+export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQuery {
+  const allowed = ["owner", "repos", "states", "workflows", "demo", "theme"] as const;
+  rejectUnknownParameters(parameters, allowed);
+  const owner = parseGitHubHandle(parameters.get("owner"), "owner");
+  const repos = parseRepositoryNames(parameters.get("repos"));
+  const states = parseLifecycleMap(parameters.get("states"), repos);
+  const workflows = parseWorkflowMap(parameters.get("workflows"), repos);
+  const demo = parseDemo(parameters.get("demo"));
+  const theme = parseTheme(parameters.get("theme"));
+  const projects = repos.map((repository) => ({
+    repository,
+    lifecycle: states.get(repository.toLowerCase())!,
+    workflow: workflows.get(repository.toLowerCase()) ?? null,
+  }));
+  const stateValue = projects.map(({ repository, lifecycle }) => `${repository}:${lifecycle}`).join(",");
+  const workflowValue = projects
+    .filter(({ workflow }) => workflow !== null)
+    .map(({ repository, workflow }) => `${repository}:${workflow}`)
+    .join(",");
+  const canonicalEntries: [string, string][] = [
+    ["owner", owner],
+    ["repos", repos.join(",")],
+    ["states", stateValue],
+  ];
+  if (workflowValue) canonicalEntries.push(["workflows", workflowValue]);
+  canonicalEntries.push(["demo", String(demo)], ["theme", theme]);
+  return { owner, repos, states, workflows, projects, demo, theme, canonical: canonicalQuery(canonicalEntries) };
+}
+
+export function parseTheme(value: string | null): ThemeName {
+  if (value === null) return DEFAULT_THEME;
+  if (value === "aurora" || value === "midnight" || value === "paper" || value === "ember") return value;
+  throw new InputError("theme must be aurora, midnight, paper, or ember");
+}
+
+export function parseActivityDays(value: string | null): number {
+  if (value === null) return 365;
+  if (!/^[0-9]{1,3}$/.test(value)) throw new InputError("days must be an integer from 7 to 365");
+  const days = Number(value);
+  if (days < 7 || days > 365) throw new InputError("days must be an integer from 7 to 365");
+  return days;
+}
+
+function canonicalQuery(entries: readonly [string, string][]): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of entries) query.append(key, value);
+  return query.toString();
+}

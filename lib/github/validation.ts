@@ -104,8 +104,11 @@ export function rejectUnknownParameters(
   allowed: readonly string[],
 ): void {
   const allowlist = new Set(allowed);
+  const seen = new Set<string>();
   for (const key of parameters.keys()) {
     if (!allowlist.has(key)) throw new InputError(`unknown query parameter: ${key}`);
+    if (seen.has(key)) throw new InputError(`duplicate query parameter: ${key}`);
+    seen.add(key);
   }
 }
 

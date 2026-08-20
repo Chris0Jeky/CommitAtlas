@@ -51,6 +51,7 @@ test("aligns optional workflow identities to the requested repository subset", (
 test("rejects unknown query parameters", () => {
   const query = new URLSearchParams("user=octocat&token=secret");
   assert.throws(() => rejectUnknownParameters(query, ["user"]), /token/);
+  assert.throws(() => rejectUnknownParameters(new URLSearchParams("user=octocat&user=octocat"), ["user"]), /duplicate/);
 });
 
 test("permits only bounded HTTPS links", () => {
