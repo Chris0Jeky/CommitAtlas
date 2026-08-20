@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 15:35 BST
+Last verified: 2026-08-20 16:13 BST
 
 This is an intentional stop checkpoint, not a completion, deployment, or release claim. GitHub,
 Git, CI, branches, worktrees, and open work were re-read before it was committed. Fetch again when
@@ -15,12 +15,16 @@ Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md)
   [PR #44](https://github.com/Chris0Jeky/CommitAtlas/pull/44).
 - The `main` CI run for that exact commit passed in
   [run 32380339084](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32380339084).
-- Saved Studio branch: `feat/studio-dashboard`; its last implementation head before this checkpoint
-  commit is `69ecd13c2382ee6b76149cefbedda331a0f0d322` and was verified byte-for-byte after push.
-- The Studio branch contains current `main` through merge commit `64ad6a6`; no feature pull request
-  is open yet because production browser and accessibility QA remain outstanding.
-- Open pull requests are only Dependabot
-  [#5](https://github.com/Chris0Jeky/CommitAtlas/pull/5) and
+- Saved Studio branch: `feat/studio-dashboard`; its last code head before this docs-only checkpoint
+  is `022dd5d72c5989ec056b273aecbcdb7ff1acf9d4` and was verified byte-for-byte after push.
+- Ready [PR #47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) targets `main`, is mergeable, and
+  has a passing exact-head Quality gate in
+  [run 32384234212](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32384234212).
+- Production desktop/mobile browser QA was completed and is preserved in
+  [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). A fresh independent review then found one
+  HIGH copy-truth blocker, so PR #47 is intentionally open and unmerged.
+- Open pull requests are Studio [#47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) and
+  Dependabot [#5](https://github.com/Chris0Jeky/CommitAtlas/pull/5) and
   [#6](https://github.com/Chris0Jeky/CommitAtlas/pull/6).
 - Open issues are [#28](https://github.com/Chris0Jeky/CommitAtlas/issues/28),
   [#30](https://github.com/Chris0Jeky/CommitAtlas/issues/30),
@@ -35,9 +39,10 @@ Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md)
   optional separate decision and must not be claimed without registry proof.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
-GitHub's GraphQL quota was exhausted during this closeout. The final repository, pull-request,
-issue, ref, and CI snapshot above was therefore obtained through REST and Git directly. Re-query
-review threads through GraphQL after the quota resets before a future merge.
+GitHub REST, GraphQL, and Git were all available during this closeout. PR #47 had no posted reviews,
+inline comments, or review threads; GraphQL reported 1,063 remaining requests at the snapshot. The
+independent local review finding remains binding even though GitHub currently reports the PR as
+mergeable.
 
 ## Shipped on `main`
 
@@ -73,10 +78,12 @@ The primary checkout is the sole remaining registered worktree:
 - Path: `work/CommitAtlas`
 - Branch: `feat/studio-dashboard`
 - Last implementation head before this checkpoint commit:
-  `69ecd13c2382ee6b76149cefbedda331a0f0d322`
+  `022dd5d72c5989ec056b273aecbcdb7ff1acf9d4`
 - Current-main integration commit: `64ad6a6ad82da9416235755d2d12d01baf8f4227`
-- Focused implementation commit: `69ecd13 fix(studio): bind workflows to shipped card routes`
-- Pull request: none
+- Focused integration commit: `69ecd13 fix(studio): bind workflows to shipped card routes`
+- Production-QA fix commit: `022dd5d fix(studio): close production QA blockers`
+- Pull request: [#47](https://github.com/Chris0Jeky/CommitAtlas/pull/47), ready and intentionally
+  unmerged pending the contribution-card copy fix
 
 The branch contains the responsive landing page and accessible Studio, synthetic and public-data
 preview modes, four themes, selectable cards, up to six declared projects, truthful partial-data
@@ -85,18 +92,23 @@ handling, HTTPS HTML actions, copyable README Markdown, and the branded `public/
 The focused integration adds one tested URL builder for all five shipped card paths, keeps the JSON
 and SVG project paths distinct, includes only aligned nonblank configured workflows, preserves
 theme/demo/activity-day semantics, and keeps the placeholder host until an API preview succeeds.
-The merge resolution preserved the union of Studio shell tests and all API/transport regressions.
+The QA fix contains the landing glow at mobile widths and makes failed previews disclose that the
+prior preview remains visible. The merge resolution preserved the union of Studio shell tests and
+all API/transport regressions.
 
-Exact-head local evidence at `69ecd13`:
+Exact-head local evidence at `022dd5d`:
 
 - `npm.cmd ci` — passed; 483 packages, zero reported vulnerabilities
-- `npm.cmd run test:studio` — 5 passed
+- `npm.cmd run test:studio` — 7 passed
 - `npm.cmd run typecheck` — passed
 - `npm.cmd run lint` — passed
-- `npm.cmd run check` — passed: core 15, GitHub/API 48, Studio 5, SVG 18, rendered HTML/SVG 22,
+- `npm.cmd run check` — passed: core 15, GitHub/API 48, Studio 7, SVG 18, rendered HTML/SVG 22,
   package builds and dry-run packs
 - `git diff --check origin/main...HEAD` — clean
-- `git ls-remote --heads origin feat/studio-dashboard` — exactly matched `69ecd13`
+- `git ls-remote --heads origin feat/studio-dashboard` — exactly matched `022dd5d`
+- Exact-head hosted Quality gate — passed
+- Production desktop/mobile, live/synthetic, copy/action, error, SVG, ETag/304, `/og.png`, overflow,
+  and console checks — passed as detailed in [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md)
 
 The route auxiliary worktree was tracked-clean, remotely preserved, merged, and removed without
 force. Its ignored dependency/build outputs were reproducible and needed no copy-out.
@@ -119,11 +131,11 @@ and a deterministic non-publishing Node 24 Action.
 
 ## NOT completed or verified
 
-- Production desktop/mobile browser QA for the Studio, including keyboard, focus, accessibility,
-  action links, copy behavior, failure states, caching/304s, `/og.png`, console errors, overflow,
-  and the prior React multiple-renderer warning.
-- Fresh independent review, ready PR, exact-head hosted CI, aging floor, thread reconciliation, and
-  merge for `feat/studio-dashboard`.
+- The focused fix for the confirmed HIGH review blocker: live public Markdown must omit Streak and
+  Activity while contribution data is unavailable instead of generating two 503 image URLs.
+- Full sequential keyboard traversal, which the available browser-control layer could not prove.
+- Post-fix production regression QA, fresh independent review, exact-head hosted CI, renewed aging
+  floor, final thread reconciliation, and merge for PR #47.
 - `@commit-atlas/github`, `@commit-atlas/static`, offline fixture transport, the bundled Node 24
   Action, and their clean-consumer/package/bundle proofs.
 - Final API/CLI/Action/operator docs, Sites deployment, exact public URL, production social metadata,
@@ -138,20 +150,23 @@ and a deterministic non-publishing Node 24 Action.
 - #40: deferred route contract/canonicalization gaps remain explicit.
 - #28, #30, #32–#34, and #38 remain open and must be triaged against actual release impact.
 - Dependabot #5/#6 should be reconciled only after the feature dependency graph settles.
-- The Studio integration is fully unit/build-gated but has not yet been exercised in a production
-  browser, so visual and interaction quality are intentionally not claimed.
+- PR #47 currently copies two broken contribution-card URLs in a supported live/no-token state;
+  leave it unmerged until the bounded fix and post-fix proof are complete.
+- Keyboard semantics and focus styling were inspected, but a complete keyboard-only traversal is
+  still not verified due the browser-control limitation.
 
 ## Next safe slice
 
-1. Fetch and confirm the Studio branch still contains implementation head `69ecd13`; inspect any
-   newer commits rather than assuming this checkpoint is current.
-2. Run a production build/server and the desktop 1440x900, mobile 390x844, keyboard, accessibility,
-   URL/copy/action, error/cache, `/og.png`, console, and network QA listed in `V0_1_PLAN.md`.
-3. Fix only confirmed blockers in one bounded round, rerun the changed seam and full gate, obtain a
-   fresh independent review, then open a ready Studio PR and use exact-head CI plus the aging/thread
-   gates before a merge commit.
-4. Address #45 and #46 before release unless direct product evidence proves they are nonblocking.
-5. Continue the remaining ordered commits in `STATIC_GENERATOR_PLAN.md`; then reconcile dependencies,
+1. Fetch and confirm PR #47 still points to the saved branch; inspect any newer commit rather than
+   assuming this checkpoint is current.
+2. Implement only the contribution-card availability/copy fix specified in
+   [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
+3. Rerun focused and full gates plus the affected production browser paths, push the fix, obtain a
+   fresh exact-head independent review and hosted CI, reconcile threads, observe the renewed aging
+   floor, and merge PR #47 with a merge commit only when every gate is green.
+4. Repeat the full keyboard-only traversal with a capable driver or a real keyboard before release.
+5. Address #45 and #46 before release unless direct product evidence proves they are nonblocking.
+6. Continue the remaining ordered commits in `STATIC_GENERATOR_PLAN.md`; then reconcile dependencies,
    finish truthful docs, deploy through Sites, browser-verify the public origin, and release `v0.1.0`.
 
 ## Clean resume commands
@@ -165,6 +180,7 @@ git rev-parse HEAD
 git ls-remote --heads origin main feat/studio-dashboard
 gh api --paginate 'repos/Chris0Jeky/CommitAtlas/pulls?state=open&per_page=100'
 gh api --paginate 'repos/Chris0Jeky/CommitAtlas/issues?state=open&per_page=100'
+gh pr view 47 --repo Chris0Jeky/CommitAtlas --json headRefOid,baseRefOid,state,isDraft,mergeable,statusCheckRollup
 npm.cmd ci
 npm.cmd run check
 ```

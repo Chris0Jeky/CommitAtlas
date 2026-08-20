@@ -1,8 +1,10 @@
 # CommitAtlas v0.1 implementation plan
 
 Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
-and all five versioned routes are merged. The Studio is integrated on a saved remote branch and has
-passed the full local gate, but production browser/accessibility QA and its review/PR/merge remain.
+and all five versioned routes are merged. The Studio is integrated on a saved remote branch, has
+passed the full local and hosted gate plus production desktop/mobile QA, and is open as PR #47. Its
+fresh independent review found one HIGH contribution-card copy blocker, so the fix, post-fix proof,
+and merge remain.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live PR checks and unresolved review threads.
 
@@ -122,16 +124,17 @@ Reviewed lower-priority route gaps remain retained in
 demo labelling remain explicit in #45 and #46; they must be decided from release evidence rather
 than silently folded into a completed review round.
 
-### 4. Integrate and prove the Studio — integrated and locally gated; production QA pending
+### 4. Integrate and prove the Studio — production QA complete; one review blocker pending
 
 The remote `feat/studio-dashboard` branch contains implementation head
-`69ecd13c2382ee6b76149cefbedda331a0f0d322` followed only by checkpoint documentation at this stop.
-Merge commit `64ad6a6` preserves the union of package, API, route, Studio shell, and rendered product
-tests. Commit `69ecd13` binds every generated card URL to the shipped route contract, sends aligned
-nonblank configured workflows to both project surfaces, and keeps the placeholder origin until a
-preview succeeds. The full local gate passed at that implementation head.
+`022dd5d72c5989ec056b273aecbcdb7ff1acf9d4` before this stop checkpoint. Merge commit `64ad6a6`
+preserves the union of package, API, route, Studio shell, and rendered product tests. Commit
+`69ecd13` binds every generated card URL to the shipped route contract, sends aligned nonblank
+configured workflows to both project surfaces, and keeps the placeholder origin until a preview
+succeeds. Commit `022dd5d` contains the production-QA overflow and retained-preview messaging fixes.
+The full local gate and exact-head hosted Quality gate passed.
 
-Run a production server, not only Vite development mode, and verify:
+Production desktop/mobile browser QA covered:
 
 - landing and Studio at 1440x900 and 390x844 with no overflow or clipped controls;
 - demo Preview, live public profile/projects, and contribution-unavailable behavior without a safe
@@ -145,8 +148,13 @@ Run a production server, not only Vite development mode, and verify:
 - ETag/304 and cache headers; direct `/og.png`; console and network errors; and an explicit attempt to
   reproduce the prior React multiple-renderer warning.
 
-After the outstanding production visual/accessibility review, fix only confirmed blockers, rerun the
-changed seam and full gate, then open one ready PR and merge only at an exact green reviewed head.
+The complete evidence and browser-control limitation are in
+[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). Ready PR #47 is intentionally unmerged because
+the independent review proved that live/no-contribution copy output still includes Streak and
+Activity URLs that return 503. Apply only the bounded availability/omission fix, repeat the affected
+browser checks and full gate, obtain one fresh post-fix review and exact-head hosted CI, reconcile
+threads, and merge only after the renewed aging floor. Full keyboard-only traversal remains a
+separate unverified pre-release check because the available browser controller could not move focus.
 
 ### 5. Build the static generator package
 
@@ -254,6 +262,7 @@ gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the saved Studio branch, run the production browser/accessibility matrix, then review and ship
-it at an exact green head. Preserve one writer per checkout, use small present-tense commits, and tear
-down auxiliary worktrees after their clean pushed heads are recorded.
+Resume the saved Studio branch, fix only the PR #47 contribution-card copy blocker, repeat the
+affected browser checks and full gate, and ship it only at an exact green reviewed head. Preserve one
+writer per checkout, use small present-tense commits, and tear down auxiliary worktrees after their
+clean pushed heads are recorded.
