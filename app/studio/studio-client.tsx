@@ -10,9 +10,12 @@ import {
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
 import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
 import {
+  buildStudioGalleryCards,
   findProjectDraft,
   safeProjectActionUrl,
   starterCiPresentation,
+  studioSourceLabel,
+  type StudioGalleryCard,
 } from "./studio-presentation";
 import {
   buildStudioConfigurationKey,
@@ -83,6 +86,17 @@ interface ProjectBoardSnapshot {
   freshness: Freshness;
 }
 
+interface PreviewConfiguration {
+  owner: string;
+  projects: ProjectDraft[];
+  theme: string;
+  demo: boolean;
+  motion: "none" | "subtle";
+  layout: "wide" | "compact";
+  hasContributions: boolean;
+  hasLanguages: boolean;
+}
+
 const starterProjects: ProjectDraft[] = [
   { id: 1, repo: "Hello-World", lifecycle: "active", workflow: "", docs: "", install: "", download: "" },
   { id: 2, repo: "Spoon-Knife", lifecycle: "maintenance", workflow: "", docs: "", install: "", download: "" },
@@ -125,13 +139,24 @@ export default function StudioClient() {
   const [motion, setMotion] = useState<"none" | "subtle">("subtle");
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
-  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(new Set(["atlas", "projects"]));
+  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(STUDIO_CARD_KINDS));
   const [profile, setProfile] = useState<ProfileSnapshot>(starterProfile);
   const [contributions, setContributions] = useState<ContributionSnapshot | null>(starterContributions);
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
   const [phase, setPhase] = useState<"ready" | "loading" | "error">("ready");
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
+  const [previewCanvas, setPreviewCanvas] = useState<"auto" | "dark" | "light">("auto");
   const [validatedPreview, setValidatedPreview] = useState<{ key: string; origin: string } | null>(null);
+  const [previewConfiguration, setPreviewConfiguration] = useState<PreviewConfiguration>({
+    owner: "octocat",
+    projects: starterProjects,
+    theme: "ember",
+    demo: true,
+    motion: "subtle",
+    layout: "wide",
+    hasContributions: true,
+    hasLanguages: true,
+  });
   const [atlasPreviewUrl, setAtlasPreviewUrl] = useState(() => buildStudioRouteUrl("atlas", {
     owner: "octocat",
     projects: starterProjects,
@@ -152,7 +177,17 @@ export default function StudioClient() {
     motion,
     layout,
   }), [activeProjects, demo, handle, layout, motion, theme]);
+  const previewConfigurationKey = useMemo(() => buildStudioConfigurationKey({
+    owner: previewConfiguration.owner,
+    projects: previewConfiguration.projects,
+    theme: previewConfiguration.theme,
+    demo: previewConfiguration.demo,
+    days: 365,
+    motion: previewConfiguration.motion,
+    layout: previewConfiguration.layout,
+  }), [previewConfiguration]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
+  const previewIsRetained = configurationKey !== previewConfigurationKey;
   const visibleBoard = configurationIsValidated ? board : null;
   const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
     ? configurationChangedNotice()
@@ -173,6 +208,28 @@ export default function StudioClient() {
   const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
     ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
     : atlasPreviewUrl;
+  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
+    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
+    : atlasPreviewUrl;
+  const galleryAvailability = {
+    demo: previewConfiguration.demo,
+    hasCurrentContributions: previewConfiguration.hasContributions,
+    hasCurrentLanguages: previewConfiguration.hasLanguages,
+  };
+  const galleryCards = buildStudioGalleryCards({
+    selectedCards,
+    availability: galleryAvailability,
+    projectCount: previewConfiguration.projects.length,
+  });
+  const previewUrls = useMemo(() => Object.fromEntries(STUDIO_CARD_KINDS.map((kind) => [kind, buildStudioRouteUrl(kind, {
+    owner: previewConfiguration.owner,
+    projects: previewConfiguration.projects,
+    theme: previewConfiguration.theme,
+    demo: previewConfiguration.demo,
+    days: 365,
+    motion: previewConfiguration.motion,
+    layout: previewConfiguration.layout,
+  })])) as Record<CardKind, string>, [previewConfiguration]);
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
       baseUrl,
@@ -230,6 +287,16 @@ export default function StudioClient() {
       setProfile(nextProfile);
       setContributions(contributionResult.value);
       setBoard(nextBoard);
+      setPreviewConfiguration({
+        owner: login,
+        projects: activeProjects.map((project) => ({ ...project })),
+        theme,
+        demo,
+        motion,
+        layout,
+        hasContributions: contributionResult.value !== null,
+        hasLanguages: !nextProfile.repositoriesTruncated,
+      });
       if (contributionResult.value) {
         setAtlasPreviewUrl(buildStudioRouteUrl("atlas", {
           owner: login,
@@ -330,7 +397,7 @@ export default function StudioClient() {
           </fieldset>
 
           <fieldset className="card-picker">
-            <legend>Cards to copy</legend>
+            <legend>Cards to show &amp; copy</legend>
             {STUDIO_CARD_KINDS.map((kind) => {
               const available = isStudioCardAvailable(kind, { demo, hasCurrentContributions, hasCurrentLanguages });
               return (
@@ -373,11 +440,42 @@ export default function StudioClient() {
           <div className="panel-heading preview-heading"><span>03</span><div><p>Evidence preview</p><h2 id="preview-title">@{profile.login}</h2></div><div className={`mode-chip ${profile.freshness.mode}`}><i />{profile.freshness.mode === "demo" ? "Synthetic" : profile.freshness.mode}</div></div>
           <p className={`studio-notice ${phase}`} role="status" aria-live="polite">{visibleNotice}</p>
 
-          <div className={`atlas-preview-frame ${layout}`}>
-            <picture>
-              <source media="(max-width: 560px)" srcSet={compactAtlasPreviewUrl} />
-              <img key={atlasPreviewUrl} src={atlasPreviewUrl} alt={`CommitAtlas developer atlas preview for @${profile.login}`} />
-            </picture>
+          <div className="gallery-heading">
+            <div><p>Selected card gallery</p><h3>{galleryCards.length} preview{galleryCards.length === 1 ? "" : "s"}</h3></div>
+            <fieldset className="preview-canvas-control">
+              <legend>Preview canvas</legend>
+              {(["auto", "dark", "light"] as const).map((canvas) => (
+                <label key={canvas}>
+                  <input type="radio" name="preview-canvas" checked={previewCanvas === canvas} onChange={() => setPreviewCanvas(canvas)} />
+                  <span>{canvas[0].toUpperCase() + canvas.slice(1)}</span>
+                </label>
+              ))}
+            </fieldset>
+          </div>
+
+          <div className={`studio-card-gallery canvas-${previewCanvas}`}>
+            {galleryCards.map((card) => (
+              <StudioCardPreview
+                key={card.kind}
+                card={card}
+                url={card.kind === "atlas" ? atlasPreviewUrl : previewUrls[card.kind]}
+                imageUrl={card.kind === "atlas" ? wideAtlasPreviewUrl : previewUrls[card.kind]}
+                compactUrl={card.kind === "atlas" ? compactAtlasPreviewUrl : null}
+                login={profile.login}
+                source={studioSourceLabel(card.kind === "profile" || card.kind === "languages"
+                  ? profile.freshness.source
+                  : card.kind === "projects"
+                    ? board?.freshness.source ?? (previewConfiguration.demo ? "synthetic-demo" : "")
+                    : contributions?.freshness.source ?? (previewConfiguration.demo ? "synthetic-demo" : ""))}
+                retained={previewIsRetained}
+              />
+            ))}
+            {!galleryCards.length && (
+              <div className="empty-gallery">
+                <strong>No card previews selected</strong>
+                <span>Select an available card in Configuration to show it here and include it in Markdown.</span>
+              </div>
+            )}
           </div>
 
           <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Open links below</span></div>
@@ -399,6 +497,50 @@ export default function StudioClient() {
 
       <footer className="site-footer studio-footer"><Link className="brand" href="/"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>CommitAtlas</Link><p>Unknown stays unknown. Stale stays stale. Your work stays yours.</p><a href="https://github.com/Chris0Jeky/CommitAtlas">Source <span aria-hidden="true">↗</span></a></footer>
     </main>
+  );
+}
+
+function StudioCardPreview({
+  card,
+  url,
+  imageUrl,
+  compactUrl,
+  login,
+  source,
+  retained,
+}: {
+  card: StudioGalleryCard;
+  url: string;
+  imageUrl: string;
+  compactUrl: string | null;
+  login: string;
+  source: string;
+  retained: boolean;
+}) {
+  const image = (
+    // Dynamic SVG endpoints already return the exact bounded vector asset; image optimisation would proxy it unnecessarily.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={imageUrl}
+      src={imageUrl}
+      alt={`CommitAtlas ${card.title.toLowerCase()} preview for @${login}`}
+      loading={card.kind === "atlas" ? "eager" : "lazy"}
+    />
+  );
+  return (
+    <article className={`studio-card-preview span-${card.span} card-${card.kind}${card.compact ? " compact-card" : ""}`}>
+      <header>
+        <div><h4>{card.title}</h4><p>{card.purpose}</p></div>
+        <span className="card-source-badge">{source}</span>
+      </header>
+      <div className="card-preview-media">
+        {compactUrl ? <picture><source media="(max-width: 560px)" srcSet={compactUrl} />{image}</picture> : image}
+      </div>
+      <footer>
+        <span>{card.dimensions}{retained ? " · retained preview" : ""}</span>
+        <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${card.title} card in a new tab`}>Open card <span aria-hidden="true">↗</span></a>
+      </footer>
+    </article>
   );
 }
 

@@ -1,4 +1,88 @@
 import { ProjectLinksSchema } from "@/packages/core/src/index";
+import { isStudioCardAvailable, type StudioCardAvailability } from "./studio-card-availability";
+import { STUDIO_CARD_KINDS } from "./studio-markdown";
+import type { StudioCardKind } from "./studio-urls";
+
+export interface StudioGalleryCard {
+  kind: StudioCardKind;
+  title: string;
+  purpose: string;
+  dimensions: string;
+  span: "full" | "half";
+  compact: boolean;
+}
+
+const STUDIO_GALLERY_CARDS: Readonly<Record<StudioCardKind, Omit<StudioGalleryCard, "kind" | "dimensions"> & { dimensions: string }>> = {
+  atlas: {
+    title: "Developer atlas",
+    purpose: "A responsive overview of contribution rhythm, activity, languages, and project health.",
+    dimensions: "860 × 380 · 480 × 570 compact",
+    span: "full",
+    compact: false,
+  },
+  profile: {
+    title: "Profile snapshot",
+    purpose: "Public repository, follower, contribution, and star signals at a glance.",
+    dimensions: "720 × 190–220 adaptive",
+    span: "half",
+    compact: true,
+  },
+  streak: {
+    title: "Contribution streak",
+    purpose: "Current and longest observed streaks with an honest history boundary.",
+    dimensions: "720 × 180",
+    span: "half",
+    compact: true,
+  },
+  activity: {
+    title: "Activity map",
+    purpose: "A compact calendar view of public contribution density over time.",
+    dimensions: "720 × 220",
+    span: "full",
+    compact: false,
+  },
+  languages: {
+    title: "Language mix",
+    purpose: "Public repository-language distribution, presented without proficiency claims.",
+    dimensions: "720 × 230",
+    span: "half",
+    compact: false,
+  },
+  projects: {
+    title: "Project signals",
+    purpose: "Declared lifecycle, named-workflow CI, release, and repository signals.",
+    dimensions: "720 × adaptive",
+    span: "half",
+    compact: false,
+  },
+};
+
+export function buildStudioGalleryCards(options: {
+  selectedCards: ReadonlySet<StudioCardKind>;
+  availability: StudioCardAvailability;
+  projectCount: number;
+}): StudioGalleryCard[] {
+  return STUDIO_CARD_KINDS
+    .filter((kind) => options.selectedCards.has(kind))
+    .filter((kind) => isStudioCardAvailable(kind, options.availability))
+    .filter((kind) => kind !== "projects" || options.projectCount > 0)
+    .map((kind) => {
+      const card = STUDIO_GALLERY_CARDS[kind];
+      const rows = Math.max(1, Math.ceil(Math.min(6, options.projectCount) / 2));
+      return {
+        kind,
+        ...card,
+        dimensions: kind === "projects" ? `720 × ${68 + rows * 90}` : card.dimensions,
+      };
+    });
+}
+
+export function studioSourceLabel(source: string): string {
+  if (source === "synthetic-demo") return "Synthetic demo";
+  if (source === "public-profile" || source === "github-profile-html") return "Public profile";
+  if (source === "public-github" || source === "github-rest" || source === "github-graphql") return "Public GitHub";
+  return "Source unavailable";
+}
 
 export interface StarterCiPresentation {
   label: "Not configured" | "Preview required";

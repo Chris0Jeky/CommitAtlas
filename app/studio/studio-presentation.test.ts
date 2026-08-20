@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   activityBarPercent,
+  buildStudioGalleryCards,
   contributionMetricLabel,
   contributionWindowLabel,
   findProjectDraft,
   safeProjectActionUrl,
   starterCiPresentation,
+  studioSourceLabel,
   visibleProfileStars,
 } from "./studio-presentation";
 
@@ -55,6 +57,40 @@ test("project actions use the shared host and credential boundary", () => {
   assert.equal(safeProjectActionUrl("http://github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("https://token@github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("not a URL"), null);
+});
+
+test("gallery exposes only selected, currently available cards", () => {
+  const selectedCards = new Set(["atlas", "profile", "streak", "activity", "languages", "projects"] as const);
+  const cards = buildStudioGalleryCards({
+    selectedCards,
+    availability: { demo: false, hasCurrentContributions: false, hasCurrentLanguages: true },
+    projectCount: 3,
+  });
+
+  assert.deepEqual(cards.map((card) => card.kind), ["profile", "languages", "projects"]);
+  assert.equal(cards.find((card) => card.kind === "projects")?.dimensions, "720 × 248");
+  assert.equal(cards.find((card) => card.kind === "profile")?.compact, true);
+});
+
+test("gallery selection and empty projects independently remove their previews", () => {
+  const cards = buildStudioGalleryCards({
+    selectedCards: new Set(["atlas", "projects"] as const),
+    availability: { demo: true, hasCurrentContributions: false, hasCurrentLanguages: false },
+    projectCount: 0,
+  });
+
+  assert.deepEqual(cards.map((card) => card.kind), ["atlas"]);
+  assert.equal(cards[0]?.span, "full");
+});
+
+test("gallery source labels do not overstate unknown provenance", () => {
+  assert.equal(studioSourceLabel("synthetic-demo"), "Synthetic demo");
+  assert.equal(studioSourceLabel("public-profile"), "Public profile");
+  assert.equal(studioSourceLabel("github-profile-html"), "Public profile");
+  assert.equal(studioSourceLabel("public-github"), "Public GitHub");
+  assert.equal(studioSourceLabel("github-rest"), "Public GitHub");
+  assert.equal(studioSourceLabel("github-graphql"), "Public GitHub");
+  assert.equal(studioSourceLabel("unexpected"), "Source unavailable");
 });
 
 test("Studio text inputs retain an explicit keyboard focus treatment", () => {

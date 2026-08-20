@@ -258,6 +258,40 @@ button, input { font: inherit; }
 .atlas-preview-frame picture, .atlas-preview-frame img { display: block; width: 100%; height: auto; }
 .atlas-preview-frame.compact { max-width: 480px; margin-inline: auto; }
 .atlas-preview-frame:hover { transform: translateY(-1px); }
+.gallery-heading { margin: 21px 0 12px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.gallery-heading > div > p { margin: 0 0 4px; color: #91897f; font: 600 9px/1 var(--font-geist-mono), monospace; letter-spacing: .12em; text-transform: uppercase; }
+.gallery-heading h3 { margin: 0; font-size: 19px; letter-spacing: -.035em; }
+.preview-canvas-control { min-width: 0; padding: 0; margin: 0; display: flex; align-items: center; border: 0; }
+.preview-canvas-control legend { margin-right: 8px; color: #91897f; font: 600 8px/1 var(--font-geist-mono), monospace; letter-spacing: .08em; text-transform: uppercase; }
+.preview-canvas-control label { position: relative; cursor: pointer; }
+.preview-canvas-control input { position: absolute; opacity: 0; }
+.preview-canvas-control span { min-height: 29px; padding: 0 9px; display: inline-flex; align-items: center; border: 1px solid rgba(238,233,225,.12); color: #91897f; font: 550 8px/1 var(--font-geist-mono), monospace; }
+.preview-canvas-control label + label span { border-left: 0; }
+.preview-canvas-control input:checked + span { color: var(--ink); border-color: rgba(255,200,87,.42); background: rgba(255,200,87,.08); }
+.preview-canvas-control input:focus-visible + span { position: relative; z-index: 1; outline: 2px solid var(--gold); outline-offset: 2px; }
+.studio-card-gallery { min-width: 0; padding: 11px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 11px; border: 1px solid rgba(238,233,225,.09); background: rgba(8,8,7,.42); }
+.studio-card-preview { min-width: 0; padding: 14px; display: flex; flex-direction: column; border: 1px solid rgba(238,233,225,.13); background: rgba(19,19,17,.96); box-shadow: 0 16px 42px rgba(0,0,0,.15); }
+.studio-card-preview.span-full { grid-column: 1 / -1; }
+.studio-card-preview.span-half { grid-column: span 6; }
+.studio-card-preview > header { min-width: 0; min-height: 53px; display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.studio-card-preview > header > div { min-width: 0; }
+.studio-card-preview h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: -.025em; }
+.studio-card-preview header p { margin: 0; max-width: 540px; color: #91897f; font-size: 9px; line-height: 1.45; }
+.card-source-badge { flex: 0 0 auto; padding: 5px 6px; border: 1px solid rgba(255,200,87,.22); color: #d6b86b; font: 600 7px/1 var(--font-geist-mono), monospace; letter-spacing: .05em; text-transform: uppercase; }
+.card-preview-media { min-width: 0; padding: 12px; display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(238,233,225,.07); transition: background-color 160ms ease; }
+.canvas-auto .card-preview-media { background-color: #101112; background-image: linear-gradient(45deg, rgba(255,255,255,.025) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.025) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,.025) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.025) 75%); background-position: 0 0, 0 6px, 6px -6px, -6px 0; background-size: 12px 12px; }
+.canvas-dark .card-preview-media { background: #080a0d; }
+.canvas-light .card-preview-media { background: #f2f4f7; }
+.card-preview-media picture, .card-preview-media img { min-width: 0; max-width: 100%; display: block; }
+.card-preview-media picture { width: 100%; }
+.card-preview-media img { width: 100%; height: auto; }
+.compact-card .card-preview-media picture, .compact-card .card-preview-media img { width: min(100%, 420px); margin-inline: auto; }
+.studio-card-preview > footer { min-width: 0; min-height: 31px; padding-top: 10px; display: flex; align-items: end; justify-content: space-between; gap: 12px; color: #91897f; font: 500 8px/1.4 var(--font-geist-mono), monospace; }
+.studio-card-preview > footer > span { min-width: 0; }
+.studio-card-preview > footer a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; color: var(--gold); }
+.studio-card-preview > footer a:hover { color: #ffe099; }
+.empty-gallery { min-height: 150px; grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed var(--line); color: #91897f; font-size: 10px; text-align: center; }
+.empty-gallery strong { color: var(--ink); }
 .live-profile-card { --card-accent: var(--ember); --card-accent-two: var(--gold); padding: 27px; border: 1px solid rgba(238,233,225,.14); background: linear-gradient(140deg, rgba(255,255,255,.025), transparent 45%), #191916; box-shadow: 0 24px 70px rgba(0,0,0,.25); }
 .live-profile-card.theme-aurora { --card-accent: #70e0c1; --card-accent-two: #8da4ff; }
 .live-profile-card.theme-midnight { --card-accent: #95a8ff; --card-accent-two: #d5a6ff; background-color: #10131c; }
@@ -356,12 +390,24 @@ button, input { font: inherit; }
   .studio-hero h1 { font-size: 40px; }
   .config-panel, .studio-preview-panel { padding: 20px; }
   .project-fields { grid-template-columns: 1fr; }
+  .gallery-heading { align-items: flex-start; flex-direction: column; }
+  .preview-canvas-control { width: 100%; flex-wrap: wrap; }
+  .preview-canvas-control legend { width: 100%; margin: 0 0 8px; }
+  .studio-card-preview.span-half { grid-column: 1 / -1; }
+  .studio-card-preview > header { min-height: 0; flex-direction: column; gap: 8px; }
+  .studio-card-preview > footer { align-items: flex-start; flex-direction: column; }
   .live-metrics { grid-template-columns: 1fr 1fr; }
   .live-metrics div:nth-child(2) { border-right: 0; }
   .dashboard-project dl { grid-template-columns: 1fr 1fr; }
   .dashboard-heading { align-items: start; flex-direction: column; }
   .project-title { grid-template-columns: 10px 1fr; }
   .lifecycle-chip { grid-column: 2; justify-self: start; }
+}
+@media (prefers-color-scheme: light) {
+  .canvas-auto .card-preview-media {
+    background-color: #f2f4f7;
+    background-image: linear-gradient(45deg, rgba(15,23,42,.04) 25%, transparent 25%), linear-gradient(-45deg, rgba(15,23,42,.04) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(15,23,42,.04) 75%), linear-gradient(-45deg, transparent 75%, rgba(15,23,42,.04) 75%);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
