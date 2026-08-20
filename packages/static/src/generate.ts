@@ -9,12 +9,16 @@ import {
   type StaticConfig,
 } from "./config.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
+import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
+const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
 const MANAGED_ARTIFACT_NAMES = [
   ...STATIC_CARD_NAMES.map((card) => `${card}.svg`),
   "atlas-compact.svg",
   "atlas-wide.svg",
+  "projects.json",
+  "projects.md",
 ] as const;
 
 export interface GeneratedArtifact {
@@ -72,7 +76,10 @@ export async function generateStaticFromSnapshot(options: {
     mustExist: false,
     label: "output",
   });
-  const rendered = renderStaticArtifacts(options.snapshot, options.config);
+  const rendered = {
+    ...renderStaticArtifacts(options.snapshot, options.config),
+    ...(options.config.cards.includes("projects") ? renderProjectCatalogArtifacts(options.snapshot, options.config) : {}),
+  };
   const payloads = validateArtifacts(rendered);
   const manifest: StaticManifest = {
     version: 1,
@@ -113,18 +120,34 @@ async function fetchStaticPortfolio(config: StaticConfig, now: Date, fetchImpl?:
   return assembleStaticPortfolio(profile, contributions, projects);
 }
 
-function validateArtifacts(rendered: StaticSvgArtifacts): { name: string; body: string }[] {
+function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>): { name: string; body: string }[] {
   const payloads = Object.entries(rendered).sort(([left], [right]) => left.localeCompare(right));
   if (payloads.length === 0) throw new Error("No static cards were selected");
   for (const [name, body] of payloads) {
-    const bytes = Buffer.byteLength(body, "utf8");
-    if (!name.endsWith(".svg") || !body.startsWith("<svg") || !body.endsWith("</svg>")) {
-      throw new Error(`Renderer returned an invalid ${name} artifact`);
+    if (!/^[a-z0-9-]+\.(svg|json|md)$/.test(name) || path.basename(name) !== name) {
+      throw new Error(`Renderer returned an unsafe ${name} artifact`);
     }
-    if (bytes > MAX_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static artifact size limit`);
-    if (/<script\b|<foreignObject\b|<image\b/i.test(body)) throw new Error(`${name} contains a forbidden SVG element`);
+    const bytes = Buffer.byteLength(body, "utf8");
+    if (name.endsWith(".svg")) {
+      if (!body.startsWith("<svg") || !body.endsWith("</svg>")) throw new Error(`Renderer returned an invalid ${name} artifact`);
+      if (bytes > MAX_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static artifact size limit`);
+      if (/<script\b|<foreignObject\b|<image\b/i.test(body)) throw new Error(`${name} contains a forbidden SVG element`);
+    } else {
+      if (bytes > MAX_TEXT_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static text artifact size limit`);
+      if (name.endsWith(".json")) {
+        try { JSON.parse(body); } catch { throw new Error(`${name} is not valid JSON`); }
+      }
+      if (containsControl(body)) throw new Error(`${name} contains a forbidden control character`);
+    }
   }
   return payloads.map(([name, body]) => ({ name, body }));
+}
+
+function containsControl(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.codePointAt(0)!;
+    return code === 0 || (code <= 0x08) || (code >= 0x0b && code <= 0x0c) || (code >= 0x0e && code <= 0x1f) || (code >= 0x7f && code <= 0x9f);
+  });
 }
 
 async function writeArtifacts(

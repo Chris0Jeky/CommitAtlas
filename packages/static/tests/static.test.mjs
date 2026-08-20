@@ -11,6 +11,7 @@ import {
   generateStaticFromSnapshot,
   loadStaticConfig,
   parseStaticConfig,
+  renderProjectCatalogArtifacts,
   renderStaticArtifacts,
   resolveContainedPath,
 } from "../dist/index.js";
@@ -115,6 +116,67 @@ test("preserves the declared planned lifecycle in static project SVGs", () => {
   assert.doesNotMatch(rendered["projects.svg"], /Experimental/);
 });
 
+test("renders a truthful deterministic catalog from observed and explicitly configured links", () => {
+  const catalogConfig = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{
+      ...rawConfig().projects[0],
+      links: {
+        docs: "https://docs.github.com/en/repositories",
+        install: "https://www.npmjs.com/package/atlas",
+        download: "https://github.com/octocat/atlas/releases",
+      },
+    }],
+  });
+  const richSnapshot = {
+    ...snapshot(),
+    projects: {
+      ...snapshot().projects,
+      projects: [{
+        ...snapshot().projects.projects[0],
+        websiteUrl: "https://atlas.example.com",
+        ci: { ...snapshot().projects.projects[0].ci, url: "https://github.com/octocat/atlas/actions/runs/42" },
+        release: {
+          tag: "v1.2.3",
+          name: "Atlas 1.2.3",
+          url: "https://github.com/octocat/atlas/releases/tag/v1.2.3",
+          publishedAt: generatedAt,
+          download: { name: "atlas.zip", url: "https://github.com/octocat/atlas/releases/download/v1.2.3/atlas.zip" },
+        },
+      }],
+    },
+  };
+  const first = renderProjectCatalogArtifacts(richSnapshot, catalogConfig);
+  const second = renderProjectCatalogArtifacts(richSnapshot, catalogConfig);
+  assert.deepEqual(first, second);
+  const parsed = JSON.parse(first["projects.json"]);
+  assert.equal(parsed.version, 1);
+  assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
+    ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
+    ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
+  ]);
+  assert.match(first["projects.md"], /\[Docs\]\(https:\/\/docs.github.com\/en\/repositories\)/);
+  assert.doesNotMatch(first["projects.md"], /#readme|\/docs\/|releases\/latest/);
+});
+
+test("fails closed for unsafe observed URLs and control-bearing labels while escaping Markdown text", () => {
+  const base = snapshot();
+  assert.throws(() => renderProjectCatalogArtifacts({
+    ...base,
+    projects: { ...base.projects, projects: [{ ...base.projects.projects[0], sourceUrl: "https://user:pass@github.com/octocat/atlas" }] },
+  }, config()), /safe HTTPS URL/);
+  const escapedConfig = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], label: "Atlas [stable]" }],
+  });
+  assert.match(renderProjectCatalogArtifacts(base, escapedConfig)["projects.md"], /## Atlas \\\[stable\\\]/);
+  const controlConfig = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], label: "Atlas\nstable" }],
+  });
+  assert.throws(() => renderProjectCatalogArtifacts(base, controlConfig), /invalid or overlong text/);
+});
+
 test("writes selected SVGs and a hash manifest while preserving unrelated siblings", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-"));
   try {
@@ -131,11 +193,11 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
     assert.equal(first.written, true);
     assert.deepEqual(first.manifest, second.manifest);
     assert.deepEqual((await readdir(output)).sort(), [
-      "atlas-compact.svg", "atlas.svg", "keep.txt", "manifest.json", "projects.svg",
+      "atlas-compact.svg", "atlas.svg", "keep.txt", "manifest.json", "projects.json", "projects.md", "projects.svg",
     ]);
     assert.equal(await readFile(path.join(output, "keep.txt"), "utf8"), "belongs to caller\n");
     const manifest = JSON.parse(await readFile(path.join(output, "manifest.json"), "utf8"));
-    assert.equal(manifest.artifacts.length, 3);
+    assert.equal(manifest.artifacts.length, 5);
     assert.ok(manifest.artifacts.every((artifact) => /^[a-f0-9]{64}$/.test(artifact.sha256)));
     for (const artifact of manifest.artifacts) {
       const body = await readFile(path.join(output, artifact.path));
