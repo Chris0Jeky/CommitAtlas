@@ -98,11 +98,15 @@ test("rejects unsafe credentials before any GitHub resource lookup", async () =>
   assert.deepEqual(calls, ["/rate_limit"]);
 });
 
-test("renders a live out-of-order leap-day calendar using its latest valid UTC day", async () => {
-  const response = await withMockedFetch(async (input) => {
+test("renders a live out-of-order complete window ending at the requested UTC day", async () => {
+  let requestedTo = "";
+  const response = await withMockedFetch(async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
     assert.equal(url.pathname, "/graphql");
+    const { variables } = JSON.parse(String(init?.body));
+    requestedTo = variables.to.slice(0, 10);
+    const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(requestedTo, -offset));
     return githubJson({
       data: { user: { contributionsCollection: {
         totalCommitContributions: 5,
@@ -112,21 +116,22 @@ test("renders a live out-of-order leap-day calendar using its latest valid UTC d
         hasAnyRestrictedContributions: false,
         restrictedContributionsCount: 0,
         contributionCalendar: { weeks: [{ contributionDays: [
-          { date: "2024-03-02", contributionCount: 3 },
-          { date: "2024-03-01", contributionCount: 0 },
-          { date: "2024-02-29", contributionCount: 1 },
-          { date: "2024-02-28", contributionCount: 1 },
-          { date: "2024-02-27", contributionCount: 0 },
-          { date: "2024-02-26", contributionCount: 0 },
-          { date: "2024-02-25", contributionCount: 0 },
+          { date: dates[0], contributionCount: 3 },
+          { date: dates[1], contributionCount: 0 },
+          { date: dates[2], contributionCount: 1 },
+          { date: dates[3], contributionCount: 1 },
+          { date: dates[4], contributionCount: 0 },
+          { date: dates[5], contributionCount: 0 },
+          { date: dates[6], contributionCount: 0 },
         ] }] },
       } } },
     });
   }, () => request("/api/v1/cards/activity.svg?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
   assert.equal(response.status, 200);
   const body = await response.text();
-  assert.match(body, /2024-02-25 0; 2024-02-26 0; 2024-02-27 0; 2024-02-28 1; 2024-02-29 1; 2024-03-01 0; 2024-03-02 3/);
-  assert.match(body, /2024-02-25 → 2024-03-02/);
+  const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(requestedTo, -6 + offset));
+  assert.match(body, new RegExp(`${dates.map((date, index) => `${date} ${[0, 0, 0, 1, 1, 0, 3][index]}`).join("; ")}`));
+  assert.match(body, new RegExp(`${dates[0]} → ${dates.at(-1)}`));
 });
 
 test("rejects a gapped live contribution window as bounded JSON", async () => {
@@ -150,6 +155,31 @@ test("rejects a gapped live contribution window as bounded JSON", async () => {
           { date: "2024-03-01", contributionCount: 0 },
           { date: "2024-03-02", contributionCount: 0 },
         ] }] },
+      } } },
+    });
+  }, () => request("/api/v1/cards/activity.svg?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_response");
+});
+
+test("rejects a live contribution window that ends one day early despite its older boundary", async () => {
+  const response = await withMockedFetch(async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    assert.equal(url.pathname, "/graphql");
+    const { variables } = JSON.parse(String(init?.body));
+    const end = shiftUtcDate(variables.to.slice(0, 10), -1);
+    const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(end, -6 + offset));
+    return githubJson({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 1,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: dates.map((date) => ({ date, contributionCount: 0 })) }] },
       } } },
     });
   }, () => request("/api/v1/cards/activity.svg?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
@@ -223,4 +253,10 @@ async function withMockedFetch(fetchImpl, operation) {
 
 function githubJson(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
+}
+
+function shiftUtcDate(date, offset) {
+  const shifted = new Date(`${date}T00:00:00.000Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + offset);
+  return shifted.toISOString().slice(0, 10);
 }

@@ -93,7 +93,8 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
         return new Response("{}", { headers: scopes === null ? {} : { "x-oauth-scopes": scopes } });
       }
       assert.equal(init?.method, "POST");
-      return githubJson(publicContributionPayload());
+      const { variables } = JSON.parse(String(init?.body));
+      return githubJson(publicContributionPayload({}, variables.to.slice(0, 10)));
     }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: token }));
     assert.equal(response.status, expectedStatus);
     assert.equal(response.headers.get("cache-control"), expectedStatus === 200 ? "private, no-store" : "no-store");
@@ -218,7 +219,8 @@ async function withMockedFetch(fetchImpl, operation) {
   }
 }
 
-function publicContributionPayload(restrictions = {}) {
+function publicContributionPayload(restrictions = {}, endingDate = "2026-08-18") {
+  const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(endingDate, -6 + offset));
   return {
     data: {
       user: {
@@ -230,7 +232,7 @@ function publicContributionPayload(restrictions = {}) {
           hasAnyRestrictedContributions: false,
           restrictedContributionsCount: 0,
           ...restrictions,
-          contributionCalendar: { weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }] },
+          contributionCalendar: { weeks: [{ contributionDays: dates.map((date, index) => ({ date, contributionCount: index === dates.length - 1 ? 2 : 0 })) }] },
         },
       },
     },
@@ -239,6 +241,12 @@ function publicContributionPayload(restrictions = {}) {
 
 function githubJson(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
+}
+
+function shiftUtcDate(date, offset) {
+  const shifted = new Date(`${date}T00:00:00.000Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + offset);
+  return shifted.toISOString().slice(0, 10);
 }
 
 function publicProjectPayload() {
