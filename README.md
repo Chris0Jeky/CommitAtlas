@@ -16,8 +16,8 @@ live portfolio Studio.
 
 </div>
 
-> **v0.1 release candidate.** The hosted API and Studio, six-card static generator with an optional
-> same-snapshot responsive Atlas companion, and bundled
+> **v0.1 release candidate.** The hosted API and Studio, eight-card static generator with optional
+> same-snapshot responsive Atlas and project-catalog companions, and bundled
 > Node 24 Action are implemented. The GitHub `v0.1.0` release and npm publication are still separate
 > release decisions and are not claimed here.
 
@@ -27,10 +27,12 @@ The primary Atlas condenses a full year of public activity into one `860 × 380`
 
 - 365-day contribution heatmap, total, active-day density, daily average, and peak day;
 - current and longest streak inside the displayed window;
-- commit, pull-request, issue, and review mix from GitHub's public profile percentages;
+- commit, pull-request, issue, and review mix from GitHub's public profile percentages when exact
+  categorized counts are unavailable (the card labels the basis rather than inventing counts);
 - 12-bucket momentum, recent-versus-previous 28-day change, and a transparent rhythm score;
 - source-backed language distribution and configured project CI health;
-- four themes, wide/compact layouts, and optional subtle load motion with reduced-motion support.
+- four themes, wide/compact layouts, and `motion=none|subtle`; subtle load motion includes a
+  `prefers-reduced-motion` override, while `none` emits no animation keyframes.
 
 The rhythm score summarizes consistency and breadth inside the displayed window. It is deliberately
 not presented as a universal GitHub ranking or a comparison with other developers.
@@ -42,9 +44,11 @@ not presented as a universal GitHub ranking or a comparison with other developer
 | Atlas | Density, heatmap, streaks, collaboration mix, momentum, rhythm, languages, project health | `/api/v1/cards/atlas.svg` / `atlas.svg` |
 | Profile | Public repositories, followers, following, stars, contribution total | `/api/v1/cards/profile.svg` / `profile.svg` |
 | Streak | Current and longest-in-window streak, active days, last activity | `/api/v1/cards/streak.svg` / `streak.svg` |
+| Breakdown | Categorized contribution counts when exact, otherwise labelled public-profile percentages | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
+| Rhythm | Personal consistency from within-window density, streak, and momentum — not a GitHub rank | `/api/v1/cards/rhythm.svg` / `rhythm.svg` |
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language byte share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
-| Projects | Up to six curated projects with lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` |
+| Projects | Up to six curated projects with declared lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` (static: `projects.json`, `projects.md`) |
 
 The [Studio](https://commitatlas.jeky-tck.chatgpt.site/studio) configures, previews, and copies
 embeds. Project Docs, Install, Download, Release, Source, and CI actions live in its accessible HTML
@@ -54,6 +58,8 @@ dashboard: a README-embedded SVG is one linked image and cannot reliably contain
 
 - [Rich Atlas — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
 - [Streak — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Breakdown — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/breakdown.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle)
+- [Rhythm — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/rhythm.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle)
 - [Activity — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=Chris0Jeky&demo=false&theme=ember&days=365)
 - [Profile — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=Chris0Jeky&demo=false&theme=ember)
 - [Languages — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=Chris0Jeky&demo=false&theme=ember)
@@ -79,7 +85,8 @@ npm run check
 ## Generate dependable profile assets
 
 Static generation is credential-free. It reads the logged-out GitHub profile view and public REST
-endpoints, renders every selected card from one snapshot, and writes a SHA-256 manifest. Copy the
+endpoints, renders every selected card from one snapshot, and writes a SHA-256 manifest. Selecting
+Projects also writes source/config-labelled `projects.json` and `projects.md` catalogs. Copy the
 example, curate the projects, track the config, then generate:
 
 ```bash
@@ -136,7 +143,8 @@ data layer. A failed refresh leaves the last committed profile assets available.
 Credential-free contribution cards use GitHub's logged-out public profile view. That view can include
 anonymous aggregate contribution counts a user has elected to display, but CommitAtlas requests no
 private repository names, commits, URLs, or other private details. Activity-type values from that view
-are labelled as percentages, not fabricated exact counts.
+are labelled as public-profile percentages; only an explicitly exact source is rendered as exact
+counts. A percentage is never presented as a count.
 
 Hosted requests may optionally use a server-side classic public-only token, but the client requires
 positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data

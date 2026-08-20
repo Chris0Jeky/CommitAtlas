@@ -1,7 +1,7 @@
 # CommitAtlas v0.1 implementation plan
 
 Status: complete public demonstration and active release candidate, not a `v0.1.0` completion claim.
-The bounded API, six SVG surfaces, rich Atlas, Studio, public-profile source, responsive static
+The bounded API, eight SVG surfaces, rich Atlas, Studio, public-profile source, responsive static
 generator, and credential-free Node 24 Action are implemented on `main`, deployed, and exercised by
 the live Chris0Jeky profile. npm publication, complete keyboard traversal, release-impact issue
 reconciliation, and a GitHub release remain until directly verified.
@@ -13,12 +13,14 @@ threads.
 
 CommitAtlas v0.1 is complete only when all of the following are true:
 
-- The bounded JSON API and all six SVG surfaces are merged on `main` with exact-head CI and review.
-- Atlas, profile, streak, activity, languages, and project-board cards work in demo and supported live modes.
+- The bounded JSON API and all eight SVG surfaces are merged on `main` with exact-head CI and review.
+- Atlas, profile, streak, breakdown, rhythm, activity, languages, and project-board cards work in demo
+  and supported live modes.
 - The Studio uses the shipped endpoints, handles partial/unavailable data truthfully, and passes
   desktop, mobile, keyboard, accessibility, action-link, copy, error, and cache behavior checks.
-- The static generator and bundled local GitHub Action create the selected six-card set plus a hash
-  manifest without exposing credentials or publishing anything automatically.
+- The static generator and bundled local GitHub Action create the selected eight-card set plus optional
+  same-snapshot Atlas companion and `projects.json`/`projects.md` catalogs, with a hash manifest and
+  without exposing credentials or publishing anything automatically.
 - README, architecture, security, API, CLI, Action, and operator documentation match real behavior.
 - The production build is deployed through Sites, the exact public URL is browser-verified, and the
   repository homepage and social metadata use that real URL.
@@ -67,12 +69,12 @@ Issues #20, #21, #31, #36, and #37 closed through that merged PR after direct te
 acceptance. Maximum 366-day activity outputs remained below the 30,000-byte contract for maximum
 ampersand, apostrophe, and emoji metadata.
 
-### 3. Add the six versioned SVG surfaces — completed
+### 3. Add the eight versioned SVG surfaces — completed
 
 PR #44 merged as `a876dc30ac34134f405b7b9a7d4ed3ae181e9407` after the corrected exact head
 `dff9c8825d262e4ceb625e67c399be06a6c3640e` passed the full local gate, fresh independent review,
 hosted CI, the aging floor, and review-thread reconciliation. It contains strict canonical query
-parsing, secure byte-exact SVG response/ETag headers, shared snapshot adapters, all six handlers,
+parsing, secure byte-exact SVG response/ETag headers, shared snapshot adapters, all eight handlers,
 and built-Worker route proof.
 
 The reviewed fixes omit aggregate stars for truncated repository lists, reject truncated language
@@ -84,6 +86,8 @@ Implemented public surfaces:
 
 - `/api/v1/cards/profile.svg?user=&demo=&theme=`
 - `/api/v1/cards/streak.svg?user=&demo=&theme=`
+- `/api/v1/cards/breakdown.svg?user=&demo=&theme=&days=&motion=`
+- `/api/v1/cards/rhythm.svg?user=&demo=&theme=&days=&motion=`
 - `/api/v1/cards/activity.svg?user=&demo=&theme=&days=`
 - `/api/v1/cards/languages.svg?user=&demo=&theme=`
 - `/api/v1/projects.svg?owner=&repos=&states=&workflows=&demo=&theme=`
@@ -116,7 +120,7 @@ Every successful SVG response includes:
   one hour, projects about five minutes); token/private paths are `no-store`
 
 Invalid or unavailable requests return bounded JSON errors with `no-store`, never an error SVG that
-looks like healthy data. Demo/live-shaped fixtures cover all six surfaces, invalid/duplicate queries,
+looks like healthy data. Demo/live-shaped fixtures cover all eight surfaces, invalid/duplicate queries,
 leap dates, empty languages, partial projects, 304 behavior, credential rejection, truncated
 repository aggregates, and gapped contribution windows.
 
@@ -181,12 +185,13 @@ package proof, a consumer workflow, and committed-manifest validation pass. The 
 
 The root `action.yml` uses `runs.using: node24` with a reproducibly bundled
 `action/dist/index.js`. Inputs are `config`, `output-dir`, `as-of`, and `dry-run`; outputs are the
-manifest, six canonical card paths, and responsive Atlas companion paths when requested.
+manifest, eight canonical card paths, `projects.json`/`projects.md` catalog paths, and responsive
+Atlas companion paths when requested.
 
 The Action does not accept a credential and never commits, pushes, uploads, publishes, or deploys.
 A consumer workflow owns those operations and may use its built-in `GITHUB_TOKEN` only for checkout
 and git push. `npm run test:action` checks the metadata, no-token boundary, runtime behavior, and
-bundle parity. The live profile pins immutable implementation `8372d65`, validates seven artifact
+bundle parity. The live profile pins immutable implementation `8372d65`, validates its generated artifact
 hashes, and refreshes daily. Consumers should retain immutable pins until a stable release/tag
 policy is published.
 
@@ -195,7 +200,7 @@ policy is published.
 README, package docs, architecture, the walkthrough, project state, and dated QA now describe only
 behavior exercised at the demonstration head, including:
 
-- preserve the real deployed quick-start URLs and all six card examples;
+- preserve the real deployed quick-start URLs and all eight card examples;
 - Studio workflow, API query/error/cache reference, manifest/config schemas, CLI and Action examples;
 - public/private threat boundary, credential handling, rate limits, self-hosting, accessibility, and
   troubleshooting;

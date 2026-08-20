@@ -5,10 +5,16 @@ complete SVG string and are safe to put in a README or a static site: user text 
 escaped, links are restricted to `http`/`https`, and no scripts, images, stylesheets, or
 remote assets are emitted.
 
-The package includes a rich developer Atlas plus profile, streak, activity, language, and
-six-project signal-board cards. Choose one of the four built-in themes (`aurora`, `midnight`,
-`paper`, or `ember`) and provide plain presentation data from your own GitHub adapter. Renderers
-support optional subtle fixed CSS load motion and emit a reduced-motion override.
+The package includes eight cards: a rich developer Atlas, profile, streak, contribution breakdown,
+personal rhythm, activity, language, and project signal-board (up to six projects). Choose one of
+the four built-in themes (`aurora`, `midnight`, `paper`, or `ember`) and provide plain presentation
+data from your own GitHub adapter. The breakdown renderer preserves its basis: exact categorized
+counts are rendered as counts, while GitHub public-profile activity percentages remain visibly
+labelled as percentages. Rhythm is a personal within-window consistency summary, never a GitHub
+rank.
+
+All renderers accept `motion: "none" | "subtle"`. `none` emits no animation keyframes; `subtle`
+adds a short load transition plus a `prefers-reduced-motion: reduce` override that disables it.
 
 ```ts
 import { renderProfileCard } from "@commit-atlas/svg";
