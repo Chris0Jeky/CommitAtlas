@@ -20,7 +20,7 @@ const generatedAt = "2026-08-20T12:00:00.000Z";
 test("validates one contained config and rejects ambiguous projects or card selections", () => {
   const parsed = config();
   assert.equal(parsed.user, "octocat");
-  assert.equal(parsed.cards.length, 6);
+  assert.equal(parsed.cards.length, 8);
   assert.equal(parsed.responsiveAtlas, false);
   assert.equal(parsed.projects[0].repo, "octocat/atlas");
   assert.throws(() => parseStaticConfig({ ...rawConfig(), unknown: true }), /unrecognized_keys/i);
@@ -67,12 +67,16 @@ test("renders all rich widgets deterministically from one snapshot", () => {
   const second = renderStaticArtifacts(snapshot(), config());
   assert.deepEqual(first, second);
   assert.deepEqual(Object.keys(first).sort(), [
-    "activity.svg", "atlas.svg", "languages.svg", "profile.svg", "projects.svg", "streak.svg",
+    "activity.svg", "atlas.svg", "breakdown.svg", "languages.svg", "profile.svg", "projects.svg", "rhythm.svg", "streak.svg",
   ]);
   assert.match(first["atlas.svg"], /PUBLIC PROFILE VIEW/);
   assert.match(first["atlas.svg"], /PUBLIC PROFILE ACTIVITY MIX/);
   assert.match(first["atlas.svg"], /CONTRIBUTION DENSITY/);
   assert.match(first["atlas.svg"], /RHYTHM/);
+  assert.match(first["breakdown.svg"], /PUBLIC PROFILE %/);
+  assert.match(first["breakdown.svg"], /Exact counts unavailable/);
+  assert.match(first["rhythm.svg"], /PERSONAL CONSISTENCY/);
+  assert.match(first["rhythm.svg"], /not a GitHub rank/);
   for (const svg of Object.values(first)) {
     assert.match(svg, /^<svg/);
     assert.doesNotMatch(svg, /<script\b|<foreignObject\b|<image\b/i);
@@ -90,7 +94,7 @@ test("propagates synthetic source truth to every standalone static card", () => 
     projects: { ...base.projects, freshness: demoFreshness },
     freshness: demoFreshness,
   }, config());
-  for (const name of ["profile.svg", "streak.svg", "activity.svg", "languages.svg", "projects.svg"]) {
+  for (const name of ["profile.svg", "streak.svg", "activity.svg", "breakdown.svg", "rhythm.svg", "languages.svg", "projects.svg"]) {
     const svg = rendered[name];
     assert.match(svg, />SYNTHETIC DEMO<\/text>/, name);
     assert.match(svg, /<title>Synthetic demo:/, name);

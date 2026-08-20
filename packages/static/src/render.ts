@@ -10,9 +10,11 @@ import type {
 import {
   renderActivityCard,
   renderAtlasCard,
+  renderContributionBreakdownCard,
   renderLanguagesCard,
   renderProfileCard,
   renderProjectBoard,
+  renderRhythmCard,
   renderStreakCard,
   type AtlasCardData,
   type CardSource,
@@ -111,6 +113,32 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       total: metrics.total,
       periodLabel: `${metrics.window.from} → ${metrics.window.to}`,
       source: toCardSource(contributions.freshness),
+    }, { ...common, width });
+  }
+  if (selected.has("breakdown")) {
+    artifacts["breakdown.svg"] = renderContributionBreakdownCard({
+      source: toCardSource(contributions.freshness),
+      window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
+      breakdown: metrics.breakdown,
+      basis: metrics.breakdownBasis,
+    }, { ...common, width });
+  }
+  if (selected.has("rhythm")) {
+    artifacts["rhythm.svg"] = renderRhythmCard({
+      source: toCardSource(contributions.freshness),
+      window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
+      activeDays: metrics.activeDays,
+      density: metrics.density,
+      currentStreak: metrics.streak.current,
+      currentStreakBoundary: metrics.streak.boundary.current,
+      trend: {
+        buckets: metrics.trend.buckets.map((bucket) => bucket.total),
+        recent28Days: metrics.trend.recent28Days,
+        previous28Days: metrics.trend.previous28Days,
+        changePercent: metrics.trend.changePercent,
+        direction: metrics.trend.direction,
+      },
+      rhythm: metrics.rhythm,
     }, { ...common, width });
   }
   if (selected.has("languages")) {

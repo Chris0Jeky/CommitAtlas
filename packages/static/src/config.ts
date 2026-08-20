@@ -9,7 +9,9 @@ import {
 } from "@commit-atlas/core";
 import { z } from "zod";
 
-export const STATIC_CARD_NAMES = ["atlas", "profile", "streak", "activity", "languages", "projects"] as const;
+export const STATIC_CARD_NAMES = [
+  "atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects",
+] as const;
 export type StaticCardName = (typeof STATIC_CARD_NAMES)[number];
 
 const RelativePathSchema = z.string().trim().min(1).max(240).refine((value) => {
