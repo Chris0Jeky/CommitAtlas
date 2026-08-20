@@ -43,6 +43,9 @@ test("aligns optional workflow identities to the requested repository subset", (
   assert.throws(() => parseWorkflowMap("other:ci.yml", ["alpha"]), /requested repositories/);
   assert.throws(() => parseWorkflowMap("alpha:", ["alpha"]), /invalid/);
   assert.throws(() => parseWorkflowMap("alpha:ci.yml,alpha:docs.yml", ["alpha"]), /duplicate/);
+  for (const workflow of [".", "..", ".github/../ci.yml", ".github\\..\\ci.yml"]) {
+    assert.throws(() => parseWorkflowMap(`alpha:${workflow}`, ["alpha"]), /invalid/);
+  }
 });
 
 test("rejects unknown query parameters", () => {

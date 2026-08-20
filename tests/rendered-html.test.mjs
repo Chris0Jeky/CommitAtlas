@@ -178,6 +178,17 @@ test("uses only aligned configured workflows in the built Worker project route",
   assert.equal(wrongPayload.projects[0].ci.state, "failing");
 });
 
+test("rejects path-normalizing workflow identities before the built Worker requests GitHub", async () => {
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    assert.fail(`invalid workflow reached GitHub resource ${url.pathname}`);
+  }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:%2E%2E"));
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_input");
+});
+
 test("rejects oversized GitHub text before the built Worker emits a snapshot", async () => {
   const response = await withMockedFetch(async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
