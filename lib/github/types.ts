@@ -53,9 +53,13 @@ export interface ContributionSnapshot {
   freshness: Freshness;
 }
 
+/** A user-declared GitHub Actions workflow filename or numeric identity. */
+export type ProjectWorkflow = string;
+
 export interface ProjectCiSignal {
   state: CoreCiState;
   label: string;
+  workflow: ProjectWorkflow | null;
   url: string | null;
   checkedAt: string | null;
   headSha: string | null;

@@ -3,6 +3,7 @@ import type {
   ProfileSnapshot,
   ProjectBoardSnapshot,
   ProjectLifecycle,
+  ProjectWorkflow,
 } from "./types";
 
 export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
@@ -55,42 +56,54 @@ export function demoProjects(
   owner: string,
   repositories: readonly string[],
   lifecycles: ReadonlyMap<string, ProjectLifecycle>,
+  workflows: ReadonlyMap<string, ProjectWorkflow> = new Map(),
   now = new Date(),
 ): ProjectBoardSnapshot {
-  const ciStates = ["passing", "pending", "unconfigured", "stale", "failing", "unavailable"] as const;
+  const configuredCiStates = [
+    { state: "passing", label: "Passing" },
+    { state: "pending", label: "Pending" },
+    { state: "stale", label: "Stale result" },
+    { state: "failing", label: "Failing" },
+    { state: "unavailable", label: "CI unavailable" },
+  ] as const;
   return {
     version: 1,
     owner,
-    projects: repositories.map((name, index) => ({
-      repo: `${owner}/${name}`,
-      name,
-      description: "Synthetic project data for the CommitAtlas preview.",
-      sourceUrl: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
-      websiteUrl: null,
-      lifecycle: lifecycleFor(name, lifecycles),
-      primaryLanguage: ["TypeScript", "Python", "Rust"][index % 3],
-      stars: 42 - index * 3,
-      forks: 8 + index,
-      openIssues: index * 2,
-      pushedAt: now.toISOString(),
-      license: "GPL-3.0-only",
-      ci: {
-        state: ciStates[index % ciStates.length],
-        label: ["Passing", "Pending", "Not configured", "Stale result", "Failing", "CI unavailable"][index % 6],
-        url: null,
-        checkedAt: now.toISOString(),
-        headSha: null,
-      },
-      release: index === 0
-        ? {
-            tag: "v0.1.0",
-            name: "Foundation",
-            url: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/releases/tag/v0.1.0`,
-            publishedAt: now.toISOString(),
-            download: null,
-          }
-        : null,
-    })),
+    projects: repositories.map((name, index) => {
+      const workflow = workflows.get(name.toLowerCase()) ?? null;
+      const configuredCi = workflow ? configuredCiStates[index % configuredCiStates.length]! : null;
+      return {
+        repo: `${owner}/${name}`,
+        name,
+        description: "Synthetic project data for the CommitAtlas preview.",
+        sourceUrl: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
+        websiteUrl: null,
+        lifecycle: lifecycleFor(name, lifecycles),
+        primaryLanguage: ["TypeScript", "Python", "Rust"][index % 3],
+        stars: 42 - index * 3,
+        forks: 8 + index,
+        openIssues: index * 2,
+        pushedAt: now.toISOString(),
+        license: "GPL-3.0-only",
+        ci: {
+          state: configuredCi?.state ?? "unconfigured",
+          label: configuredCi?.label ?? "Not configured",
+          workflow,
+          url: null,
+          checkedAt: workflow ? now.toISOString() : null,
+          headSha: null,
+        },
+        release: index === 0
+          ? {
+              tag: "v0.1.0",
+              name: "Foundation",
+              url: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/releases/tag/v0.1.0`,
+              publishedAt: now.toISOString(),
+              download: null,
+            }
+          : null,
+      };
+    }),
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
 }

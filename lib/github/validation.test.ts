@@ -5,6 +5,7 @@ import {
   parseGitHubHandle,
   parseLifecycleMap,
   parseRepositoryNames,
+  parseWorkflowMap,
   rejectUnknownParameters,
   safeHttpsUrl,
 } from "./validation";
@@ -32,6 +33,16 @@ test("requires an explicit core lifecycle for every requested repository", () =>
   assert.equal(states.get("gamma"), "planned");
   assert.throws(() => parseLifecycleMap("alpha:active", ["alpha", "beta"]), /exactly one/);
   assert.throws(() => parseLifecycleMap("alpha:healthy", ["alpha"]), /invalid/);
+});
+
+test("aligns optional workflow identities to the requested repository subset", () => {
+  const workflows = parseWorkflowMap("alpha:ci.yml,gamma:.github/workflows/release.yml", ["alpha", "beta", "gamma"]);
+  assert.equal(workflows.get("alpha"), "ci.yml");
+  assert.equal(workflows.get("beta"), undefined);
+  assert.equal(workflows.get("gamma"), ".github/workflows/release.yml");
+  assert.throws(() => parseWorkflowMap("other:ci.yml", ["alpha"]), /requested repositories/);
+  assert.throws(() => parseWorkflowMap("alpha:", ["alpha"]), /invalid/);
+  assert.throws(() => parseWorkflowMap("alpha:ci.yml,alpha:docs.yml", ["alpha"]), /duplicate/);
 });
 
 test("rejects unknown query parameters", () => {

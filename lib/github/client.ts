@@ -16,6 +16,7 @@ import type {
   ProjectLifecycle,
   ProjectReleaseSignal,
   ProjectSnapshot,
+  ProjectWorkflow,
 } from "./types";
 import {
   isRecord,
@@ -186,6 +187,7 @@ export class GitHubClient {
     owner: string,
     repositories: readonly string[],
     lifecycles: ReadonlyMap<string, ProjectLifecycle>,
+    workflows: ReadonlyMap<string, ProjectWorkflow> = new Map(),
   ): Promise<ProjectBoardSnapshot> {
     for (const repository of repositories) {
       const lifecycle = lifecycles.get(repository.toLowerCase());
@@ -196,7 +198,7 @@ export class GitHubClient {
     const projects = await mapWithConcurrency(repositories, PROJECT_CONCURRENCY, async (repository) => {
       const lifecycle = lifecycles.get(repository.toLowerCase());
       if (!lifecycle) throw new GitHubApiError("invalid_response", "Every project requires an explicit core lifecycle", 400);
-      return this.fetchProject(owner, repository, lifecycle);
+      return this.fetchProject(owner, repository, lifecycle, workflows.get(repository.toLowerCase()));
     });
     return {
       version: 1,
@@ -214,6 +216,7 @@ export class GitHubClient {
     owner: string,
     repository: string,
     configuredLifecycle: ProjectLifecycle,
+    configuredWorkflow: ProjectWorkflow | undefined,
   ): Promise<ProjectSnapshot> {
     const repo = await this.getJson(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`);
     if (!isRecord(repo)) throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository");
@@ -222,7 +225,14 @@ export class GitHubClient {
     const defaultBranch = stringField(repo, "default_branch") ?? "main";
     const [release, ci] = await Promise.all([
       this.fetchLatestRelease(owner, repository),
-      this.fetchLatestRun(owner, repository, defaultBranch),
+      configuredWorkflow
+        ? this.fetchLatestRun(owner, repository, defaultBranch, configuredWorkflow)
+        : Promise.resolve(toJsonCiSignal(
+          calculateGitHubCiState({ available: true, configured: false }, this.now()),
+          null,
+          null,
+          null,
+        )),
     ]);
     const license = isRecord(repo.license) ? stringField(repo.license, "spdx_id") : null;
 
@@ -270,21 +280,26 @@ export class GitHubClient {
     };
   }
 
-  private async fetchLatestRun(owner: string, repository: string, branch: string): Promise<ProjectCiSignal> {
+  private async fetchLatestRun(
+    owner: string,
+    repository: string,
+    branch: string,
+    workflow: ProjectWorkflow,
+  ): Promise<ProjectCiSignal> {
     const result = await this.getJson(
-      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=1&exclude_pull_requests=true`,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/actions/workflows/${encodeURIComponent(workflow)}/runs?branch=${encodeURIComponent(branch)}&per_page=1&exclude_pull_requests=true`,
       true,
     );
     if (result === null || !isRecord(result)) {
-      return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: false }, this.now()), null, null);
+      return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
     const runs = Array.isArray(result.workflow_runs) ? result.workflow_runs.filter(isRecord) : [];
     const run = runs[0];
     if (!run) {
-      return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: false }, this.now()), null, null);
+      return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: true }, this.now()), workflow, null, null);
     }
     const status = calculateGitHubCiState(workflowObservation(run), this.now());
-    return toJsonCiSignal(status, safeHttpsUrl(run.html_url), stringField(run, "head_sha"));
+    return toJsonCiSignal(status, workflow, safeHttpsUrl(run.html_url), stringField(run, "head_sha"));
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<Record<string, unknown>> {

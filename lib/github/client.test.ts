@@ -4,6 +4,7 @@ import { GitHubApiError, GitHubClient } from "./client";
 
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 const LIFECYCLES = new Map([["atlas", "active" as const], ["old", "maintenance" as const]]);
+const WORKFLOWS = new Map([["atlas", "ci.yml"], ["old", "ci.yml"]]);
 
 test("normalizes a public profile without inventing contribution data", async () => {
   const calls: URL[] = [];
@@ -153,7 +154,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
       });
     }
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
-    if (url.pathname.endsWith("/actions/runs")) {
+    if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) {
       return json({
         workflow_runs: [{
           status: "completed",
@@ -171,6 +172,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
     "acme",
     ["atlas"],
     LIFECYCLES,
+    WORKFLOWS,
   );
   assert.equal(board.projects[0].lifecycle, "active");
   assert.equal(board.projects[0].ci.state, "passing");
@@ -197,8 +199,69 @@ test("marks old successful CI as stale", async () => {
       workflow_runs: [{ status: "completed", conclusion: "success", updated_at: "2025-01-01T00:00:00Z" }],
     });
   };
-  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["old"], LIFECYCLES);
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["old"], LIFECYCLES, WORKFLOWS);
   assert.equal(board.projects[0].ci.state, "stale");
+});
+
+test("leaves CI unconfigured without inspecting arbitrary repository workflows", async () => {
+  const calls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url.pathname);
+    if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    assert.fail(`unexpected workflow lookup: ${url.pathname}`);
+  };
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+    "acme",
+    ["atlas"],
+    new Map([["atlas", "active"]]),
+  );
+  assert.equal(board.projects[0].ci.state, "unconfigured");
+  assert.equal(board.projects[0].ci.workflow, null);
+  assert.equal(calls.some((path) => path.includes("/actions/")), false);
+});
+
+test("queries only the configured workflow rather than the repository-wide runs endpoint", async () => {
+  const calls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url.pathname);
+    if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) {
+      return json({ workflow_runs: [{ status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" }] });
+    }
+    assert.fail(`unexpected workflow lookup: ${url.pathname}`);
+  };
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+    "acme",
+    ["atlas"],
+    new Map([["atlas", "active"]]),
+    new Map([["atlas", "ci.yml"]]),
+  );
+  assert.equal(board.projects[0].ci.state, "passing");
+  assert.equal(board.projects[0].ci.workflow, "ci.yml");
+  assert.equal(calls.some((path) => path.endsWith("/actions/runs")), false);
+  assert.equal(calls.includes("/repos/acme/atlas/actions/workflows/ci.yml/runs"), true);
+});
+
+test("reports a declared but unavailable workflow as unavailable", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({}, 404);
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+    "acme",
+    ["atlas"],
+    new Map([["atlas", "active"]]),
+    new Map([["atlas", "ci.yml"]]),
+  );
+  assert.equal(board.projects[0].ci.state, "unavailable");
+  assert.equal(board.projects[0].ci.workflow, "ci.yml");
 });
 
 test("rejects malformed required metrics rather than treating them as zero", async () => {
@@ -342,6 +405,17 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
     status,
     headers: { "content-type": "application/json", ...headers },
   });
+}
+
+function projectRepository(name: string): Record<string, unknown> {
+  return {
+    name,
+    html_url: `https://github.com/acme/${name}`,
+    default_branch: "main",
+    stargazers_count: 0,
+    forks_count: 0,
+    open_issues_count: 0,
+  };
 }
 
 function streamedJson(body: string): Response {

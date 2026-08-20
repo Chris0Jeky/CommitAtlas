@@ -63,3 +63,8 @@ projects:
 
 The manifest is fetched only from a validated GitHub `owner/repo/path` source. V1 limits a project
 board to six entries to cap API work and keep the README card legible.
+
+The JSON project route mirrors this declaration with an exact `states=repo:lifecycle` map and an
+optional `workflows=repo:workflow` subset map. A project with no workflow entry is explicitly
+unconfigured and makes no workflow-runs request; an unavailable declared workflow is never a
+passing signal.

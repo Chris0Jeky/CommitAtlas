@@ -1,7 +1,9 @@
 import { ProjectLifecycleSchema, type ProjectLifecycle } from "@/packages/core/src/index";
+import type { ProjectWorkflow } from "./types";
 
 const HANDLE = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
+const MAX_WORKFLOW_CODE_POINTS = 200;
 export class InputError extends Error {
   readonly code = "invalid_input";
 }
@@ -60,6 +62,37 @@ export function parseLifecycleMap(
   return result;
 }
 
+/**
+ * An optional, repository-aligned subset. Omitted repositories deliberately
+ * have no configured CI workflow and must not trigger a broad runs lookup.
+ */
+export function parseWorkflowMap(
+  value: string | null,
+  repositories: readonly string[],
+): ReadonlyMap<string, ProjectWorkflow> {
+  const result = new Map<string, ProjectWorkflow>();
+  if (value === null || value === "") return result;
+  if (value.length > 1_500) throw new InputError("workflows is too long");
+
+  const requested = new Set(repositories.map((repository) => repository.toLowerCase()));
+  const entries = value.split(",");
+  for (const rawEntry of entries) {
+    const entry = rawEntry.trim();
+    const separator = entry.lastIndexOf(":");
+    if (separator <= 0) throw new InputError("workflows must use repo:workflow entries");
+    const repo = entry.slice(0, separator);
+    const workflow = entry.slice(separator + 1);
+    if (!REPOSITORY.test(repo) || !isWorkflowIdentity(workflow)) {
+      throw new InputError("workflows contains an invalid repository or workflow");
+    }
+    const key = repo.toLowerCase();
+    if (!requested.has(key)) throw new InputError("workflows may only declare requested repositories");
+    if (result.has(key)) throw new InputError("workflows contains duplicate repositories");
+    result.set(key, workflow);
+  }
+  return result;
+}
+
 export function parseDemo(value: string | null): boolean {
   if (value === null || value === "false") return false;
   if (value === "true") return true;
@@ -92,4 +125,11 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function stringField(record: Record<string, unknown>, key: string): string | null {
   const value = record[key];
   return typeof value === "string" ? value : null;
+}
+
+function isWorkflowIdentity(value: string): value is ProjectWorkflow {
+  return value === value.trim()
+    && [...value].length >= 1
+    && [...value].length <= MAX_WORKFLOW_CODE_POINTS
+    && !/[\u0000-\u001f\u007f]/.test(value);
 }

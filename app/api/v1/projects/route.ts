@@ -5,6 +5,7 @@ import {
   parseGitHubHandle,
   parseLifecycleMap,
   parseRepositoryNames,
+  parseWorkflowMap,
   rejectUnknownParameters,
 } from "@/lib/github/validation";
 import { apiErrorResponse, jsonResponse, optionsResponse } from "@/lib/http";
@@ -15,14 +16,15 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    rejectUnknownParameters(url.searchParams, ["owner", "repos", "states", "demo"]);
+    rejectUnknownParameters(url.searchParams, ["owner", "repos", "states", "workflows", "demo"]);
     const owner = parseGitHubHandle(url.searchParams.get("owner"), "owner");
     const repos = parseRepositoryNames(url.searchParams.get("repos"));
     const states = parseLifecycleMap(url.searchParams.get("states"), repos);
+    const workflows = parseWorkflowMap(url.searchParams.get("workflows"), repos);
     const demo = parseDemo(url.searchParams.get("demo"));
     const snapshot = demo
-      ? demoProjects(owner, repos, states)
-      : await new GitHubClient({ token: getGitHubToken() }).fetchProjects(owner, repos, states);
+      ? demoProjects(owner, repos, states, workflows)
+      : await new GitHubClient({ token: getGitHubToken() }).fetchProjects(owner, repos, states, workflows);
     return jsonResponse(request, snapshot, { edgeSeconds: 300, publicData: demo || !getGitHubToken() });
   } catch (error) {
     return apiErrorResponse(error);

@@ -112,6 +112,47 @@ test("rejects restricted contribution collections in the built Worker", async ()
   assert.equal((await response.json()).error.code, "private_data");
 });
 
+test("uses only aligned configured workflows in the built Worker project route", async () => {
+  const configuredCalls = [];
+  const configured = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    configuredCalls.push(url.pathname);
+    if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+    if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return githubJson(workflowRuns("success"));
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml"));
+  assert.equal(configured.status, 200);
+  assert.deepEqual((await configured.json()).projects[0].ci, {
+    state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: "2026-08-18T23:00:00Z", headSha: null,
+  });
+  assert.equal(configuredCalls.some((path) => path.endsWith("/actions/runs")), false);
+
+  const noWorkflowCalls = [];
+  const unconfigured = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    noWorkflowCalls.push(url.pathname);
+    if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active"));
+  assert.equal(unconfigured.status, 200);
+  assert.equal((await unconfigured.json()).projects[0].ci.state, "unconfigured");
+  assert.equal(noWorkflowCalls.some((path) => path.includes("/actions/")), false);
+
+  const wrongWorkflow = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+    if (url.pathname.endsWith("/actions/workflows/docs.yml/runs")) return githubJson(workflowRuns("failure"));
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:docs.yml"));
+  assert.equal(wrongWorkflow.status, 200);
+  const wrongPayload = await wrongWorkflow.json();
+  assert.equal(wrongPayload.projects[0].ci.workflow, "docs.yml");
+  assert.equal(wrongPayload.projects[0].ci.state, "failing");
+});
+
 async function withMockedFetch(fetchImpl, operation) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
@@ -141,6 +182,23 @@ function publicContributionPayload(restrictions = {}) {
   };
 }
 
-function githubJson(payload) {
-  return new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } });
+function githubJson(payload, status = 200) {
+  return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
+}
+
+function publicProjectPayload() {
+  return {
+    name: "atlas",
+    html_url: "https://github.com/acme/atlas",
+    default_branch: "main",
+    stargazers_count: 0,
+    forks_count: 0,
+    open_issues_count: 0,
+  };
+}
+
+function workflowRuns(conclusion) {
+  return {
+    workflow_runs: [{ status: "completed", conclusion, updated_at: "2026-08-18T23:00:00Z" }],
+  };
 }

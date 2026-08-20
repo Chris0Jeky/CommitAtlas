@@ -11,8 +11,8 @@ test("adapts every core lifecycle and CI state without inventing health", () => 
   assert.equal(toSvgCiState("pending"), "pending");
   assert.equal(toSvgCiState("unavailable"), "unavailable");
   assert.deepEqual(
-    toJsonCiSignal({ state: "unconfigured", reason: "No CI workflow is configured" }, null, null),
-    { state: "unconfigured", label: "Not configured", url: null, checkedAt: null, headSha: null },
+    toJsonCiSignal({ state: "unconfigured", reason: "No CI workflow is configured" }, null, null, null),
+    { state: "unconfigured", label: "Not configured", workflow: null, url: null, checkedAt: null, headSha: null },
   );
 });
 

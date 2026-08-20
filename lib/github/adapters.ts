@@ -44,12 +44,14 @@ export function calculateGitHubCiState(observation: CiObservation, now: Date): C
 /** Keep the HTTP JSON vocabulary exactly aligned with core. */
 export function toJsonCiSignal(
   status: CiStatus,
+  workflow: string | null,
   url: string | null,
   headSha: string | null,
 ): ProjectCiSignal {
   return {
     state: status.state,
     label: JSON_CI_LABELS[status.state],
+    workflow,
     url,
     checkedAt: status.updatedAt ?? null,
     headSha,
