@@ -1,8 +1,9 @@
 /** Cloudflare Worker entry point for CommitAtlas. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { withWorkerEnv, type CommitAtlasWorkerEnv } from "@/lib/runtime-env";
 
-interface Env {
+interface Env extends CommitAtlasWorkerEnv {
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
@@ -41,7 +42,7 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    return withWorkerEnv(env, () => handler.fetch(request, env, ctx));
   },
 };
 
