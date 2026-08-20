@@ -1,112 +1,123 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 21:23 BST
+Last verified: 2026-08-21 00:33 BST
 
-This is the authoritative checkpoint for the complete public demonstration. Git, hosted CI,
-deployment state, and the live profile outrank this file after any ref or deployment moves.
+This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Sites deployment
+state, and the live profile outrank this file after any ref or deployment moves.
 
-The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static generator contract is in
-[STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), the repeatable walkthrough is in
-[DEMO_GUIDE.md](./DEMO_GUIDE.md), and current end-to-end evidence is in
-[RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md). The earlier Studio
-closeout remains preserved in [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
+The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
+[STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), the walkthrough is in
+[DEMO_GUIDE.md](./DEMO_GUIDE.md), and the complete evidence matrix is in
+[RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md).
 
 ## Public checkpoint
 
-- Exact deployed application implementation: `8372d655870ba1ef33d439a9449f904d1471db82`
-  on `main`. The documentation-only closeout commit is intentionally later than this source.
-- Exact-head hosted [CI run 32412470845](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32412470845)
-  passed.
+- Exact deployed application implementation: `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
+- Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
+  Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
+  passed; this follow-up changes only the generated project-catalog label and Action bundle, so Sites
+  remains correctly bound to the preceding application source.
 - Production: [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site),
   including the [interactive Studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
-- Sites project `appgprj_6a872d3f98c481919ed37186cb4d0c30`, saved version 7
-  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_aa0dad6a718881919b27472bb76a6c43`,
-  successful deployment `appgdep_6a875f25a1a08191850475c5975fbc2c`.
-- The deployed archive is bound to `8372d65` with Sites content hash
-  `sha256:679a81adf2387aa90480781d1a57b9927e3226a58ba298eb8f2e24fdce448bcb`.
-- Public profile repository head: `99f681b5a0a9c9d940d8cdd25cee0fd083f81e55`.
-- Exact cleanup-head profile [refresh run 32413498275](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32413498275)
-  passed and produced that final bot snapshot commit.
-- Repository description, homepage, GPL-3.0 licence, and 14 focused topics are published.
-- There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
+- Sites project `appgprj_6a872d3f98c481919ed37186cb4d0c30`, saved version 8
+  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_ce7ba7650f4081918e20eb11349e7563`,
+  successful deployment `appgdep_6a878b5c6cf081918fa41544eec87638`.
+- The deployed archive is bound to `1cdabfa` with content hash
+  `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`.
+- Public profile repository head: `4651009639e23aad79e106cbdb6ec3bcd2749491`.
+- Exact profile [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
+  passed every generation, validation, catalog, commit, and push step and produced that bot snapshot.
+- Repository description, production homepage, GPL-3.0-only licence, and 14 focused topics are
+  published. There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
 ## What now exists
 
-- A rich Atlas card with a 365-day contribution heatmap, contribution density, total and active
-  days, average and peak, current and window-bounded longest streak, public activity-type mix,
-  28-day momentum, public-repository languages, project health, and a transparent personal rhythm
-  score. Rhythm is explicitly not represented as a GitHub rank.
-- Wide 860x380 and compact 480x570 Atlas layouts. A static run can generate both from one exact
-  `PortfolioSnapshot`; no second GitHub fetch can make the responsive pair drift.
-- Profile, streak, activity, language, Atlas, and project-board SVGs in Ember, Aurora, Midnight,
-  and Paper themes, with optional subtle load motion and a no-motion mode.
+- Eight selectable SVG surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
+  and Projects. The landing page and Studio expose the complete suite instead of hiding the richer
+  contribution views behind one overview.
+- Atlas combines a 365-day density heatmap, total and active days, average and peak, current and
+  window-bounded longest streaks, contribution mix, 28-day momentum, public-repository languages,
+  project health, and the transparent Rhythm score.
+- Breakdown distinguishes exact categorized counts from GitHub public-profile percentages. Public
+  percentages are visibly and accessibly labelled as annual profile-view data, not requested-window
+  counts. Rhythm is explicitly a personal consistency signal, not a GitHub rank.
+- Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
+  Midnight, and Paper themes support `motion=none|subtle`; subtle motion is transform-only, leaves
+  essential content visible at frame zero, and includes a reduced-motion override.
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
-  theme/layout/motion controls, bounded project configuration, preview, provenance, errors, and
-  copyable README Markdown.
-- Versioned JSON and SVG endpoints with bounded validation, cache separation, stable ETags,
-  accessible SVG metadata, XML sanitisation, and script/object/frame blocking headers.
-- Curated project lifecycle and named-workflow CI signals. Source, Docs, Install, Download,
-  Release, and CI actions are available in HTML where their validated URLs exist.
-- Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. They generate selected
-  cards plus a byte/SHA-256 manifest, remove only stale CommitAtlas-owned artifacts, and never
-  commit, push, publish, or deploy for the consumer.
+  theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
+  provenance, errors, and copyable README Markdown.
+- Versioned JSON/SVG endpoints with bounded validation, canonical queries, cache separation, stable
+  ETags, accessible XML-safe SVG metadata, and strict script/object/frame blocking headers.
+- Curated lifecycle and named-workflow CI signals. Source, Website, CI, Release, Release download,
+  Docs, Install, and Download destinations appear only when observed or explicitly configured;
+  individual action links remain in HTML/Markdown because an embedded README SVG cannot reliably
+  expose multiple click targets.
+- Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create the
+  eight canonical SVGs, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
+  manifest while removing only known stale CommitAtlas artifacts.
 - Buildable `@commit-atlas/core`, `@commit-atlas/github`, `@commit-atlas/svg`, and
-  `@commit-atlas/static` packages with GPL-3.0-only package metadata and dry-run pack proof.
-- The [Chris0Jeky profile](https://github.com/Chris0Jeky) uses a responsive `<picture>` Atlas,
-  project radar, and expandable individual widgets. A scheduled workflow refreshes all seven
-  assets from one public snapshot and validates every manifest hash before committing.
+  `@commit-atlas/static` packages with canonical GPL-3.0-only package metadata and clean-consumer
+  pack/import proof.
+- The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
+  Breakdown and Rhythm visibly, retains the Project radar and four optional focused widgets, and
+  renders a marker-bounded six-project catalog with observed/configured action links. Its daily
+  workflow validates 11 payload artifacts and every manifest hash before updating README/assets.
 
 ## Verified
 
-- Full `npm.cmd run check` passed at `8372d65`:
-  - core 19, GitHub/API 69, Studio 28, SVG 20, static generator 5, Action 2, and rendered
-    product/API 23 tests;
-  - TypeScript, ESLint, four package builds and dry-run packs, Action bundle parity, and production
-    Vinext build.
-- Independent reviews found and closed one stale responsive-companion HIGH defect, then found no
-  remaining CRITICAL/HIGH blocker in the generator cleanup or final profile publication.
-- Production version 7 returned 200 for health, profile, contributions, projects, Atlas, four
-  focused stat cards, and the project board. Invalid input returned bounded 400/no-store.
-- The synthetic Atlas returned a stable ETag and 304 on `If-None-Match`; its deterministic demo
-  timestamp is stable within the UTC day. SVGs expose CSP and accessible title/description data.
-- Subtle SVGs contain animation keyframes and a reduced-motion override; `motion=none` contains no
-  keyframes or script.
-- Browser QA passed at 1440x900 and 390x844. The Studio is side-by-side on desktop, configuration
-  precedes the long preview on mobile, and neither production page has document overflow.
-- Ember, Aurora, Midnight, and Paper wide Atlas cards were visually inspected, as was the compact
-  layout. Project, profile, streak, activity, and language cards were expanded and inspected on the
-  real profile.
-- GitHub serves the 860x380 Atlas at desktop width and the 480x570 companion at mobile width. Six
-  CommitAtlas profile images completed, with no document overflow. The responsive cards share the
-  same description and generation timestamp.
-- The profile manifest contains exactly seven expected artifacts and matches committed and Windows
-  worktree bytes. Generated files are pinned to LF to keep those hashes reproducible.
+- Final `npm.cmd run check` passed at `1cdabfa`: core 20, GitHub/API 79, Studio 34, SVG 25,
+  static generator 9, Action 2, packaging 3, rendered product/API 28, plus TypeScript, ESLint, four
+  package builds/packs, Action bundle parity, and the production Vinext build.
+- Two bounded review rounds closed the misleading public-percentage scope defects. A separate
+  catalog security/truth review and exact-head profile consumer review found no remaining
+  CRITICAL/HIGH blocker.
+- Production version 8 returned 200 for health and all eight deterministic synthetic SVG routes.
+  Every exercised SVG returned the intended cache policy and CSP; an unknown query returned bounded
+  400 with `Cache-Control: no-store`.
+- The production landing page exposes all eight real SVG responses. The Studio exposes eight
+  selected previews, all controls, project evidence, and eight-line Markdown. Breakdown/Rhythm,
+  Atlas, and the Studio gallery were visually inspected on the deployed site with no clipping at the
+  available 798-pixel browser width.
+- The public GitHub profile was inspected after the hosted refresh. GitHub wrapped the focused cards
+  cleanly in the narrow profile column, loaded the Atlas and Project radar, and rendered the dynamic
+  six-row action catalog with working destinations and no document-level horizontal overflow.
+- Profile consumer tests pass 4/4; catalog replacement is idempotent and fail-closed; the final
+  manifest contains exactly 11 expected artifacts whose committed byte counts and SHA-256 hashes
+  match. All nine SVGs parse as XML and contain no script, `foreignObject`, event handlers, external
+  resources, credentials, or private-data strings.
+- The final QA pass corrected GitHub REST `open_issues_count` labelling to `open issues/PRs` in both
+  generator and profile consumer. Static tests pass 9/9, Action tests 2/2, TypeScript and ESLint pass,
+  and the public profile DOM exposes the corrected label.
 
 ## NOT verified or released
 
-- Full sequential keyboard-only traversal. Structure, labels, focus styling, accessible SVG text,
-  reduced motion, and mouse interaction were exercised, but the available controller did not prove
-  every Tab/Space transition.
-- Token-backed private contribution history. The shipped service and profile deliberately use
-  credential-free public evidence and never request private repository details.
-- npm registry publication or a GitHub `v0.1.0` release. The packages and Action are built and
-  exercised from immutable commits, but no registry/release availability is claimed.
+- Complete sequential keyboard-only traversal. Landmarks, names, controls, focus styling,
+  accessible SVG text, reduced motion, and mouse interaction were exercised, but the available
+  controller did not prove every Tab/Space transition.
+- A fresh exact-head 1440x900 and 390x844 production screenshot pair. Those widths passed on the
+  preceding responsive baseline; the final insight suite was visually exercised at the available
+  798-pixel browser width and through its 720/480 SVG layouts and rendered tests.
+- Token-backed private contribution history. The service and profile intentionally use public
+  evidence and never request private repository details.
+- npm registry publication or a GitHub `v0.1.0` release. Packages and the Action are built and used
+  from immutable commits, but registry/release availability is not claimed.
 
 ## Residual risk and next slice
 
-- A fresh request-time live `Chris0Jeky` Atlas returned bounded 502/no-store because GitHub did not
-  respond before the Sites deadline. Synthetic endpoints remain deterministic; the scheduled
-  checked-in profile snapshot is the resilient last-known-good surface. Do not add a private-capable
-  token to hide anonymous upstream availability limits.
-- GitHub Actions emits a non-failing warning that pinned `actions/checkout@v4` and
-  `actions/setup-node@v4` target Node 20 while the runner forces Node 24. Track the upstream major
-  transition; do not replace immutable pins without review.
-- Issues #28, #30, #32-#34, #38, #40, #45, #46, #48, and remaining dependency updates are not
-  silently completed by this demonstration milestone. Reclassify them against release impact
-  before tagging v0.1.0.
-- The next bounded slice is release preparation: complete keyboard QA if tooling permits, reconcile
-  release-impact issues/dependencies, rerun the exact-head gate/review, then decide the GitHub
-  `v0.1.0` and optional npm publication separately.
+- Anonymous request-time GitHub availability remains bounded but intermittent. During final QA,
+  live Profile returned 429 and live Breakdown returned 502 twice, while live Languages and every
+  synthetic route succeeded. The scheduled, hash-checked profile snapshot is the deliberate
+  last-known-good surface. Do not install a private-capable personal token merely to hide anonymous
+  rate limits.
+- GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
+  Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
+- Open nonblocking work is tracked in #33, #34, #48, #49, and #50. #50 covers stricter generated
+  catalog boundaries; #49 covers direct package-renderer bounds. Do not reopen the completed
+  demonstration review loop unless release-impact evidence promotes an item.
+- The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
+  reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
+  GitHub `v0.1.0` and optional npm publication separately.
 
 ## Clean resume commands
 
@@ -124,4 +135,5 @@ npm.cmd run check
 Open the [public Studio](https://commitatlas.jeky-tck.chatgpt.site/studio), then the
 [published GitHub profile](https://github.com/Chris0Jeky). Follow
 [DEMO_GUIDE.md](./DEMO_GUIDE.md), beginning with synthetic `octocat` for deterministic visual QA
-and using `Chris0Jeky` to inspect the honest live-public success or unavailable state.
+and using `Chris0Jeky` to inspect the honest live-public success, partial, rate-limited, or
+unavailable state.

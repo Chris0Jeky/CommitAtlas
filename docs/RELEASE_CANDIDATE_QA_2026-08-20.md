@@ -1,10 +1,14 @@
 # CommitAtlas complete demonstration QA
 
-Date: 2026-08-20
+Started: 2026-08-20
 
-Application implementation: `8372d655870ba1ef33d439a9449f904d1471db82`
+Final verification: 2026-08-21
 
-Profile snapshot head: `99f681b5a0a9c9d940d8cdd25cee0fd083f81e55`
+Application implementation: `1cdabfa37981866cfedad5571fb2221e9cb9d67e`
+
+Static/profile producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`
+
+Profile snapshot head: `4651009639e23aad79e106cbdb6ec3bcd2749491`
 
 Production: [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site)
 
@@ -12,136 +16,145 @@ Profile: [github.com/Chris0Jeky](https://github.com/Chris0Jeky)
 
 ## Outcome
 
-The complete public demonstration passed its exercised build, API, deployment, desktop, mobile,
-theme, responsive-profile, static-generation, and hosted-refresh matrix. The sparse first profile
-prototype has been replaced by a rich Atlas, four focused stat widgets, and a project board. The
-published profile remains readable when the live GitHub endpoint is unavailable because its seven
-assets are generated, hash-checked, and committed daily from one public snapshot.
+The complete public demonstration passed its exercised build, API, deployment, responsive-layout,
+static-generation, profile-consumer, hosted-refresh, and visual-inspection matrix. The sparse first
+prototype has been replaced by a coherent eight-card system, a real Studio gallery, a dynamic
+project/action catalog, and a resilient scheduled profile snapshot.
 
 ## Capability matrix
 
 | Surface | Demonstrated output |
 | --- | --- |
-| Atlas | total and active days, density, average/day, peak, heatmap, current/longest streak, activity mix, momentum, languages, project health, rhythm score |
+| Atlas | 365-day heatmap, total/active/density/average/peak, bounded streaks, activity mix, 28-day momentum, languages, project health, personal Rhythm |
 | Profile | repositories, followers, following, contributions, and public stars |
-| Streak | current streak, window-bounded longest streak, total and active days |
-| Activity | exact requested date window, contribution total, chronological density graph, accessible day labels |
-| Languages | public-repository byte-share distribution with explicit unavailable state for incomplete evidence |
-| Projects | curated lifecycle, named-workflow CI, stars, release metadata, and HTML action links |
-| Studio | synthetic/live source, four themes, two layouts, motion control, card selection, up to six projects, preview, provenance, errors, and README Markdown |
-| Static/Action | one public snapshot, selected SVGs, optional responsive companion, manifest byte/hash proof, bounded stale-artifact cleanup |
+| Streak | current and longest observed streaks with an explicit window boundary |
+| Breakdown | exact categorized counts where available; otherwise annual public-profile percentages explicitly not scoped to the requested window |
+| Rhythm | transparent personal consistency from density and current streak, plus weekly trend; explicitly not a GitHub rank |
+| Activity | exact requested contribution window, total, chronological density graph, accessible day labels |
+| Languages | public-repository byte-share distribution without proficiency claims; unavailable on incomplete evidence |
+| Projects | curated lifecycle, named-workflow CI/freshness, stars, release evidence, and HTML/Markdown action destinations |
+| Studio | synthetic/live source, four themes, two Atlas layouts, motion control, eight-card selection, six projects, preview, provenance, errors, and Markdown |
+| Static/Action | one snapshot, eight SVGs, optional compact Atlas, project JSON/Markdown catalog, byte/hash manifest, bounded stale-output cleanup |
 
-The displayed `Rhythm 77/100` on the current profile is CommitAtlas's transparent personal
-consistency score. It is intentionally labelled as not being a GitHub rank; no opaque global
-ranking is invented.
+The displayed Rhythm score is a personal consistency score. It uses the documented density/streak
+formula and never claims a global percentile, population ranking, or GitHub-provided grade.
 
 ## Local and hosted proof
 
-The full repository gate passed at the exact application implementation:
-
-| Gate | Result |
+| Gate | Result at `1cdabfa` |
 | --- | --- |
 | TypeScript and ESLint | passed |
-| Core | 19 passed |
-| GitHub transport, parsing, security, and API | 69 passed |
-| Studio | 28 passed |
-| SVG | 20 passed |
-| Static generator | 5 passed |
+| Core | 20 passed |
+| GitHub transport, parsing, security, and API | 79 passed |
+| Studio | 34 passed |
+| SVG | 25 passed |
+| Static generator | 9 passed |
 | Node 24 Action and bundle parity | 2 passed |
-| Built Worker and rendered product/API | 23 passed |
+| Packaging / clean consumer | 3 passed |
+| Rendered product/API | 28 passed |
 | Four package builds and dry-run packs | passed |
 | Production Vinext build | passed |
 | `git diff --check` | passed |
 
-Hosted [CI run 32412470845](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32412470845)
-passed at exact SHA `8372d65`. A first responsive-generator review found a realistic stale companion
-defect; the fix deletes only known CommitAtlas-owned outputs after successful replacement. The
-bounded post-fix review was clean. A separate final profile review found no CRITICAL/HIGH blocker.
+Hosted [Quality gate run 32427839557](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32427839557)
+passed at that exact source. Two bounded review rounds closed the public-percentage scope blocker;
+independent catalog and profile reviews found no remaining CRITICAL/HIGH blocker. The final
+static-label-only producer checkpoint passed hosted
+[Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147).
 
 ## Deployment proof
 
 - Sites project: `appgprj_6a872d3f98c481919ed37186cb4d0c30`.
-- Saved version 7:
-  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_aa0dad6a718881919b27472bb76a6c43`.
-- Successful production deployment: `appgdep_6a875f25a1a08191850475c5975fbc2c`.
-- Exact source: `8372d655870ba1ef33d439a9449f904d1471db82`.
-- Sites archive content hash:
-  `sha256:679a81adf2387aa90480781d1a57b9927e3226a58ba298eb8f2e24fdce448bcb`.
+- Saved version 8:
+  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_ce7ba7650f4081918e20eb11349e7563`.
+- Successful deployment: `appgdep_6a878b5c6cf081918fa41544eec87638`.
+- Exact source: `1cdabfa37981866cfedad5571fb2221e9cb9d67e`.
+- Archive content hash:
+  `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`.
 
 ## Production API and cache evidence
 
-Version 7 returned 200 for:
+Version 8 returned 200 for `/api/v1/health` and each deterministic synthetic card route:
 
-- `/api/v1/health`;
-- synthetic profile, contribution, and project JSON;
-- Atlas, profile, streak, activity, languages, and project-board SVG.
+- `/api/v1/cards/atlas.svg`;
+- `/api/v1/cards/profile.svg`;
+- `/api/v1/cards/streak.svg`;
+- `/api/v1/cards/breakdown.svg`;
+- `/api/v1/cards/rhythm.svg`;
+- `/api/v1/cards/activity.svg`;
+- `/api/v1/cards/languages.svg`;
+- `/api/v1/projects.svg`.
 
-Every exercised SVG included `image/svg+xml`, its intended public cache window, and a
-Content-Security-Policy. An unknown parameter returned 400 with `Cache-Control: no-store`. Two
-identical synthetic Atlas requests proved byte-stable caching: the first returned an ETag and the
-conditional second returned 304. The deterministic synthetic footer is fixed at UTC midnight for
-the day.
+Every exercised SVG returned `image/svg+xml`, its intended public cache window, and a CSP. An
+unknown parameter returned 400 with `Cache-Control: no-store`. Motion-enabled output includes only
+presentation CSS plus a reduced-motion override; still output contains no keyframes. Neither mode
+contains script.
 
-The animated Atlas contains keyframes plus a `prefers-reduced-motion` override. The no-motion
-variant contains neither keyframes nor script. Both variants expose `role="img"`, title, and
-description metadata.
+Request-time live public data remains intentionally bounded by GitHub availability. During final QA,
+live Languages returned 200, live Profile returned 429, and live Breakdown returned bounded 502
+twice. These are honest upstream states, not grounds for adding a private-capable token.
 
 ## Visual evidence
 
-Production Studio:
+Production application:
 
-- 1440x900: configuration and preview render side by side, with an 814-pixel displayed Atlas and no
-  document overflow.
-- 390x844: configuration starts before the long preview; the document client and scroll widths are
-  both 375 pixels.
-- Ember, Aurora, Midnight, and Paper wide cards were individually opened and visually inspected.
-- The compact 480x570 card was inspected separately. Labels, density cells, activity bars, score,
-  and footer remain inside the viewBox.
+- The landing page shows eight real SVG previews with useful descriptions and visible synthetic
+  provenance; it no longer relies on a sparse mock to represent product capability.
+- The new Breakdown/Rhythm pair is compact, balanced, readable, and unambiguous at the available
+  798-pixel browser width.
+- Studio exposes eight selected previews, theme/layout/motion/source controls, project configuration,
+  project evidence, and eight-line README Markdown. The Atlas and selected gallery were inspected
+  without clipping or document overflow.
+- The preceding responsive baseline passed 1440x900 and 390x844, and the individual card renderers
+  were exercised at their 720/480 layouts. A new exact-head screenshot pair at those two page widths
+  was not captured.
 
 Published GitHub profile:
 
-- Desktop selects `assets/commitatlas/atlas.svg`: natural 860x380, displayed 846x374.
-- Mobile selects `assets/commitatlas/atlas-compact.svg`: natural 480x570, displayed 293x348.
-- Mobile document client and scroll widths are both 375 pixels.
-- Six CommitAtlas images completed at both widths.
-- The project board and the expanded profile, streak, activity, and language widgets were visually
-  inspected on the real profile, along with Selected Work links.
-- The current Atlas visibly reports `27k` contributions, 194 active days, 53.2% density,
-  74.8/day, 30-day current and 53-day window-bounded longest streaks, public activity mix,
-  recent momentum, `Rhythm 77/100`, public languages, and 4/6 configured CI workflows passing.
+- The responsive Atlas remains first, with Breakdown and Rhythm visible immediately below it.
+- GitHub cleanly wrapped both 420-pixel insight cards in the narrow live profile column.
+- The Project radar stayed compact; Profile, Streak, Activity, and Languages remain in the optional
+  details section.
+- The generated six-row Selected work table rendered lifecycle, CI state, repository signals, and
+  observed/configured Website, CI, Release, Download, and Docs links without page-level horizontal
+  overflow.
+- The repository count is truthfully labelled `open issues/PRs`, matching GitHub REST semantics that
+  `open_issues_count` includes pull requests.
 
 ## Static profile publication proof
 
 The profile workflow:
 
 - runs daily at `23 5 * * *` and supports manual dispatch;
-- uses one immutable-pinned `Chris0Jeky/CommitAtlas` Action call;
-- requests no token for GitHub data;
-- validates the exact seven filenames, byte counts, SHA-256 digests, and compact Action output;
-- stages only `assets/commitatlas` and preserves the last good snapshot if generation fails.
+- pins `Chris0Jeky/CommitAtlas@ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`;
+- requests no data credential;
+- validates the exact 11 payload filenames, byte counts, SHA-256 digests, compact Atlas output, and
+  Breakdown/Rhythm/catalog Action outputs;
+- validates and marker-replaces the generated README catalog before staging `README.md` and
+  `assets/commitatlas`;
+- preserves the last committed good snapshot when generation or validation fails.
 
-[Refresh run 32413498275](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32413498275)
-passed from exact cleanup head `87e491d` and produced bot snapshot `99f681b`. Wide and compact Atlas
-files share the same accessible description and generation timestamp. The superseded second config
-and split output directory are absent, and generated SVG/manifest paths are LF-pinned so Windows
-worktree hashes match the manifest.
+Hosted [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
+passed every step and produced bot snapshot `46510096`. The snapshot was generated at
+`2026-08-20T23:43:55.273Z` for the exact 2025-08-21 through 2026-08-20 window. The profile manifest
+contains exactly 11 artifacts; committed bytes and SHA-256 hashes match, and catalog replacement is
+idempotent.
 
 ## NOT verified
 
-- A complete sequential keyboard-only traversal. Semantic structure, labels, focus styling,
-  reduced motion, and direct interactions were exercised, but the controller did not prove every
-  Tab/Space transition.
-- Token-backed private contribution history. No private-capable credential was installed in Sites
-  or used for the profile.
+- Complete sequential keyboard-only traversal. Semantic structure, labels, focus styling, reduced
+  motion, and pointer interactions were exercised, but every Tab/Space step was not proved.
+- A fresh exact-head 1440x900 and 390x844 screenshot pair.
+- Token-backed private contribution history. No private-capable credential was installed in Sites or
+  used for the profile.
 - npm registry publication or a GitHub `v0.1.0` release.
 
 ## Residual risk
 
-- A fresh live `Chris0Jeky` request returned 502/no-store with `github_unavailable` because GitHub
-  did not respond before the production deadline. This is a truthful transient live state. The
-  checked-in scheduled snapshot is the deliberate resilience layer.
-- GitHub Actions currently warns that some pinned v4 actions target Node 20 while the runner forces
-  Node 24. Both exercised workflows pass; upgrading those immutable pins remains a reviewed release
-  task.
-- Open release/dependency issues remain tracked. This demonstration is complete; the registry and
-  `v0.1.0` release decision are separate milestones.
+- Anonymous live GitHub quotas and response deadlines can produce truthful 429/502 responses. The
+  deterministic synthetic path is the reliable demonstration, and the scheduled checked-in profile
+  is the resilient public portfolio surface.
+- Pinned JavaScript actions currently emit a non-failing Node 20-to-24 runtime warning. Both exact
+  hosted workflows pass; pin upgrades remain reviewed release work.
+- Nonblocking follow-up remains tracked in #33, #34, #48, #49, and #50. This demonstration is
+  complete; the registry and `v0.1.0` release decision remain separate milestones.
