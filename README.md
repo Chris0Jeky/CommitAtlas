@@ -13,8 +13,8 @@ what is healthy, and where people should go next.
 
 </div>
 
-> **Pre-release foundation.** The product shell and architecture are running locally. Typed data,
-> card endpoints, the Studio, and static generation are being added as small verified commits.
+> **Pre-release demonstration.** The typed API, five SVG endpoints, project dashboard, and Studio
+> run locally as one production-buildable system. Deployment, static generation, and release remain.
 
 ## Why CommitAtlas
 
@@ -30,7 +30,7 @@ truthful portfolio surface.
 | Public by default | Shared hosting uses public data. Tokens stay server-side or inside your Action. |
 | Accessible output | Labeled SVGs, curated contrast, keyboard-friendly HTML, and reduced motion. |
 
-## Planned V1
+## Available v0.1 surfaces
 
 ```text
 /api/v1/cards/profile.svg     contribution and repository summary
@@ -63,6 +63,9 @@ Open `http://localhost:3000`. Run the local gate before contributing:
 npm run check
 ```
 
+For the complete production-build walkthrough, use the
+[demonstration guide](docs/DEMO_GUIDE.md).
+
 No GitHub token is required for the synthetic preview. Live contribution data requires the optional
 `GITHUB_TOKEN` Worker secret (or an Action secret); set it with `npx wrangler secret put GITHUB_TOKEN`.
 For the shared public route, classic tokens must expose only the empty or `public_repo` scope set;
@@ -73,7 +76,10 @@ the service refuses missing or broader scope proofs. A token is read only by ser
 
 - [Architecture and security boundaries](docs/ARCHITECTURE.md)
 - [Competitive research and product gap](docs/RESEARCH.md)
+- [Complete local demonstration](docs/DEMO_GUIDE.md)
+- [Studio production QA](docs/STUDIO_QA_2026-08-20.md)
 - [Live project state](docs/PROJECT_STATE.md)
+- [v0.1 implementation plan](docs/V0_1_PLAN.md)
 
 CommitAtlas does not invent a universal developer rank, language proficiency, CI result, project
 lifecycle, or download URL. It shows facts, configured intent, source availability, and freshness.

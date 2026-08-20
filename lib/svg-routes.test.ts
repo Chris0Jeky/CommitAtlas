@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { encodeWorkflowMapComponent } from "./github/workflow-map";
 import {
   parseActivityDays,
   parseSvgActivityQuery,
@@ -71,6 +72,20 @@ test("preserves project order and aligns explicit lifecycle and optional workflo
     { repository: "alpha", lifecycle: "planned", workflow: "release.yml" },
   ]);
   assert.equal(query.canonical, "owner=acme&repos=Beta%2Calpha&states=Beta%3Aactive%2Calpha%3Aplanned&workflows=alpha%3Arelease.yml&demo=true&theme=ember");
+});
+
+test("canonicalizes escaped workflow delimiters without semantic collisions", () => {
+  const workflow = "ci,release:nightly.yml";
+  const query = parseSvgProjectsQuery(new URLSearchParams({
+    owner: "acme",
+    repos: "alpha",
+    states: "alpha:active",
+    workflows: `alpha:${encodeWorkflowMapComponent(workflow)}`,
+    demo: "true",
+    theme: "paper",
+  }));
+  assert.equal(query.workflows.get("alpha"), workflow);
+  assert.equal(query.canonical, "owner=acme&repos=alpha&states=alpha%3Aactive&workflows=alpha%3Aci%252Crelease%253Anightly.yml&demo=true&theme=paper");
 });
 
 test("requires exact project inputs and rejects invalid workflow identities", () => {

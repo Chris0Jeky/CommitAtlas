@@ -1,5 +1,6 @@
 import type { ThemeName } from "@/packages/svg/src/index";
 import type { ProjectLifecycle, ProjectWorkflow } from "./github/types";
+import { encodeWorkflowMapComponent } from "./github/workflow-map";
 import {
   InputError,
   parseDemo,
@@ -98,7 +99,7 @@ export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQ
   const stateValue = projects.map(({ repository, lifecycle }) => `${repository}:${lifecycle}`).join(",");
   const workflowValue = projects
     .filter(({ workflow }) => workflow !== null)
-    .map(({ repository, workflow }) => `${repository}:${workflow}`)
+    .map(({ repository, workflow }) => `${repository}:${encodeWorkflowMapComponent(workflow!)}`)
     .join(",");
   const canonicalEntries: [string, string][] = [
     ["owner", owner],
