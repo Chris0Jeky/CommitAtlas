@@ -327,8 +327,8 @@ button, input { font: inherit; }
   .capability-grid article:last-child { border-bottom: 0; }
   .capability-grid h3 { margin-top: 48px; }
   .studio-workspace { grid-template-columns: 1fr; }
-  .studio-preview-panel { order: -1; border-bottom: 1px solid var(--line); }
-  .config-panel { border-right: 0; }
+  .config-panel { order: -1; border-right: 0; border-bottom: 1px solid var(--line); }
+  .studio-preview-panel { order: 0; }
 }
 @media (max-width: 560px) {
   .nav, .hero, .studio-strip, .capability-section, .site-footer, .studio-hero, .studio-workspace { width: min(100% - 28px, 1180px); }
