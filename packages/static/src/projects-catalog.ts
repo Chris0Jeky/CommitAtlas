@@ -231,7 +231,7 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
   for (const project of catalog.projects) {
     lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** \`${escapeCode(project.repo)}\``, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (\`${escapeCode(project.ci.workflow)}\`)` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
-    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues`);
+    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues/PRs`);
     if (project.release) lines.push(`- **Release:** ${escapeMarkdown(project.release.name)} (\`${escapeCode(project.release.tag)}\`)`);
     lines.push("", "### Actions", "");
     for (const action of project.actions) lines.push(`- [${escapeMarkdown(action.label)}](${markdownUrl(action.url)}) — ${action.origin === "snapshot" ? "observed" : "configured"}`);

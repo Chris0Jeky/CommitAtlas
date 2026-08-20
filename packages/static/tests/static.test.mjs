@@ -157,6 +157,7 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
   ]);
   assert.match(first["projects.md"], /\[Docs\]\(https:\/\/docs.github.com\/en\/repositories\)/);
+  assert.match(first["projects.md"], /2 open issues\/PRs/);
   assert.doesNotMatch(first["projects.md"], /#readme|\/docs\/|releases\/latest/);
 });
 
