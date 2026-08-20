@@ -509,6 +509,8 @@ test("breakdown card keeps exact counts and public percentages truthful", () => 
   assert.match(percentages, /GitHub profile activity mix · not window-scoped/);
   assert.match(percentages, /Annual profile-view percentages · exact window counts unavailable/);
   assert.match(percentages, /not scoped to the requested 365-day contribution-calendar window/);
+  assert.match(percentages, /not scoped to the requested contribution-calendar window/);
+  assert.doesNotMatch(percentages, /broken down by type for the selected window/);
   assert.doesNotMatch(percentages, /2026-01-01 → 2026-12-31/);
   assert.doesNotMatch(percentages, /Total 100|100 contributions/);
   assert.match(percentages, /width="275\.75" height="10" rx="5" fill="#79f2c0"/);

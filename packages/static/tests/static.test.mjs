@@ -75,7 +75,8 @@ test("renders all rich widgets deterministically from one snapshot", () => {
   assert.match(first["atlas.svg"], /CONTRIBUTION DENSITY/);
   assert.match(first["atlas.svg"], /RHYTHM/);
   assert.match(first["breakdown.svg"], /PUBLIC PROFILE %/);
-  assert.match(first["breakdown.svg"], /Exact counts unavailable/);
+  assert.match(first["breakdown.svg"], /Annual profile-view percentages · exact window counts unavailable/);
+  assert.match(first["breakdown.svg"], /not scoped to the requested contribution-calendar window/);
   assert.match(first["rhythm.svg"], /PERSONAL CONSISTENCY/);
   assert.match(first["rhythm.svg"], /not a GitHub rank/);
   for (const svg of Object.values(first)) {

@@ -533,11 +533,14 @@ export function renderContributionBreakdownCard(
   data: ContributionBreakdownCardData,
   options?: RenderOptions,
 ): string {
+  const publicProfileMix = data.basis === "public-profile-percentages";
   const o = optionsFor(
     options,
     220,
     "Contribution breakdown",
-    "Contribution activity broken down by type for the selected window.",
+    publicProfileMix
+      ? "GitHub public-profile activity percentages; not exact counts and not scoped to the requested contribution-calendar window."
+      : "Exact categorized contribution activity for the selected window.",
     220,
     280,
   );
@@ -547,7 +550,6 @@ export function renderContributionBreakdownCard(
   const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
   const total = values.reduce((sum, value) => sum + value, 0);
   const colors = [t.accent, t.negative, t.positive, t.warning] as const;
-  const publicProfileMix = data.basis === "public-profile-percentages";
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
   const basisDescription = publicProfileMix
     ? `GitHub public-profile percentages from calendar-year profile views; these are not exact counts and are not scoped to the requested ${formatNumber(data.window.days, false)}-day contribution-calendar window`
