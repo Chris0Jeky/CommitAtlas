@@ -1,3 +1,5 @@
+import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
+
 export type StudioCardKind = "profile" | "streak" | "activity" | "languages" | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
@@ -62,7 +64,7 @@ export function buildStudioRouteUrl(
       .map((project) => {
         const repo = project.repo.trim();
         const workflow = project.workflow?.trim() ?? "";
-        return repo && workflow ? `${repo}:${workflow}` : null;
+        return repo && workflow ? `${repo}:${encodeWorkflowMapComponent(workflow)}` : null;
       })
       .filter((workflow): workflow is string => Boolean(workflow));
     if (workflows.length > 0) query.set("workflows", workflows.join(","));

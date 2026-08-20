@@ -1,9 +1,16 @@
 import { ProjectLifecycleSchema, type ProjectLifecycle } from "@/packages/core/src/index";
 import type { ProjectWorkflow } from "./types";
+import { decodeWorkflowMapComponent } from "./workflow-map";
 
 const HANDLE = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
 const MAX_WORKFLOW_CODE_POINTS = 200;
+const MAX_PROJECTS = 6;
+const MAX_REPOSITORY_CHARACTERS = 100;
+const MAX_LIFECYCLE_CHARACTERS = 11;
+const MAX_ESCAPED_WORKFLOW_CHARACTERS = MAX_WORKFLOW_CODE_POINTS * 3;
+export const MAX_LIFECYCLE_MAP_LENGTH = MAX_PROJECTS * (MAX_REPOSITORY_CHARACTERS + 1 + MAX_LIFECYCLE_CHARACTERS) + (MAX_PROJECTS - 1);
+export const MAX_WORKFLOW_MAP_LENGTH = MAX_PROJECTS * (MAX_REPOSITORY_CHARACTERS + 1 + MAX_ESCAPED_WORKFLOW_CHARACTERS) + (MAX_PROJECTS - 1);
 export class InputError extends Error {
   readonly code = "invalid_input";
 }
@@ -40,7 +47,7 @@ export function parseLifecycleMap(
   repositories: readonly string[],
 ): ReadonlyMap<string, ProjectLifecycle> {
   if (!value) throw new InputError("states must declare a lifecycle for every repository");
-  if (value.length > 500) throw new InputError("states is too long");
+  if (value.length > MAX_LIFECYCLE_MAP_LENGTH) throw new InputError("states is too long");
 
   const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);
   const result = new Map<string, ProjectLifecycle>();
@@ -72,16 +79,16 @@ export function parseWorkflowMap(
 ): ReadonlyMap<string, ProjectWorkflow> {
   const result = new Map<string, ProjectWorkflow>();
   if (value === null || value === "") return result;
-  if (value.length > 1_500) throw new InputError("workflows is too long");
+  if (value.length > MAX_WORKFLOW_MAP_LENGTH) throw new InputError("workflows is too long");
 
   const requested = new Set(repositories.map((repository) => repository.toLowerCase()));
   const entries = value.split(",");
   for (const rawEntry of entries) {
     const entry = rawEntry.trim();
-    const separator = entry.lastIndexOf(":");
+    const separator = entry.indexOf(":");
     if (separator <= 0) throw new InputError("workflows must use repo:workflow entries");
     const repo = entry.slice(0, separator);
-    const workflow = entry.slice(separator + 1);
+    const workflow = decodeWorkflowMapComponent(entry.slice(separator + 1));
     if (!REPOSITORY.test(repo) || !isWorkflowIdentity(workflow)) {
       throw new InputError("workflows contains an invalid repository or workflow");
     }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parseLifecycleMap, parseRepositoryNames, parseWorkflowMap } from "@/lib/github/validation";
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
@@ -43,6 +44,35 @@ test("propagates only aligned, nonblank workflows with URL encoding", () => {
   const parsed = new URL(`https://example.test${url}`);
   assert.equal(parsed.searchParams.get("workflows"), "alpha:ci file.yml,beta:docs.yml");
   assert.match(url, /workflows=alpha%3Aci\+file\.yml%2Cbeta%3Adocs\.yml/);
+});
+
+test("round-trips workflow identities containing map delimiters", () => {
+  const url = buildStudioRouteUrl("projects", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects: [{ repo: "alpha", lifecycle: "active", workflow: "ci,release:nightly.yml" }],
+  });
+  const value = new URL(`https://example.test${url}`).searchParams.get("workflows");
+  assert.equal(value, "alpha:ci%2Crelease%3Anightly.yml");
+  assert.equal(parseWorkflowMap(value, ["alpha"]).get("alpha"), "ci,release:nightly.yml");
+});
+
+test("keeps the full six-project UI contract parseable by the receiving route", () => {
+  const longProjects = Array.from({ length: 6 }, (_, index) => ({
+    repo: `${String.fromCharCode(97 + index)}${"x".repeat(99)}`,
+    lifecycle: "maintenance",
+    workflow: "ci,release.yml",
+  }));
+  const url = new URL(`https://example.test${buildStudioRouteUrl("projects", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects: longProjects,
+  })}`);
+  const repositories = parseRepositoryNames(url.searchParams.get("repos"));
+  assert.equal(parseLifecycleMap(url.searchParams.get("states"), repositories).size, 6);
+  assert.equal(parseWorkflowMap(url.searchParams.get("workflows"), repositories).size, 6);
 });
 
 test("omits workflows when every configured workflow is blank", () => {
