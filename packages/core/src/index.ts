@@ -255,6 +255,152 @@ export function calculateActivitySeries(input: unknown, options: ActivityOptions
 
 export const buildActivitySeries = calculateActivitySeries;
 
+export const ContributionBreakdownSchema = z.object({
+  commits: z.number().int().min(0).max(MAX_SAFE_INTEGER),
+  issues: z.number().int().min(0).max(MAX_SAFE_INTEGER),
+  pullRequests: z.number().int().min(0).max(MAX_SAFE_INTEGER),
+  reviews: z.number().int().min(0).max(MAX_SAFE_INTEGER),
+}).strict();
+export type ContributionBreakdown = z.infer<typeof ContributionBreakdownSchema>;
+
+export const ContributionMetricsOptionsSchema = ContributionBreakdownSchema.extend({
+  asOf: UtcDateSchema,
+  days: z.number().int().min(1).max(366),
+  trendWeeks: z.number().int().min(1).max(16).default(12),
+}).strict();
+export type ContributionMetricsOptions = z.input<typeof ContributionMetricsOptionsSchema>;
+
+export interface ContributionTrendBucket {
+  from: string;
+  to: string;
+  total: number;
+}
+
+export interface ContributionMetrics {
+  version: typeof CORE_VERSION;
+  window: {
+    from: string;
+    to: string;
+    days: number;
+    observedDays: number;
+    complete: boolean;
+  };
+  total: number;
+  activeDays: number;
+  density: number;
+  averagePerDay: number;
+  averagePerActiveDay: number;
+  peakDay: { date: string; count: number };
+  streak: StreakSummary & { basis: "returned-window" };
+  breakdown: ContributionBreakdown;
+  trend: {
+    buckets: ContributionTrendBucket[];
+    recent28Days: number;
+    previous28Days: number | null;
+    changePercent: number | null;
+    direction: "up" | "down" | "flat" | "new" | "unavailable";
+  };
+  rhythm: {
+    score: number;
+    level: "starting" | "building" | "steady" | "strong" | "relentless";
+    basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)";
+  };
+}
+
+/**
+ * Derive an explainable, window-bounded contribution summary.
+ *
+ * `rhythm` is a CommitAtlas consistency score, not a GitHub rank or a
+ * percentile. Consumers must retain that distinction when presenting it.
+ */
+export function calculateContributionMetrics(
+  input: unknown,
+  options: ContributionMetricsOptions,
+): ContributionMetrics {
+  const calendar = parseDays(input);
+  const parsed = ContributionMetricsOptionsSchema.parse(options);
+  const from = addUtcDays(parsed.asOf, -(parsed.days - 1));
+  const bounded = calendar.filter((day) => day.date >= from && day.date <= parsed.asOf);
+  const values = new Map(bounded.map((day) => [day.date, day.count]));
+  const observedDays = Array.from({ length: parsed.days }, (_, offset) => addUtcDays(from, offset))
+    .filter((date) => values.has(date)).length;
+  const complete = observedDays === parsed.days;
+  const total = bounded.reduce((sum, day) => sum + day.count, 0);
+  const activeDays = bounded.filter((day) => day.count > 0).length;
+  const peakDay = bounded.reduce(
+    (peak, day) => day.count > peak.count || (day.count === peak.count && day.date < peak.date) ? day : peak,
+    { date: from, count: 0 },
+  );
+  const streak = calculateStreaks(
+    bounded.length > 0 ? bounded : [{ date: parsed.asOf, count: 0, level: 0 }],
+    { asOf: parsed.asOf },
+  );
+
+  const trendDays = Math.min(parsed.days, parsed.trendWeeks * 7);
+  const trendFrom = addUtcDays(parsed.asOf, -(trendDays - 1));
+  const buckets: ContributionTrendBucket[] = [];
+  for (let offset = 0; offset < trendDays; offset += 7) {
+    const bucketFrom = addUtcDays(trendFrom, offset);
+    const bucketTo = addUtcDays(trendFrom, Math.min(trendDays - 1, offset + 6));
+    let bucketTotal = 0;
+    for (let dayOffset = 0; dayOffset <= dateDistance(bucketFrom, bucketTo); dayOffset += 1) {
+      bucketTotal += values.get(addUtcDays(bucketFrom, dayOffset)) ?? 0;
+    }
+    buckets.push({ from: bucketFrom, to: bucketTo, total: bucketTotal });
+  }
+
+  const sumRange = (rangeFrom: string, rangeTo: string): number => bounded
+    .filter((day) => day.date >= rangeFrom && day.date <= rangeTo)
+    .reduce((sum, day) => sum + day.count, 0);
+  const recent28From = addUtcDays(parsed.asOf, -27);
+  const recent28Days = sumRange(recent28From < from ? from : recent28From, parsed.asOf);
+  const previous28Days = parsed.days >= 56
+    ? sumRange(addUtcDays(parsed.asOf, -55), addUtcDays(parsed.asOf, -28))
+    : null;
+  const direction = previous28Days === null
+    ? "unavailable"
+    : previous28Days === 0
+      ? recent28Days === 0 ? "flat" : "new"
+      : recent28Days > previous28Days ? "up" : recent28Days < previous28Days ? "down" : "flat";
+  const changePercent = previous28Days === null || previous28Days === 0
+    ? null
+    : Number((((recent28Days - previous28Days) / previous28Days) * 100).toFixed(1));
+
+  const density = Number(((activeDays / parsed.days) * 100).toFixed(1));
+  const rhythmScore = Math.min(100, Math.round(
+    Math.min(1, density / 80) * 70 + Math.min(1, streak.current / 30) * 30,
+  ));
+  const rhythmLevel = rhythmScore >= 80 ? "relentless"
+    : rhythmScore >= 60 ? "strong"
+      : rhythmScore >= 40 ? "steady"
+        : rhythmScore >= 20 ? "building"
+          : "starting";
+
+  return {
+    version: CORE_VERSION,
+    window: { from, to: parsed.asOf, days: parsed.days, observedDays, complete },
+    total,
+    activeDays,
+    density,
+    averagePerDay: Number((total / parsed.days).toFixed(2)),
+    averagePerActiveDay: activeDays === 0 ? 0 : Number((total / activeDays).toFixed(2)),
+    peakDay: { date: peakDay.date, count: peakDay.count },
+    streak: { ...streak, basis: "returned-window" },
+    breakdown: {
+      commits: parsed.commits,
+      issues: parsed.issues,
+      pullRequests: parsed.pullRequests,
+      reviews: parsed.reviews,
+    },
+    trend: { buckets, recent28Days, previous28Days, changePercent, direction },
+    rhythm: {
+      score: rhythmScore,
+      level: rhythmLevel,
+      basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)",
+    },
+  };
+}
+
 const LanguageBytesSchema = z.record(z.string().trim().min(1).max(80), z.number().finite().int().min(0).max(MAX_SAFE_INTEGER)).superRefine((value, context) => {
   if (Object.keys(value).length > 50) context.addIssue({ code: "custom", message: "A repository may contain at most 50 languages" });
 });

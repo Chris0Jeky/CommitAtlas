@@ -3,6 +3,7 @@ import {
   aggregateLanguages,
   calculateActivitySeries,
   calculateCiState,
+  calculateContributionMetrics,
   calculateProjectState,
   calculateStreaks,
   parseContributionCalendar,
@@ -96,6 +97,72 @@ describe("core contracts", () => {
     expect(series.points.map((point) => point.date)).toEqual(["2024-02-28", "2024-02-29", "2024-03-01", "2024-03-02", "2024-03-03"]);
     expect(series.points[3]?.count).toBe(0);
     expect(() => calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 367 })).toThrow();
+  });
+
+  it("derives a transparent contribution summary without claiming a global rank", () => {
+    const days = Array.from({ length: 84 }, (_, index) => ({
+      date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
+      count: index % 4 === 0 ? 0 : index % 7 + 1,
+      level: index % 4 === 0 ? 0 : 2,
+    }));
+    const metrics = calculateContributionMetrics(days, {
+      asOf: "2024-03-24",
+      days: 84,
+      commits: 120,
+      issues: 8,
+      pullRequests: 14,
+      reviews: 22,
+      trendWeeks: 12,
+    });
+
+    expect(metrics.window).toEqual({
+      from: "2024-01-01",
+      to: "2024-03-24",
+      days: 84,
+      observedDays: 84,
+      complete: true,
+    });
+    expect(metrics.activeDays).toBe(63);
+    expect(metrics.density).toBe(75);
+    expect(metrics.breakdown).toEqual({ commits: 120, issues: 8, pullRequests: 14, reviews: 22 });
+    expect(metrics.trend.buckets).toHaveLength(12);
+    expect(metrics.rhythm.score).toBeGreaterThanOrEqual(0);
+    expect(metrics.rhythm.score).toBeLessThanOrEqual(100);
+    expect(metrics.rhythm.basis).toContain("active-day density");
+    expect(metrics).not.toHaveProperty("globalRank");
+    expect(metrics).not.toHaveProperty("percentile");
+  });
+
+  it("reports incomplete contribution coverage instead of silently treating missing days as observed zeroes", () => {
+    const metrics = calculateContributionMetrics(calendar, {
+      asOf: "2024-03-03",
+      days: 5,
+      commits: 3,
+      issues: 0,
+      pullRequests: 0,
+      reviews: 0,
+    });
+
+    expect(metrics.window).toMatchObject({ observedDays: 4, complete: false });
+    expect(metrics.total).toBe(4);
+  });
+
+  it("bounds the longest streak to the requested metrics window", () => {
+    const days = Array.from({ length: 10 }, (_, index) => ({
+      date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
+      count: index < 6 || index >= 8 ? 1 : 0,
+      level: index < 6 || index >= 8 ? 1 : 0,
+    }));
+    const metrics = calculateContributionMetrics(days, {
+      asOf: "2024-01-10",
+      days: 4,
+      commits: 2,
+      issues: 0,
+      pullRequests: 0,
+      reviews: 0,
+    });
+
+    expect(metrics.streak).toMatchObject({ current: 2, longest: 2, basis: "returned-window" });
   });
 
   it("labels language totals as repository bytes, not proficiency", () => {
