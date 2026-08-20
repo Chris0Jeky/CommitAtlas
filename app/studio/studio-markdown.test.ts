@@ -14,6 +14,7 @@ test("live Markdown omits unavailable contribution cards exactly", () => {
     projects,
     selectedCards,
     hasCurrentContributions: false,
+    hasCurrentLanguages: true,
   });
 
   assert.deepEqual(markdown.split("\n").map((line) => line.match(/CommitAtlas (\w+)/)?.[1]), [
@@ -33,6 +34,7 @@ test("synthetic Markdown restores all five retained selections", () => {
     projects,
     selectedCards,
     hasCurrentContributions: false,
+    hasCurrentLanguages: false,
   });
 
   assert.equal(markdown.split("\n").length, 5);
@@ -49,8 +51,30 @@ test("project Markdown remains absent without a declared repository", () => {
     projects: [],
     selectedCards,
     hasCurrentContributions: true,
+    hasCurrentLanguages: true,
   });
 
   assert.equal(markdown.split("\n").length, 4);
   assert.doesNotMatch(markdown, /projects\.svg/);
+});
+
+test("live Markdown omits a Languages URL backed by truncated repositories", () => {
+  const markdown = buildStudioMarkdown({
+    baseUrl: "https://atlas.example",
+    owner: "octocat",
+    theme: "ember",
+    demo: false,
+    projects,
+    selectedCards,
+    hasCurrentContributions: true,
+    hasCurrentLanguages: false,
+  });
+
+  assert.deepEqual(markdown.split("\n").map((line) => line.match(/CommitAtlas (\w+)/)?.[1]), [
+    "Profile",
+    "Streak",
+    "Activity",
+    "Projects",
+  ]);
+  assert.doesNotMatch(markdown, /languages\.svg/);
 });

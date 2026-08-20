@@ -29,6 +29,7 @@ export interface StudioMarkdownOptions {
   projects: StudioProjectInput[];
   selectedCards: ReadonlySet<StudioCardKind>;
   hasCurrentContributions: boolean;
+  hasCurrentLanguages: boolean;
 }
 
 export function buildStudioMarkdown(options: StudioMarkdownOptions): string {

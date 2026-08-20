@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { hasCurrentLiveContributions, isStudioCardAvailable } from "./studio-card-availability";
+import {
+  hasCurrentLiveContributions,
+  hasCurrentLiveLanguages,
+  isStudioCardAvailable,
+} from "./studio-card-availability";
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
 import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
 import {
@@ -145,6 +149,12 @@ export default function StudioClient() {
     validatedConfigurationKey: validatedPreview?.key ?? null,
     contributionsPresent: contributions !== null,
   });
+  const hasCurrentLanguages = hasCurrentLiveLanguages({
+    demo,
+    currentConfigurationKey: configurationKey,
+    validatedConfigurationKey: validatedPreview?.key ?? null,
+    repositoriesTruncated: profile.repositoriesTruncated,
+  });
   const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
@@ -155,8 +165,9 @@ export default function StudioClient() {
       demo,
       selectedCards,
       hasCurrentContributions,
+      hasCurrentLanguages,
     });
-  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, selectedCards, theme]);
+  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, hasCurrentLanguages, selectedCards, theme]);
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -279,7 +290,7 @@ export default function StudioClient() {
           <fieldset className="card-picker">
             <legend>Cards to copy</legend>
             {STUDIO_CARD_KINDS.map((kind) => {
-              const available = isStudioCardAvailable(kind, { demo, hasCurrentContributions });
+              const available = isStudioCardAvailable(kind, { demo, hasCurrentContributions, hasCurrentLanguages });
               return (
                 <label key={kind}>
                   <input type="checkbox" checked={selectedCards.has(kind)} disabled={!available} onChange={() => toggleCard(kind)} />
@@ -289,6 +300,9 @@ export default function StudioClient() {
             })}
             {!demo && !hasCurrentContributions && (
               <p className="card-availability-note">Streak and Activity stay selected but are omitted until this live preview has contribution history.</p>
+            )}
+            {!demo && !hasCurrentLanguages && (
+              <p className="card-availability-note">Languages stays selected but is omitted until this live preview has a complete public repository list.</p>
             )}
           </fieldset>
 
