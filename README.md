@@ -65,8 +65,9 @@ npm run check
 
 No GitHub token is required for the synthetic preview. Live contribution data requires the optional
 `GITHUB_TOKEN` Worker secret (or an Action secret); set it with `npx wrangler secret put GITHUB_TOKEN`.
-It is read only by server-side GitHub requests — never put a token in a URL, client-side setting, or
-committed file.
+For the shared public route, classic tokens must expose only the empty or `public_repo` scope set;
+the service refuses missing or broader scope proofs. A token is read only by server-side GitHub requests
+— never put one in a URL, client-side setting, or committed file.
 
 ## Design and evidence
 

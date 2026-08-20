@@ -31,9 +31,10 @@ project action is keyboard-accessible.
   validation but are never fetched by the service.
 - GitHub tokens are server/action secrets only. The optional `GITHUB_TOKEN` Worker binding is set
   with `wrangler secret put GITHUB_TOKEN`; it is never accepted in URLs or browser state.
-- The shared hosted API rejects private repository responses, removes restricted contribution
-  counts, and rejects any emitted URL with credentials. Private portfolio output belongs to static
-  generation owned by the repository author.
+- The shared hosted API rejects private repository responses. Before its viewer-scoped contribution
+  query, it requires an authenticated GitHub REST scope proof containing only empty or `public_repo`
+  classic scopes and rejects any restricted contribution collection. It also rejects any emitted URL
+  with credentials. Private portfolio output belongs to static generation owned by the repository author.
 - Renderers accept normalized data, escape every text node, and emit no scripts, remote images,
   `foreignObject`, event attributes, or arbitrary CSS.
 - Cache age and source availability are visible product data. Partial responses remain partial.

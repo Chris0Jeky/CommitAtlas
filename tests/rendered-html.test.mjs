@@ -13,13 +13,13 @@ async function render() {
   );
 }
 
-async function request(path) {
+async function request(path, extraEnv = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
     new Request(`http://localhost${path}`),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, ...extraEnv },
     { waitUntil() {}, passThroughOnException() {} },
   );
 }
@@ -77,3 +77,70 @@ test("returns stable conditional ETags for public demo data", async () => {
   assert.equal(conditional.status, 304);
   assert.equal(await conditional.text(), "");
 });
+
+test("fails closed for unsafe or unproven contribution credentials in the built Worker", async () => {
+  for (const [scopes, expectedStatus] of [["public_repo", 200], [null, 403], ["repo", 403]]) {
+    const calls = [];
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      calls.push(url.pathname);
+      if (url.pathname === "/rate_limit") {
+        return new Response("{}", { headers: scopes === null ? {} : { "x-oauth-scopes": scopes } });
+      }
+      assert.equal(init?.method, "POST");
+      return githubJson(publicContributionPayload());
+    }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "server-secret" }));
+    assert.equal(response.status, expectedStatus);
+    assert.equal(response.headers.get("cache-control"), expectedStatus === 200 ? "private, no-store" : "no-store");
+    if (expectedStatus === 200) {
+      assert.deepEqual(calls, ["/rate_limit", "/graphql"]);
+    } else {
+      assert.deepEqual(calls, ["/rate_limit"]);
+      assert.equal((await response.json()).error.code, "private_data");
+    }
+  }
+});
+
+test("rejects restricted contribution collections in the built Worker", async () => {
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    return githubJson(publicContributionPayload({ hasAnyRestrictedContributions: true }));
+  }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "server-secret" }));
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "private_data");
+});
+
+async function withMockedFetch(fetchImpl, operation) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    return await operation();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+function publicContributionPayload(restrictions = {}) {
+  return {
+    data: {
+      user: {
+        contributionsCollection: {
+          totalCommitContributions: 2,
+          totalIssueContributions: 1,
+          totalPullRequestContributions: 1,
+          totalPullRequestReviewContributions: 1,
+          hasAnyRestrictedContributions: false,
+          restrictedContributionsCount: 0,
+          ...restrictions,
+          contributionCalendar: { weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }] },
+        },
+      },
+    },
+  };
+}
+
+function githubJson(payload) {
+  return new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } });
+}

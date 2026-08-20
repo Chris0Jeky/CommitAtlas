@@ -41,9 +41,14 @@ test("requires a server-side token for contribution calendars", async () => {
   );
 });
 
-test("exposes only the validated public contribution calendar schema", async () => {
+test("exposes only a scope-proven public contribution calendar", async () => {
   let graphQlBody = "";
-  const fetchImpl: typeof fetch = async (_input, init) => {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer server-secret");
+      return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    }
     graphQlBody = String(init?.body);
     return json({
       data: {
@@ -53,9 +58,9 @@ test("exposes only the validated public contribution calendar schema", async () 
             totalIssueContributions: 1,
             totalPullRequestContributions: 1,
             totalPullRequestReviewContributions: 1,
-            restrictedContributionsCount: 99,
+            hasAnyRestrictedContributions: false,
+            restrictedContributionsCount: 0,
             contributionCalendar: {
-              totalContributions: 101,
               weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }],
             },
           },
@@ -65,9 +70,59 @@ test("exposes only the validated public contribution calendar schema", async () 
   };
 
   const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 7);
-  assert.equal(graphQlBody.includes("restrictedContributionsCount"), false);
+  assert.match(graphQlBody, /hasAnyRestrictedContributions/);
+  assert.match(graphQlBody, /restrictedContributionsCount/);
   assert.equal(contributions.totalContributions, 2);
   assert.equal("restrictedContributions" in contributions, false);
+});
+
+test("rejects contribution tokens without explicit public-only classic scopes before GraphQL", async () => {
+  for (const scopes of [null, "repo", "read:user", "public_repo, repo"]) {
+    let graphQlRequests = 0;
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") {
+        return json({}, 200, scopes === null ? {} : { "x-oauth-scopes": scopes });
+      }
+      graphQlRequests += 1;
+      return json({});
+    };
+    await assert.rejects(
+      new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat"),
+      (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403,
+    );
+    assert.equal(graphQlRequests, 0);
+  }
+});
+
+test("rejects contribution collections that report restricted activity", async () => {
+  for (const restricted of [
+    { hasAnyRestrictedContributions: true, restrictedContributionsCount: 0 },
+    { hasAnyRestrictedContributions: false, restrictedContributionsCount: 1 },
+  ]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+      return json({
+        data: {
+          user: {
+            contributionsCollection: {
+              totalCommitContributions: 0,
+              totalIssueContributions: 0,
+              totalPullRequestContributions: 0,
+              totalPullRequestReviewContributions: 0,
+              ...restricted,
+              contributionCalendar: { weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 0 }] }] },
+            },
+          },
+        },
+      });
+    };
+    await assert.rejects(
+      new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat"),
+      (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403,
+    );
+  }
 });
 
 test("rejects private repository responses instead of projecting them", async () => {
@@ -282,10 +337,10 @@ test("bounds concurrent project lookups below the Worker connection limit", asyn
   assert.equal(peakRepositoryLookups, 2);
 });
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
   });
 }
 

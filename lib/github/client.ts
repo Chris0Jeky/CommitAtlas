@@ -120,6 +120,7 @@ export class GitHubClient {
         503,
       );
     }
+    await this.assertPublicContributionCredentials();
     const to = this.now();
     const from = new Date(to);
     from.setUTCDate(from.getUTCDate() - Math.min(Math.max(days, 1), 365));
@@ -139,6 +140,7 @@ export class GitHubClient {
     if (!collection || !calendar) {
       throw new GitHubApiError("invalid_response", "GitHub returned no contribution calendar");
     }
+    assertPublicContributionCollection(collection);
 
     if (!Array.isArray(calendar.weeks) || calendar.weeks.some((week) => !isRecord(week))) {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
@@ -298,6 +300,22 @@ export class GitHubClient {
     return payload;
   }
 
+  /**
+   * The public endpoint may use a classic token only when GitHub proves that
+   * it cannot read private repository data. This authenticated REST check is
+   * intentionally made before the viewer-scoped GraphQL contribution query.
+   */
+  private async assertPublicContributionCredentials(): Promise<void> {
+    const response = await this.fetchWithDeadline(new URL("/rate_limit", API_ORIGIN), {
+      headers: this.headers(),
+    });
+    const scopes = response.headers.get("x-oauth-scopes");
+    await response.body?.cancel();
+    if (!response.ok || !hasOnlyPublicClassicScopes(scopes)) {
+      throw privateDataError("Contribution data requires a GitHub token limited to public repository access");
+    }
+  }
+
   private async getJson(path: string, allowMissing = false): Promise<unknown> {
     const url = new URL(path, API_ORIGIN);
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith("/")) {
@@ -435,6 +453,24 @@ function privateDataError(message: string): GitHubApiError {
   return new GitHubApiError("private_data", message, 403);
 }
 
+function hasOnlyPublicClassicScopes(scopes: string | null): boolean {
+  if (scopes === null) return false;
+  const normalized = scopes.trim();
+  if (normalized === "") return true;
+  return normalized.split(",").every((scope) => scope.trim() === "public_repo");
+}
+
+function assertPublicContributionCollection(collection: Record<string, unknown>): void {
+  const hasRestrictedContributions = collection.hasAnyRestrictedContributions;
+  if (typeof hasRestrictedContributions !== "boolean") {
+    throw new GitHubApiError("invalid_response", "GitHub returned an invalid restricted-contribution flag");
+  }
+  const restrictedContributions = requiredMetric(collection, "restrictedContributionsCount");
+  if (hasRestrictedContributions || restrictedContributions > 0) {
+    throw privateDataError("GitHub returned restricted contribution data");
+  }
+}
+
 function retryAfterValue(headers: Headers, now: Date): string | null {
   const retryAfter = headers.get("retry-after");
   if (retryAfter !== null) return retryAfter;
@@ -511,6 +547,8 @@ const CONTRIBUTIONS_QUERY = `
         totalIssueContributions
         totalPullRequestContributions
         totalPullRequestReviewContributions
+        hasAnyRestrictedContributions
+        restrictedContributionsCount
         contributionCalendar {
           weeks {
             contributionDays { date contributionCount }
