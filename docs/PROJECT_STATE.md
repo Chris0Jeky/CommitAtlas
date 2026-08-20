@@ -56,7 +56,7 @@ profile/project ETags.
 - Branch: `fix/svg-release-hardening`
 - Pull request: [#29](https://github.com/Chris0Jeky/CommitAtlas/pull/29)
 - Saved head: `50db00664ddd7f8739228b4e508f72c519261ebc`
-- Hosted Quality gate after the final push: in progress when this checkpoint was written.
+- Hosted Quality gate after the final push: passed.
 
 This branch hardens renderer bounds and card-specific semantics, adds source-backed profile stars,
 tests package boundaries, and keeps a full contribution year below the SVG byte budget. Review
@@ -65,8 +65,8 @@ explicit labels and a 366-day regression. A full year now renders at 29,699 byte
 
 Local evidence at the saved head: root `npm run check` passed, SVG tests passed 14/14, the SVG
 package dry-run pack passed, and `git diff --check` passed. Before merging, require hosted CI green,
-a fresh focused review of the fix, and the three-minute post-push aging floor. The lower-severity
-minimum-height layout concern remains tracked in
+a fresh focused review of the fix, and a live recheck of the already elapsed three-minute post-push
+aging floor. The lower-severity minimum-height layout concern remains tracked in
 [#31](https://github.com/Chris0Jeky/CommitAtlas/issues/31).
 
 ### Studio/dashboard — committed and saved for later integration
@@ -143,7 +143,7 @@ Verified in this checkpoint:
 
 Not verified in this checkpoint:
 
-- PR #29's post-push hosted result or final fix review.
+- PR #29's final post-fix review or merge eligibility after that review.
 - Any hosted behavior, deployment, public contribution route with a real Worker token, static
   generator/Action, social image, release artifact, npm publication, or final cross-browser pass.
 - The final integrated tree, because API, SVG, card routes, and Studio have not all landed together.
