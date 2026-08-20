@@ -39,6 +39,8 @@ export interface ProfileSnapshot {
 export interface ContributionDay {
   date: string;
   count: number;
+  /** GitHub's normalized contribution intensity, from none (0) to highest (4). */
+  level?: number;
 }
 
 export interface ContributionSnapshot {

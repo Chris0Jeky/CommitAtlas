@@ -141,8 +141,8 @@ export class GitHubClient {
     }
     const requestedDays = Math.min(Math.max(days, 1), 365);
     const to = this.now();
-    const from = new Date(to);
-    from.setUTCDate(from.getUTCDate() - requestedDays);
+    const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+    from.setUTCDate(from.getUTCDate() - (requestedDays - 1));
 
     const payload = await this.graphql(CONTRIBUTIONS_QUERY, {
       login,
@@ -174,7 +174,11 @@ export class GitHubClient {
       for (const day of weekDays) {
         const date = textField(day, "date", GITHUB_TEXT_LIMITS.contributionDate);
         if (!date) throw new GitHubApiError("invalid_response", "GitHub returned a contribution day without a date");
-        contributionDays.push({ date, count: requiredMetric(day, "contributionCount") });
+        contributionDays.push({
+          date,
+          count: requiredMetric(day, "contributionCount"),
+          level: contributionLevel(day.contributionLevel),
+        });
       }
     }
 
@@ -184,6 +188,12 @@ export class GitHubClient {
     } catch {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
     }
+    const requestedFrom = from.toISOString().slice(0, 10);
+    const requestedTo = to.toISOString().slice(0, 10);
+    if (calendarDays.some(({ date }) => date > requestedTo)) {
+      throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
+    }
+    calendarDays = calendarDays.filter(({ date }) => date >= requestedFrom && date <= requestedTo);
     assertRequestedContributionWindow(calendarDays, to, requestedDays);
     return {
       version: 1,
@@ -193,7 +203,7 @@ export class GitHubClient {
       issues: requiredMetric(collection, "totalIssueContributions"),
       pullRequests: requiredMetric(collection, "totalPullRequestContributions"),
       reviews: requiredMetric(collection, "totalPullRequestReviewContributions"),
-      days: calendarDays.map(({ date, count }) => ({ date, count })),
+      days: calendarDays.map(({ date, count, level }) => ({ date, count, level })),
       freshness: {
         generatedAt: to.toISOString(),
         source: "github-graphql",
@@ -549,6 +559,17 @@ function requiredMetric(record: Record<string, unknown>, key: string): number {
   return value;
 }
 
+function contributionLevel(value: unknown): number {
+  const levels: Readonly<Record<string, number>> = {
+    NONE: 0,
+    FIRST_QUARTILE: 1,
+    SECOND_QUARTILE: 2,
+    THIRD_QUARTILE: 3,
+    FOURTH_QUARTILE: 4,
+  };
+  return typeof value === "string" ? levels[value] ?? 0 : 0;
+}
+
 function assertRequestedContributionWindow(
   calendarDays: readonly ContributionDay[],
   to: Date,
@@ -632,7 +653,7 @@ const CONTRIBUTIONS_QUERY = `
         restrictedContributionsCount
         contributionCalendar {
           weeks {
-            contributionDays { date contributionCount }
+            contributionDays { date contributionCount contributionLevel }
           }
         }
       }

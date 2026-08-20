@@ -37,6 +37,7 @@ export function demoContributions(login: string, requestedDays = 365, now = new 
     return {
       date: date.toISOString().slice(0, 10),
       count: (offset * 7 + Math.floor(offset / 9)) % 8,
+      level: Math.min(4, Math.ceil(((offset * 7 + Math.floor(offset / 9)) % 8) / 2)),
     };
   });
   return {

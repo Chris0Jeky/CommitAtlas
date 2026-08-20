@@ -64,8 +64,8 @@ test("exposes only a scope-proven public contribution calendar", async () => {
             restrictedContributionsCount: 0,
             contributionCalendar: {
               weeks: [{ contributionDays: [
-                { date: "2026-08-18", contributionCount: 0 },
-                { date: "2026-08-19", contributionCount: 2 },
+                { date: "2026-08-18", contributionCount: 0, contributionLevel: "NONE" },
+                { date: "2026-08-19", contributionCount: 2, contributionLevel: "SECOND_QUARTILE" },
               ] }],
             },
           },
@@ -77,9 +77,10 @@ test("exposes only a scope-proven public contribution calendar", async () => {
   const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1);
   assert.match(graphQlBody, /hasAnyRestrictedContributions/);
   assert.match(graphQlBody, /restrictedContributionsCount/);
+  assert.match(graphQlBody, /contributionLevel/);
   assert.equal(JSON.parse(graphQlBody).variables.to, NOW.toISOString());
   assert.equal(contributions.totalContributions, 2);
-  assert.deepEqual(contributions.days.map(({ date }) => date), ["2026-08-18", "2026-08-19"]);
+  assert.deepEqual(contributions.days, [{ date: "2026-08-19", count: 2, level: 2 }]);
   assert.equal(contributions.freshness.generatedAt, NOW.toISOString());
   assert.equal("restrictedContributions" in contributions, false);
 });
