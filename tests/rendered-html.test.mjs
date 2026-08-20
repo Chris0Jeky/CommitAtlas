@@ -101,6 +101,31 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
   }
 });
 
+test("makes token-backed profile and project guesses indistinguishable before GitHub resource lookup", async () => {
+  for (const scopes of ["repo", null]) {
+    const calls = [];
+    const responseFor = (path) => withMockedFetch(async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      calls.push(url.pathname);
+      if (url.pathname === "/rate_limit") {
+        return new Response("{}", { headers: scopes === null ? {} : { "x-oauth-scopes": scopes } });
+      }
+      assert.fail(`unsafe credential reached GitHub resource ${url.pathname}`);
+    }, () => request(path, { GITHUB_TOKEN: "server-secret" }));
+
+    const privateGuess = await responseFor("/api/v1/projects?owner=acme&repos=private-guess&states=private-guess:active");
+    const missingGuess = await responseFor("/api/v1/projects?owner=acme&repos=missing-guess&states=missing-guess:active");
+    const profileGuess = await responseFor("/api/v1/profile?user=guessed-private");
+
+    for (const response of [privateGuess, missingGuess, profileGuess]) {
+      assert.equal(response.status, 403);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.equal((await response.json()).error.code, "private_data");
+    }
+    assert.deepEqual(calls, ["/rate_limit", "/rate_limit", "/rate_limit"]);
+  }
+});
+
 test("rejects restricted contribution collections in the built Worker", async () => {
   const response = await withMockedFetch(async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());

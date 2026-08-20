@@ -33,6 +33,7 @@ test("normalizes a public profile without inventing contribution data", async ()
   assert.deepEqual(profile.primaryLanguages.map((language) => language.name), ["Python", "TypeScript"]);
   assert.equal(profile.freshness.mode, "live");
   assert.ok(calls.every((url) => url.origin === "https://api.github.com"));
+  assert.deepEqual(calls.map((url) => url.pathname).sort(), ["/users/octocat", "/users/octocat/repos"]);
 });
 
 test("requires a server-side token for contribution calendars", async () => {
@@ -94,6 +95,48 @@ test("rejects contribution tokens without explicit public-only classic scopes be
     );
     assert.equal(graphQlRequests, 0);
   }
+});
+
+test("rejects repo-scoped or missing-scope tokens before every public resource lookup", async () => {
+  for (const scopes of ["repo", null]) {
+    const calls: string[] = [];
+    const client = new GitHubClient({
+      token: "server-secret",
+      fetchImpl: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input.toString());
+        calls.push(url.pathname);
+        if (url.pathname === "/rate_limit") return json({}, 200, scopes === null ? {} : { "x-oauth-scopes": scopes });
+        assert.fail(`unsafe credential reached GitHub resource ${url.pathname}`);
+      },
+      now: () => NOW,
+    });
+
+    for (const lookup of [
+      () => client.fetchProfile("guessed-private"),
+      () => client.fetchProjects("acme", ["guessed-private"], new Map([["guessed-private", "active"]])),
+      () => client.fetchContributions("guessed-private"),
+    ]) {
+      await assert.rejects(lookup(), (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403);
+    }
+    assert.deepEqual(calls, ["/rate_limit"]);
+  }
+});
+
+test("caches a public-scope proof while permitting token-backed REST resources", async () => {
+  const calls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url.pathname);
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 0, followers: 0, following: 0 });
+    }
+    if (url.pathname.endsWith("/repos")) return json([]);
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  };
+
+  await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.deepEqual(calls.sort(), ["/rate_limit", "/users/octocat", "/users/octocat/repos"]);
 });
 
 test("rejects contribution collections that report restricted activity", async () => {

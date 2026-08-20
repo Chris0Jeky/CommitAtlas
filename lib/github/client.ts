@@ -71,6 +71,7 @@ export class GitHubClient {
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => Date;
   private readonly deadlineAt: number;
+  private publicCredentialProof: Promise<void> | undefined;
 
   constructor(options: GitHubClientOptions = {}) {
     this.token = options.token?.trim() || undefined;
@@ -138,7 +139,6 @@ export class GitHubClient {
         503,
       );
     }
-    await this.assertPublicContributionCredentials();
     const to = this.now();
     const from = new Date(to);
     from.setUTCDate(from.getUTCDate() - Math.min(Math.max(days, 1), 365));
@@ -325,6 +325,7 @@ export class GitHubClient {
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<Record<string, unknown>> {
+    await this.assertPublicCredentials();
     const response = await this.fetchWithDeadline(GRAPHQL_URL, {
       method: "POST",
       headers: this.headers(),
@@ -338,18 +339,25 @@ export class GitHubClient {
   }
 
   /**
-   * The public endpoint may use a classic token only when GitHub proves that
-   * it cannot read private repository data. This authenticated REST check is
-   * intentionally made before the viewer-scoped GraphQL contribution query.
+   * Public routes may use a token only when GitHub explicitly proves its
+   * classic OAuth scope evidence is public-only. This raw preflight must stay
+   * outside getJson/graphql so it cannot recursively preflight itself.
    */
-  private async assertPublicContributionCredentials(): Promise<void> {
+  private async assertPublicCredentials(): Promise<void> {
+    if (!this.token) return;
+    this.publicCredentialProof ??= this.provePublicCredentials();
+    await this.publicCredentialProof;
+  }
+
+  private async provePublicCredentials(): Promise<void> {
     const response = await this.fetchWithDeadline(new URL("/rate_limit", API_ORIGIN), {
       headers: this.headers(),
     });
+    const hasScopeEvidence = response.headers.has("x-oauth-scopes");
     const scopes = response.headers.get("x-oauth-scopes");
     await response.body?.cancel();
-    if (!response.ok || !hasOnlyPublicClassicScopes(scopes)) {
-      throw privateDataError("Contribution data requires a GitHub token limited to public repository access");
+    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(scopes)) {
+      throw privateDataError("Public GitHub routes require a token with explicit public-only classic OAuth scopes");
     }
   }
 
@@ -358,6 +366,7 @@ export class GitHubClient {
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith("/")) {
       throw new GitHubApiError("invalid_response", "Refused a non-GitHub API target");
     }
+    await this.assertPublicCredentials();
     const response = await this.fetchWithDeadline(url, {
       headers: this.headers(),
     });
