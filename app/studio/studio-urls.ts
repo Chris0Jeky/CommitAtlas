@@ -1,6 +1,6 @@
 import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
 
-export type StudioCardKind = "profile" | "streak" | "activity" | "languages" | "projects";
+export type StudioCardKind = "atlas" | "profile" | "streak" | "activity" | "languages" | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
 export interface StudioProjectInput {
@@ -14,6 +14,8 @@ export interface StudioRouteOptions {
   theme: string;
   demo: boolean;
   days?: number;
+  motion?: "none" | "subtle";
+  layout?: "wide" | "compact";
   projects?: StudioProjectInput[];
 }
 
@@ -23,6 +25,8 @@ export function buildStudioConfigurationKey(options: StudioRouteOptions): string
     theme: options.theme,
     demo: options.demo,
     days: options.days ?? null,
+    motion: options.motion ?? "subtle",
+    layout: options.layout ?? "wide",
     projects: (options.projects ?? [])
       .filter((project) => project.repo.trim())
       .map((project) => ({
@@ -51,6 +55,7 @@ export function isStudioPreviewCurrent<T extends { key: string }>(
 }
 
 const cardPaths: Record<Exclude<StudioCardKind, "projects">, string> = {
+  atlas: "/api/v1/cards/atlas.svg",
   profile: "/api/v1/cards/profile.svg",
   streak: "/api/v1/cards/streak.svg",
   activity: "/api/v1/cards/activity.svg",
@@ -65,10 +70,12 @@ export function buildStudioRouteUrl(
   const query = new URLSearchParams();
   const projects = options.projects ?? [];
 
-  if (kind === "projects") {
-    query.set("owner", options.owner);
-    query.set("repos", projects.map((project) => project.repo.trim()).join(","));
-    query.set("states", projects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","));
+  if (kind === "projects" || kind === "atlas") {
+    query.set(kind === "projects" ? "owner" : "user", options.owner);
+    if (kind === "projects" || projects.length > 0) {
+      query.set("repos", projects.map((project) => project.repo.trim()).join(","));
+      query.set("states", projects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","));
+    }
     const workflows = projects
       .map((project) => {
         const repo = project.repo.trim();
@@ -77,6 +84,11 @@ export function buildStudioRouteUrl(
       })
       .filter((workflow): workflow is string => Boolean(workflow));
     if (workflows.length > 0) query.set("workflows", workflows.join(","));
+    if (kind === "atlas") {
+      if (options.days !== undefined) query.set("days", String(options.days));
+      query.set("motion", options.motion ?? "subtle");
+      query.set("layout", options.layout ?? "wide");
+    }
   } else {
     query.set("user", options.owner);
     if (kind === "activity" && options.days !== undefined) query.set("days", String(options.days));

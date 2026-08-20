@@ -25,7 +25,7 @@ test("live Markdown omits unavailable contribution cards exactly", () => {
   assert.doesNotMatch(markdown, /streak\.svg|activity\.svg/);
 });
 
-test("synthetic Markdown restores all five retained selections", () => {
+test("synthetic Markdown restores all six retained selections", () => {
   const markdown = buildStudioMarkdown({
     baseUrl: "https://atlas.example",
     owner: "octocat",
@@ -37,7 +37,8 @@ test("synthetic Markdown restores all five retained selections", () => {
     hasCurrentLanguages: false,
   });
 
-  assert.equal(markdown.split("\n").length, 5);
+  assert.equal(markdown.split("\n").length, 6);
+  assert.match(markdown, /atlas\.svg/);
   assert.match(markdown, /streak\.svg/);
   assert.match(markdown, /activity\.svg/);
 });
@@ -54,7 +55,7 @@ test("project Markdown remains absent without a declared repository", () => {
     hasCurrentLanguages: true,
   });
 
-  assert.equal(markdown.split("\n").length, 4);
+  assert.equal(markdown.split("\n").length, 5);
   assert.doesNotMatch(markdown, /projects\.svg/);
 });
 
@@ -71,6 +72,7 @@ test("live Markdown omits a Languages URL backed by truncated repositories", () 
   });
 
   assert.deepEqual(markdown.split("\n").map((line) => line.match(/CommitAtlas (\w+)/)?.[1]), [
+    "Atlas",
     "Profile",
     "Streak",
     "Activity",

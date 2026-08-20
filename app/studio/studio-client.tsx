@@ -10,13 +10,9 @@ import {
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
 import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
 import {
-  activityBarPercent,
-  contributionMetricLabel,
-  contributionWindowLabel,
   findProjectDraft,
   safeProjectActionUrl,
   starterCiPresentation,
-  visibleProfileStars,
 } from "./studio-presentation";
 import {
   buildStudioConfigurationKey,
@@ -59,9 +55,11 @@ interface ProfileSnapshot {
 
 interface ContributionSnapshot {
   totalContributions: number;
+  commits: number;
+  issues: number;
   pullRequests: number;
   reviews: number;
-  days: Array<{ date: string; count: number }>;
+  days: Array<{ date: string; count: number; level?: number }>;
   freshness: Freshness;
 }
 
@@ -109,6 +107,8 @@ const starterContributionDays = Array.from(
 
 const starterContributions: ContributionSnapshot = {
   totalContributions: starterContributionDays.reduce((total, day) => total + day.count, 0),
+  commits: 284,
+  issues: 23,
   pullRequests: 61,
   reviews: 74,
   days: starterContributionDays,
@@ -122,14 +122,25 @@ export default function StudioClient() {
   const [handle, setHandle] = useState("octocat");
   const [demo, setDemo] = useState(true);
   const [theme, setTheme] = useState("ember");
+  const [motion, setMotion] = useState<"none" | "subtle">("subtle");
+  const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
-  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(new Set(STUDIO_CARD_KINDS));
+  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(new Set(["atlas", "projects"]));
   const [profile, setProfile] = useState<ProfileSnapshot>(starterProfile);
   const [contributions, setContributions] = useState<ContributionSnapshot | null>(starterContributions);
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
   const [phase, setPhase] = useState<"ready" | "loading" | "error">("ready");
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
   const [validatedPreview, setValidatedPreview] = useState<{ key: string; origin: string } | null>(null);
+  const [atlasPreviewUrl, setAtlasPreviewUrl] = useState(() => buildStudioRouteUrl("atlas", {
+    owner: "octocat",
+    projects: starterProjects,
+    theme: "ember",
+    demo: true,
+    days: 365,
+    motion: "subtle",
+    layout: "wide",
+  }));
 
   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
   const configurationKey = useMemo(() => buildStudioConfigurationKey({
@@ -137,7 +148,10 @@ export default function StudioClient() {
     projects: activeProjects,
     theme,
     demo,
-  }), [activeProjects, demo, handle, theme]);
+    days: 365,
+    motion,
+    layout,
+  }), [activeProjects, demo, handle, layout, motion, theme]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
   const visibleBoard = configurationIsValidated ? board : null;
   const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
@@ -156,6 +170,9 @@ export default function StudioClient() {
     repositoriesTruncated: profile.repositoriesTruncated,
   });
   const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
+  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
+    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
+    : atlasPreviewUrl;
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
       baseUrl,
@@ -166,8 +183,10 @@ export default function StudioClient() {
       selectedCards,
       hasCurrentContributions,
       hasCurrentLanguages,
+      motion,
+      layout,
     });
-  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, hasCurrentLanguages, selectedCards, theme]);
+  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, hasCurrentLanguages, layout, motion, selectedCards, theme]);
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -183,6 +202,9 @@ export default function StudioClient() {
       projects: activeProjects,
       theme,
       demo,
+      days: 365,
+      motion,
+      layout,
     });
 
     setPhase("loading");
@@ -208,6 +230,17 @@ export default function StudioClient() {
       setProfile(nextProfile);
       setContributions(contributionResult.value);
       setBoard(nextBoard);
+      if (contributionResult.value) {
+        setAtlasPreviewUrl(buildStudioRouteUrl("atlas", {
+          owner: login,
+          projects: activeProjects,
+          theme,
+          demo,
+          days: 365,
+          motion,
+          layout,
+        }));
+      }
       setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
       setPhase("ready");
       setNotice(
@@ -248,9 +281,6 @@ export default function StudioClient() {
     }
   }
 
-  const activity = contributions?.days.slice(-28) ?? [];
-  const maxActivity = Math.max(1, ...activity.map((day) => day.count));
-
   return (
     <main className="studio-page">
       <nav className="nav studio-nav" aria-label="Primary navigation">
@@ -287,6 +317,18 @@ export default function StudioClient() {
             <option value="ember">Ember</option><option value="aurora">Aurora</option><option value="midnight">Midnight</option><option value="paper">Paper</option>
           </select>
 
+          <fieldset className="segmented-field">
+            <legend>Atlas layout</legend>
+            <label><input aria-label="Use wide atlas layout" type="radio" name="layout" checked={layout === "wide"} onChange={() => setLayout("wide")} /><span><strong>Wide</strong><small>README hero</small></span></label>
+            <label><input aria-label="Use compact atlas layout" type="radio" name="layout" checked={layout === "compact"} onChange={() => setLayout("compact")} /><span><strong>Compact</strong><small>Mobile friendly</small></span></label>
+          </fieldset>
+
+          <fieldset className="segmented-field">
+            <legend>Load motion</legend>
+            <label><input aria-label="Use subtle card motion" type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
+            <label><input aria-label="Disable card motion" type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
+          </fieldset>
+
           <fieldset className="card-picker">
             <legend>Cards to copy</legend>
             {STUDIO_CARD_KINDS.map((kind) => {
@@ -299,7 +341,7 @@ export default function StudioClient() {
               );
             })}
             {!demo && !hasCurrentContributions && (
-              <p className="card-availability-note">Streak and Activity stay selected but are omitted until this live preview has contribution history.</p>
+              <p className="card-availability-note">Atlas, Streak, and Activity are omitted until this live preview has contribution history.</p>
             )}
             {!demo && !hasCurrentLanguages && (
               <p className="card-availability-note">Languages stays selected but is omitted until this live preview has a complete public repository list.</p>
@@ -331,16 +373,14 @@ export default function StudioClient() {
           <div className="panel-heading preview-heading"><span>03</span><div><p>Evidence preview</p><h2 id="preview-title">@{profile.login}</h2></div><div className={`mode-chip ${profile.freshness.mode}`}><i />{profile.freshness.mode === "demo" ? "Synthetic" : profile.freshness.mode}</div></div>
           <p className={`studio-notice ${phase}`} role="status" aria-live="polite">{visibleNotice}</p>
 
-          <article className={`live-profile-card theme-${theme}`}>
-            <header><div><p>Developer atlas</p><h3>{profile.name || `@${profile.login}`}</h3><a href={profile.profileUrl} target="_blank" rel="noreferrer">@{profile.login} <span aria-hidden="true">↗</span></a></div><span>{profile.freshness.source}</span></header>
-            <div className="live-metrics"><div><strong>{formatNumber(contributions?.totalContributions)}</strong><span>{contributionMetricLabel(contributions?.days.length ?? null)}</span></div><div title={profile.repositoriesTruncated ? "Star total unavailable because GitHub returned a partial repository list." : undefined}><strong>{formatNumber(visibleProfileStars(profile.stars, profile.repositoriesTruncated))}</strong><span>{profile.repositoriesTruncated ? "Stars unavailable" : "Stars"}</span></div><div><strong>{formatNumber(profile.followers)}</strong><span>Followers</span></div><div><strong>{formatNumber(profile.publicRepositories)}</strong><span>Repositories</span></div></div>
-            <div className="live-activity" aria-label={contributions ? "Contribution activity for the latest 28 returned days" : "Contribution activity unavailable"}>
-              {activity.length ? activity.map((day) => <i key={day.date} title={`${day.date}: ${day.count}`} style={{ height: `${activityBarPercent(day.count, maxActivity)}%` }} />) : <p>Contribution history unavailable</p>}
-            </div>
-            <footer><span>{contributions ? contributionWindowLabel(contributions.days.length, activity.length) : "No contribution source"}</span><strong>{profile.freshness.generatedAt ? new Date(profile.freshness.generatedAt).toLocaleString() : "Starter fixture"}</strong></footer>
-          </article>
+          <div className={`atlas-preview-frame ${layout}`}>
+            <picture>
+              <source media="(max-width: 560px)" srcSet={compactAtlasPreviewUrl} />
+              <img key={atlasPreviewUrl} src={atlasPreviewUrl} alt={`CommitAtlas developer atlas preview for @${profile.login}`} />
+            </picture>
+          </div>
 
-          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Actions are HTML, not SVG</span></div>
+          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Open links below</span></div>
           <div className="dashboard-list">
             {(visibleBoard?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
             {!visibleBoard && activeProjects.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}

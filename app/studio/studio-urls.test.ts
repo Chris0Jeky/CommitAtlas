@@ -15,8 +15,9 @@ const projects = [
   { repo: "gamma", lifecycle: "paused", workflow: "  " },
 ];
 
-test("builds all five shipped card paths", () => {
+test("builds all six shipped card paths", () => {
   const paths: Record<StudioCardKind, string> = {
+    atlas: "/api/v1/cards/atlas.svg",
     profile: "/api/v1/cards/profile.svg",
     streak: "/api/v1/cards/streak.svg",
     activity: "/api/v1/cards/activity.svg",
@@ -98,6 +99,20 @@ test("preserves user, theme, days, and demo query semantics", () => {
   assert.equal(activity.searchParams.get("days"), "120");
   assert.equal(activity.searchParams.get("demo"), "false");
 
+  const atlas = new URL(`https://example.test${buildStudioRouteUrl("atlas", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    days: 365,
+    motion: "none",
+    layout: "compact",
+    projects,
+  })}`);
+  assert.equal(atlas.searchParams.get("user"), "octocat");
+  assert.equal(atlas.searchParams.get("motion"), "none");
+  assert.equal(atlas.searchParams.get("layout"), "compact");
+  assert.equal(atlas.searchParams.get("repos"), "alpha,beta,gamma");
+
   const project = new URL(`https://example.test${buildStudioRouteUrl("projects", {
     owner: "octocat",
     theme: "paper",
@@ -120,6 +135,8 @@ test("binds a successful origin to the exact route-affecting configuration", () 
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "other" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, theme: "paper" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, demo: false }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, motion: "none" }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, layout: "compact" }));
   assert.notEqual(key, buildStudioConfigurationKey({
     ...baseline,
     projects: projects.map((project, index) => index === 0 ? { ...project, lifecycle: "paused" } : project),

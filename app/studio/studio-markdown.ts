@@ -6,6 +6,7 @@ import {
 } from "./studio-urls";
 
 export const STUDIO_CARD_KINDS: readonly StudioCardKind[] = [
+  "atlas",
   "profile",
   "streak",
   "activity",
@@ -14,6 +15,7 @@ export const STUDIO_CARD_KINDS: readonly StudioCardKind[] = [
 ];
 
 export const STUDIO_CARD_LABELS: Readonly<Record<StudioCardKind, string>> = {
+  atlas: "Atlas",
   profile: "Profile",
   streak: "Streak",
   activity: "Activity",
@@ -30,6 +32,8 @@ export interface StudioMarkdownOptions {
   selectedCards: ReadonlySet<StudioCardKind>;
   hasCurrentContributions: boolean;
   hasCurrentLanguages: boolean;
+  motion?: "none" | "subtle";
+  layout?: "wide" | "compact";
 }
 
 export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
@@ -43,6 +47,9 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
         projects: options.projects,
         theme: options.theme,
         demo: options.demo,
+        days: 365,
+        motion: options.motion,
+        layout: options.layout,
       });
       return `![CommitAtlas ${STUDIO_CARD_LABELS[kind]}](${options.baseUrl}${url})`;
     })
