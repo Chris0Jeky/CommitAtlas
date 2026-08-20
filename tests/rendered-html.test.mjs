@@ -93,7 +93,8 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
         return new Response("{}", { headers: scopes === null ? {} : { "x-oauth-scopes": scopes } });
       }
       assert.equal(init?.method, "POST");
-      return githubJson(publicContributionPayload());
+      const { variables } = JSON.parse(String(init?.body));
+      return githubJson(publicContributionPayload({}, variables.to.slice(0, 10)));
     }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: token }));
     assert.equal(response.status, expectedStatus);
     assert.equal(response.headers.get("cache-control"), expectedStatus === 200 ? "private, no-store" : "no-store");
@@ -104,6 +105,19 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
       assert.equal((await response.json()).error.code, "private_data");
     }
   }
+});
+
+test("rejects future contribution days in the built Worker", async () => {
+  const response = await withMockedFetch(async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    assert.equal(url.pathname, "/graphql");
+    const { variables } = JSON.parse(String(init?.body));
+    return githubJson(publicContributionPayload({}, variables.to.slice(0, 10), true));
+  }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_response");
 });
 
 test("makes token-backed profile and project guesses indistinguishable before GitHub resource lookup", async () => {
@@ -218,7 +232,9 @@ async function withMockedFetch(fetchImpl, operation) {
   }
 }
 
-function publicContributionPayload(restrictions = {}) {
+function publicContributionPayload(restrictions = {}, endingDate = "2026-08-18", includeFuture = false) {
+  const dates = Array.from({ length: 8 }, (_, offset) => shiftUtcDate(endingDate, -7 + offset));
+  if (includeFuture) dates.push(shiftUtcDate(endingDate, 1));
   return {
     data: {
       user: {
@@ -230,7 +246,7 @@ function publicContributionPayload(restrictions = {}) {
           hasAnyRestrictedContributions: false,
           restrictedContributionsCount: 0,
           ...restrictions,
-          contributionCalendar: { weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }] },
+          contributionCalendar: { weeks: [{ contributionDays: dates.map((date, index) => ({ date, contributionCount: index === dates.length - 1 ? 2 : 0 })) }] },
         },
       },
     },
@@ -239,6 +255,12 @@ function publicContributionPayload(restrictions = {}) {
 
 function githubJson(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
+}
+
+function shiftUtcDate(date, offset) {
+  const shifted = new Date(`${date}T00:00:00.000Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + offset);
+  return shifted.toISOString().slice(0, 10);
 }
 
 function publicProjectPayload() {

@@ -139,9 +139,10 @@ export class GitHubClient {
         503,
       );
     }
+    const requestedDays = Math.min(Math.max(days, 1), 365);
     const to = this.now();
     const from = new Date(to);
-    from.setUTCDate(from.getUTCDate() - Math.min(Math.max(days, 1), 365));
+    from.setUTCDate(from.getUTCDate() - requestedDays);
 
     const payload = await this.graphql(CONTRIBUTIONS_QUERY, {
       login,
@@ -183,6 +184,7 @@ export class GitHubClient {
     } catch {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
     }
+    assertRequestedContributionWindow(calendarDays, to, requestedDays);
     return {
       version: 1,
       login,
@@ -193,7 +195,7 @@ export class GitHubClient {
       reviews: requiredMetric(collection, "totalPullRequestReviewContributions"),
       days: calendarDays.map(({ date, count }) => ({ date, count })),
       freshness: {
-        generatedAt: this.now().toISOString(),
+        generatedAt: to.toISOString(),
         source: "github-graphql",
         mode: "live",
       },
@@ -545,6 +547,27 @@ function requiredMetric(record: Record<string, unknown>, key: string): number {
     throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} metric`);
   }
   return value;
+}
+
+function assertRequestedContributionWindow(
+  calendarDays: readonly ContributionDay[],
+  to: Date,
+  requestedDays: number,
+): void {
+  const available = new Set(calendarDays.map(({ date }) => date));
+  const end = to.toISOString().slice(0, 10);
+  if (calendarDays.some(({ date }) => date > end)) {
+    throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
+  }
+  const first = new Date(to);
+  first.setUTCDate(first.getUTCDate() - (requestedDays - 1));
+  for (let offset = 0; offset < requestedDays; offset += 1) {
+    const expected = new Date(first);
+    expected.setUTCDate(expected.getUTCDate() + offset);
+    if (!available.has(expected.toISOString().slice(0, 10))) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
+    }
+  }
 }
 
 function concatChunks(chunks: readonly Uint8Array[], byteLength: number): Uint8Array {

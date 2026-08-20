@@ -63,7 +63,10 @@ test("exposes only a scope-proven public contribution calendar", async () => {
             hasAnyRestrictedContributions: false,
             restrictedContributionsCount: 0,
             contributionCalendar: {
-              weeks: [{ contributionDays: [{ date: "2026-08-18", contributionCount: 2 }] }],
+              weeks: [{ contributionDays: [
+                { date: "2026-08-18", contributionCount: 0 },
+                { date: "2026-08-19", contributionCount: 2 },
+              ] }],
             },
           },
         },
@@ -71,11 +74,94 @@ test("exposes only a scope-proven public contribution calendar", async () => {
     });
   };
 
-  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 7);
+  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1);
   assert.match(graphQlBody, /hasAnyRestrictedContributions/);
   assert.match(graphQlBody, /restrictedContributionsCount/);
+  assert.equal(JSON.parse(graphQlBody).variables.to, NOW.toISOString());
   assert.equal(contributions.totalContributions, 2);
+  assert.deepEqual(contributions.days.map(({ date }) => date), ["2026-08-18", "2026-08-19"]);
+  assert.equal(contributions.freshness.generatedAt, NOW.toISOString());
   assert.equal("restrictedContributions" in contributions, false);
+});
+
+test("rejects a contribution window that ends before the requested UTC date", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+    return json({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 1,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: [
+          { date: "2026-08-16", contributionCount: 0 },
+          { date: "2026-08-17", contributionCount: 0 },
+          { date: "2026-08-18", contributionCount: 1 },
+        ] }] },
+      } } },
+    });
+  };
+  await assert.rejects(
+    new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => NOW }).fetchContributions("octocat", 3),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("rejects future contribution days even when the requested window is complete", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+    return json({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 0,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: [
+          { date: "2026-08-16", contributionCount: 0 },
+          { date: "2026-08-17", contributionCount: 0 },
+          { date: "2026-08-18", contributionCount: 0 },
+          { date: "2026-08-19", contributionCount: 0 },
+          { date: "2026-08-20", contributionCount: 0 },
+        ] }] },
+      } } },
+    });
+  };
+  await assert.rejects(
+    new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => NOW }).fetchContributions("octocat", 3),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("accepts complete zero contribution days across a leap day", async () => {
+  const leapNow = new Date("2024-03-01T12:00:00.000Z");
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+    return json({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 0,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: [
+          { date: "2024-02-28", contributionCount: 0 },
+          { date: "2024-02-29", contributionCount: 0 },
+          { date: "2024-03-01", contributionCount: 0 },
+        ] }] },
+      } } },
+    });
+  };
+  const contributions = await new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => leapNow }).fetchContributions("octocat", 3);
+  assert.equal(contributions.totalContributions, 0);
+  assert.deepEqual(contributions.days.map(({ date }) => date), ["2024-02-28", "2024-02-29", "2024-03-01"]);
 });
 
 test("rejects contribution tokens without explicit public-only classic scopes before GraphQL", async () => {
