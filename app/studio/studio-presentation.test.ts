@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   activityBarPercent,
@@ -54,4 +55,13 @@ test("project actions use the shared host and credential boundary", () => {
   assert.equal(safeProjectActionUrl("http://github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("https://token@github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("not a URL"), null);
+});
+
+test("Studio text inputs retain an explicit keyboard focus treatment", () => {
+  const css = readFileSync(new URL("../globals.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.handle-form input:focus-visible, \.text-field input:focus-visible \{ outline: 2px solid var\(--gold\); outline-offset: -4px; \}/,
+  );
+  assert.match(css, /\.handle-form > div:focus-within, \.text-field:focus-within \{ border-color:/);
 });
