@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import {
   escapeXml,
   formatNumber,
+  renderContributionBreakdownCard,
   renderAtlasCard,
   renderActivityCard,
   renderLanguagesCard,
   renderProfileCard,
   renderProjectBoard,
+  renderRhythmCard,
   renderStreakCard,
   themes,
   truncateText,
@@ -448,4 +450,55 @@ test("labels expose signal state without depending on color", () => {
   assert.match(renderProjectBoard({ projects: [{ name: "Legacy", lifecycle: "experimental", ci: "unconfigured" }] }), /Experimental/);
   assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /<desc>[^<]*2026-08-18 0/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
+});
+
+test("breakdown card keeps exact counts and public percentages truthful", () => {
+  const exact = renderContributionBreakdownCard({
+    source: "public-github",
+    window: { from: "2026-01-01", to: "2026-12-31", days: 365 },
+    breakdown: { commits: 7, issues: 2, pullRequests: 1, reviews: 0 },
+    basis: "exact-counts",
+  });
+  assert.match(exact, /viewBox="0 0 720 220"/);
+  assert.match(exact, /EXACT COUNTS/);
+  assert.match(exact, />7<\/text>/);
+  assert.match(exact, /bars normalized to categorized total/);
+  const percentages = renderContributionBreakdownCard({
+    source: "public-profile",
+    window: { from: "2026-01-01", to: "2026-12-31", days: 365 },
+    breakdown: { commits: 62.5, issues: 12.5, pullRequests: 25, reviews: 0 },
+    basis: "public-profile-percentages",
+  });
+  assert.match(percentages, /PUBLIC PROFILE %/);
+  assert.match(percentages, /62\.5%/);
+  assert.match(percentages, /Exact counts unavailable/);
+  assert.doesNotMatch(percentages, /Total 100|100 contributions/);
+  assert.match(percentages, /width="275\.75" height="10" rx="5" fill="#79f2c0"/);
+  assertSafeSvg(percentages);
+});
+
+test("rhythm card shows bounded streak semantics and honest trend states", () => {
+  const data = {
+    source: "public-github",
+    window: { from: "2026-01-01", to: "2026-03-31", days: 90 },
+    activeDays: 30,
+    density: 33.3,
+    currentStreak: 4,
+    currentStreakBoundary: "open",
+    trend: { buckets: [0, 1, 3, 2], recent28Days: 6, previous28Days: 3, changePercent: 100, direction: "up" },
+    rhythm: { score: 44, level: "steady", basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)" },
+  };
+  const wide = renderRhythmCard(data);
+  assert.match(wide, /viewBox="0 0 720 220"/);
+  assert.match(wide, /PERSONAL CONSISTENCY/);
+  assert.match(wide, /at least 4 days · OPEN/);
+  assert.match(wide, /\+100% vs prior 28 days/);
+  assert.match(wide, /70% active-day density \(capped at 80%\) \+ 30% current streak \(capped at 30 days\)/);
+  assert.match(wide, /CommitAtlas personal consistency · not a GitHub rank/);
+  assertSafeSvg(wide);
+  const compact = renderRhythmCard({ ...data, currentStreakBoundary: "closed", trend: { ...data.trend, direction: "unavailable", changePercent: null, previous28Days: null } }, { width: 480 });
+  assert.match(compact, /viewBox="0 0 480 300"/);
+  assert.match(compact, /Trend unavailable/);
+  assert.match(compact, /Streak is bounded to this window/);
+  assertSafeSvg(compact);
 });

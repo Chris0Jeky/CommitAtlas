@@ -1,5 +1,6 @@
 import {
   calculateActivitySeries,
+  calculateContributionMetrics,
   calculateStreaks,
   parseContributionCalendar,
   type ContributionCalendar,
@@ -7,10 +8,12 @@ import {
 import type {
   ActivityCardData,
   CardSource,
+  ContributionBreakdownCardData,
   LanguagesCardData,
   ProfileCardData,
   ProjectBoardData,
   ProjectSignal,
+  RhythmCardData,
   StreakCardData,
 } from "@/packages/svg/src/index";
 import { toSvgCiState, toSvgLifecycle } from "./github/adapters";
@@ -85,6 +88,64 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
     total: series.total,
     periodLabel: `${series.from} → ${series.to}`,
     source: toCardSource(snapshot.freshness),
+  };
+}
+
+export interface ContributionMetricsCards {
+  readonly breakdown: ContributionBreakdownCardData;
+  readonly rhythm: RhythmCardData;
+}
+
+/**
+ * Build both standalone metric cards from one strictly complete daily window.
+ * Core remains the only owner of density, streak, trend, and rhythm calculations.
+ */
+export function toContributionMetricsCards(
+  snapshot: ContributionSnapshot,
+  expectedDays = snapshot.days.length,
+): ContributionMetricsCards {
+  const calendar = contributionCalendar(snapshot);
+  const asOf = latestContributionDate(calendar);
+  const window = completeContributionWindow(calendar, asOf, expectedDays);
+  if (window.days.length !== expectedDays) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
+  }
+  const metrics = calculateContributionMetrics(window, {
+    asOf,
+    days: expectedDays,
+    commits: snapshot.commits,
+    issues: snapshot.issues,
+    pullRequests: snapshot.pullRequests,
+    reviews: snapshot.reviews,
+    breakdownBasis: snapshot.breakdownBasis,
+  });
+  if (!metrics.window.complete || metrics.window.observedDays !== expectedDays) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
+  }
+  const source = toCardSource(snapshot.freshness);
+  return {
+    breakdown: {
+      source,
+      window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
+      breakdown: metrics.breakdown,
+      basis: metrics.breakdownBasis,
+    },
+    rhythm: {
+      source,
+      window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
+      activeDays: metrics.activeDays,
+      density: metrics.density,
+      currentStreak: metrics.streak.current,
+      currentStreakBoundary: metrics.streak.boundary.current,
+      trend: {
+        buckets: metrics.trend.buckets.map((bucket) => bucket.total),
+        recent28Days: metrics.trend.recent28Days,
+        previous28Days: metrics.trend.previous28Days,
+        changePercent: metrics.trend.changePercent,
+        direction: metrics.trend.direction,
+      },
+      rhythm: metrics.rhythm,
+    },
   };
 }
 

@@ -8,6 +8,7 @@ import type {
 import { GitHubApiError } from "./github/client";
 import {
   contributionCalendar,
+  toContributionMetricsCards,
   toActivityCard,
   toLanguagesCard,
   toProfileCard,
@@ -108,9 +109,30 @@ test("short or gapped contribution windows fail closed instead of being zero-fil
   for (const build of [
     () => toStreakCard(incomplete, 7),
     () => toActivityCard(incomplete, 7),
+    () => toContributionMetricsCards(incomplete, 7),
   ]) {
     assert.throws(build, (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response");
   }
+});
+
+test("contribution metric adapter maps both cards from one complete window", () => {
+  const days = Array.from({ length: 56 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 5, index + 1)).toISOString().slice(0, 10),
+    count: index >= 26 ? 1 : index % 9 === 0 ? 2 : index % 3 === 0 ? 1 : 0,
+  }));
+  const snapshot = contributions(days);
+  snapshot.commits = 10;
+  snapshot.issues = 2;
+  snapshot.pullRequests = 3;
+  snapshot.reviews = 1;
+  const cards = toContributionMetricsCards(snapshot, 30);
+  assert.deepEqual(cards.breakdown.breakdown, { commits: 10, issues: 2, pullRequests: 3, reviews: 1 });
+  assert.equal(cards.breakdown.basis, "exact-counts");
+  assert.equal(cards.breakdown.window.days, 30);
+  assert.equal(cards.rhythm.window.from, "2026-06-27");
+  assert.equal(cards.rhythm.window.to, "2026-07-26");
+  assert.equal(cards.rhythm.currentStreakBoundary, "open");
+  assert.equal(cards.rhythm.rhythm.basis, "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)");
 });
 
 test("invalid or duplicate contribution days fail as bounded upstream data errors", () => {

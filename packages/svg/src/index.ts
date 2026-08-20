@@ -96,6 +96,37 @@ export interface ActivityCardData extends SourceLabelledCardData {
   readonly periodLabel?: string;
 }
 
+export interface ContributionBreakdownCardData extends SourceLabelledCardData {
+  readonly window: { readonly from: string; readonly to: string; readonly days: number };
+  readonly breakdown: {
+    readonly commits: number;
+    readonly issues: number;
+    readonly pullRequests: number;
+    readonly reviews: number;
+  };
+  readonly basis: "exact-counts" | "public-profile-percentages";
+}
+
+export interface RhythmCardData extends SourceLabelledCardData {
+  readonly window: { readonly from: string; readonly to: string; readonly days: number };
+  readonly activeDays: number;
+  readonly density: number;
+  readonly currentStreak: number;
+  readonly currentStreakBoundary: "closed" | "open";
+  readonly trend: {
+    readonly buckets: readonly number[];
+    readonly recent28Days: number;
+    readonly previous28Days: number | null;
+    readonly changePercent: number | null;
+    readonly direction: "up" | "down" | "flat" | "new" | "unavailable";
+  };
+  readonly rhythm: {
+    readonly score: number;
+    readonly level: "starting" | "building" | "steady" | "strong" | "relentless";
+    readonly basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)";
+  };
+}
+
 export interface LanguageStat {
   /** Human-readable label used by standalone SVG callers. */
   readonly name?: string;
@@ -472,6 +503,138 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   return out + svgEnd();
 }
 
+const breakdownLabels = [
+  ["Commits", "commits"],
+  ["Issues", "issues"],
+  ["Pull requests", "pullRequests"],
+  ["Reviews", "reviews"],
+] as const;
+
+function breakdownValue(value: number, basis: ContributionBreakdownCardData["basis"]): string {
+  return basis === "public-profile-percentages"
+    ? `${finite(value).toFixed(1).replace(/\.0$/, "")}%`
+    : formatNumber(value, false);
+}
+
+/** Render a source-labelled activity-type mix without turning percentages into counts. */
+export function renderContributionBreakdownCard(
+  data: ContributionBreakdownCardData,
+  options?: RenderOptions,
+): string {
+  const o = optionsFor(
+    options,
+    220,
+    "Contribution breakdown",
+    "Contribution activity broken down by type for the selected window.",
+    220,
+    280,
+  );
+  const t = o.theme;
+  const width = o.width;
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const colors = [t.accent, t.negative, t.positive, t.warning] as const;
+  const basisLabel = data.basis === "public-profile-percentages" ? "PUBLIC PROFILE %" : "EXACT COUNTS";
+  const basisDescription = data.basis === "public-profile-percentages"
+    ? "public profile percentages; exact counts and a total are unavailable"
+    : "exact categorized counts";
+  const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. Window ${data.window.from} to ${data.window.to}, ${formatNumber(data.window.days, false)} days. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += panel(16, 16, width - 32, o.height - 32, t);
+  out += text(34, 48, "CONTRIBUTION BREAKDOWN", 11, t.muted, 750);
+  out += `<rect x="${width - 150}" y="31" width="116" height="22" rx="11" fill="${t.background}" stroke="${t.border}"/>`;
+  out += text(width - 92, 46, basisLabel, 9, data.basis === "public-profile-percentages" ? t.warning : t.positive, 750, "middle");
+  out += sourceMarker(data.source, width - 34, 70, t);
+  out += text(34, 70, `${data.window.from} → ${data.window.to} · ${formatNumber(data.window.days, false)} days`, 10, t.muted, 550);
+  const barX = Math.min(174, Math.max(136, width * 0.24));
+  const barWidth = Math.max(40, width - barX - 106);
+  breakdownLabels.forEach(([label], index) => {
+    const y = 82 + index * 26;
+    const value = values[index];
+    const normalized = data.basis === "public-profile-percentages"
+      ? Math.min(100, value) / 100
+      : total > 0 ? value / total : 0;
+    const fillWidth = barWidth * normalized;
+    out += text(34, y + 10, label, 10, t.text, 600);
+    out += `<rect x="${barX}" y="${y}" width="${barWidth}" height="10" rx="5" fill="${t.background}"/>`;
+    if (fillWidth > 0) out += `<rect x="${barX}" y="${y}" width="${fillWidth.toFixed(2)}" height="10" rx="5" fill="${colors[index]}"/>`;
+    out += text(width - 34, y + 10, breakdownValue(value, data.basis), 10, t.text, 700, "end");
+  });
+  out += `<line x1="34" y1="190" x2="${width - 34}" y2="190" stroke="${t.border}"/>`;
+  out += text(34, 208, data.basis === "public-profile-percentages"
+    ? "Exact counts unavailable · public profile percentages only"
+    : "Categorized exact counts · bars normalized to categorized total", 9, t.muted, 550);
+  return out + svgEnd();
+}
+
+function rhythmTrendLabel(trend: RhythmCardData["trend"]): string {
+  if (trend.direction === "unavailable") return "Trend unavailable";
+  if (trend.direction === "new") return `${formatNumber(trend.recent28Days, false)} recent contributions · new activity`;
+  if (trend.direction === "flat") return `${formatNumber(trend.recent28Days, false)} recent contributions · flat vs prior 28 days`;
+  if (!Number.isFinite(trend.changePercent)) return `${formatNumber(trend.recent28Days, false)} recent contributions · trend change unavailable`;
+  const change = trend.changePercent as number;
+  const sign = change > 0 ? "+" : "";
+  return `${formatNumber(trend.recent28Days, false)} recent contributions · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28 days`;
+}
+
+/** Render the personal, window-bounded contribution consistency card. */
+export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions): string {
+  const normalizedWidth = dimension(options?.width, 720, MIN_WIDTH, MAX_WIDTH);
+  const compact = normalizedWidth < 600;
+  const o = optionsFor(
+    { ...options, width: normalizedWidth },
+    compact ? 300 : 220,
+    "Personal contribution rhythm",
+    "A personal consistency summary based on active-day density and current streak.",
+    compact ? 300 : 220,
+    compact ? 360 : 280,
+  );
+  const t = o.theme;
+  const width = o.width;
+  const score = Math.min(100, finite(data.rhythm.score));
+  const current = formatNumber(finite(data.currentStreak), false);
+  const open = data.currentStreakBoundary === "open";
+  const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
+  const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${data.rhythm.level}. ${data.rhythm.basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += panel(16, 16, width - 32, o.height - 32, t);
+  out += text(34, 48, "PERSONAL CONSISTENCY", 11, t.muted, 750);
+  out += sourceMarker(data.source, width - 34, 48, t);
+  const radius = compact ? 42 : 43;
+  const centerX = compact ? 91 : 88;
+  const centerY = compact ? 120 : 112;
+  const circumference = 2 * Math.PI * radius;
+  const progress = circumference * score / 100;
+  out += `<circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.background}" stroke-width="10"/><circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.accent}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${progress.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${centerX} ${centerY})"/>`;
+  out += text(centerX, centerY + 7, `${Math.round(score)}`, 28, t.text, 800, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
+  const infoX = compact ? 164 : 166;
+  out += text(infoX, compact ? 91 : 88, data.rhythm.level.toUpperCase(), 11, t.accent, 750);
+  out += text(infoX, compact ? 114 : 111, `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`, 11, t.text, 600);
+  out += text(infoX, compact ? 134 : 131, `${formatNumber(data.window.days, false)}-day window · current ${streakText}`, 10, t.muted, 550);
+  out += text(infoX, compact ? 154 : 151, open ? "Streak can continue beyond this window" : "Streak is bounded to this window", 9, t.muted, 550);
+  const trendX = compact ? 28 : 400;
+  const trendTop = compact ? 187 : 76;
+  const trendWidth = compact ? width - 56 : width - trendX - 34;
+  const buckets = data.trend.buckets.slice(-12).map((value) => finite(value));
+  const trendMax = Math.max(1, ...buckets);
+  out += `<line x1="${compact ? 28 : 370}" y1="${compact ? 174 : 65}" x2="${width - 28}" y2="${compact ? 174 : 65}" stroke="${t.border}"/>`;
+  out += text(trendX, trendTop, "WEEKLY RHYTHM", 10, t.muted, 700);
+  out += text(trendX, trendTop + 17, rhythmTrendLabel(data.trend), 9, t.text, 550);
+  const baseline = compact ? 264 : 166;
+  const gap = 4;
+  const barWidth = Math.max(4, (trendWidth - Math.max(0, buckets.length - 1) * gap) / Math.max(1, buckets.length));
+  buckets.forEach((value, index) => {
+    const height = value > 0 ? Math.max(3, 48 * value / trendMax) : 2;
+    const x = trendX + index * (barWidth + gap);
+    out += `<rect x="${x.toFixed(2)}" y="${(baseline - height).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${height.toFixed(2)}" rx="3" fill="${value > 0 ? t.accent : t.background}"/>`;
+  });
+  out += text(34, o.height - 11, "CommitAtlas personal consistency · not a GitHub rank", 9, t.muted, 550);
+  return out + svgEnd();
+}
+
 export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 230, "Languages", "Programming languages used across GitHub repositories.", 190, 320); const t = o.theme; const width = o.width;
   const languages = data.languages.slice(0, 8);
@@ -707,4 +870,6 @@ export const renderStreak = renderStreakCard;
 export const renderActivity = renderActivityCard;
 export const renderLanguages = renderLanguagesCard;
 export const renderProjectSignalBoard = renderProjectBoard;
+export const renderContributionBreakdown = renderContributionBreakdownCard;
+export const renderRhythm = renderRhythmCard;
 export const renderAtlas = renderAtlasCard;
