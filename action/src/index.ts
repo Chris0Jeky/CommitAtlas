@@ -31,6 +31,8 @@ async function run(): Promise<void> {
     ["rhythm", "rhythm.svg"],
     ["languages", "languages.svg"],
     ["projects", "projects.svg"],
+    ["projects-json", "projects.json"],
+    ["projects-markdown", "projects.md"],
   ] as const) {
     core.setOutput(output, generated.has(artifact) ? `${outputRoot}/${artifact}` : "");
   }

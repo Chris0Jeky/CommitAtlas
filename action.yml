@@ -45,6 +45,10 @@ outputs:
     description: Repository-relative path to languages.svg when selected.
   projects:
     description: Repository-relative path to projects.svg when selected.
+  projects-json:
+    description: Repository-relative path to projects.json when projects is selected.
+  projects-markdown:
+    description: Repository-relative path to projects.md when projects is selected.
 
 runs:
   using: node24
