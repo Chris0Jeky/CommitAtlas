@@ -139,6 +139,43 @@ test("caches a public-scope proof while permitting token-backed REST resources",
   assert.deepEqual(calls.sort(), ["/rate_limit", "/users/octocat", "/users/octocat/repos"]);
 });
 
+test("accepts empty classic scope evidence only for documented OAuth token prefixes", async () => {
+  for (const token of ["ghp_public-only", "gho_public-only"]) {
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      calls.push(url.pathname);
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+      if (url.pathname === "/users/octocat") return json({ login: "octocat", public_repos: 0, followers: 0, following: 0 });
+      if (url.pathname.endsWith("/repos")) return json([]);
+      assert.fail(`unexpected GitHub route: ${url.pathname}`);
+    };
+    await new GitHubClient({ token, fetchImpl, now: () => NOW }).fetchProfile("octocat");
+    assert.deepEqual(calls.sort(), ["/rate_limit", "/users/octocat", "/users/octocat/repos"]);
+  }
+});
+
+test("rejects empty scope evidence for fine-grained, App, unknown, and missing-scope credentials", async () => {
+  for (const token of ["github_pat_private", "ghu_user", "ghs_server", "ghr_refresh", "server-secret"]) {
+    const calls: string[] = [];
+    const client = new GitHubClient({
+      token,
+      fetchImpl: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input.toString());
+        calls.push(url.pathname);
+        if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+        assert.fail(`unsafe empty-scope credential reached GitHub resource ${url.pathname}`);
+      },
+      now: () => NOW,
+    });
+    await assert.rejects(
+      client.fetchProfile("guessed-private"),
+      (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403,
+    );
+    assert.deepEqual(calls, ["/rate_limit"]);
+  }
+});
+
 test("rejects contribution collections that report restricted activity", async () => {
   for (const restricted of [
     { hasAnyRestrictedContributions: true, restrictedContributionsCount: 0 },
@@ -163,7 +200,7 @@ test("rejects contribution collections that report restricted activity", async (
       });
     };
     await assert.rejects(
-      new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat"),
+      new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => NOW }).fetchContributions("octocat"),
       (error: unknown) => error instanceof GitHubApiError && error.code === "private_data" && error.status === 403,
     );
   }

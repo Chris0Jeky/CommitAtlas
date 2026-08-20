@@ -356,7 +356,7 @@ export class GitHubClient {
     const hasScopeEvidence = response.headers.has("x-oauth-scopes");
     const scopes = response.headers.get("x-oauth-scopes");
     await response.body?.cancel();
-    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(scopes)) {
+    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(this.token, scopes)) {
       throw privateDataError("Public GitHub routes require a token with explicit public-only classic OAuth scopes");
     }
   }
@@ -499,10 +499,10 @@ function privateDataError(message: string): GitHubApiError {
   return new GitHubApiError("private_data", message, 403);
 }
 
-function hasOnlyPublicClassicScopes(scopes: string | null): boolean {
+function hasOnlyPublicClassicScopes(token: string, scopes: string | null): boolean {
   if (scopes === null) return false;
   const normalized = scopes.trim();
-  if (normalized === "") return true;
+  if (normalized === "") return token.startsWith("ghp_") || token.startsWith("gho_");
   return normalized.split(",").every((scope) => scope.trim() === "public_repo");
 }
 

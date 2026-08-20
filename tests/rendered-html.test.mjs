@@ -79,7 +79,12 @@ test("returns stable conditional ETags for public demo data", async () => {
 });
 
 test("fails closed for unsafe or unproven contribution credentials in the built Worker", async () => {
-  for (const [scopes, expectedStatus] of [["public_repo", 200], [null, 403], ["repo", 403]]) {
+  for (const [scopes, token, expectedStatus] of [
+    ["public_repo", "server-secret", 200],
+    [null, "server-secret", 403],
+    ["repo", "server-secret", 403],
+    ["", "github_pat_private", 403],
+  ]) {
     const calls = [];
     const response = await withMockedFetch(async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -89,7 +94,7 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
       }
       assert.equal(init?.method, "POST");
       return githubJson(publicContributionPayload());
-    }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "server-secret" }));
+    }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: token }));
     assert.equal(response.status, expectedStatus);
     assert.equal(response.headers.get("cache-control"), expectedStatus === 200 ? "private, no-store" : "no-store");
     if (expectedStatus === 200) {
@@ -102,7 +107,7 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
 });
 
 test("makes token-backed profile and project guesses indistinguishable before GitHub resource lookup", async () => {
-  for (const scopes of ["repo", null]) {
+  for (const [scopes, token] of [["repo", "server-secret"], [null, "server-secret"], ["", "github_pat_private"]]) {
     const calls = [];
     const responseFor = (path) => withMockedFetch(async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -111,7 +116,7 @@ test("makes token-backed profile and project guesses indistinguishable before Gi
         return new Response("{}", { headers: scopes === null ? {} : { "x-oauth-scopes": scopes } });
       }
       assert.fail(`unsafe credential reached GitHub resource ${url.pathname}`);
-    }, () => request(path, { GITHUB_TOKEN: "server-secret" }));
+    }, () => request(path, { GITHUB_TOKEN: token }));
 
     const privateGuess = await responseFor("/api/v1/projects?owner=acme&repos=private-guess&states=private-guess:active");
     const missingGuess = await responseFor("/api/v1/projects?owner=acme&repos=missing-guess&states=missing-guess:active");
@@ -131,7 +136,7 @@ test("rejects restricted contribution collections in the built Worker", async ()
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
     return githubJson(publicContributionPayload({ hasAnyRestrictedContributions: true }));
-  }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "server-secret" }));
+  }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
   assert.equal(response.status, 403);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal((await response.json()).error.code, "private_data");
