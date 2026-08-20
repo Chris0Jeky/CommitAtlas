@@ -48,7 +48,7 @@ threads were reconciled. Its retained nonblocking work is tracked in
 
 ### SVG release hardening v3 — pushed, reviewed, blocked
 
-- Worktree: `work/CommitAtlas-svg-v3`
+- Former worktree: `work/CommitAtlas-svg-v3` (removed after the pushed head was verified)
 - Branch: `fix/svg-release-hardening-v3`
 - Pull request: [#39](https://github.com/Chris0Jeky/CommitAtlas/pull/39)
 - Pushed head: `78a444a7f52ca1779cf738699fec97006be4690d`
@@ -72,7 +72,7 @@ order; because they are `aria-hidden`, this is not the current accessibility blo
 
 ### SVG route foundation — pushed, no PR
 
-- Worktree: `work/CommitAtlas-routes`
+- Former worktree: `work/CommitAtlas-routes` (removed after the pushed head was verified)
 - Branch: `feat/svg-card-routes`
 - Base: current `main` at `975b69429b6b5ec417e5868930c229ec6d7bd9cc`
 - Head: `1179d301aa0a8a43ea02e9161b396b265d877d63`
@@ -112,6 +112,8 @@ production-server QA must explicitly attempt to reproduce it.
 - PR #39 is confirmed open at `78a444a`, with a passed Quality gate and one unresolved,
   non-outdated accessibility review thread.
 - Open PRs are exactly #39, #6, and #5. Open issues are #20, #21, #28, #30–#34, and #36–#38.
+- The SVG and route auxiliary worktrees were tracked-clean, contained only reproducible ignored
+  dependencies/build output, and were removed without force after their remote SHAs matched.
 - No secrets or private data were added to the saved state.
 
 ## Not completed or not verified
@@ -154,4 +156,5 @@ gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
 Start by reading this file and `V0_1_PLAN.md`; do not infer that an old green check covers a moved
-base or a new head.
+base or a new head. Recreate an auxiliary worktree from `origin/main` in detached state and switch
+to the named saved branch before editing it.
