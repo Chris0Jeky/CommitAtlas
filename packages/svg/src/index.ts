@@ -85,7 +85,10 @@ export interface ActivityCardData {
 }
 
 export interface LanguageStat {
-  readonly name: string;
+  /** Human-readable label used by standalone SVG callers. */
+  readonly name?: string;
+  /** Canonical @commit-atlas/core aggregate field. */
+  readonly language?: string;
   readonly bytes?: number;
   readonly percentage?: number;
   readonly color?: string;
@@ -272,10 +275,11 @@ function link(textValue: string, href: string | undefined, x: number, y: number,
 }
 
 export function renderProfileCard(data: ProfileCardData, options?: RenderOptions): string {
-  const name = truncateText(data.name, 30); const o = optionsFor(
+  const rawLogin = String(data.login ?? "").replace(/^@/, "").trim();
+  const name = truncateText(String(data.name ?? "").trim() || rawLogin || "GitHub user", 30); const o = optionsFor(
     options, 220, `${name} profile`, `GitHub profile for ${name}.`, 180, 320,
   ); const t = o.theme; const width = o.width;
-  const login = truncateText(data.login.replace(/^@/, ""), 32);
+  const login = truncateText(rawLogin, 32);
   const bio = truncateText(data.bio ?? "", 78);
   let out = svgStart(width, o.height, t, o.title ?? `${name} profile`, o.description ?? `GitHub profile for ${name}.`);
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -284,9 +288,9 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   if (bio) out += text(112, 103, bio, 13, t.text);
   if (data.location) out += text(112, 127, `⌖ ${truncateText(data.location, 35)}`, 12, t.muted);
   const stats = [["Repositories", data.repositories], ["Followers", data.followers], ["Following", data.following], ["Contributions", data.contributions], ["Stars", data.stars]] as const;
-  const statY = o.height - 46; const statWidth = (width - 64) / stats.length;
+  const statY = o.height - 31; const statWidth = (width - 64) / stats.length;
   stats.forEach(([label, value], index) => {
-    if (value === undefined) return;
+    if (value === undefined || (label === "Stars" && (!Number.isFinite(value) || value < 0))) return;
     const x = 32 + statWidth * index;
     out += text(x, statY - 13, formatNumber(finite(value)), 18, t.text, 750) + text(x, statY + 5, label, 10, t.muted);
   });
@@ -296,16 +300,21 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
 
 export function renderStreakCard(data: StreakCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 180, "Contribution streak", "Current and longest GitHub contribution streaks.", 150, 260); const t = o.theme; const width = o.width;
+  const compact = o.height < 180;
+  const personalBestY = compact ? 57 : 65;
+  const longestY = compact ? 88 : 104;
+  const statusY = compact ? 110 : 133;
+  const lastActiveY = compact ? 128 : 153;
   let out = svgStart(width, o.height, t, o.title ?? "Contribution streak", o.description ?? "Current and longest GitHub contribution streaks.");
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
   out += text(34, 94, formatNumber(finite(data.current), false), 46, t.accent, 800) + text(34, 116, "days current", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
-  out += text(width / 2 + 28, 65, "Personal best", 12, t.muted) + text(width / 2 + 28, 104, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
+  out += text(width / 2 + 28, personalBestY, "Personal best", 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
   const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
   const activeDaysLabel = Number.isFinite(data.activeDays) ? `${formatNumber(finite(data.activeDays))} active days` : "Active days unavailable";
-  out += text(width / 2 + 28, 133, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
-  if (data.lastActive) out += text(width / 2 + 28, 153, `Last active ${truncateText(data.lastActive, 22)}`, 11, t.muted);
+  out += text(width / 2 + 28, statusY, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
+  if (data.lastActive) out += text(width / 2 + 28, lastActiveY, `Last active ${truncateText(data.lastActive, 22)}`, 11, t.muted);
   return out + svgEnd();
 }
 
@@ -339,13 +348,9 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
 export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 230, "Languages", "Programming languages used across GitHub repositories.", 190, 320); const t = o.theme; const width = o.width;
   const languages = data.languages.slice(0, 8);
-  const hasBytes = data.languages.some((item) => Number.isFinite(item.bytes));
-  const hasPercentages = data.languages.some((item) => Number.isFinite(item.percentage));
-  if (hasBytes && hasPercentages) throw new RangeError("Language statistics must use either bytes or percentages, not both.");
-  const usesPercentages = hasPercentages;
   const sourceByteTotal = data.languages.reduce((sum, item) => sum + finite(item.bytes), 0);
   const byteTotal = finite(data.totalBytes) > 0 ? finite(data.totalBytes) : sourceByteTotal;
-  const percentageFor = (item: LanguageStat): number => usesPercentages
+  const percentageFor = (item: LanguageStat): number => Number.isFinite(item.percentage)
     ? Math.min(100, finite(item.percentage))
     : finite(item.bytes) / Math.max(1, byteTotal) * 100;
   let out = svgStart(width, o.height, t, o.title, o.description);
@@ -360,14 +365,16 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     const raw = percentageFor(item);
     const x = 34 + (index % 2) * (barW / 2); const y = 111 + Math.floor(index / 2) * 25;
     const color = safeColor(item.color, t.languagePalette[index % t.languagePalette.length]);
-    out += `<circle cx="${x + 5}" cy="${y - 4}" r="4" fill="${color}"/>` + text(x + 16, y, truncateText(item.name, 19), 12, t.text, 600) + text(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 11, t.muted, 500, "end");
+    const label = item.name ?? item.language ?? "Unknown language";
+    out += `<circle cx="${x + 5}" cy="${y - 4}" r="4" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 12, t.text, 600) + text(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 11, t.muted, 500, "end");
   });
   return out + svgEnd();
 }
 
 export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptions): string {
   const projects = data.projects.slice(0, 6); const totalProjects = data.projects.length;
-  const columns = (options?.width ?? DEFAULT_OPTIONS.width) >= 620 ? 2 : 1; const rows = Math.max(1, Math.ceil(projects.length / columns));
+  const normalizedWidth = dimension(options?.width, DEFAULT_OPTIONS.width, MIN_WIDTH, MAX_WIDTH);
+  const columns = normalizedWidth >= 620 ? 2 : 1; const rows = Math.max(1, Math.ceil(projects.length / columns));
   const o = optionsFor(options, 68 + rows * 90, "Project signals", "Project lifecycle and CI signals for selected GitHub repositories.", 68 + rows * 90, 700); const t = o.theme; const width = o.width;
   const height = o.height; const cardWidth = (width - 48 - (columns - 1) * 12) / columns;
   let out = svgStart(width, height, t, o.title, o.description);
@@ -380,7 +387,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
     out += text(x + 14, y + 43, `${lifecycleLabel(project.lifecycle)} · CI ${statusLabel(project.ci)}`, 11, t.muted, 550);
     out += `<circle cx="${x + cardWidth - 19}" cy="${y + 20}" r="5" fill="${ciColor}"/>`;
     if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 10, t.muted);
-    if (project.stars !== undefined) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
+    if (Number.isFinite(project.stars) && (project.stars as number) >= 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
   });
   return out + svgEnd();
 }

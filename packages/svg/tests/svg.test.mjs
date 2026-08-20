@@ -11,6 +11,7 @@ import {
   themes,
   truncateText,
 } from "../dist/index.js";
+import { aggregateLanguages } from "../../core/dist/index.js";
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
@@ -150,10 +151,19 @@ test("language byte shares include omitted source languages and respect totalByt
   assert.match(suppliedTotal, />5%<\/text>/);
 });
 
-test("language renderers reject mixed byte and percentage bases and only accept CSS hex lengths", () => {
-  assert.throws(() => renderLanguagesCard({ languages: [
+test("language renderers accept canonical core aggregates and only accept CSS hex lengths", () => {
+  const canonical = aggregateLanguages([
+    { repo: "owner/atlas", languages: { Rust: 80, TypeScript: 20 } },
+  ]);
+  const canonicalOutput = renderLanguagesCard(canonical);
+  assert.match(canonicalOutput, />Rust</);
+  assert.match(canonicalOutput, />TypeScript</);
+  assert.match(canonicalOutput, />80%<\/text>/);
+  const mixedOutput = renderLanguagesCard({ languages: [
     { name: "Rust", bytes: 80 }, { name: "TypeScript", percentage: 20 },
-  ] }), /either bytes or percentages/);
+  ] });
+  assert.match(mixedOutput, />Rust</);
+  assert.match(mixedOutput, />20%<\/text>/);
   const output = renderLanguagesCard({ languages: [
     { name: "Three", percentage: 25, color: "#abc" },
     { name: "Four", percentage: 25, color: "#abcd" },
@@ -171,6 +181,8 @@ test("profile stars are source-backed and absent stars stay unavailable", () => 
   const present = renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4, stars: 1_250 });
   assert.doesNotMatch(absent, /Stars/);
   assert.match(present, />1.3k<\/text><text[^>]*>Stars<\/text>/);
+  assert.doesNotMatch(renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4, stars: Number.NaN }), /Stars/);
+  assert.doesNotMatch(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: Number.NaN }] }), /★/);
 });
 
 test("activity dates are valid, bounded, and full supported windows stay below 30KB", () => {
@@ -226,6 +238,30 @@ test("missing profile and streak fields stay honestly unavailable", () => {
   assert.match(partial, /Total 42 · Active days unavailable/);
 });
 
+test("minimum layouts keep optional content inside the viewBox and names fall back to login", () => {
+  const profile = renderProfileCard({
+    name: "   ", login: "@ada", bio: "Bio", location: "London",
+    repositories: 2, followers: 3, following: 4,
+  }, { height: 1 });
+  assert.match(profile, /<title>ada profile<\/title>/);
+  assert.match(profile, />ada<\/text>/);
+  assert.match(profile, /y="136"/);
+  assert.match(profile, /y="154"/);
+  const streak = renderStreakCard({ current: 7, longest: 19, total: 42, activeDays: 4, lastActive: "2026-08-18" }, { height: 1 });
+  assert.match(streak, /viewBox="0 0 720 150"/);
+  assert.match(streak, /y="128"[^>]*>Last active 2026-08-18/);
+  assert.doesNotMatch(streak, /y="153"[^>]*>Last active/);
+});
+
+test("project columns use normalized widths at fractional and non-finite breakpoints", () => {
+  const projects = Array.from({ length: 2 }, (_, index) => ({ name: `Project ${index + 1}`, lifecycle: "active", ci: "passing" }));
+  const twoColumns = renderProjectBoard({ projects }, { width: 619.6 });
+  const oneColumn = renderProjectBoard({ projects }, { width: 619.4 });
+  assert.match(twoColumns, /x="316/);
+  assert.match(oneColumn, /x="24" y="140"/);
+  assert.match(renderProjectBoard({ projects }, { width: Number.NaN }), /viewBox="0 0 720/);
+});
+
 test("rendering is a stable snapshot for identical presentation data", () => {
   const data = { current: 7, longest: 19, total: 401, activeDays: 80, lastActive: "2026-08-18" };
   const first = renderStreakCard(data, { theme: "paper", width: 640 });
@@ -264,6 +300,6 @@ test("labels expose signal state without depending on color", () => {
   for (const label of ["Active", "Maintained", "Paused", "Archived", "Experimental", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
     assert.match(board, new RegExp(label));
   }
-  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /aria-label="2026-08-18: 0 contributions"/);
+  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /aria-label="2026-08-18: 0 contributions/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
 });
