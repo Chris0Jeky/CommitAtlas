@@ -115,8 +115,9 @@ The tracked status was clean and the remote SHA exactly matched before plain rem
 ### Studio/dashboard — pushed, not integrated
 
 - Worktree: `work/CommitAtlas` (primary checkout)
-- Branch and remote head: `feat/studio-dashboard` at
-  `fd3592fbe99615b22da86e5aa4a7cdffee2d3d49`
+- Branch: `feat/studio-dashboard` (all checkpoint commits are pushed)
+- Last product/plan head before the closeout-only state commits:
+  `4159acdda5ccf98a3ced442e3df71440d4b8eb47`
 - Pull request: none
 
 This branch contains the responsive landing page and accessible Studio, synthetic and public-data
@@ -146,7 +147,8 @@ files, and bundle a non-publishing Node 24 Action with a fail-closed token polic
 - Confirmed open PRs are #5 and #6 and open issues are #28, #30, #32–#34, #38, and #40.
 - Pushed `feat/svg-card-routes` from `1179d30` to `f76d097`; `git ls-remote` then matched the local
   SHA exactly.
-- Confirmed `feat/studio-dashboard` already matched its remote at `fd3592f`.
+- Confirmed `feat/studio-dashboard` matched its remote before the checkpoint edits and pushed the
+  new plan/state commits successfully.
 - Removed the tracked-clean route auxiliary worktree without force after recording ignored output.
 - No agents remain running and no secrets or private data were added to the checkpoint.
 
