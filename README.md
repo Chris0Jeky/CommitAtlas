@@ -11,10 +11,13 @@ what is healthy, and where people should go next.
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-ff7a45.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-ffc857.svg)](tsconfig.json)
 
+[Open the live Studio](https://commitatlas.jeky-tck.chatgpt.site/studio)
+
 </div>
 
-> **Pre-release demonstration.** The typed API, five SVG endpoints, project dashboard, and Studio
-> run locally as one production-buildable system. Deployment, static generation, and release remain.
+> **Public demonstration.** The typed API, five SVG endpoints, project dashboard, and Studio are
+> deployed together at [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site/).
+> Static generation, packaged automation, and the `v0.1.0` release remain pre-release work.
 
 ## Why CommitAtlas
 
@@ -46,7 +49,17 @@ README project boards are visual summaries. Individual Docs, Install, Download, 
 links live in the HTML dashboard because an externally embedded SVG is one image link, not a
 reliable group of buttons.
 
+## Hosted examples
+
+- [Profile card — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Languages card — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Streak card — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
+- [Activity card — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
+- [Project board — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
+
 ## Quick start
+
+Try the [hosted Studio](https://commitatlas.jeky-tck.chatgpt.site/studio), or run CommitAtlas locally.
 
 Requirements: Node.js 22.13 or newer and npm.
 
