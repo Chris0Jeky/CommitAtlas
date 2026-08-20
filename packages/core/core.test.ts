@@ -34,8 +34,8 @@ describe("core contracts", () => {
     expect(parseManifest({ version: 1, projects: [{ repo: "Owner/.github", label: "GitHub metadata", lifecycle: "active", links: {} }] }).projects[0]?.repo).toBe("owner/.github");
     expect(() => parseRepo({ version: 1, owner: "owner", name: "." })).toThrow();
     expect(() => parseRepo({ version: 1, owner: "owner", name: ".." })).toThrow();
-    expect(() => parseRepositorySlug("owner/." )).toThrow();
-    expect(() => parseRepositorySlug("owner/.." )).toThrow();
+    expect(() => parseRepositorySlug("owner/.")).toThrow();
+    expect(() => parseRepositorySlug("owner/..")).toThrow();
     expect(() => aggregateLanguages([{ repo: "owner/.", languages: {} }])).toThrow();
   });
 
