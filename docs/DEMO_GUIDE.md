@@ -8,8 +8,9 @@ path and static generator.
 
 Open [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site). The Studio is
 at [commitatlas.jeky-tck.chatgpt.site/studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
-The public [Chris0Jeky profile](https://github.com/Chris0Jeky) shows three dependable snapshots
-produced by CommitAtlas and links back to the Studio.
+The public [Chris0Jeky profile](https://github.com/Chris0Jeky) shows seven dependable SVG snapshots
+produced from one public GitHub snapshot and links back to the Studio. Its Atlas uses a compact
+mobile companion generated from that same snapshot.
 
 For an exact local production-build comparison, use Node.js 22.13 or newer and npm:
 
@@ -28,25 +29,27 @@ preview-only; the public Studio emits its real HTTPS origin.
 
 ### 1. Landing page
 
-- Inspect the product promise, rich Atlas, five focused widgets, project dashboard explanation, and navigation.
+- Inspect the product promise, rich Atlas, four focused stat widgets, project dashboard explanation,
+  and navigation.
 - Resize from a desktop width to about 390 pixels. The navigation, glow, cards, and footer should
   remain inside the page with no horizontal scrolling.
 
 ### 2. Synthetic Studio preview
 
 - Leave `octocat`, Synthetic, and Ember selected.
-- Confirm all five card choices are checked and two starter projects are present.
+- Confirm Atlas and Projects are checked by default and two starter projects are present. Check
+  Profile, Streak, Activity, and Languages so all six surfaces are selected.
 - Select **Preview atlas**.
 - The status should say `Synthetic preview loaded`; the dashboard should show Hello-World and
-  Spoon-Knife; the Markdown should contain Profile, Streak, Activity, Languages, and Projects URLs
-  on the current public origin (or localhost when deliberately running the local build).
+  Spoon-Knife; the Markdown should contain Atlas, Profile, Streak, Activity, Languages, and Projects
+  URLs on the current public origin (or localhost when deliberately running the local build).
 
 ### 3. Themes and card selection
 
 - Switch through Ember, Aurora, Midnight, and Paper and preview each one.
 - Uncheck a card and confirm its Markdown line disappears immediately. Restore it.
 - Uncheck every card and select **Copy Markdown**. The status should ask for at least one card.
-- Restore all five and copy again. The clipboard should equal the textarea exactly.
+- Restore all six and copy again. The clipboard should equal the textarea exactly.
 
 ### 4. Project dashboard
 
@@ -71,7 +74,7 @@ preview-only; the public Studio emits its real HTTPS origin.
 - If a public GitHub endpoint is unavailable or its HTML shape becomes incomplete, the bounded error
   is expected to fail closed. Use Synthetic for the deterministic walkthrough; do not add a
   private-capable token merely to make the demo pass.
-- Switch back to Synthetic. All five retained selections should be available again.
+- Switch back to Synthetic. All six retained selections should be available again.
 
 ### 6. Error retention
 
@@ -117,7 +120,7 @@ credential.
 ## QA checklist
 
 - Desktop: 1440x900, no horizontal overflow or clipped controls.
-- Mobile: 390x844, one-column Studio, no horizontal overflow.
+- Mobile: 390x844, one-column Studio with configuration before preview, no horizontal overflow.
 - Four themes and six surfaces visually inspected.
 - Blank/configured workflows remain truthful.
 - Project add/remove and safe action links behave as described.

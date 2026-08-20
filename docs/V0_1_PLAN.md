@@ -1,10 +1,10 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: active release-candidate plan, not a `v0.1.0` completion claim. The bounded API, six SVG
-surfaces, rich Atlas, Studio, public-profile contribution source, static generator, and credential-free
-Node 24 Action are implemented locally. Publication of this candidate, refreshed production/profile
-QA, final documentation/state reconciliation, package publishing, keyboard traversal, and a GitHub
-release remain until directly verified.
+Status: complete public demonstration and active release candidate, not a `v0.1.0` completion claim.
+The bounded API, six SVG surfaces, rich Atlas, Studio, public-profile source, responsive static
+generator, and credential-free Node 24 Action are implemented on `main`, deployed, and exercised by
+the live Chris0Jeky profile. npm publication, complete keyboard traversal, release-impact issue
+reconciliation, and a GitHub release remain until directly verified.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live CI, issues, releases, deployment state, and unresolved PR review
 threads.
@@ -127,11 +127,11 @@ than silently folded into a completed review round.
 
 ### 4. Integrate and prove the Studio — completed and deployed
 
-The local `feat/studio-dashboard` implementation head is
-`9f80a03043fb3b293d2b3c16f9b79aa2f450b1be` before the documentation checkpoint. The original
-integration commits preserve the union of package, API, route, Studio shell, and rendered product
-tests. Four focused post-handoff commits bind output to current evidence, preserve the full bounded
-project/workflow contract, restore Paper contrast, and retire stale project snapshots.
+PR #47's integration commits preserve the union of package, API, route, Studio shell, and rendered
+product tests. Focused post-handoff commits bind output to current evidence, preserve the full
+bounded project/workflow contract, restore Paper contrast, retire stale project snapshots, and put
+configuration before the long preview on mobile. The current deployed implementation is `8372d65`;
+exact evidence lives in [PROJECT_STATE.md](./PROJECT_STATE.md).
 
 Production desktop/mobile browser QA covered:
 
@@ -147,15 +147,17 @@ Production desktop/mobile browser QA covered:
 - ETag/304 and cache headers; direct `/og.png`; console and network errors; and an explicit attempt to
   reproduce the prior React multiple-renderer warning.
 
-The complete evidence and browser-control limitation are in
-[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). The previously confirmed live contribution-card
-copy blocker and the causally confirmed late-review seams are closed in code and tests. PR #47 was
-merged. Exact deployed source `948c795` passed hosted CI and closes the late truncated-language P1;
-the Sites origin and public GitHub profile were browser-verified. Two late P2 threads remain
-explicitly parked. Full keyboard-only traversal remains a separate unverified pre-release check
-because the available browser controller could not reliably prove the complete focus path.
+Current complete evidence and the browser-control limitation are in
+[RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md); the original Studio
+integration checkpoint remains preserved in [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
+The previously confirmed live contribution-card copy blocker and causally confirmed late-review
+seams are closed in code and tests. PR #47 was merged. The historical `948c795` checkpoint closed
+the late truncated-language P1; current version 7 and the responsive profile were re-proved at
+`8372d65`. Two late P2 threads remain explicitly parked. Full keyboard-only traversal remains a
+separate unverified pre-release check because the available browser controller could not reliably
+prove the complete focus path.
 
-### 5. Build the static generator package — implemented locally
+### 5. Build the static generator package — completed and publicly exercised
 
 `@commit-atlas/github` now owns the hardened transport and public snapshot contracts, and
 `@commit-atlas/static` consumes it with `@commit-atlas/core` and `@commit-atlas/svg`. The tracked,
@@ -168,25 +170,30 @@ retains public activity-type percentages as percentages, and fails before output
 gapped, unavailable, or inconsistent evidence.
 
 All selected SVG payloads derive from one `PortfolioSnapshot`; `manifest.json` records their exact
-window, bytes, and SHA-256 hashes. Repository-contained/tracked-path and symlink checks run before
-staged per-file replacement, and unrelated output siblings are preserved. Focused static tests and
-package dry runs pass locally. The exact implemented contract is in
+window, bytes, and SHA-256 hashes. Optional `responsiveAtlas` output renders the alternate Atlas
+layout from that same snapshot. Repository-contained/tracked-path and symlink checks run before
+staged per-file replacement. After successful replacement, only stale filenames from the bounded
+CommitAtlas-owned set are removed; unrelated output siblings are preserved. Static tests, full
+package proof, a consumer workflow, and committed-manifest validation pass. The exact contract is in
 [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md).
 
-### 6. Add the repository-local GitHub Action — implemented locally
+### 6. Add the repository-local GitHub Action — completed and publicly exercised
 
 The root `action.yml` uses `runs.using: node24` with a reproducibly bundled
 `action/dist/index.js`. Inputs are `config`, `output-dir`, `as-of`, and `dry-run`; outputs are the
-manifest plus paths for six possible card files.
+manifest, six canonical card paths, and responsive Atlas companion paths when requested.
 
 The Action does not accept a credential and never commits, pushes, uploads, publishes, or deploys.
 A consumer workflow owns those operations and may use its built-in `GITHUB_TOKEN` only for checkout
 and git push. `npm run test:action` checks the metadata, no-token boundary, runtime behavior, and
-bundle parity. Consumers pin an immutable commit until a stable release/tag policy is published.
+bundle parity. The live profile pins immutable implementation `8372d65`, validates seven artifact
+hashes, and refreshes daily. Consumers should retain immutable pins until a stable release/tag
+policy is published.
 
-### 7. Finish release documentation and release
+### 7. Finish the tagged release — demonstration documentation completed
 
-Update README and package docs only with behavior that exists at the final head:
+README, package docs, architecture, the walkthrough, project state, and dated QA now describe only
+behavior exercised at the demonstration head, including:
 
 - preserve the real deployed quick-start URLs and all six card examples;
 - Studio workflow, API query/error/cache reference, manifest/config schemas, CLI and Action examples;
@@ -195,16 +202,15 @@ Update README and package docs only with behavior that exists at the final head:
 - architecture diagrams/text that match actual data flow; no guessed remote manifest fetches;
 - keep the inspected `public/og.png` social image metadata bound to the real Sites origin.
 
-Then:
+Remaining release work:
 
 1. Reconcile Dependabot PRs #5 and #6 against current `main` without weakening checks.
 2. Decide #28, #30, #32–#34, #38, and #40 from actual release impact; close only proven work and name
    every retained item in release notes.
 3. Run the final local full gate from a clean exact head and obtain hosted CI plus independent review.
-4. Re-prove the existing Sites deployment from the release candidate; save/deploy a new version only
-   when application source changes, then poll it to terminal success.
-5. Re-open the exact deployment URL and repeat production browser, `/og.png`, metadata, repository
-   homepage, and public-profile checks.
+4. Re-prove Sites only if application source changes after `8372d65`; version 7 is already deployed
+   and browser/API-verified for this candidate.
+5. Repeat the final production/profile smoke after any release-impact code change.
 6. Create GitHub release `v0.1.0` from the verified commit, preserving the incremental commit history.
    Attach package tarballs only if their contents were freshly proved. Do not claim npm publication
    without a successful registry lookup.
