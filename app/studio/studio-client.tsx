@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
+import { retainedPreviewNotice } from "./studio-messages";
 import { buildStudioRouteUrl, type StudioCardKind } from "./studio-urls";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
@@ -132,7 +133,7 @@ export default function StudioClient() {
     const login = handle.trim();
     if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
       setPhase("error");
-      setNotice("Enter a valid GitHub handle before previewing.");
+      setNotice(retainedPreviewNotice("Enter a valid GitHub handle before previewing.", profile.login));
       return;
     }
 
@@ -168,7 +169,8 @@ export default function StudioClient() {
       );
     } catch (error) {
       setPhase("error");
-      setNotice(error instanceof Error ? error.message : "The preview could not be loaded.");
+      const reason = error instanceof Error ? error.message : "The preview could not be loaded.";
+      setNotice(retainedPreviewNotice(reason, profile.login));
     }
   }
 
