@@ -281,12 +281,15 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   ); const t = o.theme; const width = o.width;
   const login = truncateText(rawLogin, 32);
   const bio = truncateText(data.bio ?? "", 78);
+  const compact = o.height < 200;
+  const bioY = compact && data.location ? 94 : 103;
+  const locationY = compact ? 110 : 127;
   let out = svgStart(width, o.height, t, o.title ?? `${name} profile`, o.description ?? `GitHub profile for ${name}.`);
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += `<circle cx="64" cy="73" r="31" fill="${t.accent}"/><text x="64" y="82" fill="${t.background}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="24" font-weight="800" text-anchor="middle">${escapeXml(([...name][0] ?? "?").toUpperCase())}</text>`;
   out += text(112, 54, name, 24, t.text, 750) + text(112, 77, `@${login}`, 13, t.muted);
-  if (bio) out += text(112, 103, bio, 13, t.text);
-  if (data.location) out += text(112, 127, `⌖ ${truncateText(data.location, 35)}`, 12, t.muted);
+  if (bio) out += text(112, bioY, bio, 13, t.text);
+  if (data.location) out += text(112, locationY, `⌖ ${truncateText(data.location, 35)}`, 12, t.muted);
   const stats = [["Repositories", data.repositories], ["Followers", data.followers], ["Following", data.following], ["Contributions", data.contributions], ["Stars", data.stars]] as const;
   const statY = o.height - 31; const statWidth = (width - 64) / stats.length;
   stats.forEach(([label, value], index) => {
@@ -348,6 +351,15 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
 export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOptions): string {
   const o = optionsFor(options, 230, "Languages", "Programming languages used across GitHub repositories.", 190, 320); const t = o.theme; const width = o.width;
   const languages = data.languages.slice(0, 8);
+  const hasBytes = data.languages.some((item) => Number.isFinite(item.bytes));
+  const hasPercentages = data.languages.some((item) => Number.isFinite(item.percentage));
+  const everyByteItem = data.languages.length > 0 && data.languages.every((item) => Number.isFinite(item.bytes));
+  const everyPercentageItem = data.languages.length > 0 && data.languages.every((item) => Number.isFinite(item.percentage));
+  const canonicalBasis = everyByteItem && everyPercentageItem;
+  const standaloneBasis = (everyByteItem && !hasPercentages) || (everyPercentageItem && !hasBytes);
+  if ((hasBytes || hasPercentages) && !canonicalBasis && !standaloneBasis) {
+    throw new RangeError("Language statistics must use all bytes, all percentages, or canonical bytes and percentages together.");
+  }
   const sourceByteTotal = data.languages.reduce((sum, item) => sum + finite(item.bytes), 0);
   const byteTotal = finite(data.totalBytes) > 0 ? finite(data.totalBytes) : sourceByteTotal;
   const percentageFor = (item: LanguageStat): number => Number.isFinite(item.percentage)

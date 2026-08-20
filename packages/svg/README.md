@@ -30,4 +30,4 @@ source basis per item: standalone inputs may use `name` plus bytes or percentage
 canonical `@commit-atlas/core` `aggregateLanguages()` result uses `language`, `bytes`, and the
 derived `percentage` together and can be passed directly to `renderLanguagesCard`. Profile cards
 render an optional source-backed aggregate `stars` value when supplied and leave it absent
-otherwise.
+otherwise. Partial bytes/percentage mixtures are rejected because their basis is ambiguous.

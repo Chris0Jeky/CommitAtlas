@@ -159,11 +159,9 @@ test("language renderers accept canonical core aggregates and only accept CSS he
   assert.match(canonicalOutput, />Rust</);
   assert.match(canonicalOutput, />TypeScript</);
   assert.match(canonicalOutput, />80%<\/text>/);
-  const mixedOutput = renderLanguagesCard({ languages: [
+  assert.throws(() => renderLanguagesCard({ languages: [
     { name: "Rust", bytes: 80 }, { name: "TypeScript", percentage: 20 },
-  ] });
-  assert.match(mixedOutput, />Rust</);
-  assert.match(mixedOutput, />20%<\/text>/);
+  ] }), /all bytes, all percentages, or canonical/);
   const output = renderLanguagesCard({ languages: [
     { name: "Three", percentage: 25, color: "#abc" },
     { name: "Four", percentage: 25, color: "#abcd" },
@@ -245,6 +243,7 @@ test("minimum layouts keep optional content inside the viewBox and names fall ba
   }, { height: 1 });
   assert.match(profile, /<title>ada profile<\/title>/);
   assert.match(profile, />ada<\/text>/);
+  assert.match(profile, /y="110"[^>]*>⌖ London/);
   assert.match(profile, /y="136"/);
   assert.match(profile, /y="154"/);
   const streak = renderStreakCard({ current: 7, longest: 19, total: 42, activeDays: 4, lastActive: "2026-08-18" }, { height: 1 });
