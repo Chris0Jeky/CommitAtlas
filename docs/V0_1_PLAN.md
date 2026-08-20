@@ -1,8 +1,9 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: active saved plan, not a completion claim. API step 1 is merged; SVG step 2 and the route
-foundation for step 3 are saved on the exact branches in [PROJECT_STATE.md](./PROJECT_STATE.md).
-Start every resume by fetching `origin` and inspecting live PR checks and unresolved review threads.
+Status: active saved plan, not a completion claim. API step 1 and SVG step 2 are merged. The five
+routes in step 3 are implemented and pushed but still need fresh exact-head review, a ready PR, and
+hosted CI. Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume
+by fetching `origin` and inspecting live PR checks and unresolved review threads.
 
 ## v0.1 definition of done
 
@@ -34,13 +35,13 @@ path traversal, and bounds upstream text.
 Keep #30, #32, #33, #34, and #38 explicit. Fix a follow-up before release only if it can produce
 wrong, unsafe, or materially misleading v0.1 output; otherwise retain it by name in release notes.
 
-### 2. Replace SVG hardening safely — active and blocked
+### 2. Ship bounded accessible SVG renderers — completed
 
-Do not reopen or merge PR #29 or #35. PR #39 on `fix/svg-release-hardening-v3` carries the reviewed
-replacement at `78a444a7f52ca1779cf738699fec97006be4690d`, but it must not merge yet. Merge the
-current `origin/main` base, move the chronological activity summary into the outer SVG accessible
-description, remove the ineffective nested group, add a root-description regression, and re-prove
-the resulting head locally and in hosted CI before resolving the open review thread.
+PR #39 merged as `f1a8f74868a820d42e0909af52272bd7a849b7bf` after its corrected exact head
+`5794d9e11ba3c975f0b7ec8d966e2f3cd5a700e0` passed the full local gate, clean-consumer package
+proof, fresh independent review, hosted Quality gate, aging floor, and review-thread reconciliation.
+The chronological activity summary now lives in the outer SVG accessible description and visual
+cells are in chronological DOM order while remaining `aria-hidden`.
 
 Required contracts:
 
@@ -58,19 +59,25 @@ Required contracts:
 - The package still prepack-builds ES2020 JS and declarations and ships only the expected README,
   LICENSE, metadata, and `dist` files.
 
-Close #20, #21, #31, #36, and #37 only after direct tests prove their acceptance. Run root
-`npm run check`, the focused SVG suite, byte-level adversarial cases, `git diff --check`, and package
-dry-run/clean-consumer import before exact-head CI and fresh review.
+Issues #20, #21, #31, #36, and #37 closed through that merged PR after direct tests proved their
+acceptance. Maximum 366-day activity outputs remained below the 30,000-byte contract for maximum
+ampersand, apostrophe, and emoji metadata.
 
-### 3. Add the five versioned SVG routes — foundation saved
+### 3. Add the five versioned SVG routes — implemented and pushed, not shipped
 
 The remote branch `feat/svg-card-routes` is saved at
-`1179d301aa0a8a43ea02e9161b396b265d877d63`. Its two foundation commits provide strict canonical
-query parsing and the secure SVG response/ETag/header helper; 20 focused tests and the full root gate
-passed. It intentionally has no route handlers yet. Update it from `main` after PR #39 lands, then
-continue with the surfaces below.
+`f76d097ff096f0988a14069268b033e984eb74cb`, based on current `main` through merge commit
+`e581d69`. It contains strict canonical query parsing, secure byte-exact SVG response/ETag headers,
+shared snapshot adapters, all five handlers, and built-Worker route proof.
 
-Create these exact public surfaces:
+An independent review of the prior head found two direct truth defects. The one bounded fix commit,
+`f76d097`, now omits aggregate stars for truncated repository lists, rejects truncated language
+aggregates, requires complete contiguous contribution windows, trims an older boundary day before
+streak calculation, and preserves a genuinely complete zero calendar as zero. The full local gate
+passed at this exact head. A fresh post-fix review, ready PR, hosted CI, aging window, and merge are
+still required; do not treat the branch as shipped.
+
+Implemented public surfaces:
 
 - `/api/v1/cards/profile.svg?user=&demo=&theme=`
 - `/api/v1/cards/streak.svg?user=&demo=&theme=`
@@ -96,7 +103,7 @@ Data mapping:
 - Projects map declared lifecycle and configured workflow data into explicit CI states, releases,
   stars, and freshness. SVG remains summary-only; actions stay in HTML.
 
-Every successful SVG response must include:
+Every successful SVG response includes:
 
 - `Content-Type: image/svg+xml; charset=utf-8`
 - CORS suitable for public image embeds, `X-Content-Type-Options: nosniff`, cross-origin resource
@@ -106,8 +113,13 @@ Every successful SVG response must include:
   one hour, projects about five minutes); token/private paths are `no-store`
 
 Invalid or unavailable requests return bounded JSON errors with `no-store`, never an error SVG that
-looks like healthy data. Cover demo and live-shaped fixtures for all five routes, invalid/duplicate
-queries, leap dates, empty languages, partial projects, 304 behavior, and credential rejection.
+looks like healthy data. Demo/live-shaped fixtures cover all five routes, invalid/duplicate queries,
+leap dates, empty languages, partial projects, 304 behavior, credential rejection, truncated
+repository aggregates, and gapped contribution windows.
+
+The reviewed lower-priority gaps—canonical-query cache fragmentation, a focused route-test file not
+being in the root gate, and `planned` lifecycle mapping to `experimental`—are retained in
+[#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40) and are not blockers for the current PR.
 
 ### 4. Integrate and prove the Studio
 
@@ -134,41 +146,31 @@ exact green reviewed head.
 
 ### 5. Build the static generator package
 
-Add `packages/static` as `@commit-atlas/static`:
+The approved boundary, security matrix, fixture format, file semantics, package order, and proof
+matrix are preserved in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md). That document is the
+authority for this step; it supersedes the earlier idea of keeping a second GitHub client inside
+`packages/static`.
 
-```text
-packages/static/
-  src/config.ts
-  src/manifest.ts
-  src/github.ts
-  src/normalize.ts
-  src/generate.ts
-  src/cli.ts
-  src/action.ts
-  tests/static.test.mjs
-  README.md
-  LICENSE
-  package.json
-```
+First publish the existing hardened transport and snapshot adapters as `@commit-atlas/github`, with
+the hosted app reduced to a thin HTTP caller. Add the explicit unavailable SVG state and strengthen
+core manifest/workflow validation. Then add `@commit-atlas/static` as the filesystem/config/fixture
+consumer of `@commit-atlas/core`, `@commit-atlas/svg`, and `@commit-atlas/github`.
 
 CLI contract:
 
 ```text
 commitatlas generate \
   --config .commitatlas.json \
-  --output-dir dist/commitatlas \
+  [--output-dir dist/commitatlas] \
   [--as-of YYYY-MM-DD] \
   [--fixture path/to/public-fixture.json]
 ```
 
-There is no token CLI argument. Read only `GITHUB_TOKEN`; reject configuration keys that resemble
-tokens, secrets, or credentials. Version 1 config contains a valid user, tracked manifest path,
-`public` or explicit `private` visibility, one shipped theme, 7–365 days, optional UTC `asOf`, and a
-repository-relative output directory. Resolve `asOf` exactly once per run.
-
-The manifest uses core's versioned parser, contains at most six projects, and remains tracked in Git.
-Public mode rejects private repository responses. Private mode requires a token and emits a prominent
-warning that private-derived cards must not be committed to a public repository.
+There is no token CLI argument. Read credentials only from the environment, reject token-shaped
+configuration/fixture keys, and resolve `asOf` exactly once. Config and manifest files must be local,
+tracked, repository-contained, and non-symlinked. An explicit output override wins; otherwise
+`config.outputDir` is required. The static manifest uses full slugs and may span owners, while the
+hosted projects route remains one-owner.
 
 Always atomically write exactly these files without deleting unrelated output:
 
@@ -180,30 +182,32 @@ languages.svg
 projects.svg
 ```
 
-Fixture mode must be offline, synthetic-safe, and byte-deterministic for identical config, theme,
-fixture, and `asOf`. Live output is truthfully non-reproducible as GitHub state changes. Reuse the
-hardened GitHub transport boundaries: GitHub-only hosts, one deadline, 1.5 MB cap, bounded parsing,
-safe response validation, concurrency limit, and no private-response projection.
+Fixture mode uses strict synthetic raw GitHub HTTP transcripts through the same client, is offline,
+cannot accept a token, and is byte-deterministic for identical inputs. Public anonymous mode succeeds
+with contribution cards marked unavailable; unsafe supplied credentials, restricted/private data,
+malformed responses, and partial contribution windows fail before writes.
 
-Tests cover valid/invalid config and manifests, tracked-file enforcement, public/private boundaries,
-token-sentinel absence from every output/log/error/fixture, exact five-file output, deterministic
-fixtures, malformed/oversized/rate-limited API fixtures, atomic/path behavior, renderer constraints,
-package dry-run contents, and an ordinary clean Node/CLI consumer.
+All data and five payloads are validated before output is touched. Replace each destination
+atomically, preserve unrelated siblings, and do not claim a cross-file filesystem transaction.
+Tests cover the full token/visibility matrix, missing-versus-real-zero contributions, no-write error
+paths, deterministic fixtures, path containment, package contents, and an ordinary clean CLI
+consumer.
 
 ### 6. Add the repository-local GitHub Action
 
 Add `.github/actions/static-generator/action.yml` plus a deterministically bundled entry generated
-from `packages/static/src/action.ts`. Use `runs.using: node24`: the current
+from the static package. Use `runs.using: node24`: the current
 [GitHub Action metadata reference](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#runs-for-javascript-actions)
 supports Node 24, and GitHub's
 [Node 20 deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)
 directs Action maintainers to migrate to it. Recheck those primary sources at implementation time
 if the runner contract changes again.
 
-Inputs: config, output directory, visibility, optional `as-of`, and `github-token`. The token is passed
-only through the environment. The Action validates tracked config/manifest, never echoes or serializes
-the token, never commits/pushes/uploads/publishes, and exposes only non-sensitive output paths. Its
-example workflow uses read-only `contents` and `actions` permissions.
+Inputs are config, optional output directory, explicit matching visibility, optional `as-of`, and
+optional `github-token` (required for private mode). The token exists only in memory/environment. The
+public example omits it. The Action validates tracked config/manifest, never echoes or serializes the
+token, never commits/pushes/uploads/publishes, and exposes exactly five repository-relative output
+paths. Its example workflow uses read-only `contents` and `actions` permissions.
 
 Bundle verification must prove the checked-in entry matches source and contains no token-like fixture
 or source secret. Pin release examples to immutable `v0.1.0`; a moving major tag is a separate release
@@ -223,7 +227,7 @@ Update README and package docs only with behavior that exists at the final head:
 Then:
 
 1. Reconcile Dependabot PRs #5 and #6 against current `main` without weakening checks.
-2. Decide #28, #30, #31–#34, #36, and #37 from actual release impact; close only proven work and name
+2. Decide #28, #30, #32–#34, #38, and #40 from actual release impact; close only proven work and name
    every retained item in release notes.
 3. Run the final local full gate from a clean exact head and obtain hosted CI plus independent review.
 4. Build successfully, create/configure one Sites project, commit its real project identifier, save a
@@ -240,12 +244,12 @@ Then:
 git fetch --all --prune
 git status --short --branch
 git worktree list --porcelain
-gh pr view 25 --repo Chris0Jeky/CommitAtlas --json headRefOid,state,statusCheckRollup,mergeStateStatus,url
+git ls-remote --heads origin main feat/svg-card-routes feat/studio-dashboard
+gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
-npm.cmd ci
-npm.cmd run check
 ```
 
-Use a fresh detached-from-`origin/main` worktree and create a branch before any isolated API/SVG
-writer commits. Preserve one writer per checkout, use small present-tense commits, and tear down
-auxiliary worktrees after their clean pushed heads are recorded.
+Resume the saved routes branch in a fresh detached-from-`origin/main` worktree, then run its fresh
+post-fix review and local/hosted gate before opening and merging a ready PR. Preserve one writer per
+checkout, use small present-tense commits, and tear down auxiliary worktrees after their clean pushed
+heads are recorded.
