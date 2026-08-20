@@ -1,12 +1,13 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
-and all five versioned routes are merged. The Studio demonstration is complete on
-`feat/studio-dashboard`, has passed the full local and hosted gates, desktop/mobile production QA,
-and two fresh independent reviews. All twelve review threads were reconciled once. PR #47 remains
-open for owner visual acceptance and merge.
+Status: active saved plan, not a `v0.1.0` completion claim. API step 1, SVG step 2, core manifest
+hardening, all five versioned routes, and the Studio are merged. The public deployment and GitHub
+profile demonstration are complete and have passed local/hosted gates, desktop/mobile production
+QA, and independent review. The static generator, Action, release documentation, package publishing,
+keyboard traversal, and GitHub release remain.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
-`origin` and inspecting live PR checks and unresolved review threads.
+`origin` and inspecting live CI, issues, releases, deployment state, and unresolved PR review
+threads.
 
 ## v0.1 definition of done
 
@@ -124,7 +125,7 @@ Reviewed lower-priority route gaps remain retained in
 demo labelling remain explicit in #45 and #46; they must be decided from release evidence rather
 than silently folded into a completed review round.
 
-### 4. Integrate and prove the Studio — demonstration complete; shipping pending
+### 4. Integrate and prove the Studio — completed and deployed
 
 The local `feat/studio-dashboard` implementation head is
 `9f80a03043fb3b293d2b3c16f9b79aa2f450b1be` before the documentation checkpoint. The original
@@ -148,11 +149,11 @@ Production desktop/mobile browser QA covered:
 
 The complete evidence and browser-control limitation are in
 [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). The previously confirmed live contribution-card
-copy blocker and the causally confirmed late-review seams are closed in code and tests. Ready PR #47
-remains intentionally unmerged until the owner visually accepts the demo and the renewed aging floor
-passes. The exact pushed demonstration head passed hosted CI and all twelve review threads were
-replied to and resolved once. Full keyboard-only traversal remains a separate unverified pre-release
-check because the available browser controller could not reliably move focus.
+copy blocker and the causally confirmed late-review seams are closed in code and tests. PR #47 was
+merged. Exact deployed source `948c795` passed hosted CI and closes the late truncated-language P1;
+the Sites origin and public GitHub profile were browser-verified. Two late P2 threads remain
+explicitly parked. Full keyboard-only traversal remains a separate unverified pre-release check
+because the available browser controller could not reliably prove the complete focus path.
 
 ### 5. Build the static generator package
 
@@ -224,16 +225,16 @@ Bundle verification must prove the checked-in entry matches source and contains 
 or source secret. Pin release examples to immutable `v0.1.0`; a moving major tag is a separate release
 decision.
 
-### 7. Documentation, deployment, and release
+### 7. Finish release documentation and release
 
 Update README and package docs only with behavior that exists at the final head:
 
-- real deployed quick-start URLs and all five card examples;
+- preserve the real deployed quick-start URLs and all five card examples;
 - Studio workflow, API query/error/cache reference, manifest/config schemas, CLI and Action examples;
 - public/private threat boundary, credential handling, rate limits, self-hosting, accessibility, and
   troubleshooting;
 - architecture diagrams/text that match actual data flow; no guessed remote manifest fetches;
-- the original `public/og.png` social image wired through metadata using the real Sites origin.
+- keep the inspected `public/og.png` social image metadata bound to the real Sites origin.
 
 Then:
 
@@ -241,10 +242,10 @@ Then:
 2. Decide #28, #30, #32–#34, #38, and #40 from actual release impact; close only proven work and name
    every retained item in release notes.
 3. Run the final local full gate from a clean exact head and obtain hosted CI plus independent review.
-4. Build successfully, create/configure one Sites project, commit its real project identifier, save a
-   version, deploy with the required visibility approval, and poll to terminal success.
-5. Open the exact deployment URL, repeat production browser checks, verify `/og.png` and metadata,
-   then set the GitHub repository homepage to that URL.
+4. Re-prove the existing Sites deployment from the release candidate; save/deploy a new version only
+   when application source changes, then poll it to terminal success.
+5. Re-open the exact deployment URL and repeat production browser, `/og.png`, metadata, repository
+   homepage, and public-profile checks.
 6. Create GitHub release `v0.1.0` from the verified commit, preserving the incremental commit history.
    Attach package tarballs only if their contents were freshly proved. Do not claim npm publication
    without a successful registry lookup.
@@ -255,11 +256,12 @@ Then:
 git fetch --all --prune
 git status --short --branch
 git worktree list --porcelain
-git ls-remote --heads origin main feat/svg-card-routes feat/studio-dashboard
+git ls-remote --heads origin main
 gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the Studio branch, inspect the exact remote head, current CI, and current threads, then merge
-only after owner demonstration acceptance and the aging floor. Continue with the static-generator
-plan rather than reopening nonblocking Studio ideas.
+Resume from `main`; inspect the exact remote head, current CI, Sites deployment, and unresolved review
+threads. Continue with the static-generator plan. Keep the two answered P2 threads and #48 parked
+unless release-impact evidence promotes them; do not reopen the completed Studio review loop for
+cosmetic work.

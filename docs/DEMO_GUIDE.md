@@ -4,9 +4,14 @@ This walkthrough exercises every implemented v0.1 demonstration surface without 
 GitHub token. It uses the production build and synthetic data for repeatability, then shows the
 supported live-public partial-data path.
 
-## Start the production demo
+## Open the public demonstration
 
-Requirements: Node.js 22.13 or newer and npm.
+Open [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site). The Studio is
+at [commitatlas.jeky-tck.chatgpt.site/studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
+The public [Chris0Jeky profile](https://github.com/Chris0Jeky) shows three dependable snapshots
+produced by CommitAtlas and links back to the Studio.
+
+For an exact local production-build comparison, use Node.js 22.13 or newer and npm:
 
 ```powershell
 Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtlas'
@@ -15,11 +20,9 @@ npm.cmd run check
 npm.cmd run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The Studio is at
-[http://localhost:3000/studio](http://localhost:3000/studio).
-
-`localhost` embed URLs are preview-only. A deployment must regenerate Markdown from its real HTTPS
-origin before those URLs belong in a README.
+Open [http://localhost:3000](http://localhost:3000), with the Studio at
+[http://localhost:3000/studio](http://localhost:3000/studio). Localhost embed URLs remain
+preview-only; the public Studio emits its real HTTPS origin.
 
 ## Ten-minute guided tour
 
@@ -36,7 +39,7 @@ origin before those URLs belong in a README.
 - Select **Preview atlas**.
 - The status should say `Synthetic preview loaded`; the dashboard should show Hello-World and
   Spoon-Knife; the Markdown should contain Profile, Streak, Activity, Languages, and Projects URLs
-  on the current localhost origin.
+  on the current public origin (or localhost when deliberately running the local build).
 
 ### 3. Themes and card selection
 
@@ -63,6 +66,11 @@ origin before those URLs belong in a README.
 - Public profile/project data should load without a token.
 - Contribution history should be unavailable, not zero. Streak and Activity remain selected but
   disabled and are omitted from Markdown; Profile, Languages, and Projects remain.
+- For a live profile whose public repository list is truncated, Languages likewise remains selected
+  but disabled and is omitted from Markdown rather than producing a broken image URL.
+- If the anonymous GitHub quota is exhausted, the bounded rate-limit response is an expected
+  unavailable state. Use Synthetic for the deterministic walkthrough; do not add a private-capable
+  token merely to make the demo pass.
 - Switch back to Synthetic. All five retained selections should be available again.
 
 ### 6. Error retention
@@ -73,17 +81,17 @@ origin before those URLs belong in a README.
 
 ### 7. Direct cards and API
 
-Open these local examples:
+Open these public examples:
 
-- [Profile SVG](http://localhost:3000/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember)
-- [Streak SVG](http://localhost:3000/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
-- [Activity SVG](http://localhost:3000/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
-- [Languages SVG](http://localhost:3000/api/v1/cards/languages.svg?user=octocat&demo=true&theme=paper)
-- [Projects SVG](http://localhost:3000/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=ember)
-- [Health JSON](http://localhost:3000/api/v1/health)
-- [Profile JSON](http://localhost:3000/api/v1/profile?user=octocat&demo=true)
-- [Project JSON](http://localhost:3000/api/v1/projects?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true)
-- [Social image](http://localhost:3000/og.png)
+- [Profile SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember)
+- [Streak SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
+- [Activity SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
+- [Languages SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=octocat&demo=true&theme=paper)
+- [Projects SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=ember)
+- [Health JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/health)
+- [Profile JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/profile?user=octocat&demo=true)
+- [Project JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true)
+- [Social image](https://commitatlas.jeky-tck.chatgpt.site/og.png)
 
 Each SVG should identify itself accessibly and contain no buttons or scripts. Individual project
 actions belong in the HTML Studio dashboard.
@@ -106,8 +114,7 @@ current automation controller could not do so reliably.
 
 ## Deliberately outside this demonstration
 
-- No Sites deployment or public production URL is claimed.
-- No GitHub release or npm publication is claimed.
+- No GitHub `v0.1.0` release or npm publication is claimed.
 - Token-backed live contribution data requires a server-side credential that CommitAtlas can prove
   is public-only; do not paste a token into the browser.
 - The static five-file generator and Node 24 GitHub Action are planned in

@@ -1,133 +1,111 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 17:11 BST
+Last verified: 2026-08-20 18:42 BST
 
-This is the authoritative local checkpoint for the demonstration milestone. It is not a deployment,
-merge, package-publication, or `v0.1.0` release claim. Fetch before resuming because GitHub, CI, and
-review state can move after this file is committed.
+This is the authoritative checkpoint for the public demonstration milestone. Git, hosted CI,
+deployment state, and live GitHub output outrank this file after any ref or deployment moves.
 
-The release-critical path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the approved static generator and
-Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), and the repeatable
-demonstration is in [DEMO_GUIDE.md](./DEMO_GUIDE.md).
+The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static generator and Action architecture
+is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), the repeatable walkthrough is in
+[DEMO_GUIDE.md](./DEMO_GUIDE.md), and detailed browser/API evidence is in
+[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
 
-## Exact checkpoint
+## Public checkpoint
 
-- `main`: `a876dc30ac34134f405b7b9a7d4ed3ae181e9407`, the merge commit for
-  [PR #44](https://github.com/Chris0Jeky/CommitAtlas/pull/44).
-- Studio branch: `feat/studio-dashboard`.
-- Last implementation head before this documentation checkpoint:
-  `9f80a03043fb3b293d2b3c16f9b79aa2f450b1be`.
-- Ready [PR #47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) targets `main` and remains
-  intentionally unmerged for the owner's visual demonstration.
-- Implementation plus consolidated demo documentation were pushed as
-  `806df8b9912f8eec884d8b04a03df3f1473d60d7`. Local and remote refs matched exactly, and hosted
-  [Quality gate run 32390274491](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32390274491)
-  passed the full repository gate and production dependency audit.
-- No Sites deployment, GitHub release, or npm publication has been verified.
+- [PR #47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) was merged into `main` with merge commit
+  `a39abf8afe314e1b45ce26c8f3af5a769fefb78f`.
+- The exact deployed application source is
+  `948c795ddd30e6a134ef72dd268c539ab1671b24`. This state-document commit is intentionally a later,
+  documentation-only `main` commit.
+- The public production origin is
+  [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site), with the
+  [interactive Studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
+- Sites project: `appgprj_6a872d3f98c481919ed37186cb4d0c30`; current saved version 4:
+  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_7aaf903ac3f481918800cc0605519aae`;
+  successful deployment: `appgdep_6a873bd4a8e8819182b55da0e3d1bc78`.
+- The deployment archive is bound to exact source `948c795` with content hash
+  `sha256:83fb2e30d38c1dea980af5051daebe5acc6d67477464e60922accdb49670939a`.
+- The repository homepage points to the public origin.
+- [Hosted Quality gate run 32398474693](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32398474693)
+  passed for exact deployed head `948c795`.
+- The main [Chris0Jeky profile](https://github.com/Chris0Jeky) now publishes a curated CommitAtlas
+  portfolio at profile-repository head `5033fb0`. Its three checked-in snapshots remain dependable
+  when GitHub's anonymous API quota is exhausted and link back to the live Studio.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
-## Demonstration milestone
+## What the demonstration contains
 
-The branch contains a production-buildable portfolio demonstration with:
+- Responsive landing page and interactive Studio.
+- Profile, streak, activity, language, and project-summary SVGs in Ember, Aurora, Midnight, and
+  Paper themes.
+- Synthetic and supported live-public preview paths with honest partial/unavailable states.
+- README Markdown generated only for the exact configuration that succeeded.
+- Up to six curated projects with lifecycle, named-workflow CI, release metadata, and safe HTML
+  actions for Source, Docs, Install, Download, Release, and CI.
+- Versioned profile, contribution, project, health, and SVG routes.
+- Bounded validation, stable ETags, public/private cache separation, accessible SVG metadata, and
+  script-blocking SVG security headers.
+- Buildable `@commit-atlas/core` and `@commit-atlas/svg` packages with dry-run package proof.
+- A public profile portfolio centered on Taskdeck, CommitAtlas, IdleHarbor, developer-lens,
+  llm-release-gate, and MDviewer, including a real Taskdeck `v0.1.0` Windows download.
 
-- a responsive landing page and interactive Studio;
-- profile, streak, activity, language, and project-summary SVG cards across Ember, Aurora,
-  Midnight, and Paper themes;
-- synthetic and supported live-public preview paths;
-- selectable, copyable README Markdown bound only to the exact configuration that succeeded;
-- up to six projects with owner-declared lifecycle, configured-workflow CI, release metadata, and
-  safe HTML actions for Source, Docs, Install, Download, Release, and CI;
-- versioned profile, contribution, project, and health JSON routes;
-- bounded validation, honest unavailable/partial states, stable ETags, public/private cache
-  separation, and script-blocking SVG security headers; and
-- publishable `@commit-atlas/core` and `@commit-atlas/svg` packages with dry-run package proof.
+## Verified
 
-The four focused implementation commits after the saved handoff are:
-
-- `b1ef23c fix(studio): bind demo output to current evidence`
-- `bcaf5b4 fix(routes): preserve bounded project configuration`
-- `2f576f8 fix(studio): restore paper theme contrast`
-- `9f80a03 fix(studio): retire stale project previews`
-
-Together they close the confirmed demonstration defects: unavailable contribution cards are omitted
-from live Markdown; starter CI never invents health; partial star totals disappear; zero activity is
-visually zero; labels name their windows; route-affecting edits retire stale origins and project
-snapshots; whitespace is normalized; workflows containing map delimiters round-trip; six maximum
-project configurations stay within explicit finite bounds; action URLs use the shared host boundary;
-and Paper small text passes WCAG AA contrast.
-
-## Verification at implementation head `9f80a03`
-
-- `npm.cmd run check` passed:
+- Full `npm.cmd run check` passed at the merged implementation:
   - core: 15 tests;
   - GitHub/API/route: 59 tests;
-  - Studio: 25 tests;
-  - SVG package: 18 tests;
+  - Studio: 28 tests;
+  - SVG: 18 tests;
   - built/rendered product: 22 tests;
-  - typecheck, ESLint, both package builds/dry-run packs, and production build.
-- `git diff --check` passed.
-- Two fresh independent reviews found no CRITICAL/HIGH issue: one over the main three-commit fix
-  range and one over the final stale-snapshot fix.
-- Production browser QA passed on the exact build at 1440x900 and 390x844 with no horizontal
-  overflow or console warnings/errors.
-- The full synthetic flow, live-public partial-data flow, add/remove/configure projects, all four
-  themes, all five SVGs, copy output, invalid/missing-account errors, safe actions, and stale-preview
-  retirement were exercised.
-- Profile, contribution, project, health, and `/og.png` requests returned 200 with the expected
-  types and cache policies. SVG revalidation returned an empty 304 with the same ETag and security
-  headers. Unknown input returned bounded 400 JSON with `no-store`.
-- Detailed evidence is in [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
+  - typecheck, ESLint, package builds/dry-run packs, and production build.
+- Focused typecheck, lint, production build, and `git diff --check` passed after the final metadata
+  changes.
+- Hosted CI passed on the exact deployed source.
+- Production `/`, `/studio`, `/api/v1/health`, `/og.png`, all five synthetic SVG routes, and the
+  bounded invalid-query paths returned the expected statuses, formats, cache behavior, and security
+  headers. Conditional SVG requests returned stable 304 responses.
+- Live Studio preview for `Chris0Jeky` loaded public profile, languages, and six project signals;
+  unavailable streak/activity cards were omitted from Markdown instead of guessed.
+- Desktop 1440x900 and mobile 390x844 browser QA passed for the production site and public GitHub
+  profile: no document overflow, no console errors, and all three profile snapshots loaded at their
+  intrinsic dimensions. Mobile QA directly led to stacking the snapshots at readable width.
+- Independent production, profile, and focused post-fix reviews found no CRITICAL/HIGH blocker. Profile figures,
+  language shares, configured workflows, release links, and public-only provenance were checked
+  against live GitHub state.
+- The late P1 truncated-language thread was fixed in `948c795`, answered with exact proof, and
+  resolved. Of 15 total PR #47 review threads, 13 are resolved. The two remaining P2 threads were
+  explicitly classified and parked for later work.
 
-## GitHub review state
+## NOT verified or released
 
-The twelve concerns present when this session resumed were reproduced and classified. The code now
-covers every confirmed seam, and both independent post-fix reviews found no CRITICAL/HIGH issue.
-One evidence-backed reply was posted to each thread after the exact push; all twelve threads were
-resolved and a follow-up GraphQL read confirmed no unresolved thread remained.
+- Full sequential keyboard-only traversal. Landmarks, labels, focus styling, reduced motion, and
+  accessibility metadata were inspected, but the browser-control layer could not reliably drive a
+  complete Tab/Space traversal.
+- Live contribution history using a token positively proved to be public-only. The configured
+  authenticated GitHub CLI token has private scopes and was deliberately never installed as a
+  Sites secret.
+- `@commit-atlas/github`, `@commit-atlas/static`, offline fixture transport, the Node 24 Action, and
+  their clean-consumer/bundle proofs.
+- npm registry publication, a GitHub `v0.1.0` release, or a static generator release.
 
-The earlier thread links and their original wording remain preserved in
-[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). GitHub review state, not this prose, is the
-authority after the branch moves.
+## Residual risk and next slice
 
-## Shipped on `main`
-
-Main already contains the repository/community metadata, canonical GPL-3.0-only licensing, locked
-CI, bounded core calculations, deterministic accessible SVG renderers, hardened GitHub transport,
-versioned JSON routes, all five secure SVG endpoints, and the root proving gate. Studio/dashboard
-work is not on `main` until PR #47 is merged.
-
-## NOT completed or verified
-
-- PR #47 merge, Sites deployment, a public production URL, repository homepage update, or release.
-- Full sequential keyboard-only traversal. Landmarks, names, labels, legends, live status, focus
-  styling, and reduced motion were inspected, but the browser-control layer could not reliably move
-  focus with Tab/Space.
-- Live contribution behavior using a credential positively proved to be public-only.
-- `@commit-atlas/github`, `@commit-atlas/static`, offline fixture transport, the bundled Node 24
-  Action, and their clean-consumer/package/bundle proofs.
-- Final API/CLI/Action/operator docs and npm registry publication.
-
-## Residual risk
-
-- [#45](https://github.com/Chris0Jeky/CommitAtlas/issues/45): bounded contribution history can make
-  a displayed streak look like a lifetime best.
-- [#46](https://github.com/Chris0Jeky/CommitAtlas/issues/46): synthetic demo SVG data is not yet
-  visibly/accessibly labelled in every card.
-- [#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40): deferred route-contract gaps remain
-  tracked rather than silently included.
-- #28, #30, #32–#34, and #38 remain open and need release-impact triage.
-- Dependabot #5/#6 should be reconciled after the feature dependency graph settles.
-- Localhost Markdown is intentionally preview-only; it must be regenerated from the deployed origin.
-- Keyboard-only traversal remains an explicit release check, not a pass.
-
-## Next safe slice
-
-1. Keep the local production demo open for owner inspection. Apply only a confirmed CRITICAL/HIGH
-   correction from that inspection; otherwise preserve the verified head.
-2. After owner acceptance and the three-minute head-aging floor, re-read exact PR/CI/thread state and
-   merge PR #47 with a merge commit.
-3. Continue the ordered static-generator/Action work in
-   [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), then finish deployment and release.
+- Anonymous GitHub API rate limiting is observable and can transiently return 429 from live card
+  routes. The public profile therefore uses dated, checked-in snapshots; the Studio remains the
+  current live preview when quota is available.
+- [#45](https://github.com/Chris0Jeky/CommitAtlas/issues/45) tracks bounded contribution history
+  making a displayed streak look like a lifetime best.
+- [#46](https://github.com/Chris0Jeky/CommitAtlas/issues/46) tracks making synthetic-data labelling
+  explicit inside every card.
+- [#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40) tracks deferred route-contract gaps.
+- [#48](https://github.com/Chris0Jeky/CommitAtlas/issues/48) tracks the nonblocking same-key failed
+  refresh/retained-evidence decision found by the post-fix review.
+- Two unresolved P2 threads preserve optional-action matching after repository renames and warning
+  coverage for `127.0.0.1`/`::1` preview origins; both have explicit parked replies on PR #47.
+- #28, #30, #32-#34, #38, and Dependabot #5/#6 still need release-impact triage.
+- The next product slice is the ordered static generator/Action implementation in
+  [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), followed by package/release proof. Do not
+  turn anonymous quota pressure into permission to use a private-capable token.
 
 ## Clean resume commands
 
@@ -135,14 +113,14 @@ work is not on `main` until PR #47 is merged.
 Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtlas'
 git fetch --all --prune
 git status --short --branch
-git worktree list --porcelain
 git rev-parse HEAD
-git ls-remote --heads origin main feat/studio-dashboard
-gh pr view 47 --repo Chris0Jeky/CommitAtlas --json headRefOid,baseRefOid,state,isDraft,mergeable,statusCheckRollup
+git rev-parse origin/main
+gh pr view 47 --repo Chris0Jeky/CommitAtlas --json state,mergedAt,mergeCommit
+gh run list --repo Chris0Jeky/CommitAtlas --workflow ci.yml --limit 5
 npm.cmd ci
 npm.cmd run check
-npm.cmd run start
 ```
 
-Open `http://localhost:3000/studio` and follow [DEMO_GUIDE.md](./DEMO_GUIDE.md). Never infer that an
-old green check covers a moved base or a new head.
+Open the [public Studio](https://commitatlas.jeky-tck.chatgpt.site/studio) and follow
+[DEMO_GUIDE.md](./DEMO_GUIDE.md). Use the checked-in synthetic path for a deterministic walkthrough
+and `Chris0Jeky` for the live-public partial-data path.
