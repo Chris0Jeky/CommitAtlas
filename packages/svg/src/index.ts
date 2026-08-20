@@ -403,6 +403,15 @@ function sourceMarker(
     : "";
 }
 
+function cardMotionStyle(motion: RenderOptions["motion"]): string {
+  if (motion !== "subtle") return "";
+  return `<style>
+@keyframes card-enter{from{transform:translateY(4px)}to{transform:translateY(0)}}
+.card-enter{transform-box:fill-box;transform-origin:center;animation:card-enter .38s ease-out both}
+@media (prefers-reduced-motion:reduce){.card-enter{animation:none!important}}
+</style>`;
+}
+
 export function renderProfileCard(data: ProfileCardData, options?: RenderOptions): string {
   const rawLogin = String(data.login ?? "").replace(/^@/, "").trim();
   const name = truncateText(String(data.name ?? "").trim() || rawLogin || "GitHub user", 30);
@@ -417,6 +426,7 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   const locationY = compact ? 110 : 127;
   const metadata = sourceMetadata(data.source, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += sourceMarker(data.source, 34, 31, t, "start");
   out += `<circle cx="64" cy="73" r="31" fill="${t.accent}"/><text x="64" y="82" fill="${t.background}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="24" font-weight="800" text-anchor="middle">${escapeXml(([...name][0] ?? "?").toUpperCase())}</text>`;
@@ -437,7 +447,7 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
     out += text(x, statY - 13, formatNumber(finite(value)), 18, t.text, 750) + text(x, statY + 5, label, 10, t.muted);
   });
   if (data.website) out += link("Website ↗", data.website, width - 93, 34, t);
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 export function renderStreakCard(data: StreakCardData, options?: RenderOptions): string {
@@ -458,6 +468,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
     ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(finite(data.current), false)} days. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += sourceMarker(data.source, width - 34, 31, t);
   out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
@@ -471,7 +482,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
     ? "Earlier history not observed"
     : `${data.lastActive ? `Last active ${truncateText(data.lastActive, 10)} · ` : ""}earlier history not observed`;
   out += text(width / 2 + 28, lastActiveY, historyLabel, width < 560 ? 9 : 10, t.muted);
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 export function renderActivityCard(data: ActivityCardData, options?: RenderOptions): string {
@@ -485,6 +496,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
     ? `${metadata.description} Contributions by date, chronologically: ${accessibilitySummary}`
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, periodLabel, 11, t.muted, 700);
   out += sourceMarker(data.source, width - 34, 29, t);
   out += text(width - 34, 48, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
@@ -500,7 +512,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += `<g aria-hidden="true">${cells.join("")}</g>`;
   out += text(40, top + 7 * (cell + 2) + 19, "Less", 10, t.muted) + text(78, top + 7 * (cell + 2) + 19, "More", 10, t.muted);
   out += `<rect x="${width - 94}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.background}"/><rect x="${width - 78}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.border}"/><rect x="${width - 62}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.accent}"/><rect x="${width - 46}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.positive}"/>`;
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 const breakdownLabels = [
@@ -541,6 +553,7 @@ export function renderContributionBreakdownCard(
     : "exact categorized counts";
   const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. Window ${data.window.from} to ${data.window.to}, ${formatNumber(data.window.days, false)} days. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += text(34, 48, "CONTRIBUTION BREAKDOWN", 11, t.muted, 750);
   out += `<rect x="${width - 150}" y="31" width="116" height="22" rx="11" fill="${t.background}" stroke="${t.border}"/>`;
@@ -565,7 +578,7 @@ export function renderContributionBreakdownCard(
   out += text(34, 208, data.basis === "public-profile-percentages"
     ? "Exact counts unavailable · public profile percentages only"
     : "Categorized exact counts · bars normalized to categorized total", 9, t.muted, 550);
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 function rhythmTrendLabel(trend: RhythmCardData["trend"]): string {
@@ -600,6 +613,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const metadata = sourceMetadata(data.source, o.title, o.description);
   const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${data.rhythm.level}. ${data.rhythm.basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += text(34, 48, "PERSONAL CONSISTENCY", 11, t.muted, 750);
   out += sourceMarker(data.source, width - 34, 48, t);
@@ -632,7 +646,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
     out += `<rect x="${x.toFixed(2)}" y="${(baseline - height).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${height.toFixed(2)}" rx="3" fill="${value > 0 ? t.accent : t.background}"/>`;
   });
   out += text(34, o.height - 11, "CommitAtlas personal consistency · not a GitHub rank", 9, t.muted, 550);
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOptions): string {
@@ -654,6 +668,7 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     : finite(item.bytes) / Math.max(1, byteTotal) * 100;
   const metadata = sourceMetadata(data.source, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, "LANGUAGES", 11, t.muted, 700);
   out += sourceMarker(data.source, width - 34, 48, t);
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
@@ -669,7 +684,7 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     const label = item.name ?? item.language ?? "Unknown language";
     out += `<circle cx="${x + 5}" cy="${y - 4}" r="4" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 12, t.text, 600) + text(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 11, t.muted, 500, "end");
   });
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptions): string {
@@ -680,6 +695,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   const height = o.height; const cardWidth = (width - 48 - (columns - 1) * 12) / columns;
   const metadata = sourceMetadata(data.source, o.title, o.description);
   let out = svgStart(width, height, t, metadata.title, metadata.description);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += sourceMarker(data.source, width - 24, 18, t);
   out += text(24, 34, "PROJECT SIGNALS", 12, t.muted, 750);
   if (projects.length < totalProjects) out += text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
@@ -693,7 +709,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
     if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 10, t.muted);
     if (Number.isFinite(project.stars) && (project.stars as number) >= 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
   });
-  return out + svgEnd();
+  return out + `</g>` + svgEnd();
 }
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {

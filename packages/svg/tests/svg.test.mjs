@@ -84,6 +84,41 @@ test("renderer defaults are specific and dimensions stay within safe bounds", ()
   assert.match(large, /viewBox="0 0 1200 260" width="1200" height="260"/);
 });
 
+test("every standalone card supports subtle motion with a reduced-motion fallback", () => {
+  const rhythm = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activeDays: 20,
+    density: 35.7,
+    currentStreak: 3,
+    currentStreakBoundary: "closed",
+    trend: { buckets: [1, 2], recent28Days: 3, previous28Days: 2, changePercent: 50, direction: "up" },
+    rhythm: { score: 42, level: "steady", basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)" },
+  };
+  const renderers = [
+    (motion) => renderProfileCard({ name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3 }, { motion }),
+    (motion) => renderStreakCard({ current: 1, longest: 2 }, { motion }),
+    (motion) => renderActivityCard({ days: [{ date: "2026-02-25", count: 1 }] }, { motion }),
+    (motion) => renderContributionBreakdownCard({
+      window: rhythm.window,
+      breakdown: { commits: 1, issues: 0, pullRequests: 0, reviews: 0 },
+      basis: "exact-counts",
+    }, { motion }),
+    (motion) => renderRhythmCard(rhythm, { motion }),
+    (motion) => renderLanguagesCard({ languages: [{ name: "TypeScript", percentage: 100 }] }, { motion }),
+    (motion) => renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing" }] }, { motion }),
+  ];
+  for (const render of renderers) {
+    const animated = render("subtle");
+    assert.match(animated, /@keyframes card-enter/);
+    assert.match(animated, /prefers-reduced-motion:reduce/);
+    assert.match(animated, /<g class="card-enter">/);
+    assertSafeSvg(animated, { allowStyle: true });
+    const still = render("none");
+    assert.doesNotMatch(still, /<style>|@keyframes|animation:/);
+    assertSafeSvg(still);
+  }
+});
+
 test("all renderers emit accessible safe SVG", () => {
   const profile = renderProfileCard({
     name: injection, login: injection, bio: injection, location: injection,
