@@ -17,11 +17,13 @@ async function request(path, extraEnv = {}, init = {}) {
   );
 }
 
-test("serves all five synthetic SVG cards with their planned public cache windows", async () => {
+test("serves all seven synthetic SVG cards with their planned public cache windows", async () => {
   const cases = [
     ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora", "900"],
     ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora", "3600"],
     ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7", "3600"],
+    ["/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=aurora&days=7", "3600"],
+    ["/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=56", "3600"],
     ["/api/v1/cards/languages.svg?user=octocat&demo=true&theme=aurora", "900"],
     ["/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&demo=true&theme=aurora", "300"],
   ];
@@ -122,6 +124,61 @@ test("renders a complete logged-out public profile streak without a contribution
     if (previous === undefined) delete process.env.GITHUB_TOKEN;
     else process.env.GITHUB_TOKEN = previous;
   }
+});
+
+test("keeps contribution breakdown basis truthful across public-profile and token-backed routes", async () => {
+  const previous = process.env.GITHUB_TOKEN;
+  delete process.env.GITHUB_TOKEN;
+  try {
+    const publicResponse = await withMockedFetch(async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      assert.equal(url.origin, "https://github.com");
+      assert.equal(new Headers(init?.headers).get("authorization"), null);
+      const year = Number(url.searchParams.get("from")?.slice(0, 4));
+      return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
+    }, () => request("/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=paper&days=7"));
+    assert.equal(publicResponse.status, 200);
+    assert.equal(publicResponse.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
+    const publicBody = await publicResponse.text();
+    assert.match(publicBody, /PUBLIC PROFILE %/);
+    assert.match(publicBody, />80%<\/text>/);
+    assert.match(publicBody, /Exact counts unavailable/);
+    assert.doesNotMatch(publicBody, /EXACT COUNTS|Total 100|100 contributions/);
+  } finally {
+    if (previous === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = previous;
+  }
+
+  let requestedTo = "";
+  const exactResponse = await withMockedFetch(async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    assert.equal(url.pathname, "/graphql");
+    const { variables } = JSON.parse(String(init?.body));
+    requestedTo = variables.to.slice(0, 10);
+    const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(requestedTo, -6 + offset));
+    return githubJson({
+      data: { user: { contributionsCollection: {
+        totalCommitContributions: 5,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 1,
+        totalPullRequestReviewContributions: 1,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays: dates.map((date) => ({ date, contributionCount: 1 })) }] },
+      } } },
+    });
+  }, () => request(
+    "/api/v1/cards/breakdown.svg?user=octocat&demo=false&theme=aurora&days=7",
+    { GITHUB_TOKEN: "ghp_public-only" },
+  ));
+  assert.equal(exactResponse.status, 200);
+  assert.equal(exactResponse.headers.get("cache-control"), "private, no-store");
+  const exactBody = await exactResponse.text();
+  assert.match(exactBody, /EXACT COUNTS/);
+  assert.match(exactBody, />5<\/text>/);
+  assert.doesNotMatch(exactBody, /PUBLIC PROFILE %|server-secret|ghp_public-only/);
+  assert.match(exactBody, new RegExp(`${shiftUtcDate(requestedTo, -6)} → ${requestedTo} · 7 days`));
 });
 
 test("rejects unsafe credentials before any GitHub resource lookup", async () => {
