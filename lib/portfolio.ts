@@ -29,7 +29,8 @@ export async function fetchPortfolioSnapshot(request: PortfolioRequest): Promise
   const lifecycles = request.lifecycles ?? new Map<string, ProjectLifecycle>();
   const workflows = request.workflows ?? new Map<string, ProjectWorkflow>();
   if (request.demo) {
-    const now = new Date();
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date(`${today}T00:00:00.000Z`);
     return assemblePortfolioSnapshot(
       demoProfile(request.user, now),
       demoContributions(request.user, request.days, now),

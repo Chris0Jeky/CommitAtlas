@@ -52,6 +52,18 @@ test("keeps SVG security headers and ETag values identical for a matching 304", 
   ]) assert.equal(second.headers.get(name), first.headers.get(name), name);
 });
 
+test("keeps the rich synthetic Atlas byte-stable within its UTC day", async () => {
+  const path = "/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle&layout=wide";
+  const first = await request(path);
+  const etag = first.headers.get("etag");
+  assert.match(etag ?? "", /^W\/"[a-f\d]{64}"$/);
+  assert.match(await first.text(), /Generated \d{4}-\d{2}-\d{2}T00:00:00\.000Z/);
+  const second = await request(path, {}, { headers: { "if-none-match": etag } });
+  assert.equal(second.status, 304);
+  assert.equal(second.headers.get("etag"), etag);
+  assert.equal(await second.text(), "");
+});
+
 test("returns bounded no-store JSON for invalid, duplicate, and traversal queries", async () => {
   for (const path of [
     "/api/v1/cards/profile.svg?user=octocat&unknown=x",
