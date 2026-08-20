@@ -123,6 +123,25 @@ test("rejects a nonzero public profile calendar without activity percentages", a
   );
 });
 
+test("rejects a zero leap-year page that omits February 29", async () => {
+  const leapNow = new Date("2024-03-01T12:00:00.000Z");
+  const missingLeapDay = '<td data-date="2024-02-29" data-level="0"></td><tool-tip>No contributions on 2024-02-29.</tool-tip>';
+  const body = publicContributionHtml(2024, {}, {
+    Commits: 0,
+    "Pull requests": 0,
+    Issues: 0,
+    "Code review": 0,
+  }).replace(missingLeapDay, "").replace(/ data-percentages="[^"]+"/, "");
+
+  await assert.rejects(
+    new GitHubClient({ fetchImpl: async () => html(body), now: () => leapNow })
+      .fetchPublicProfileContributions("octocat", 1),
+    (error: unknown) => error instanceof GitHubApiError
+      && error.code === "invalid_response"
+      && error.message.includes("incomplete public contribution year"),
+  );
+});
+
 test("weights public activity percentages across a year boundary", async () => {
   const yearBoundary = new Date("2026-01-02T09:00:00.000Z");
   const fetchImpl: typeof fetch = async (input) => {

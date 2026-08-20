@@ -690,7 +690,8 @@ function parsePublicContributionPage(html: string, expectedYear: number): Public
     seen.add(date);
     days.push({ date, count, level: Number(levelMatch[1]) });
   }
-  if (days.length < 365) {
+  const expectedDates = datesInYear(expectedYear);
+  if (days.length !== expectedDates.length || expectedDates.some((date) => !seen.has(date))) {
     throw new GitHubApiError("invalid_response", "GitHub returned an incomplete public contribution year");
   }
 
@@ -724,6 +725,16 @@ function parsePublicContributionPage(html: string, expectedYear: number): Public
     throw new GitHubApiError("invalid_response", "GitHub returned an inconsistent public activity breakdown");
   }
   return { year: expectedYear, days, mix };
+}
+
+function datesInYear(year: number): string[] {
+  const dates: string[] = [];
+  const date = new Date(Date.UTC(year, 0, 1));
+  while (date.getUTCFullYear() === year) {
+    dates.push(date.toISOString().slice(0, 10));
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return dates;
 }
 
 function weightedPublicActivityMix(
