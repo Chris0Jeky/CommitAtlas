@@ -20,8 +20,17 @@ async function run(): Promise<void> {
   const outputRoot = relative(root, result.outputDir);
   core.setOutput("manifest", `${outputRoot}/manifest.json`);
   const generated = new Set(result.manifest.artifacts.map((artifact) => artifact.path));
-  for (const card of ["atlas", "profile", "streak", "activity", "languages", "projects"] as const) {
-    core.setOutput(card, generated.has(`${card}.svg`) ? `${outputRoot}/${card}.svg` : "");
+  for (const [output, artifact] of [
+    ["atlas", "atlas.svg"],
+    ["atlas-compact", "atlas-compact.svg"],
+    ["atlas-wide", "atlas-wide.svg"],
+    ["profile", "profile.svg"],
+    ["streak", "streak.svg"],
+    ["activity", "activity.svg"],
+    ["languages", "languages.svg"],
+    ["projects", "projects.svg"],
+  ] as const) {
+    core.setOutput(output, generated.has(artifact) ? `${outputRoot}/${artifact}` : "");
   }
   core.info(`Generated ${result.manifest.artifacts.length} CommitAtlas card(s) for ${result.manifest.user}.`);
   await core.summary

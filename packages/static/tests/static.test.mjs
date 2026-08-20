@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -20,14 +21,30 @@ test("validates one contained config and rejects ambiguous projects or card sele
   const parsed = config();
   assert.equal(parsed.user, "octocat");
   assert.equal(parsed.cards.length, 6);
+  assert.equal(parsed.responsiveAtlas, false);
   assert.equal(parsed.projects[0].repo, "octocat/atlas");
   assert.throws(() => parseStaticConfig({ ...rawConfig(), unknown: true }), /unrecognized_keys/i);
   assert.throws(() => parseStaticConfig({ ...rawConfig(), outputDir: "../outside" }), /contained relative path/);
   assert.throws(() => parseStaticConfig({ ...rawConfig(), cards: ["atlas", "atlas"] }), /duplicates/);
+  assert.throws(() => parseStaticConfig({ ...rawConfig(), cards: ["profile"], responsiveAtlas: true }), /requires atlas/);
   assert.throws(() => parseStaticConfig({
     ...rawConfig(),
     projects: [{ ...rawConfig().projects[0], repo: "another/atlas" }],
   }), /owned by the configured user/);
+});
+
+test("renders wide and compact Atlas variants from one snapshot", () => {
+  const rendered = renderStaticArtifacts(snapshot(), parseStaticConfig({
+    ...rawConfig(),
+    cards: ["atlas"],
+    responsiveAtlas: true,
+  }));
+  assert.deepEqual(Object.keys(rendered).sort(), ["atlas-compact.svg", "atlas.svg"]);
+  assert.match(rendered["atlas.svg"], /viewBox="0 0 860 380"/);
+  assert.match(rendered["atlas-compact.svg"], /viewBox="0 0 480 570"/);
+  const wideDescription = rendered["atlas.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
+  const compactDescription = rendered["atlas-compact.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
+  assert.equal(compactDescription, wideDescription);
 });
 
 test("loads only a tracked, non-symlinked repository config", async () => {
@@ -65,7 +82,11 @@ test("renders all rich widgets deterministically from one snapshot", () => {
 test("writes selected SVGs and a hash manifest while preserving unrelated siblings", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-"));
   try {
-    const selected = parseStaticConfig({ ...rawConfig(), cards: ["atlas", "projects"] });
+    const selected = parseStaticConfig({
+      ...rawConfig(),
+      cards: ["atlas", "projects"],
+      responsiveAtlas: true,
+    });
     const output = path.join(root, "assets", "commitatlas");
     await mkdir(output, { recursive: true });
     await writeFile(path.join(output, "keep.txt"), "belongs to caller\n");
@@ -73,11 +94,18 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
     const second = await generateStaticFromSnapshot({ root, config: selected, snapshot: snapshot() });
     assert.equal(first.written, true);
     assert.deepEqual(first.manifest, second.manifest);
-    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "keep.txt", "manifest.json", "projects.svg"]);
+    assert.deepEqual((await readdir(output)).sort(), [
+      "atlas-compact.svg", "atlas.svg", "keep.txt", "manifest.json", "projects.svg",
+    ]);
     assert.equal(await readFile(path.join(output, "keep.txt"), "utf8"), "belongs to caller\n");
     const manifest = JSON.parse(await readFile(path.join(output, "manifest.json"), "utf8"));
-    assert.equal(manifest.artifacts.length, 2);
+    assert.equal(manifest.artifacts.length, 3);
     assert.ok(manifest.artifacts.every((artifact) => /^[a-f0-9]{64}$/.test(artifact.sha256)));
+    for (const artifact of manifest.artifacts) {
+      const body = await readFile(path.join(output, artifact.path));
+      assert.equal(body.byteLength, artifact.bytes);
+      assert.equal(createHash("sha256").update(body).digest("hex"), artifact.sha256);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -24,6 +24,7 @@ const RawStaticConfigSchema = z.object({
   days: z.number().int().min(7).max(365).default(365),
   motion: z.enum(["none", "subtle"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
+  responsiveAtlas: z.boolean().default(false),
   outputDir: RelativePathSchema,
   cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...STATIC_CARD_NAMES]),
   projects: z.array(z.unknown()).min(1).max(6),
@@ -36,6 +37,7 @@ export interface StaticConfig {
   readonly days: number;
   readonly motion: "none" | "subtle";
   readonly layout: "wide" | "compact";
+  readonly responsiveAtlas: boolean;
   readonly outputDir: string;
   readonly cards: readonly StaticCardName[];
   readonly projects: ProjectManifest["projects"];
@@ -51,6 +53,9 @@ export function parseStaticConfig(input: unknown): StaticConfig {
   const raw = RawStaticConfigSchema.parse(input);
   const cards = [...new Set(raw.cards)];
   if (cards.length !== raw.cards.length) throw new Error("cards must not contain duplicates");
+  if (raw.responsiveAtlas && !cards.includes("atlas")) {
+    throw new Error("responsiveAtlas requires atlas in cards");
+  }
   const user = parseHandle({ version: 1, handle: raw.user }).handle;
   const manifest = parseManifest({ version: 1, projects: raw.projects });
   if (manifest.projects.some((project) => project.repo.split("/")[0]?.toLowerCase() !== user)) {
@@ -63,6 +68,7 @@ export function parseStaticConfig(input: unknown): StaticConfig {
     days: raw.days,
     motion: raw.motion,
     layout: raw.layout,
+    responsiveAtlas: raw.responsiveAtlas,
     outputDir: raw.outputDir.replaceAll("\\", "/"),
     cards,
     projects: manifest.projects,

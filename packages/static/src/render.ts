@@ -18,7 +18,8 @@ import {
 } from "@commit-atlas/svg";
 import type { StaticCardName, StaticConfig } from "./config.js";
 
-export type StaticSvgArtifacts = Readonly<Partial<Record<`${StaticCardName}.svg`, string>>>;
+export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg";
+export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
 
 export function assembleStaticPortfolio(
   profile: ProfileSnapshot,
@@ -58,14 +59,20 @@ export function assembleStaticPortfolio(
 export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: StaticConfig): StaticSvgArtifacts {
   const selected = new Set(config.cards);
   const width = config.layout === "compact" ? 480 : 720;
-  const wideWidth = config.layout === "compact" ? 480 : 860;
+  const dashboardWidth = config.layout === "compact" ? 480 : 860;
   const common = { theme: config.theme, motion: config.motion } as const;
   const { profile, contributions, metrics, projects } = snapshot;
   const lastActive = [...contributions.days].reverse().find((day) => day.count > 0)?.date;
-  const artifacts: Partial<Record<`${StaticCardName}.svg`, string>> = {};
+  const artifacts: Partial<Record<StaticArtifactName, string>> = {};
 
   if (selected.has("atlas")) {
-    artifacts["atlas.svg"] = renderAtlasCard(toAtlasCard(snapshot), { ...common, width: wideWidth });
+    const atlas = toAtlasCard(snapshot);
+    artifacts["atlas.svg"] = renderAtlasCard(atlas, { ...common, width: dashboardWidth });
+    if (config.responsiveAtlas) {
+      const companion = config.layout === "compact" ? "atlas-wide.svg" : "atlas-compact.svg";
+      const companionWidth = config.layout === "compact" ? 860 : 480;
+      artifacts[companion] = renderAtlasCard(atlas, { ...common, width: companionWidth });
+    }
   }
   if (selected.has("profile")) {
     artifacts["profile.svg"] = renderProfileCard({
@@ -103,7 +110,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   if (selected.has("projects")) {
     artifacts["projects.svg"] = renderProjectBoard({
       projects: (projects?.projects ?? []).map(toProjectSignal),
-    }, { ...common, width: wideWidth });
+    }, { ...common, width: dashboardWidth });
   }
   return artifacts;
 }

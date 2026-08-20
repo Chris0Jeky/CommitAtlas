@@ -27,6 +27,10 @@ outputs:
     description: Repository-relative path to the generated manifest.
   atlas:
     description: Repository-relative path to atlas.svg when selected.
+  atlas-compact:
+    description: Repository-relative path to atlas-compact.svg when responsiveAtlas adds it.
+  atlas-wide:
+    description: Repository-relative path to atlas-wide.svg when responsiveAtlas adds it.
   profile:
     description: Repository-relative path to profile.svg when selected.
   streak:

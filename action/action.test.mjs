@@ -8,7 +8,7 @@ test("action is a credential-free Node 24 generator", async () => {
   assert.match(metadata, /main: action\/dist\/index\.js/);
   assert.doesNotMatch(metadata, /github-token|token:/i);
   assert.match(metadata, /dry-run:/);
-  for (const output of ["manifest", "atlas", "profile", "streak", "activity", "languages", "projects"]) {
+  for (const output of ["manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "languages", "projects"]) {
     assert.match(metadata, new RegExp(`  ${output}:`));
   }
 });
