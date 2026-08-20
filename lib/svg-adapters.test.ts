@@ -170,7 +170,7 @@ test("language and project adapters preserve explicit semantics and omit SVG act
   };
   assert.deepEqual(toProjectBoard(board), {
     source: "synthetic-demo",
-    projects: [{ name: "atlas", lifecycle: "experimental", ci: "unavailable", stars: 2 }],
+    projects: [{ name: "atlas", lifecycle: "planned", ci: "unavailable", stars: 2 }],
   });
 });
 

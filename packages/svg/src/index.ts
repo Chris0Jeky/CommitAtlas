@@ -111,7 +111,7 @@ export interface LanguagesCardData extends SourceLabelledCardData {
   readonly totalBytes?: number;
 }
 
-export type Lifecycle = "active" | "maintained" | "paused" | "archived" | "experimental";
+export type Lifecycle = "planned" | "active" | "maintained" | "paused" | "archived" | "experimental";
 export type CiState = "passing" | "failing" | "pending" | "stale" | "unavailable" | "unconfigured";
 
 export interface ProjectLinks {

@@ -179,8 +179,7 @@ function toProjectSignal(project: ProjectSnapshot): ProjectSignal {
   return {
     name: project.name,
     lifecycle: project.lifecycle === "maintenance" ? "maintained"
-      : project.lifecycle === "planned" ? "experimental"
-        : project.lifecycle,
+      : project.lifecycle,
     ci: project.ci.state,
     stars: project.stars,
     ...(project.description ? { description: project.description } : {}),

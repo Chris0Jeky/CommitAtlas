@@ -19,11 +19,11 @@ async function request(path, extraEnv = {}, init = {}) {
 
 test("serves all five synthetic SVG cards with their planned public cache windows", async () => {
   const cases = [
-    ["/api/v1/cards/profile.svg?user=octocat&demo=true", "900"],
-    ["/api/v1/cards/streak.svg?user=octocat&demo=true", "3600"],
-    ["/api/v1/cards/activity.svg?user=octocat&demo=true&days=7", "3600"],
-    ["/api/v1/cards/languages.svg?user=octocat&demo=true", "900"],
-    ["/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&demo=true", "300"],
+    ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora", "900"],
+    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora", "3600"],
+    ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7", "3600"],
+    ["/api/v1/cards/languages.svg?user=octocat&demo=true&theme=aurora", "900"],
+    ["/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&demo=true&theme=aurora", "300"],
   ];
   for (const [path, edgeSeconds] of cases) {
     const response = await request(path);
@@ -52,6 +52,25 @@ test("keeps SVG security headers and ETag values identical for a matching 304", 
     "access-control-allow-headers", "cross-origin-resource-policy", "content-security-policy", "referrer-policy",
     "x-content-type-options",
   ]) assert.equal(second.headers.get(name), first.headers.get(name), name);
+});
+
+test("redirects reordered, padded, and default-equivalent public SVG URLs before rendering", async () => {
+  const response = await request(
+    "/api/v1/projects.svg?states=%20atlas:planned%20&demo=true&repos=%20atlas%20&owner=%20acme%20",
+  );
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(
+    response.headers.get("location"),
+    "http://localhost/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas%3Aplanned&demo=true&theme=aurora",
+  );
+
+  const canonical = await request(new URL(response.headers.get("location")).pathname + new URL(response.headers.get("location")).search);
+  assert.equal(canonical.status, 200);
+  assert.equal(canonical.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  const body = await canonical.text();
+  assert.match(body, /Planned · CI Unconfigured/);
+  assert.doesNotMatch(body, /Experimental/);
 });
 
 test("keeps the rich synthetic Atlas byte-stable within its UTC day", async () => {
@@ -92,7 +111,7 @@ test("renders a complete logged-out public profile streak without a contribution
       assert.equal(new Headers(init?.headers).get("authorization"), null);
       const year = Number(url.searchParams.get("from")?.slice(0, 4));
       return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
-    }, () => request("/api/v1/cards/streak.svg?user=octocat"));
+    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora"));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
     const body = await response.text();
@@ -219,7 +238,7 @@ test("marks truncated profiles and refuses partial language distributions", asyn
       { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
     ]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/profile.svg?user=octocat"));
+  }, () => request("/api/v1/cards/profile.svg?user=octocat&demo=false&theme=aurora"));
   assert.equal(profileResponse.status, 200);
   const profileBody = await profileResponse.text();
   assert.match(profileBody, /star totals are unavailable because the repository list is partial/);
@@ -234,7 +253,7 @@ test("marks truncated profiles and refuses partial language distributions", asyn
       { stargazers_count: 999, forks_count: 0, language: "TypeScript", pushed_at: "2024-03-02T00:00:00Z" },
     ]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/languages.svg?user=octocat"));
+  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora"));
   assert.equal(languagesResponse.status, 502);
   assert.equal(languagesResponse.headers.get("cache-control"), "no-store");
   assert.equal((await languagesResponse.json()).error.code, "invalid_response");
@@ -246,14 +265,14 @@ test("renders empty languages and partial projects without inventing actions or 
     if (url.pathname === "/users/octocat") return githubJson({ login: "octocat", public_repos: 0, followers: 0, following: 0 });
     if (url.pathname.endsWith("/repos")) return githubJson([]);
     assert.fail(`unexpected GitHub route ${url.pathname}`);
-  }, () => request("/api/v1/cards/languages.svg?user=octocat"));
+  }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora"));
   assert.equal(languageResponse.status, 200);
   const languageBody = await languageResponse.text();
   assert.match(languageBody, />LANGUAGES</);
   assert.doesNotMatch(languageBody, /Unknown language|NaN|undefined/);
 
   const projectsResponse = await request(
-    "/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml&demo=true",
+    "/api/v1/projects.svg?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml&demo=true&theme=aurora",
   );
   assert.equal(projectsResponse.status, 200);
   const projectsBody = await projectsResponse.text();

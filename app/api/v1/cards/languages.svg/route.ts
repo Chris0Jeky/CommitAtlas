@@ -2,7 +2,7 @@ import { demoProfile } from "@/lib/github/demo";
 import { GitHubClient } from "@/lib/github/client";
 import { parseSvgLanguagesQuery } from "@/lib/svg-routes";
 import { toLanguagesCard } from "@/lib/svg-adapters";
-import { apiErrorResponse, optionsResponse, svgResponse } from "@/lib/http";
+import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { renderLanguagesCard } from "@/packages/svg/src/index";
 
@@ -12,6 +12,9 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const query = parseSvgLanguagesQuery(new URL(request.url).searchParams);
     const token = getGitHubToken();
+    const publicData = query.demo || !token;
+    const redirect = canonicalSvgRedirect(request, query.canonical, publicData);
+    if (redirect) return redirect;
     const snapshot = query.demo
       ? demoProfile(query.user)
       : await new GitHubClient({ token }).fetchProfile(query.user);
@@ -20,7 +23,7 @@ export async function GET(request: Request): Promise<Response> {
       title: `${snapshot.login} languages`,
       description: "Public repository-language distribution by repository count; this is not a measure of proficiency.",
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData: query.demo || !token });
+    return svgResponse(request, body, { edgeSeconds: 900, publicData });
   } catch (error) {
     return apiErrorResponse(error);
   }

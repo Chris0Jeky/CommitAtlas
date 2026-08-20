@@ -5,7 +5,7 @@ import { calculateGitHubCiState, toJsonCiSignal, toSvgCiState, toSvgLifecycle } 
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 
 test("adapts every core lifecycle and CI state without inventing health", () => {
-  assert.equal(toSvgLifecycle("planned"), "experimental");
+  assert.equal(toSvgLifecycle("planned"), "planned");
   assert.equal(toSvgLifecycle("maintenance"), "maintained");
   assert.equal(toSvgLifecycle("archived"), "archived");
   assert.equal(toSvgCiState("pending"), "pending");

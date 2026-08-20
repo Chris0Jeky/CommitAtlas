@@ -1,4 +1,4 @@
-import { svgResponse, apiErrorResponse, optionsResponse } from "@/lib/http";
+import { svgResponse, apiErrorResponse, canonicalSvgRedirect, optionsResponse } from "@/lib/http";
 import { fetchPortfolioSnapshot, toAtlasCard } from "@/lib/portfolio";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { parseSvgAtlasQuery } from "@/lib/svg-routes";
@@ -10,6 +10,9 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const query = parseSvgAtlasQuery(new URL(request.url).searchParams);
     const token = getGitHubToken();
+    const publicData = query.demo || !token;
+    const redirect = canonicalSvgRedirect(request, query.canonical, publicData);
+    if (redirect) return redirect;
     const snapshot = await fetchPortfolioSnapshot({
       user: query.user,
       days: query.days,
@@ -28,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
     });
     return svgResponse(request, body, {
       edgeSeconds: 300,
-      publicData: query.demo || !token,
+      publicData,
       inlineStyles: query.motion === "subtle",
     });
   } catch (error) {

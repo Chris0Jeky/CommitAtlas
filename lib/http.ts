@@ -43,6 +43,31 @@ export async function svgResponse(
   return new Response(body, { headers });
 }
 
+/**
+ * Collapse equivalent public SVG URLs onto the parser-produced cache key
+ * before any upstream data is fetched. Private responses remain direct and
+ * no-store because their representation can depend on the configured token.
+ */
+export function canonicalSvgRedirect(
+  request: Request,
+  canonicalQuery: string,
+  publicData: boolean,
+): Response | null {
+  if (!publicData) return null;
+  const url = new URL(request.url);
+  if (url.searchParams.toString() === canonicalQuery) return null;
+  url.search = canonicalQuery;
+  url.hash = "";
+  return new Response(null, {
+    status: 308,
+    headers: {
+      ...BASE_HEADERS,
+      "Cache-Control": "no-store",
+      Location: url.toString(),
+    },
+  });
+}
+
 export function apiErrorResponse(error: unknown): Response {
   const generatedAt = new Date().toISOString();
   if (error instanceof InputError) {

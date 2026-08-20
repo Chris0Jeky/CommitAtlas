@@ -15,7 +15,7 @@ const SVG_CI_STATES: Readonly<Record<CiState, SvgCiState>> = {
 };
 
 const SVG_LIFECYCLES: Readonly<Record<ProjectLifecycle, SvgLifecycle>> = {
-  planned: "experimental",
+  planned: "planned",
   active: "active",
   maintenance: "maintained",
   paused: "paused",
@@ -24,7 +24,7 @@ const SVG_LIFECYCLES: Readonly<Record<ProjectLifecycle, SvgLifecycle>> = {
 
 export { calculateGitHubCiState, toJsonCiSignal };
 
-/** SVG has a deliberately smaller presentation vocabulary, so translate explicitly. */
+/** Translate the core lifecycle into the SVG presentation vocabulary without changing its meaning. */
 export function toSvgCiState(state: CiState): SvgCiState {
   return SVG_CI_STATES[state];
 }

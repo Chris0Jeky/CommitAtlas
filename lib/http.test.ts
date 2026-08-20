@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { apiErrorResponse, jsonResponse, optionsResponse, svgResponse } from "./http";
+import { apiErrorResponse, canonicalSvgRedirect, jsonResponse, optionsResponse, svgResponse } from "./http";
 import { InputError } from "./github/validation";
 
 test("uses stable weak ETags for semantically identical canonical JSON", async () => {
@@ -63,6 +63,20 @@ test("uses bounded public SVG caching and private no-store caching", async () =>
   assert.equal(publicResponse.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
   const privateResponse = await svgResponse(new Request("https://example.test/api"), "<svg/>", { edgeSeconds: 300, publicData: false });
   assert.equal(privateResponse.headers.get("cache-control"), "private, no-store");
+});
+
+test("redirects only equivalent public SVG queries to the parsed canonical URL", () => {
+  const request = new Request("https://example.test/api/v1/cards/profile.svg?theme=aurora&user=%20octocat%20");
+  const canonical = "user=octocat&demo=false&theme=aurora";
+  const redirect = canonicalSvgRedirect(request, canonical, true);
+  assert.equal(redirect?.status, 308);
+  assert.equal(redirect?.headers.get("location"), `https://example.test/api/v1/cards/profile.svg?${canonical}`);
+  assert.equal(redirect?.headers.get("cache-control"), "no-store");
+  assert.equal(
+    canonicalSvgRedirect(new Request(`https://example.test/api/v1/cards/profile.svg?${canonical}`), canonical, true),
+    null,
+  );
+  assert.equal(canonicalSvgRedirect(request, canonical, false), null);
 });
 
 test("sets SVG embed and script-blocking security headers for GET and OPTIONS", async () => {

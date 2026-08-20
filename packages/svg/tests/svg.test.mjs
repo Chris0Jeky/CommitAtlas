@@ -438,13 +438,14 @@ test("labels expose signal state without depending on color", () => {
     { name: "B", lifecycle: "maintained", ci: "failing" },
     { name: "C", lifecycle: "paused", ci: "pending" },
     { name: "D", lifecycle: "archived", ci: "unavailable" },
-    { name: "E", lifecycle: "experimental", ci: "unconfigured" },
+    { name: "E", lifecycle: "planned", ci: "unconfigured" },
     { name: "F", lifecycle: "active", ci: "stale" },
     { name: "G", lifecycle: "active", ci: "passing" },
   ] }, { theme: "midnight" });
-  for (const label of ["Active", "Maintained", "Paused", "Archived", "Experimental", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
+  for (const label of ["Active", "Maintained", "Paused", "Archived", "Planned", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
     assert.match(board, new RegExp(label));
   }
+  assert.match(renderProjectBoard({ projects: [{ name: "Legacy", lifecycle: "experimental", ci: "unconfigured" }] }), /Experimental/);
   assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /<desc>[^<]*2026-08-18 0/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
 });

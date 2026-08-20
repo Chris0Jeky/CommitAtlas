@@ -98,6 +98,19 @@ test("propagates synthetic source truth to every standalone static card", () => 
   }
 });
 
+test("preserves the declared planned lifecycle in static project SVGs", () => {
+  const base = snapshot();
+  const rendered = renderStaticArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: base.projects.projects.map((project) => ({ ...project, lifecycle: "planned" })),
+    },
+  }, config());
+  assert.match(rendered["projects.svg"], /Planned · CI Passing/);
+  assert.doesNotMatch(rendered["projects.svg"], /Experimental/);
+});
+
 test("writes selected SVGs and a hash manifest while preserving unrelated siblings", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-"));
   try {
