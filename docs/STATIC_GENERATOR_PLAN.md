@@ -1,6 +1,7 @@
 # CommitAtlas static generator architecture
 
-Status: approved v0.1 implementation plan; not implemented or released.
+Status: approved v0.1 implementation plan; prerequisite 1 is merged, generator/Action not implemented
+or released.
 
 Last reconciled: 2026-08-20. Recheck the linked GitHub platform contracts before implementing
 because Action runtimes and token semantics can change.
@@ -30,7 +31,7 @@ static filesystem policy, fixtures, CLI parsing, or Action glue.
 Before static generation, make two bounded shared-contract changes:
 
 - `@commit-atlas/core`: reject duplicate normalized repository slugs and workflow identities with
-  control characters or `.`/`..` path segments.
+  control characters or `.`/`..` path segments. Completed on `main` through PR #43.
 - `@commit-atlas/svg`: add an explicit unavailable-card renderer. Missing contribution access must
   never be represented as a zero streak or zero activity.
 
@@ -159,7 +160,8 @@ Adopt npm workspaces for `packages/core`, `packages/svg`, `packages/github`, and
 Use normal publishable semver dependencies and explicitly build in that order. Do not ship `file:`,
 deep-source, or root-alias dependencies.
 
-Implement as these reviewable commits after the SVG routes and Studio are merged:
+Implement as these reviewable commits after the Studio is merged. Commit 1 is already complete on
+`main`; continue at commit 2:
 
 1. `fix(core): harden manifest uniqueness and workflow identity`
 2. `refactor(github): publish hardened adapter package`

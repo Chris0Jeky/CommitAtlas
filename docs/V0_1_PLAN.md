@@ -1,9 +1,10 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: active saved plan, not a completion claim. API step 1 and SVG step 2 are merged. The five
-routes in step 3 are implemented and pushed but still need fresh exact-head review, a ready PR, and
-hosted CI. Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume
-by fetching `origin` and inspecting live PR checks and unresolved review threads.
+Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
+and all five versioned routes are merged. The Studio is integrated on a saved remote branch and has
+passed the full local gate, but production browser/accessibility QA and its review/PR/merge remain.
+Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
+`origin` and inspecting live PR checks and unresolved review threads.
 
 ## v0.1 definition of done
 
@@ -63,19 +64,18 @@ Issues #20, #21, #31, #36, and #37 closed through that merged PR after direct te
 acceptance. Maximum 366-day activity outputs remained below the 30,000-byte contract for maximum
 ampersand, apostrophe, and emoji metadata.
 
-### 3. Add the five versioned SVG routes — implemented and pushed, not shipped
+### 3. Add the five versioned SVG routes — completed
 
-The remote branch `feat/svg-card-routes` is saved at
-`f76d097ff096f0988a14069268b033e984eb74cb`, based on current `main` through merge commit
-`e581d69`. It contains strict canonical query parsing, secure byte-exact SVG response/ETag headers,
-shared snapshot adapters, all five handlers, and built-Worker route proof.
+PR #44 merged as `a876dc30ac34134f405b7b9a7d4ed3ae181e9407` after the corrected exact head
+`dff9c8825d262e4ceb625e67c399be06a6c3640e` passed the full local gate, fresh independent review,
+hosted CI, the aging floor, and review-thread reconciliation. It contains strict canonical query
+parsing, secure byte-exact SVG response/ETag headers, shared snapshot adapters, all five handlers,
+and built-Worker route proof.
 
-An independent review of the prior head found two direct truth defects. The one bounded fix commit,
-`f76d097`, now omits aggregate stars for truncated repository lists, rejects truncated language
-aggregates, requires complete contiguous contribution windows, trims an older boundary day before
-streak calculation, and preserves a genuinely complete zero calendar as zero. The full local gate
-passed at this exact head. A fresh post-fix review, ready PR, hosted CI, aging window, and merge are
-still required; do not treat the branch as shipped.
+The reviewed fixes omit aggregate stars for truncated repository lists, reject truncated language
+aggregates, require a complete contiguous requested contribution window, trim an older boundary day,
+reject any future day, and preserve a genuinely complete zero calendar as zero. The superseded PR
+#41 was closed and issue #42 closed through PR #44.
 
 Implemented public surfaces:
 
@@ -117,15 +117,19 @@ looks like healthy data. Demo/live-shaped fixtures cover all five routes, invali
 leap dates, empty languages, partial projects, 304 behavior, credential rejection, truncated
 repository aggregates, and gapped contribution windows.
 
-The reviewed lower-priority gaps—canonical-query cache fragmentation, a focused route-test file not
-being in the root gate, and `planned` lifecycle mapping to `experimental`—are retained in
-[#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40) and are not blockers for the current PR.
+Reviewed lower-priority route gaps remain retained in
+[#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40). Bounded-streak disclosure and synthetic
+demo labelling remain explicit in #45 and #46; they must be decided from release evidence rather
+than silently folded into a completed review round.
 
-### 4. Integrate and prove the Studio
+### 4. Integrate and prove the Studio — integrated and locally gated; production QA pending
 
-Merge current `main` into `feat/studio-dashboard`; preserve the union of package, API, route, and
-rendered product tests. Update `projectUrl` to send each configured workflow. Bind all generated card
-URLs to the real route contract and keep placeholder origins visibly marked until a preview succeeds.
+The remote `feat/studio-dashboard` branch contains implementation head
+`69ecd13c2382ee6b76149cefbedda331a0f0d322` followed only by checkpoint documentation at this stop.
+Merge commit `64ad6a6` preserves the union of package, API, route, Studio shell, and rendered product
+tests. Commit `69ecd13` binds every generated card URL to the shipped route contract, sends aligned
+nonblank configured workflows to both project surfaces, and keeps the placeholder origin until a
+preview succeeds. The full local gate passed at that implementation head.
 
 Run a production server, not only Vite development mode, and verify:
 
@@ -141,8 +145,8 @@ Run a production server, not only Vite development mode, and verify:
 - ETag/304 and cache headers; direct `/og.png`; console and network errors; and an explicit attempt to
   reproduce the prior React multiple-renderer warning.
 
-After a clean full gate and visual/accessibility review, open one ready PR and merge only at an
-exact green reviewed head.
+After the outstanding production visual/accessibility review, fix only confirmed blockers, rerun the
+changed seam and full gate, then open one ready PR and merge only at an exact green reviewed head.
 
 ### 5. Build the static generator package
 
@@ -151,10 +155,11 @@ matrix are preserved in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md). 
 authority for this step; it supersedes the earlier idea of keeping a second GitHub client inside
 `packages/static`.
 
-First publish the existing hardened transport and snapshot adapters as `@commit-atlas/github`, with
-the hosted app reduced to a thin HTTP caller. Add the explicit unavailable SVG state and strengthen
-core manifest/workflow validation. Then add `@commit-atlas/static` as the filesystem/config/fixture
-consumer of `@commit-atlas/core`, `@commit-atlas/svg`, and `@commit-atlas/github`.
+Core manifest/workflow validation was strengthened and merged through PR #43. The first remaining
+step is to publish the existing hardened transport and snapshot adapters as `@commit-atlas/github`,
+with the hosted app reduced to a thin HTTP caller. Add the explicit unavailable SVG state, then add
+`@commit-atlas/static` as the filesystem/config/fixture consumer of `@commit-atlas/core`,
+`@commit-atlas/svg`, and `@commit-atlas/github`.
 
 CLI contract:
 
@@ -249,7 +254,6 @@ gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the saved routes branch in a fresh detached-from-`origin/main` worktree, then run its fresh
-post-fix review and local/hosted gate before opening and merging a ready PR. Preserve one writer per
-checkout, use small present-tense commits, and tear down auxiliary worktrees after their clean pushed
-heads are recorded.
+Resume the saved Studio branch, run the production browser/accessibility matrix, then review and ship
+it at an exact green head. Preserve one writer per checkout, use small present-tense commits, and tear
+down auxiliary worktrees after their clean pushed heads are recorded.

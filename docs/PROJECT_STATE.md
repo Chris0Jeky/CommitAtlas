@@ -1,33 +1,43 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 14:48 BST
+Last verified: 2026-08-20 15:35 BST
 
-This is an intentional end-of-session checkpoint, not a completion or release claim. GitHub, Git,
-CI, branches, worktrees, and open work were re-read before this file was updated. Fetch again when
+This is an intentional stop checkpoint, not a completion, deployment, or release claim. GitHub,
+Git, CI, branches, worktrees, and open work were re-read before it was committed. Fetch again when
 resuming because live evidence outranks this checkpoint.
 
 The release-critical path is in [V0_1_PLAN.md](./V0_1_PLAN.md). The approved static generator and
 Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md).
 
-## Live repository snapshot
+## Exact live snapshot
 
-- `main`: `f1a8f74868a820d42e0909af52272bd7a849b7bf`, the merge commit for
-  [PR #39](https://github.com/Chris0Jeky/CommitAtlas/pull/39).
-- The `main` Quality gate at that exact commit passed in
-  [run 32373584839](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32373584839).
+- `main`: `a876dc30ac34134f405b7b9a7d4ed3ae181e9407`, the merge commit for
+  [PR #44](https://github.com/Chris0Jeky/CommitAtlas/pull/44).
+- The `main` CI run for that exact commit passed in
+  [run 32380339084](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32380339084).
+- Saved Studio branch: `feat/studio-dashboard`; its last implementation head before this checkpoint
+  commit is `69ecd13c2382ee6b76149cefbedda331a0f0d322` and was verified byte-for-byte after push.
+- The Studio branch contains current `main` through merge commit `64ad6a6`; no feature pull request
+  is open yet because production browser and accessibility QA remain outstanding.
 - Open pull requests are only Dependabot
   [#5](https://github.com/Chris0Jeky/CommitAtlas/pull/5) and
-  [#6](https://github.com/Chris0Jeky/CommitAtlas/pull/6). Their last listed checks were green, but
-  they should be reconciled only after the feature dependency graph settles.
-- Open issues are exactly [#28](https://github.com/Chris0Jeky/CommitAtlas/issues/28),
+  [#6](https://github.com/Chris0Jeky/CommitAtlas/pull/6).
+- Open issues are [#28](https://github.com/Chris0Jeky/CommitAtlas/issues/28),
   [#30](https://github.com/Chris0Jeky/CommitAtlas/issues/30),
   [#32](https://github.com/Chris0Jeky/CommitAtlas/issues/32),
   [#33](https://github.com/Chris0Jeky/CommitAtlas/issues/33),
   [#34](https://github.com/Chris0Jeky/CommitAtlas/issues/34),
-  [#38](https://github.com/Chris0Jeky/CommitAtlas/issues/38), and
-  [#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40).
-- No Sites deployment, repository homepage, versioned release, or verified npm publication exists.
+  [#38](https://github.com/Chris0Jeky/CommitAtlas/issues/38),
+  [#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40),
+  [#45](https://github.com/Chris0Jeky/CommitAtlas/issues/45), and
+  [#46](https://github.com/Chris0Jeky/CommitAtlas/issues/46).
+- No Sites deployment or GitHub `v0.1.0` release has been verified. npm publication remains an
+  optional separate decision and must not be claimed without registry proof.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
+
+GitHub's GraphQL quota was exhausted during this closeout. The final repository, pull-request,
+issue, ref, and CI snapshot above was therefore obtained through REST and Git directly. Re-query
+review threads through GraphQL after the quota resets before a future merge.
 
 ## Shipped on `main`
 
@@ -36,7 +46,8 @@ The mainline now includes:
 - Product identity, responsive Sites-compatible Vinext workspace, repository/community metadata,
   locked CI, Dependabot, secret scanning, and canonical GPL-3.0-only licensing.
 - `@commit-atlas/core` bounded inputs and truthful calculations for contribution calendars,
-  streaks, activity, language bytes, lifecycle, and CI freshness.
+  streaks, activity, language bytes, lifecycle, and CI freshness. PR #43 additionally rejects
+  duplicate normalized full slugs and unsafe workflow identities.
 - `@commit-atlas/svg` deterministic, XML-safe, card-level accessible profile, streak, activity,
   language, and project-summary renderers across four themes. The package prepack-builds ES2020
   JavaScript and declarations and carries its GPL license.
@@ -44,138 +55,97 @@ The mainline now includes:
   stable ETags, public/private cache separation, configured-workflow CI truth, public-only
   credential proof, rate-limit conversion, bounded upstream text, and private-repository oracle
   regressions.
-- Root gates for typecheck, lint, core/API/SVG tests, package dry-run packs, production build, and
-  rendered Worker smoke tests.
+- Five secure SVG endpoints: profile, streak, activity, languages, and projects. PR #44 binds
+  contribution calculations to a complete requested UTC window, rejects future upstream days, and
+  preserves 200/304 header parity and fail-closed JSON errors.
+- Root gates for typecheck, lint, core/API/Studio/SVG tests, package dry-run packs, production build,
+  and rendered Worker smoke tests.
 
-PR #39 merged only after the final head
-`5794d9e11ba3c975f0b7ec8d966e2f3cd5a700e0` passed the full local gate, clean package-consumer
-proof, fresh independent review, exact-head hosted CI, the aging floor, and review-thread
-reconciliation. Its outer SVG descriptions now carry chronological activity summaries; the maximum
-366-day adversarial fixtures remained below 30,000 UTF-8 bytes. Issues #20, #21, #31, #36, and #37
-closed with that merge.
+The route sequence landed as reviewed fixed head
+`dff9c8825d262e4ceb625e67c399be06a6c3640e` and merge commit `a876dc3`. The superseded route PR #41
+was closed; issue #42 closed through PR #44. Reviewed nonblocking route/card gaps remain tracked in
+#40, #45, and #46 rather than being silently folded into the blocker round.
 
-## Saved implementation branches
+## Saved Studio/dashboard milestone
 
-### Five SVG routes — pushed, no PR
+The primary checkout is the sole remaining registered worktree:
 
-- Former auxiliary worktree: `work/CommitAtlas-routes` (removed without force after remote proof)
-- Branch: `feat/svg-card-routes`
-- Remote head: `f76d097ff096f0988a14069268b033e984eb74cb`
-- Current-main merge on the branch: `e581d69`
+- Path: `work/CommitAtlas`
+- Branch: `feat/studio-dashboard`
+- Last implementation head before this checkpoint commit:
+  `69ecd13c2382ee6b76149cefbedda331a0f0d322`
+- Current-main integration commit: `64ad6a6ad82da9416235755d2d12d01baf8f4227`
+- Focused implementation commit: `69ecd13 fix(studio): bind workflows to shipped card routes`
 - Pull request: none
 
-The branch implements:
+The branch contains the responsive landing page and accessible Studio, synthetic and public-data
+preview modes, four themes, selectable cards, up to six declared projects, truthful partial-data
+handling, HTTPS HTML actions, copyable README Markdown, and the branded `public/og.png`.
 
-- `/api/v1/cards/profile.svg`
-- `/api/v1/cards/streak.svg`
-- `/api/v1/cards/activity.svg`
-- `/api/v1/cards/languages.svg`
-- `/api/v1/projects.svg`
-- strict duplicate/unknown query validation and canonical contracts;
-- byte-exact ETags, 200/304 security-header parity, public cache policies, and private `no-store`;
-- snapshot adapters and built-Worker demo/live-shaped route tests.
+The focused integration adds one tested URL builder for all five shipped card paths, keeps the JSON
+and SVG project paths distinct, includes only aligned nonblank configured workflows, preserves
+theme/demo/activity-day semantics, and keeps the placeholder host until an API preview succeeds.
+The merge resolution preserved the union of Studio shell tests and all API/transport regressions.
 
-An independent review of prior head `418073d` found two direct truth defects: truncated repository
-aggregates appeared complete, and absent contribution days were zero-filled. The single blocker-fix
-commit `f76d097` now omits stars for truncated profiles, rejects truncated language distributions,
-requires complete contiguous requested contribution windows, trims any older boundary day before
-streak calculations, and preserves a complete all-zero calendar as a valid zero result.
+Exact-head local evidence at `69ecd13`:
 
-Recorded exact-head local evidence at `f76d097`:
-
+- `npm.cmd ci` — passed; 483 packages, zero reported vulnerabilities
+- `npm.cmd run test:studio` — 5 passed
 - `npm.cmd run typecheck` — passed
 - `npm.cmd run lint` — passed
-- `npm.cmd run test:github` — 45 passed
-- built SVG Worker focused tests — 9 passed
-- `npm.cmd run check` — passed: core 13, SVG 18, built Worker 19, both package dry-runs
+- `npm.cmd run check` — passed: core 15, GitHub/API 48, Studio 5, SVG 18, rendered HTML/SVG 22,
+  package builds and dry-run packs
 - `git diff --check origin/main...HEAD` — clean
+- `git ls-remote --heads origin feat/studio-dashboard` — exactly matched `69ecd13`
 
-The corrected head has not received its required fresh post-fix review, hosted CI, aging window, or
-PR merge. Do not claim it is shipped. Lower-priority reviewed gaps—canonical-query cache
-fragmentation, omission of `lib/svg-routes.test.ts` from the root gate, and planned lifecycle mapping
-to experimental—are explicitly retained in [#40](https://github.com/Chris0Jeky/CommitAtlas/issues/40).
+The route auxiliary worktree was tracked-clean, remotely preserved, merged, and removed without
+force. Its ignored dependency/build outputs were reproducible and needed no copy-out.
 
-The removed worktree's literal final ignored status was:
+## Static generator and local Action
 
-```text
-!! .next/
-!! .vinext/
-!! .wrangler/
-!! dist/
-!! node_modules/
-!! packages/core/dist/
-!! packages/core/tsconfig.tsbuildinfo
-!! packages/svg/dist/
-!! tsconfig.tsbuildinfo
-```
+No implementation branch exists. The approved design is durable in
+[STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md). Its first prerequisite—core manifest and
+workflow hardening—is now merged. Remaining work starts by extracting the existing hardened GitHub
+transport/adapters into publishable `@commit-atlas/github`, then adds an explicit unavailable SVG
+state, repository-contained static config and raw synthetic fixtures, exact-five-file generation,
+and a deterministic non-publishing Node 24 Action.
 
-These were reproducible dependencies/build outputs; nothing was copied out or needed to survive.
-The tracked status was clean and the remote SHA exactly matched before plain removal.
+## NOT completed or verified
 
-### Studio/dashboard — pushed, not integrated
-
-- Worktree: `work/CommitAtlas` (primary checkout)
-- Branch: `feat/studio-dashboard` (all checkpoint commits are pushed)
-- Last product/plan head before the closeout-only state commits:
-  `4159acdda5ccf98a3ced442e3df71440d4b8eb47`
-- Pull request: none
-
-This branch contains the responsive landing page and accessible Studio, synthetic and public-data
-preview modes, four themes, selectable cards, up to six declared projects, truthful partial-data
-handling, HTTPS HTML actions, copyable README Markdown, and the original branded `public/og.png`.
-It is intentionally behind `main` while the routes are reviewed. After the route PR lands, merge the
-new mainline into this branch, include each configured workflow in `projectUrl`, and bind all five
-real SVG surfaces.
-
-The earlier root gate and 1440x900/390x844 visual pass predate API/route integration and are
-historical only. Production browser QA must explicitly try to reproduce the earlier development-only
-React “multiple renderers concurrently rendering the same context provider” warning.
-
-### Static generator and local Action — architecture saved
-
-No implementation branch exists. The decisions that were previously only in an architecture-agent
-report are now durable in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md): publish a shared
-`@commit-atlas/github` boundary, distinguish unavailable contributions from zero, use strict raw
-synthetic HTTP fixtures, keep config/output repository-contained, atomically replace exactly five
-files, and bundle a non-publishing Node 24 Action with a fail-closed token policy.
-
-## Verification at this checkpoint
-
-- Fetched/read remote refs and confirmed `origin/main` at `f1a8f748`.
-- Confirmed PR #39 merged, its exact-head and post-merge Quality gates passed, and no implementation
-  PR remains open.
-- Confirmed open PRs are #5 and #6 and open issues are #28, #30, #32–#34, #38, and #40.
-- Pushed `feat/svg-card-routes` from `1179d30` to `f76d097`; `git ls-remote` then matched the local
-  SHA exactly.
-- Confirmed `feat/studio-dashboard` matched its remote before the checkpoint edits and pushed the
-  new plan/state commits successfully.
-- Removed the tracked-clean route auxiliary worktree without force after recording ignored output.
-- No agents remain running and no secrets or private data were added to the checkpoint.
-
-## Not completed or not verified
-
-- Fresh review, ready PR, hosted CI, aging floor, and merge for the five SVG route branch.
-- Studio/main integration and final production browser, accessibility, cache, error, copy, link, and
-  responsive QA.
-- `@commit-atlas/github`, the static generator, offline fixture system, bundled Node 24 Action, and
-  their consumer/package proofs.
-- Final operator/security/API/CLI/Action docs, Sites deployment, public URL, GitHub homepage,
-  production social metadata, and GitHub `v0.1.0` release.
+- Production desktop/mobile browser QA for the Studio, including keyboard, focus, accessibility,
+  action links, copy behavior, failure states, caching/304s, `/og.png`, console errors, overflow,
+  and the prior React multiple-renderer warning.
+- Fresh independent review, ready PR, exact-head hosted CI, aging floor, thread reconciliation, and
+  merge for `feat/studio-dashboard`.
+- `@commit-atlas/github`, `@commit-atlas/static`, offline fixture transport, the bundled Node 24
+  Action, and their clean-consumer/package/bundle proofs.
+- Final API/CLI/Action/operator docs, Sites deployment, exact public URL, production social metadata,
+  repository homepage, and GitHub `v0.1.0` release.
 - Live contribution behavior with a credential that the service positively proves is public-only.
-- npm registry publication; it remains optional and must not be claimed without direct proof.
+- npm registry publication.
+
+## Residual risk
+
+- #45: bounded contribution history can still make a displayed streak look like a lifetime best.
+- #46: synthetic demo SVG data is not yet labelled visibly/accessibly in every card.
+- #40: deferred route contract/canonicalization gaps remain explicit.
+- #28, #30, #32–#34, and #38 remain open and must be triaged against actual release impact.
+- Dependabot #5/#6 should be reconciled only after the feature dependency graph settles.
+- The Studio integration is fully unit/build-gated but has not yet been exercised in a production
+  browser, so visual and interaction quality are intentionally not claimed.
 
 ## Next safe slice
 
-1. Fetch `origin`, recreate `work/CommitAtlas-routes` detached from `origin/main`, switch to the
-   existing `feat/svg-card-routes` branch, and confirm exact head `f76d097`.
-2. Run one fresh scoped independent review of only the two corrected truth boundaries. If clean,
-   open one ready PR, run exact-head hosted CI, observe the three-minute floor, reconcile review
-   threads once, and merge with a merge commit.
-3. Merge the resulting `origin/main` into `feat/studio-dashboard`, integrate workflows and all five
-   route URLs, then run the full production desktop/mobile/keyboard/accessibility/error/cache pass.
-4. Follow [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md) in its recorded commit order.
-5. Reconcile Dependabot, finish truthful docs, deploy through Sites, verify the exact public origin,
-   update repository metadata, and create `v0.1.0` only from the final proved commit.
+1. Fetch and confirm the Studio branch still contains implementation head `69ecd13`; inspect any
+   newer commits rather than assuming this checkpoint is current.
+2. Run a production build/server and the desktop 1440x900, mobile 390x844, keyboard, accessibility,
+   URL/copy/action, error/cache, `/og.png`, console, and network QA listed in `V0_1_PLAN.md`.
+3. Fix only confirmed blockers in one bounded round, rerun the changed seam and full gate, obtain a
+   fresh independent review, then open a ready Studio PR and use exact-head CI plus the aging/thread
+   gates before a merge commit.
+4. Address #45 and #46 before release unless direct product evidence proves they are nonblocking.
+5. Continue the remaining ordered commits in `STATIC_GENERATOR_PLAN.md`; then reconcile dependencies,
+   finish truthful docs, deploy through Sites, browser-verify the public origin, and release `v0.1.0`.
 
 ## Clean resume commands
 
@@ -184,13 +154,12 @@ Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtl
 git fetch --all --prune
 git status --short --branch
 git worktree list --porcelain
-git ls-remote --heads origin main feat/svg-card-routes feat/studio-dashboard
-gh pr list --repo Chris0Jeky/CommitAtlas --state open
-gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
-
-git worktree add --detach '..\CommitAtlas-routes' origin/main
-git -C '..\CommitAtlas-routes' switch feat/svg-card-routes
-git -C '..\CommitAtlas-routes' status --short --branch
+git rev-parse HEAD
+git ls-remote --heads origin main feat/studio-dashboard
+gh api --paginate 'repos/Chris0Jeky/CommitAtlas/pulls?state=open&per_page=100'
+gh api --paginate 'repos/Chris0Jeky/CommitAtlas/issues?state=open&per_page=100'
+npm.cmd ci
+npm.cmd run check
 ```
 
 Start by reading this file, `V0_1_PLAN.md`, and `STATIC_GENERATOR_PLAN.md`. Never infer that an old
