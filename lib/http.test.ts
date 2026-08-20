@@ -82,6 +82,30 @@ test("sets SVG embed and script-blocking security headers for GET and OPTIONS", 
   assert.equal(options.headers.get("content-security-policy"), response.headers.get("content-security-policy"));
 });
 
+test("keeps live source timestamps in the semantic ETag", async () => {
+  const first = await jsonResponse(
+    new Request("https://example.test/api"),
+    {
+      version: 1,
+      latestPushAt: "2026-08-20T00:00:00.000Z",
+      freshness: { generatedAt: "2026-08-20T00:01:00.000Z", mode: "live" },
+    },
+    { edgeSeconds: 60, publicData: true },
+  );
+  const etag = first.headers.get("etag");
+  const changed = await jsonResponse(
+    new Request("https://example.test/api", { headers: { "if-none-match": etag! } }),
+    {
+      version: 1,
+      latestPushAt: "2026-08-20T01:00:00.000Z",
+      freshness: { generatedAt: "2026-08-20T00:02:00.000Z", mode: "live" },
+    },
+    { edgeSeconds: 60, publicData: true },
+  );
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.headers.get("etag"), etag);
+});
+
 test("allows only inline SVG presentation styles when a renderer explicitly opts into motion", async () => {
   const response = await svgResponse(
     new Request("https://example.test/api"),

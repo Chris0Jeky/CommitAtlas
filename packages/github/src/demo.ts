@@ -8,6 +8,7 @@ import type {
 
 /** Deterministic-shaped synthetic data for previews and offline examples. */
 export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
+  const stableTimestamp = utcDayTimestamp(now);
   return {
     version: 1,
     login,
@@ -24,7 +25,7 @@ export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
       { name: "Rust", repositories: 3, share: 15 },
       { name: "CSS", repositories: 2, share: 10 },
     ],
-    latestPushAt: now.toISOString(),
+    latestPushAt: stableTimestamp,
     repositoriesTruncated: false,
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
@@ -62,6 +63,7 @@ export function demoProjects(
   workflows: ReadonlyMap<string, ProjectWorkflow> = new Map(),
   now = new Date(),
 ): ProjectBoardSnapshot {
+  const stableTimestamp = utcDayTimestamp(now);
   const configuredCiStates = [
     { state: "passing", label: "Passing" },
     { state: "pending", label: "Pending" },
@@ -86,14 +88,14 @@ export function demoProjects(
         stars: 42 - index * 3,
         forks: 8 + index,
         openIssues: index * 2,
-        pushedAt: now.toISOString(),
+        pushedAt: stableTimestamp,
         license: "GPL-3.0-only",
         ci: {
           state: configuredCi?.state ?? "unconfigured",
           label: configuredCi?.label ?? "Not configured",
           workflow,
           url: null,
-          checkedAt: workflow ? now.toISOString() : null,
+          checkedAt: workflow ? stableTimestamp : null,
           headSha: null,
         },
         release: index === 0
@@ -101,7 +103,7 @@ export function demoProjects(
               tag: "v0.1.0",
               name: "Foundation",
               url: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/releases/tag/v0.1.0`,
-              publishedAt: now.toISOString(),
+              publishedAt: stableTimestamp,
               download: null,
             }
           : null,
@@ -109,6 +111,10 @@ export function demoProjects(
     }),
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
+}
+
+function utcDayTimestamp(now: Date): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 }
 
 function lifecycleFor(name: string, lifecycles: ReadonlyMap<string, ProjectLifecycle>): ProjectLifecycle {

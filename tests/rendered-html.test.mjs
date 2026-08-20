@@ -13,12 +13,12 @@ async function render(pathname = "/") {
   );
 }
 
-async function request(path, extraEnv = {}) {
+async function request(path, extraEnv = {}, init = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request(`http://localhost${path}`),
+    new Request(`http://localhost${path}`, init),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, ...extraEnv },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -94,6 +94,28 @@ test("returns stable conditional ETags for public demo data", async () => {
   );
   assert.equal(conditional.status, 304);
   assert.equal(await conditional.text(), "");
+});
+
+test("keeps demo profile and project ETags stable within the UTC day", async () => {
+  for (const path of [
+    "/api/v1/profile?user=octocat&demo=true",
+    "/api/v1/projects?owner=octocat&repos=atlas&states=atlas:active&workflows=atlas:ci.yml&demo=true",
+  ]) {
+    const first = await request(path);
+    assert.equal(first.status, 200, path);
+    const etag = first.headers.get("etag");
+    assert.match(etag ?? "", /^W\/"[a-f\d]{64}"$/, path);
+    const payload = await first.json();
+    const semanticTimestamp = path.includes("/profile")
+      ? payload.latestPushAt
+      : payload.projects[0].pushedAt;
+    assert.match(semanticTimestamp, /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/, path);
+
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    const conditional = await request(path, {}, { headers: { "if-none-match": etag } });
+    assert.equal(conditional.status, 304, path);
+    assert.equal(await conditional.text(), "", path);
+  }
 });
 
 test("fails closed for unsafe or unproven contribution credentials in the built Worker", async () => {
