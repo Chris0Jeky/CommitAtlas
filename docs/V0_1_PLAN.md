@@ -1,11 +1,10 @@
 # CommitAtlas v0.1 implementation plan
 
 Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
-and all five versioned routes are merged. The Studio is integrated on a saved remote branch, has
-passed the full local and hosted gate plus production desktop/mobile QA, and is open as PR #47. Its
-fresh independent review found one confirmed HIGH contribution-card copy blocker. A later connector
-review added eight unresolved threads that still need direct causal triage, so the bounded fix round,
-post-fix proof, and merge remain.
+and all five versioned routes are merged. The Studio demonstration is complete on
+`feat/studio-dashboard`, has passed the full local gate, desktop/mobile production QA, and two fresh
+independent reviews, and remains open as PR #47 for exact-head hosted proof, remote thread
+reconciliation, owner visual acceptance, and merge.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live PR checks and unresolved review threads.
 
@@ -125,15 +124,13 @@ Reviewed lower-priority route gaps remain retained in
 demo labelling remain explicit in #45 and #46; they must be decided from release evidence rather
 than silently folded into a completed review round.
 
-### 4. Integrate and prove the Studio — production QA complete; one review blocker pending
+### 4. Integrate and prove the Studio — demonstration complete; shipping pending
 
-The remote `feat/studio-dashboard` branch contains implementation head
-`022dd5d72c5989ec056b273aecbcdb7ff1acf9d4` before this stop checkpoint. Merge commit `64ad6a6`
-preserves the union of package, API, route, Studio shell, and rendered product tests. Commit
-`69ecd13` binds every generated card URL to the shipped route contract, sends aligned nonblank
-configured workflows to both project surfaces, and keeps the placeholder origin until a preview
-succeeds. Commit `022dd5d` contains the production-QA overflow and retained-preview messaging fixes.
-The full local gate and exact-head hosted Quality gate passed.
+The local `feat/studio-dashboard` implementation head is
+`9f80a03043fb3b293d2b3c16f9b79aa2f450b1be` before the documentation checkpoint. The original
+integration commits preserve the union of package, API, route, Studio shell, and rendered product
+tests. Four focused post-handoff commits bind output to current evidence, preserve the full bounded
+project/workflow contract, restore Paper contrast, and retire stale project snapshots.
 
 Production desktop/mobile browser QA covered:
 
@@ -144,20 +141,18 @@ Production desktop/mobile browser QA covered:
 - add, remove, configure lifecycle/workflow/action links, theme and card selection;
 - Markdown copy and every produced image URL; Docs/Install/Download/Source/Release/CI actions only
   when their HTTPS URLs exist;
-- tab order, visible focus, keyboard-only operation, landmarks, labels, contrast, reduced motion,
-  and screen-reader-relevant SVG summaries;
+- landmarks, labels, contrast, reduced motion, visible focus styling, and screen-reader-relevant SVG
+  summaries; full sequential keyboard traversal remains unverified;
 - ETag/304 and cache headers; direct `/og.png`; console and network errors; and an explicit attempt to
   reproduce the prior React multiple-renderer warning.
 
 The complete evidence and browser-control limitation are in
-[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). Ready PR #47 is intentionally unmerged because
-the independent review proved that live/no-contribution copy output still includes Streak and
-Activity URLs that return 503. The connector subsequently added eight unresolved threads against
-the same code head. Reproduce and causally classify them, apply only confirmed CRITICAL/HIGH fixes
-in the single bounded fix round, repeat the affected browser checks and full gate, obtain one fresh
-post-fix review and exact-head hosted CI, reconcile every thread, and merge only after the renewed
-aging floor. Full keyboard-only traversal remains a separate unverified pre-release check because
-the available browser controller could not move focus.
+[STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). The previously confirmed live contribution-card
+copy blocker and the causally confirmed late-review seams are closed in code and tests. Ready PR #47
+remains intentionally unmerged until the exact head is pushed, hosted CI passes, remote threads are
+reconciled once, the owner visually accepts the demo, and the renewed aging floor passes. Full
+keyboard-only traversal remains a separate unverified pre-release check because the available
+browser controller could not reliably move focus.
 
 ### 5. Build the static generator package
 
@@ -265,8 +260,6 @@ gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the saved Studio branch, triage the eight unresolved connector threads, fix the confirmed
-contribution-card copy blocker plus only other causally confirmed CRITICAL/HIGH defects, repeat the
-affected browser checks and full gate, and ship only at an exact green reviewed head. Preserve one
-writer per checkout, use small present-tense commits, and tear down auxiliary worktrees after their
-clean pushed heads are recorded.
+Resume the Studio branch, inspect the exact remote head and current threads, finish exact-head hosted
+proof and one-time reconciliation, then merge only after owner demonstration acceptance and the
+aging floor. Continue with the static-generator plan rather than reopening nonblocking Studio ideas.
