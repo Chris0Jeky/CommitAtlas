@@ -6,7 +6,7 @@ export const CORE_VERSION = 1 as const;
 const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const HANDLE_PATTERN = /^(?!-)(?!.*--)[A-Za-z0-9-]{1,39}(?<!-)$/;
-const REPO_NAME_PATTERN = /^(?!\.)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/;
+const REPOSITORY_NAME_PATTERN = /^(?!\.{1,2}$)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/;
 
 function isUtcDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
@@ -25,10 +25,24 @@ export const GitHubHandleInputSchema = z.object({
 export type GitHubHandleInput = z.infer<typeof GitHubHandleInputSchema>;
 export const GitHubHandleSchema = GitHubHandleInputSchema;
 
+export const GitHubRepositoryNameSchema = z.string().trim().regex(REPOSITORY_NAME_PATTERN, "Invalid GitHub repository name");
+
+export const GitHubRepositorySlugSchema = z.string().trim().refine((value) => {
+  const parts = value.split("/");
+  return parts.length === 2 && HANDLE_PATTERN.test(parts[0] ?? "") && REPOSITORY_NAME_PATTERN.test(parts[1] ?? "");
+}, "Expected owner/repository").transform((value) => {
+  const [owner, name] = value.split("/");
+  return `${owner?.toLowerCase()}/${name}`;
+});
+
+export function parseRepositorySlug(input: unknown): string {
+  return GitHubRepositorySlugSchema.parse(input);
+}
+
 export const GitHubRepoInputSchema = z.object({
   version: VersionSchema,
   owner: z.string().trim().regex(HANDLE_PATTERN, "Invalid GitHub owner"),
-  name: z.string().trim().regex(REPO_NAME_PATTERN, "Invalid GitHub repository name"),
+  name: GitHubRepositoryNameSchema,
 }).strict();
 export type GitHubRepoInput = z.infer<typeof GitHubRepoInputSchema>;
 export const GitHubRepoSchema = GitHubRepoInputSchema;
@@ -85,7 +99,7 @@ export const ProjectLinksSchema = z.object({
 export type ProjectLinks = z.infer<typeof ProjectLinksSchema>;
 
 const ProjectManifestEntrySchema = z.object({
-  repo: z.string().trim().regex(/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/, "Expected owner/repository"),
+  repo: GitHubRepositorySlugSchema,
   label: z.string().trim().min(1).max(80),
   lifecycle: ProjectLifecycleSchema,
   workflow: z.string().trim().max(200).optional(),
@@ -225,7 +239,7 @@ const LanguageBytesSchema = z.record(z.string().trim().min(1).max(80), z.number(
   if (Object.keys(value).length > 50) context.addIssue({ code: "custom", message: "A repository may contain at most 50 languages" });
 });
 export const LanguageRepositorySchema = z.object({
-  repo: z.string().trim().regex(/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/),
+  repo: GitHubRepositorySlugSchema,
   languages: LanguageBytesSchema,
 }).strict();
 export type LanguageRepository = z.infer<typeof LanguageRepositorySchema>;
@@ -247,7 +261,11 @@ export interface LanguageAggregation {
 export function aggregateLanguages(input: unknown): LanguageAggregation {
   const repositories = z.array(LanguageRepositorySchema).max(100).parse(input);
   const totals = new Map<string, number>();
+  const seenRepositories = new Set<string>();
   for (const repository of repositories) {
+    const repositoryKey = repository.repo.toLowerCase();
+    if (seenRepositories.has(repositoryKey)) throw new Error(`Duplicate repository: ${repository.repo}`);
+    seenRepositories.add(repositoryKey);
     for (const [language, bytes] of Object.entries(repository.languages)) {
       const key = language.trim();
       const total = (totals.get(key) ?? 0) + bytes;

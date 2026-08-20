@@ -9,6 +9,7 @@ import {
   parseManifest,
   parseOptions,
   parseRepo,
+  parseRepositorySlug,
 } from "./src/index.js";
 
 const calendar = {
@@ -25,6 +26,17 @@ describe("core contracts", () => {
   it("canonicalizes GitHub handles and repository owners", () => {
     expect(parseRepo({ version: 1, owner: "Chris0Jeky", name: "CommitAtlas" })).toEqual({ version: 1, owner: "chris0jeky", name: "CommitAtlas" });
     expect(() => parseRepo({ version: 1, owner: "bad owner", name: "repo" })).toThrow();
+  });
+
+  it("shares one repository validator and allows dot-prefixed names", () => {
+    expect(parseRepo({ version: 1, owner: "owner", name: ".github" }).name).toBe(".github");
+    expect(parseRepositorySlug("Owner/.github")).toBe("owner/.github");
+    expect(parseManifest({ version: 1, projects: [{ repo: "Owner/.github", label: "GitHub metadata", lifecycle: "active", links: {} }] }).projects[0]?.repo).toBe("owner/.github");
+    expect(() => parseRepo({ version: 1, owner: "owner", name: "." })).toThrow();
+    expect(() => parseRepo({ version: 1, owner: "owner", name: ".." })).toThrow();
+    expect(() => parseRepositorySlug("owner/." )).toThrow();
+    expect(() => parseRepositorySlug("owner/.." )).toThrow();
+    expect(() => aggregateLanguages([{ repo: "owner/.", languages: {} }])).toThrow();
   });
 
   it("rejects untrusted manifest links while retaining XML-like labels as plain data", () => {
@@ -63,6 +75,13 @@ describe("core contracts", () => {
 
   it("labels language totals as repository bytes, not proficiency", () => {
     expect(aggregateLanguages([{ repo: "owner/a", languages: { TypeScript: 80, JavaScript: 20 } }, { repo: "owner/b", languages: { TypeScript: 20 } }])).toMatchObject({ basis: "repository-language-bytes", notProficiency: true, totalBytes: 120 });
+  });
+
+  it("rejects duplicate language repositories case-insensitively", () => {
+    expect(() => aggregateLanguages([
+      { repo: "Owner/Repo", languages: { TypeScript: 80 } },
+      { repo: "owner/repo", languages: { TypeScript: 20 } },
+    ])).toThrow("Duplicate repository");
   });
 
   it("keeps CI uncertainty explicit", () => {
