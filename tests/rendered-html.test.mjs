@@ -66,6 +66,21 @@ test("serves a versioned synthetic profile without a token", async () => {
   assert.equal(payload.freshness.mode, "demo");
 });
 
+test("reports contribution capability without claiming an unverified credential works", async () => {
+  for (const [token, expected, cacheControl] of [
+    ["", { status: "available", mode: "public-profile" }, "public, max-age=60, s-maxage=60"],
+    ["ghp_public-only", { status: "unverified", mode: "configured-credential" }, "private, no-store"],
+    ["unknown-private-capable-token", { status: "unverified", mode: "configured-credential" }, "private, no-store"],
+  ]) {
+    const response = await request("/api/v1/health", { GITHUB_TOKEN: token });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), cacheControl);
+    const payload = await response.json();
+    assert.deepEqual(payload.capabilities.contributions, expected);
+    assert.doesNotMatch(JSON.stringify(payload), new RegExp(token || "token-that-cannot-match"));
+  }
+});
+
 test("fails closed on unknown API parameters", async () => {
   const response = await request("/api/v1/profile?user=octocat&token=do-not-accept");
   assert.equal(response.status, 400);
