@@ -408,7 +408,7 @@ export default function StudioClient() {
               );
             })}
             {!demo && !hasCurrentContributions && (
-              <p className="card-availability-note">Atlas, Streak, and Activity are omitted until this live preview has contribution history.</p>
+              <p className="card-availability-note">Atlas, Streak, Breakdown, Rhythm, and Activity are omitted until this live preview has contribution history.</p>
             )}
             {!demo && !hasCurrentLanguages && (
               <p className="card-availability-note">Languages stays selected but is omitted until this live preview has a complete public repository list.</p>

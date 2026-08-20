@@ -506,7 +506,10 @@ test("breakdown card keeps exact counts and public percentages truthful", () => 
   });
   assert.match(percentages, /PUBLIC PROFILE %/);
   assert.match(percentages, /62\.5%/);
-  assert.match(percentages, /Exact counts unavailable/);
+  assert.match(percentages, /GitHub profile activity mix · not window-scoped/);
+  assert.match(percentages, /Annual profile-view percentages · exact window counts unavailable/);
+  assert.match(percentages, /not scoped to the requested 365-day contribution-calendar window/);
+  assert.doesNotMatch(percentages, /2026-01-01 → 2026-12-31/);
   assert.doesNotMatch(percentages, /Total 100|100 contributions/);
   assert.match(percentages, /width="275\.75" height="10" rx="5" fill="#79f2c0"/);
   assertSafeSvg(percentages);
@@ -530,6 +533,7 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(wide, /\+100% vs prior 28 days/);
   assert.match(wide, /70% active-day density \(capped at 80%\) \+ 30% current streak \(capped at 30 days\)/);
   assert.match(wide, /CommitAtlas personal consistency · not a GitHub rank/);
+  assert.match(wide, /<desc>[^<]*this is not a GitHub rank/);
   assertSafeSvg(wide);
   const compact = renderRhythmCard({ ...data, currentStreakBoundary: "closed", trend: { ...data.trend, direction: "unavailable", changePercent: null, previous28Days: null } }, { width: 480 });
   assert.match(compact, /viewBox="0 0 480 300"/);

@@ -144,7 +144,10 @@ test("keeps contribution breakdown basis truthful across public-profile and toke
     const publicBody = await publicResponse.text();
     assert.match(publicBody, /PUBLIC PROFILE %/);
     assert.match(publicBody, />80%<\/text>/);
-    assert.match(publicBody, /Exact counts unavailable/);
+    assert.match(publicBody, /GitHub profile activity mix · not window-scoped/);
+    assert.match(publicBody, /Annual profile-view percentages · exact window counts unavailable/);
+    assert.match(publicBody, /not scoped to the requested 7-day contribution-calendar window/);
+    assert.doesNotMatch(publicBody, /· 7 days<\/text>/);
     assert.doesNotMatch(publicBody, /EXACT COUNTS|Total 100|100 contributions/);
   } finally {
     if (previous === undefined) delete process.env.GITHUB_TOKEN;

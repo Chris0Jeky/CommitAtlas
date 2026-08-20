@@ -547,11 +547,12 @@ export function renderContributionBreakdownCard(
   const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
   const total = values.reduce((sum, value) => sum + value, 0);
   const colors = [t.accent, t.negative, t.positive, t.warning] as const;
-  const basisLabel = data.basis === "public-profile-percentages" ? "PUBLIC PROFILE %" : "EXACT COUNTS";
-  const basisDescription = data.basis === "public-profile-percentages"
-    ? "public profile percentages; exact counts and a total are unavailable"
-    : "exact categorized counts";
-  const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. Window ${data.window.from} to ${data.window.to}, ${formatNumber(data.window.days, false)} days. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
+  const publicProfileMix = data.basis === "public-profile-percentages";
+  const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
+  const basisDescription = publicProfileMix
+    ? `GitHub public-profile percentages from calendar-year profile views; these are not exact counts and are not scoped to the requested ${formatNumber(data.window.days, false)}-day contribution-calendar window`
+    : `exact categorized counts for ${data.window.from} to ${data.window.to}, ${formatNumber(data.window.days, false)} days`;
+  const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -559,13 +560,16 @@ export function renderContributionBreakdownCard(
   out += `<rect x="${width - 150}" y="31" width="116" height="22" rx="11" fill="${t.background}" stroke="${t.border}"/>`;
   out += text(width - 92, 46, basisLabel, 9, data.basis === "public-profile-percentages" ? t.warning : t.positive, 750, "middle");
   out += sourceMarker(data.source, width - 34, 70, t);
-  out += text(34, 70, `${data.window.from} → ${data.window.to} · ${formatNumber(data.window.days, false)} days`, 10, t.muted, 550);
+  const scopeLabel = publicProfileMix
+    ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
+    : `${data.window.from} → ${data.window.to} · ${formatNumber(data.window.days, false)} days`;
+  out += text(34, 70, scopeLabel, 10, t.muted, 550);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
   breakdownLabels.forEach(([label], index) => {
     const y = 82 + index * 26;
     const value = values[index];
-    const normalized = data.basis === "public-profile-percentages"
+    const normalized = publicProfileMix
       ? Math.min(100, value) / 100
       : total > 0 ? value / total : 0;
     const fillWidth = barWidth * normalized;
@@ -575,9 +579,10 @@ export function renderContributionBreakdownCard(
     out += text(width - 34, y + 10, breakdownValue(value, data.basis), 10, t.text, 700, "end");
   });
   out += `<line x1="34" y1="190" x2="${width - 34}" y2="190" stroke="${t.border}"/>`;
-  out += text(34, 208, data.basis === "public-profile-percentages"
-    ? "Exact counts unavailable · public profile percentages only"
-    : "Categorized exact counts · bars normalized to categorized total", 9, t.muted, 550);
+  const footer = publicProfileMix
+    ? width < 600 ? "Annual profile % · not window-scoped" : "Annual profile-view percentages · exact window counts unavailable"
+    : width < 520 ? "Exact categorized counts · normalized bars" : "Categorized exact counts · bars normalized to categorized total";
+  out += text(34, 208, footer, 9, t.muted, 550);
   return out + `</g>` + svgEnd();
 }
 
@@ -611,7 +616,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
   const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
   const metadata = sourceMetadata(data.source, o.title, o.description);
-  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${data.rhythm.level}. ${data.rhythm.basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${data.rhythm.level}; this is not a GitHub rank. ${data.rhythm.basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
