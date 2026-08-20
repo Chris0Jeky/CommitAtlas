@@ -207,7 +207,7 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
     const bytes = Buffer.byteLength(output, "utf8");
     assert.ok(bytes < 30_000, `${label} SVG exceeded budget (${bytes} UTF-8 bytes)`);
   }
-  assert.match(activity366, /aria-label="[^\"]*2026-01-01: 5 contributions/);
+  assert.match(activity366, /aria-label="[^"]*2026-01-01: 5 contributions/);
   assert.match(escapedOutputs[0][1], /aria-label="2025-01-01: 100,000 contributions/);
   assert.match(escapedOutputs[2][1], /aria-label="2025-01-01: 100,000 contributions/);
   assert.match(escapedOutputs[0][1], /2025-01-01: 100,000 contributions/);
