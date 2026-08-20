@@ -159,6 +159,59 @@ test("rejects malformed required metrics rather than treating them as zero", asy
   );
 });
 
+test("prefers upstream Retry-After for 403 rate limits", async () => {
+  const fetchImpl: typeof fetch = async () => new Response(null, {
+    status: 403,
+    headers: { "retry-after": "17", "x-ratelimit-reset": "9999999999" },
+  });
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_rate_limited");
+      assert.equal(error.status, 429);
+      assert.equal(error.retryAfter, "17");
+      return true;
+    },
+  );
+});
+
+test("converts the x-ratelimit-reset epoch to a 429 retry delta", async () => {
+  const fetchImpl: typeof fetch = async () => new Response(null, {
+    status: 429,
+    headers: { "x-ratelimit-reset": String(NOW.getTime() / 1000 + 45) },
+  });
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_rate_limited");
+      assert.equal(error.status, 429);
+      assert.equal(error.retryAfter, "45");
+      return true;
+    },
+  );
+});
+
+test("clamps past reset epochs to zero for 403 and 429 rate limits", async () => {
+  for (const status of [403, 429]) {
+    const fetchImpl: typeof fetch = async () => new Response(null, {
+      status,
+      headers: { "x-ratelimit-reset": String(NOW.getTime() / 1000 - 45) },
+    });
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError);
+        assert.equal(error.code, "github_rate_limited");
+        assert.equal(error.status, 429);
+        assert.equal(error.retryAfter, "0");
+        return true;
+      },
+    );
+  }
+});
+
 test("enforces the response limit for chunked bodies without Content-Length", async () => {
   const oversizedJson = JSON.stringify({ payload: "x".repeat(1_500_000) });
   const fetchImpl: typeof fetch = async () => streamedJson(oversizedJson);

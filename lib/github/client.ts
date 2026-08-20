@@ -331,7 +331,7 @@ export class GitHubClient {
         limited ? "github_rate_limited" : "github_unavailable",
         limited ? "GitHub rate limit reached; retry after the reset window" : "GitHub data is currently unavailable",
         limited ? 429 : 502,
-        response.headers.get("retry-after") ?? response.headers.get("x-ratelimit-reset"),
+        retryAfterValue(response.headers, this.now()),
       );
     }
     const declaredLength = response.headers.get("content-length");
@@ -433,6 +433,18 @@ function toLanguageSignals(counts: ReadonlyMap<string, number>): LanguageSignal[
 
 function privateDataError(message: string): GitHubApiError {
   return new GitHubApiError("private_data", message, 403);
+}
+
+function retryAfterValue(headers: Headers, now: Date): string | null {
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter !== null) return retryAfter;
+
+  const reset = headers.get("x-ratelimit-reset");
+  if (reset === null || reset.trim() === "") return null;
+  const resetEpoch = Number(reset);
+  if (!Number.isFinite(resetEpoch)) return null;
+  const nowEpoch = Math.floor(now.getTime() / 1000);
+  return String(Math.max(0, resetEpoch - nowEpoch));
 }
 
 function requiredMetric(record: Record<string, unknown>, key: string): number {
