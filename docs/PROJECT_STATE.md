@@ -16,11 +16,14 @@ Last verified: 2026-08-20
 - Truthfulness fixes for future-dated CI observations, as-of streak calculations, empty contribution
   calendars, missing profile/streak values, and credential-bearing URLs.
 
-Current `main`: merge commit `0061861` from [PR #24](https://github.com/Chris0Jeky/CommitAtlas/pull/24).
+Feature baseline on `main` when this checkpoint was captured: merge commit `0061861` from
+[PR #24](https://github.com/Chris0Jeky/CommitAtlas/pull/24).
 
 ## Saved implementation checkpoint
 
 Active branch: `feat/github-api-hardened`
+
+Saved review surface: draft [PR #25](https://github.com/Chris0Jeky/CommitAtlas/pull/25)
 
 The branch contains the first versioned JSON routes for profile, contributions, projects, and
 health, plus synthetic fixtures and rendered-route smoke tests. Two follow-up commits align
