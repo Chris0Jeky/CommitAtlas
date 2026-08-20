@@ -325,7 +325,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
     const fill = intensity === 0 ? t.background : intensity < 0.34 ? t.border : intensity < 0.67 ? t.accent : t.positive;
     const x = start + column * (cell + 2); const y = top + row * (cell + 2);
     const cells = cellsByFill.get(fill) ?? [];
-    cells.push(`<path d="M${x} ${y}h${cell}v${cell}H${x}"><title>${escapeXml(`${day.date}: ${formatNumber(day.count)} contributions`)}</title></path>`);
+    cells.push(`<path d="M${x} ${y}h${cell}v${cell}H${x}"><title>${escapeXml(`${day.date}:${formatNumber(day.count)}`)}</title></path>`);
     cellsByFill.set(fill, cells);
   });
   for (const [fill, cells] of cellsByFill) out += `<g fill="${fill}">${cells.join("")}</g>`;

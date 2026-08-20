@@ -184,8 +184,8 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
   ] });
   assert.ok(activity364.length < 30_000, `364-day SVG exceeded budget (${activity364.length})`);
   assert.ok(activity366.length < 30_000, `366-day SVG exceeded budget (${activity366.length})`);
-  assert.match(activity366, /2026-01-01: 5 contributions/);
-  assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
+  assert.match(activity366, /2026-01-01:5/);
+  assert.doesNotMatch(activity366, /2025-02-29:99|not-a-date/);
   assert.match(activity364, />P{31}…<\/text>/);
 });
 
@@ -241,6 +241,6 @@ test("labels expose signal state without depending on color", () => {
   for (const label of ["Active", "Maintained", "Paused", "Archived", "Experimental", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
     assert.match(board, new RegExp(label));
   }
-  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /2026-08-18: 0 contributions/);
+  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /2026-08-18:0/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
 });
