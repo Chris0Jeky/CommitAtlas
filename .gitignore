@@ -37,6 +37,7 @@ yarn-error.log*
 /dist/
 /packages/core/dist/
 /packages/github/dist/
+/packages/static/dist/
 /.wrangler/
 /outputs/
 /work/

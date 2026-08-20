@@ -169,7 +169,7 @@ export interface AtlasCardData {
     readonly unavailable: number;
   };
   readonly generatedAt: string;
-  readonly source: "public-github" | "synthetic-demo";
+  readonly source: "public-github" | "public-profile" | "synthetic-demo";
 }
 
 const DEFAULT_OPTIONS: Required<Pick<RenderOptions, "theme" | "width" | "height">> = {
@@ -516,7 +516,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const height = o.height;
   const name = truncateText(data.profile.name || data.profile.login || "GitHub user", narrow ? 22 : 30);
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
-  const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW" : "PUBLIC GITHUB";
+  const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW"
+    : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
+      : "PUBLIC GITHUB";
   const breakdownQualifier = data.breakdownBasis === "public-profile-percentages" ? "Public profile activity mix" : "Breakdown";
   const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
