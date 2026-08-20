@@ -1,5 +1,6 @@
 import type {
   CiState as CoreCiState,
+  ContributionMetrics,
   ProjectLifecycle as CoreProjectLifecycle,
 } from "@/packages/core/src/index";
 
@@ -96,5 +97,14 @@ export interface ProjectBoardSnapshot {
   version: 1;
   owner: string;
   projects: ProjectSnapshot[];
+  freshness: Freshness;
+}
+
+export interface PortfolioSnapshot {
+  version: 1;
+  profile: ProfileSnapshot;
+  contributions: ContributionSnapshot;
+  metrics: ContributionMetrics;
+  projects: ProjectBoardSnapshot | null;
   freshness: Freshness;
 }

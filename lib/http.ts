@@ -30,10 +30,13 @@ export async function jsonResponse(
 export async function svgResponse(
   request: Request,
   body: string,
-  options: { edgeSeconds: number; publicData: boolean },
+  options: { edgeSeconds: number; publicData: boolean; inlineStyles?: boolean },
 ): Promise<Response> {
   const etag = await bodyEtag(body);
   const headers = successHeaders(etag, options, "image/svg+xml; charset=utf-8");
+  if (options.inlineStyles) {
+    headers.set("Content-Security-Policy", "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox");
+  }
   if (ifNoneMatch(request.headers.get("if-none-match"), etag)) {
     return new Response(null, { status: 304, headers });
   }
@@ -71,7 +74,7 @@ function errorJson(code: string, message: string, status: number, generatedAt: s
 
 function successHeaders(
   etag: string,
-  options: { edgeSeconds: number; publicData: boolean },
+  options: { edgeSeconds: number; publicData: boolean; inlineStyles?: boolean },
   contentType = "application/json; charset=utf-8",
 ): Headers {
   return new Headers({

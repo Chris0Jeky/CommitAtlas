@@ -37,9 +37,9 @@ export const themes: Readonly<Record<ThemeName, SvgTheme>> = {
     border: "#cbd5e1", languagePalette: ["#0f766e", "#2563eb", "#7c3aed", "#b45309", "#be185d"],
   },
   ember: {
-    background: "#20100b", surface: "#321710", text: "#fff6ed", muted: "#e8c9b3",
+    background: "#0d1117", surface: "#161b22", text: "#f2f4f7", muted: "#a7adb7",
     accent: "#ff9f68", positive: "#75d69b", warning: "#ffd166", negative: "#ff7b7b",
-    border: "#653220", languagePalette: ["#ff9f68", "#ffd166", "#75d69b", "#9bd5ff", "#d7a8ff"],
+    border: "#30363d", languagePalette: ["#ff9f68", "#ffd166", "#75d69b", "#9bd5ff", "#d7a8ff"],
   },
 };
 
@@ -49,6 +49,7 @@ export interface RenderOptions {
   readonly height?: number;
   readonly title?: string;
   readonly description?: string;
+  readonly motion?: "none" | "subtle";
 }
 
 export interface ProfileCardData {
@@ -122,6 +123,52 @@ export interface ProjectSignal {
 
 export interface ProjectBoardData {
   readonly projects: readonly ProjectSignal[];
+}
+
+export interface AtlasCardData {
+  readonly profile: {
+    readonly name: string;
+    readonly login: string;
+    readonly repositories: number;
+    readonly followers: number;
+    readonly stars?: number;
+  };
+  readonly window: { readonly from: string; readonly to: string; readonly days: number };
+  readonly total: number;
+  readonly activeDays: number;
+  readonly density: number;
+  readonly averagePerDay: number;
+  readonly currentStreak: number;
+  readonly longestStreak: number;
+  readonly streakBasis: "returned-window";
+  readonly peakDay: { readonly date: string; readonly count: number };
+  readonly breakdown: {
+    readonly commits: number;
+    readonly issues: number;
+    readonly pullRequests: number;
+    readonly reviews: number;
+  };
+  readonly trend: {
+    readonly buckets: readonly number[];
+    readonly recent28Days: number;
+    readonly previous28Days: number | null;
+    readonly changePercent: number | null;
+    readonly direction: "up" | "down" | "flat" | "new" | "unavailable";
+  };
+  readonly rhythm: {
+    readonly score: number;
+    readonly level: "starting" | "building" | "steady" | "strong" | "relentless";
+  };
+  readonly activity: readonly (ActivityDay & { readonly level?: number })[];
+  readonly languages?: readonly LanguageStat[];
+  readonly projects?: {
+    readonly total: number;
+    readonly passing: number;
+    readonly attention: number;
+    readonly unavailable: number;
+  };
+  readonly generatedAt: string;
+  readonly source: "public-github" | "synthetic-demo";
 }
 
 const DEFAULT_OPTIONS: Required<Pick<RenderOptions, "theme" | "width" | "height">> = {
@@ -283,8 +330,10 @@ function link(textValue: string, href: string | undefined, x: number, y: number,
 
 export function renderProfileCard(data: ProfileCardData, options?: RenderOptions): string {
   const rawLogin = String(data.login ?? "").replace(/^@/, "").trim();
-  const name = truncateText(String(data.name ?? "").trim() || rawLogin || "GitHub user", 30); const o = optionsFor(
-    options, 220, `${name} profile`, `GitHub profile for ${name}.`, 180, 320,
+  const name = truncateText(String(data.name ?? "").trim() || rawLogin || "GitHub user", 30);
+  const hasDetails = Boolean(String(data.bio ?? "").trim() || String(data.location ?? "").trim() || data.website);
+  const o = optionsFor(
+    options, hasDetails ? 220 : 190, `${name} profile`, `GitHub profile for ${name}.`, 180, 320,
   ); const t = o.theme; const width = o.width;
   const login = truncateText(rawLogin, 32);
   const bio = truncateText(data.bio ?? "", 78);
@@ -297,10 +346,16 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   out += text(112, 54, name, 24, t.text, 750) + text(112, 77, `@${login}`, 13, t.muted);
   if (bio) out += text(112, bioY, bio, 13, t.text);
   if (data.location) out += text(112, locationY, `⌖ ${truncateText(data.location, 35)}`, 12, t.muted);
-  const stats = [["Repositories", data.repositories], ["Followers", data.followers], ["Following", data.following], ["Contributions", data.contributions], ["Stars", data.stars]] as const;
-  const statY = o.height - 31; const statWidth = (width - 64) / stats.length;
+  const possibleStats: readonly (readonly [string, number | undefined])[] = [
+    ["Repositories", data.repositories], ["Followers", data.followers], ["Following", data.following],
+    ["Contributions", data.contributions], ["Stars", data.stars],
+  ];
+  const stats = possibleStats.filter((stat): stat is readonly [string, number] => {
+    const value = stat[1];
+    return value !== undefined && Number.isFinite(value) && value >= 0;
+  });
+  const statY = o.height - 31; const statWidth = (width - 64) / Math.max(1, stats.length);
   stats.forEach(([label, value], index) => {
-    if (value === undefined || (label === "Stars" && (!Number.isFinite(value) || value < 0))) return;
     const x = 32 + statWidth * index;
     out += text(x, statY - 13, formatNumber(finite(value)), 18, t.text, 750) + text(x, statY + 5, label, 10, t.muted);
   });
@@ -309,7 +364,7 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
 }
 
 export function renderStreakCard(data: StreakCardData, options?: RenderOptions): string {
-  const o = optionsFor(options, 180, "Contribution streak", "Current and longest GitHub contribution streaks.", 150, 260); const t = o.theme; const width = o.width;
+  const o = optionsFor(options, 180, "Contribution streak", "Current and longest GitHub contribution streaks in the returned window.", 150, 260); const t = o.theme; const width = o.width;
   const compact = o.height < 180;
   const personalBestY = compact ? 57 : 65;
   const longestY = compact ? 88 : 104;
@@ -320,7 +375,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
   out += text(34, 94, formatNumber(finite(data.current), false), 46, t.accent, 800) + text(34, 116, "days current", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
-  out += text(width / 2 + 28, personalBestY, "Personal best", 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
+  out += text(width / 2 + 28, personalBestY, "Longest in window", 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
   const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
   const activeDaysLabel = Number.isFinite(data.activeDays) ? `${formatNumber(finite(data.activeDays))} active days` : "Active days unavailable";
   out += text(width / 2 + 28, statusY, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
@@ -397,7 +452,8 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   const o = optionsFor(options, 68 + rows * 90, "Project signals", "Project lifecycle and CI signals for selected GitHub repositories.", 68 + rows * 90, 700); const t = o.theme; const width = o.width;
   const height = o.height; const cardWidth = (width - 48 - (columns - 1) * 12) / columns;
   let out = svgStart(width, height, t, o.title, o.description);
-  out += text(24, 34, "PROJECT SIGNALS", 12, t.muted, 750) + text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
+  out += text(24, 34, "PROJECT SIGNALS", 12, t.muted, 750);
+  if (projects.length < totalProjects) out += text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
   projects.forEach((project, index) => {
     const col = index % columns; const row = Math.floor(index / columns); const x = 24 + col * (cardWidth + 12); const y = 50 + row * 90;
     const ciColor = statusColor(project.ci, t); const projectName = truncateText(project.name, 25);
@@ -411,8 +467,167 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   return out + svgEnd();
 }
 
+function atlasMotionStyle(motion: RenderOptions["motion"]): string {
+  if (motion !== "subtle") return "";
+  return `<style>
+@keyframes atlas-rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes atlas-grow{from{opacity:.2;transform:scaleY(.08)}to{opacity:1;transform:scaleY(1)}}
+.atlas-enter{animation:atlas-rise .42s ease-out both}.atlas-delay{animation-delay:.1s}.atlas-bar{transform-box:fill-box;transform-origin:center bottom;animation:atlas-grow .55s ease-out both}.atlas-cell{animation:atlas-rise .32s ease-out both}
+@media (prefers-reduced-motion:reduce){.atlas-enter,.atlas-bar,.atlas-cell{animation:none!important}}
+</style>`;
+}
+
+function atlasMetric(x: number, y: number, label: string, value: string, theme: SvgTheme): string {
+  return text(x, y, value, 20, theme.text, 760) + text(x, y + 17, label.toUpperCase(), 9, theme.muted, 650);
+}
+
+function atlasTrendLabel(data: AtlasCardData): string {
+  if (data.trend.direction === "unavailable") return `${formatNumber(data.trend.recent28Days)} in latest 28 days`;
+  if (data.trend.direction === "new") return `${formatNumber(data.trend.recent28Days)} · new activity`;
+  const change = data.trend.changePercent;
+  if (change === null) return `${formatNumber(data.trend.recent28Days)} in latest 28 days`;
+  const sign = change > 0 ? "+" : "";
+  return `${formatNumber(data.trend.recent28Days)} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28d`;
+}
+
+/** Render the compact, source-labelled CommitAtlas overview card. */
+export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): string {
+  const normalizedWidth = dimension(options?.width, 860, MIN_WIDTH, MAX_WIDTH);
+  const narrow = normalizedWidth < 620;
+  const defaultHeight = narrow ? 570 : 380;
+  const o = optionsFor(
+    { ...options, width: options?.width ?? 860 },
+    defaultHeight,
+    "CommitAtlas developer atlas",
+    "A source-labelled overview of public GitHub contribution rhythm, activity, collaboration, languages, and project health.",
+    defaultHeight,
+    narrow ? 640 : 460,
+  );
+  const t = o.theme;
+  const width = o.width;
+  const height = o.height;
+  const name = truncateText(data.profile.name || data.profile.login || "GitHub user", narrow ? 22 : 30);
+  const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
+  const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW" : "PUBLIC GITHUB";
+  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Breakdown: ${formatNumber(data.breakdown.commits, false)} commits, ${formatNumber(data.breakdown.pullRequests, false)} pull requests, ${formatNumber(data.breakdown.reviews, false)} reviews, and ${formatNumber(data.breakdown.issues, false)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
+  out += atlasMotionStyle(options?.motion);
+  out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
+  out += `<g class="atlas-enter"><circle cx="30" cy="32" r="16" fill="${t.accent}"/>`;
+  out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
+  out += text(56, 29, name, 18, t.text, 760) + text(56, 47, `@${login}`, 10, t.muted, 550);
+  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : t.positive, 700, "end");
+  out += text(width - 22, 45, `${data.window.days}D · ${data.window.to}`, 9, t.muted, 550, "end");
+  out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
+
+  const metricValues = [
+    ["Contributions", formatNumber(data.total)],
+    ["Active days", formatNumber(data.activeDays, false)],
+    ["Density", `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%`],
+    ["Average / day", finite(data.averagePerDay).toFixed(1)],
+    ["Current streak", `${formatNumber(data.currentStreak, false)}d`],
+    ["Longest in window", `${formatNumber(data.longestStreak, false)}d`],
+  ] as const;
+  if (narrow) {
+    const metricWidth = (width - 44) / 3;
+    metricValues.forEach(([label, value], index) => {
+      out += `<g class="atlas-enter atlas-delay">${atlasMetric(22 + (index % 3) * metricWidth, index < 3 ? 91 : 135, label, value, t)}</g>`;
+    });
+    out += `<line x1="22" y1="160" x2="${width - 22}" y2="160" stroke="${t.border}"/>`;
+  } else {
+    const metricWidth = (width - 44) / metricValues.length;
+    metricValues.forEach(([label, value], index) => {
+      out += `<g class="atlas-enter atlas-delay">${atlasMetric(22 + index * metricWidth, 94, label, value, t)}</g>`;
+    });
+    out += `<line x1="22" y1="122" x2="${width - 22}" y2="122" stroke="${t.border}"/>`;
+  }
+
+  const heatmapTop = narrow ? 191 : 154;
+  const heatmapLeft = 24;
+  const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
+  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-366);
+  const columns = Math.max(1, Math.ceil(days.length / 7));
+  const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
+  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
+  out += text(heatmapLeft, heatmapTop - 14, "CONTRIBUTION DENSITY", 10, t.muted, 700);
+  out += text(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} peak · ${truncateText(data.peakDay.date, 10)}`, 9, t.muted, 550, "end");
+  const heatmapPaths = new Map<string, string[]>();
+  days.forEach((day, index) => {
+    const column = Math.floor(index / 7);
+    const row = index % 7;
+    const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
+    const fill = level === 0 ? t.surface : level === 1 ? t.border : level === 2 ? t.accent : level === 3 ? t.positive : t.warning;
+    const x = heatmapLeft + column * (cell + 2);
+    const y = heatmapTop + row * (cell + 2);
+    const paths = heatmapPaths.get(fill) ?? [];
+    paths.push(`M${x} ${y}h${cell}v${cell}H${x}Z`);
+    heatmapPaths.set(fill, paths);
+  });
+  out += [...heatmapPaths.entries()].map(([fill, paths]) => `<path class="atlas-cell" fill="${fill}" d="${paths.join("")}"/>`).join("");
+  const heatmapBottom = heatmapTop + 7 * (cell + 2);
+  out += text(heatmapLeft, heatmapBottom + 13, data.window.from, 8, t.muted, 500);
+  out += text(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, data.window.to, 8, t.muted, 500, "end");
+
+  const breakdownX = narrow ? 24 : Math.floor(width * .64);
+  const breakdownY = narrow ? 290 : 144;
+  const breakdownWidth = width - breakdownX - 24;
+  const breakdown = [
+    ["Commits", data.breakdown.commits, t.accent],
+    ["Pull requests", data.breakdown.pullRequests, t.positive],
+    ["Reviews", data.breakdown.reviews, t.warning],
+    ["Issues", data.breakdown.issues, t.negative],
+  ] as const;
+  const breakdownMax = Math.max(1, ...breakdown.map(([, value]) => finite(value)));
+  out += text(breakdownX, breakdownY, "CONTRIBUTION MIX", 10, t.muted, 700);
+  breakdown.forEach(([label, value, color], index) => {
+    const y = breakdownY + 18 + index * 24;
+    const trackWidth = Math.max(1, breakdownWidth - 104);
+    const barWidth = Math.max(2, trackWidth * finite(value) / breakdownMax);
+    out += text(breakdownX, y + 8, label, 9, t.muted, 550);
+    out += `<rect x="${breakdownX + 76}" y="${y}" width="${trackWidth}" height="8" rx="4" fill="${t.surface}"/>`;
+    out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y}" width="${barWidth.toFixed(2)}" height="8" rx="4" fill="${color}"/>`;
+    out += text(width - 24, y + 8, formatNumber(value), 9, t.text, 650, "end");
+  });
+
+  const footerTop = narrow ? 408 : 282;
+  out += `<line x1="22" y1="${footerTop - 12}" x2="${width - 22}" y2="${footerTop - 12}" stroke="${t.border}"/>`;
+  const trendX = 24;
+  const trendWidth = narrow ? Math.floor((width - 60) * .58) : Math.floor(width * .34);
+  const trendBaseline = footerTop + 48;
+  const trendMax = Math.max(1, ...data.trend.buckets.map(finite));
+  out += text(trendX, footerTop + 2, "RECENT MOMENTUM", 10, t.muted, 700);
+  out += text(trendX, footerTop + 18, atlasTrendLabel(data), 9, t.text, 550);
+  const trendGap = 3;
+  const trendBarWidth = Math.max(3, (trendWidth - Math.max(0, data.trend.buckets.length - 1) * trendGap) / Math.max(1, data.trend.buckets.length));
+  data.trend.buckets.forEach((value, index) => {
+    const barHeight = Math.max(2, 22 * finite(value) / trendMax);
+    out += `<rect class="atlas-bar" x="${(trendX + index * (trendBarWidth + trendGap)).toFixed(2)}" y="${(trendBaseline - barHeight).toFixed(2)}" width="${trendBarWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" fill="${t.accent}"/>`;
+  });
+
+  const rhythmX = narrow ? trendX + trendWidth + 22 : Math.floor(width * .40);
+  out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
+  out += text(rhythmX, footerTop + 27, `${Math.round(finite(data.rhythm.score))}/100`, 23, t.text, 780);
+  out += text(rhythmX, footerTop + 43, `${data.rhythm.level.toUpperCase()} · PERSONAL CONSISTENCY`, 8, t.muted, 650);
+
+  const detailX = narrow ? 24 : Math.floor(width * .60);
+  const detailY = narrow ? footerTop + 78 : footerTop;
+  const languages = (data.languages ?? []).slice(0, 3);
+  out += text(detailX, detailY + 2, "PORTFOLIO SIGNALS", 10, t.muted, 700);
+  out += languages.length > 0
+    ? text(detailX, detailY + 21, languages.map((language) => `${truncateText(language.name ?? language.language ?? "Other", 10)} ${finite(language.percentage).toFixed(0)}%`).join(" · "), 9, t.text, 550)
+    : text(detailX, detailY + 21, "Languages unavailable", 9, t.muted, 550);
+  const profileSignal = `${formatNumber(data.profile.repositories, false)} repos · ${formatNumber(data.profile.followers)} followers${Number.isFinite(data.profile.stars) ? ` · ${formatNumber(data.profile.stars)} stars` : " · stars unavailable"}`;
+  out += text(detailX, detailY + 37, profileSignal, 9, t.text, 550);
+  out += data.projects
+    ? text(detailX, detailY + 53, `${data.projects.passing}/${data.projects.total} CI passing · ${data.projects.attention} attention · ${data.projects.unavailable} unavailable`, 9, data.projects.attention > 0 ? t.warning : t.muted, 550)
+    : text(detailX, detailY + 53, "Project health not configured", 9, t.muted, 550);
+  out += text(width - 22, height - 10, `Generated ${truncateText(data.generatedAt, 25)} · longest streak is window-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
+  return out + svgEnd();
+}
+
 export const renderProfile = renderProfileCard;
 export const renderStreak = renderStreakCard;
 export const renderActivity = renderActivityCard;
 export const renderLanguages = renderLanguagesCard;
 export const renderProjectSignalBoard = renderProjectBoard;
+export const renderAtlas = renderAtlasCard;

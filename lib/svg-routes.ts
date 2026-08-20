@@ -29,6 +29,15 @@ export interface SvgActivityQuery extends SvgProfileQuery {
   readonly days: number;
 }
 
+export interface SvgAtlasQuery extends SvgActivityQuery {
+  readonly motion: "none" | "subtle";
+  readonly layout: "wide" | "compact";
+  readonly repos: readonly string[];
+  readonly states: ReadonlyMap<string, ProjectLifecycle>;
+  readonly workflows: ReadonlyMap<string, ProjectWorkflow>;
+  readonly projects: readonly SvgProjectQueryItem[];
+}
+
 export interface SvgProjectQueryItem {
   readonly repository: string;
   readonly lifecycle: ProjectLifecycle;
@@ -82,6 +91,41 @@ export function parseSvgLanguagesQuery(parameters: URLSearchParams): SvgLanguage
   return parseSvgProfileQuery(parameters);
 }
 
+export function parseSvgAtlasQuery(parameters: URLSearchParams): SvgAtlasQuery {
+  const allowed = ["user", "repos", "states", "workflows", "demo", "theme", "days", "motion", "layout"] as const;
+  rejectUnknownParameters(parameters, allowed);
+  const user = parseGitHubHandle(parameters.get("user"));
+  const demo = parseDemo(parameters.get("demo"));
+  const theme = parseTheme(parameters.get("theme"));
+  const days = parseActivityDays(parameters.get("days"));
+  const motion = parseMotion(parameters.get("motion"));
+  const layout = parseAtlasLayout(parameters.get("layout"));
+  const rawRepos = parameters.get("repos");
+  if (rawRepos === null && (parameters.has("states") || parameters.has("workflows"))) {
+    throw new InputError("states and workflows require repos");
+  }
+  const repos = rawRepos === null ? [] : parseRepositoryNames(rawRepos);
+  const states = repos.length > 0 ? parseLifecycleMap(parameters.get("states"), repos) : new Map<string, ProjectLifecycle>();
+  const workflows = repos.length > 0 ? parseWorkflowMap(parameters.get("workflows"), repos) : new Map<string, ProjectWorkflow>();
+  const projects = repos.map((repository) => ({
+    repository,
+    lifecycle: states.get(repository.toLowerCase())!,
+    workflow: workflows.get(repository.toLowerCase()) ?? null,
+  }));
+  const canonicalEntries: [string, string][] = [["user", user]];
+  if (projects.length > 0) {
+    canonicalEntries.push(["repos", repos.join(",")]);
+    canonicalEntries.push(["states", projects.map(({ repository, lifecycle }) => `${repository}:${lifecycle}`).join(",")]);
+    const workflowValue = projects
+      .filter(({ workflow }) => workflow !== null)
+      .map(({ repository, workflow }) => `${repository}:${encodeWorkflowMapComponent(workflow!)}`)
+      .join(",");
+    if (workflowValue) canonicalEntries.push(["workflows", workflowValue]);
+  }
+  canonicalEntries.push(["demo", String(demo)], ["theme", theme], ["days", String(days)], ["motion", motion], ["layout", layout]);
+  return { user, demo, theme, days, motion, layout, repos, states, workflows, projects, canonical: canonicalQuery(canonicalEntries) };
+}
+
 export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQuery {
   const allowed = ["owner", "repos", "states", "workflows", "demo", "theme"] as const;
   rejectUnknownParameters(parameters, allowed);
@@ -123,6 +167,18 @@ export function parseActivityDays(value: string | null): number {
   const days = Number(value);
   if (days < 7 || days > 365) throw new InputError("days must be an integer from 7 to 365");
   return days;
+}
+
+export function parseMotion(value: string | null): "none" | "subtle" {
+  if (value === null || value === "subtle") return "subtle";
+  if (value === "none") return "none";
+  throw new InputError("motion must be subtle or none");
+}
+
+export function parseAtlasLayout(value: string | null): "wide" | "compact" {
+  if (value === null || value === "wide") return "wide";
+  if (value === "compact") return "compact";
+  throw new InputError("layout must be wide or compact");
 }
 
 function canonicalQuery(entries: readonly [string, string][]): string {

@@ -82,6 +82,18 @@ test("sets SVG embed and script-blocking security headers for GET and OPTIONS", 
   assert.equal(options.headers.get("content-security-policy"), response.headers.get("content-security-policy"));
 });
 
+test("allows only inline SVG presentation styles when a renderer explicitly opts into motion", async () => {
+  const response = await svgResponse(
+    new Request("https://example.test/api"),
+    "<svg><style>.metric{opacity:1}</style></svg>",
+    { edgeSeconds: 60, publicData: true, inlineStyles: true },
+  );
+  const policy = response.headers.get("content-security-policy") ?? "";
+  assert.match(policy, /script-src 'none'/);
+  assert.match(policy, /style-src 'unsafe-inline'/);
+  assert.match(policy, /object-src 'none'/);
+});
+
 test("honours wildcard and weak/strong If-None-Match forms for SVG", async () => {
   const body = "<svg/>";
   const first = await svgResponse(new Request("https://example.test/api"), body, { edgeSeconds: 60, publicData: true });

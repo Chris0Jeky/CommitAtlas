@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   escapeXml,
   formatNumber,
+  renderAtlasCard,
   renderActivityCard,
   renderLanguagesCard,
   renderProfileCard,
@@ -28,7 +29,7 @@ function assertXml10(output) {
   }
 }
 
-function assertSafeSvg(output) {
+function assertSafeSvg(output, { allowStyle = false } = {}) {
   assert.match(output, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" role="img"/);
   assert.match(output, /aria-label="[^"]+"/);
   assert.match(output, /<title>/);
@@ -36,7 +37,9 @@ function assertSafeSvg(output) {
   assert.doesNotMatch(output, /\bid=/);
   assert.match(output, /viewBox="0 0 \d+ \d+"/);
   assert.match(output, /<\/svg>$/);
-  for (const forbidden of [/<script/i, /<foreignObject/i, /<style/i, /<image/i, /\bon[a-z]+\s*=\s*["']/i, /javascript:/i, /data:/i]) {
+  const forbiddenPatterns = [/<script/i, /<foreignObject/i, /<image/i, /\bon[a-z]+\s*=\s*["']/i, /javascript:/i, /data:/i];
+  if (!allowStyle) forbiddenPatterns.push(/<style/i);
+  for (const forbidden of forbiddenPatterns) {
     assert.doesNotMatch(output, forbidden, `forbidden SVG construct matched: ${forbidden}`);
   }
   assertXml10(output);
@@ -65,7 +68,7 @@ test("renderer defaults are specific and dimensions stay within safe bounds", ()
   const languages = renderLanguagesCard({ languages: [] });
   const board = renderProjectBoard({ projects: [] });
   assert.match(profile, /<title>Ada profile<\/title><desc>GitHub profile for Ada\.<\/desc>/);
-  assert.match(streak, /<title>Contribution streak<\/title><desc>Current and longest GitHub contribution streaks\.<\/desc>/);
+  assert.match(streak, /<title>Contribution streak<\/title><desc>Current and longest GitHub contribution streaks in the returned window\.<\/desc>/);
   assert.match(activity, /<title>Contribution activity<\/title><desc>A compact contribution activity map/);
   assert.match(languages, /<title>Languages<\/title><desc>Programming languages used across GitHub repositories\.<\/desc>/);
   assert.match(board, /<title>Project signals<\/title><desc>Project lifecycle and CI signals/);
@@ -124,6 +127,59 @@ test("project boards report displayed and total project counts truthfully", () =
   assert.match(board, />6 of 8 shown<\/text>/);
   assert.match(board, /Project 6/);
   assert.doesNotMatch(board, /Project 7|Project 8/);
+});
+
+test("project boards omit redundant shown counts when every project fits", () => {
+  const board = renderProjectBoard({ projects: [
+    { name: "Atlas", lifecycle: "active", ci: "passing" },
+    { name: "Harbor", lifecycle: "maintained", ci: "stale" },
+  ] });
+  assert.doesNotMatch(board, /of 2 shown/);
+});
+
+test("atlas card composes density, breakdown, trend, bounded streak, and honest rhythm semantics", () => {
+  const activity = Array.from({ length: 365 }, (_, index) => ({
+    date: new Date(Date.UTC(2025, 8, 21 + index)).toISOString().slice(0, 10),
+    count: index % 6,
+    level: Math.min(4, index % 5),
+  }));
+  const data = {
+    profile: { name: injection, login: "octocat", repositories: 24, followers: 312, stars: 487 },
+    window: { from: activity[0].date, to: activity.at(-1).date, days: 365 },
+    total: 912,
+    activeDays: 286,
+    density: 78.4,
+    averagePerDay: 2.5,
+    currentStreak: 30,
+    longestStreak: 53,
+    streakBasis: "returned-window",
+    peakDay: { date: activity[11].date, count: 8 },
+    breakdown: { commits: 740, issues: 18, pullRequests: 64, reviews: 90 },
+    trend: { buckets: [30, 44, 39, 52, 61, 48, 73, 66, 82, 70, 88, 95], recent28Days: 335, previous28Days: 280, changePercent: 19.6, direction: "up" },
+    rhythm: { score: 84, level: "relentless" },
+    activity,
+    languages: [{ name: "TypeScript", percentage: 55 }, { name: "Python", percentage: 30 }, { name: "Rust", percentage: 15 }],
+    projects: { total: 6, passing: 4, attention: 1, unavailable: 1 },
+    generatedAt: "2026-08-20T18:00:00.000Z",
+    source: "public-github",
+  };
+  const staticAtlas = renderAtlasCard(data, { theme: "ember", motion: "none" });
+  const animatedAtlas = renderAtlasCard(data, { theme: "aurora", motion: "subtle" });
+  const narrowAtlas = renderAtlasCard(data, { width: 420, motion: "none" });
+
+  assertSafeSvg(staticAtlas);
+  assertSafeSvg(animatedAtlas, { allowStyle: true });
+  assertSafeSvg(narrowAtlas);
+  assert.match(staticAtlas, /CONTRIBUTION DENSITY/);
+  assert.match(staticAtlas, /CONTRIBUTION MIX/);
+  assert.match(staticAtlas, /Commits/);
+  assert.match(staticAtlas, /Pull requests/);
+  assert.match(staticAtlas, /RHYTHM/);
+  assert.match(staticAtlas, /not a GitHub rank/);
+  assert.match(staticAtlas, /longest streak is window-bounded/);
+  assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
+  assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
+  assert.match(narrowAtlas, /viewBox="0 0 420 570"/);
 });
 
 test("credential-bearing URLs never enter public SVG output", () => {

@@ -3,6 +3,9 @@ import test from "node:test";
 import { encodeWorkflowMapComponent } from "./github/workflow-map";
 import {
   parseActivityDays,
+  parseAtlasLayout,
+  parseMotion,
+  parseSvgAtlasQuery,
   parseSvgActivityQuery,
   parseSvgLanguagesQuery,
   parseSvgProfileQuery,
@@ -34,6 +37,24 @@ test("rejects signs, decimals, non-ASCII digits, and out-of-range activity days"
   for (const value of ["6", "366", "+7", "-1", "7.0", "０７", "٧", "0070"]) {
     assert.throws(() => parseActivityDays(value), /days/);
   }
+});
+
+test("parses a canonical atlas query with optional project health and motion", () => {
+  const query = parseSvgAtlasQuery(new URLSearchParams(
+    "user=octocat&repos=atlas,quiet&states=atlas:active,quiet:maintenance&workflows=atlas:ci.yml&days=365&theme=ember&motion=none&layout=compact&demo=true",
+  ));
+  assert.deepEqual(query.projects, [
+    { repository: "atlas", lifecycle: "active", workflow: "ci.yml" },
+    { repository: "quiet", lifecycle: "maintenance", workflow: null },
+  ]);
+  assert.equal(query.motion, "none");
+  assert.equal(query.layout, "compact");
+  assert.equal(query.canonical, "user=octocat&repos=atlas%2Cquiet&states=atlas%3Aactive%2Cquiet%3Amaintenance&workflows=atlas%3Aci.yml&demo=true&theme=ember&days=365&motion=none&layout=compact");
+  assert.equal(parseMotion(null), "subtle");
+  assert.equal(parseAtlasLayout(null), "wide");
+  assert.throws(() => parseMotion("fast"), /motion/);
+  assert.throws(() => parseAtlasLayout("fluid"), /layout/);
+  assert.throws(() => parseSvgAtlasQuery(new URLSearchParams("user=octocat&states=atlas:active")), /require repos/);
 });
 
 test("parses profile, streak, activity, and language contracts with canonical ordering", () => {
