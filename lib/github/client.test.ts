@@ -128,7 +128,14 @@ test("marks old successful CI as stale", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/repos/acme/old") {
-      return json({ name: "old", html_url: "https://github.com/acme/old", default_branch: "main" });
+      return json({
+        name: "old",
+        html_url: "https://github.com/acme/old",
+        default_branch: "main",
+        stargazers_count: 0,
+        forks_count: 0,
+        open_issues_count: 0,
+      });
     }
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
     return json({
@@ -139,9 +146,88 @@ test("marks old successful CI as stale", async () => {
   assert.equal(board.projects[0].ci.state, "stale");
 });
 
+test("rejects malformed required metrics rather than treating them as zero", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    return url.pathname.endsWith("/repos")
+      ? json([])
+      : json({ login: "octocat", public_repos: "not-a-number", followers: 1, following: 2 });
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("enforces the response limit for chunked bodies without Content-Length", async () => {
+  const oversizedJson = JSON.stringify({ payload: "x".repeat(1_500_000) });
+  const fetchImpl: typeof fetch = async () => streamedJson(oversizedJson);
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("applies one deadline across all GitHub calls", async () => {
+  const fetchImpl: typeof fetch = async () => new Promise<Response>(() => undefined);
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, deadlineMs: 5 }).fetchProfile("octocat"),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "github_unavailable",
+  );
+});
+
+test("bounds concurrent project lookups below the Worker connection limit", async () => {
+  let activeRepositoryLookups = 0;
+  let peakRepositoryLookups = 0;
+  const lifecycles = new Map([
+    ["one", "active" as const],
+    ["two", "active" as const],
+    ["three", "maintenance" as const],
+  ]);
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (/^\/repos\/acme\/(one|two|three)$/.test(url.pathname)) {
+      activeRepositoryLookups += 1;
+      peakRepositoryLookups = Math.max(peakRepositoryLookups, activeRepositoryLookups);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      activeRepositoryLookups -= 1;
+      return json({
+        name: url.pathname.split("/").at(-1),
+        html_url: `https://github.com${url.pathname}`,
+        default_branch: "main",
+        stargazers_count: 0,
+        forks_count: 0,
+        open_issues_count: 0,
+      });
+    }
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    return json({ workflow_runs: [] });
+  };
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+    "acme",
+    ["one", "two", "three"],
+    lifecycles,
+  );
+  assert.equal(board.projects.length, 3);
+  assert.equal(peakRepositoryLookups, 2);
+});
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function streamedJson(body: string): Response {
+  const encoded = new TextEncoder().encode(body);
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let offset = 0; offset < encoded.byteLength; offset += 32_768) {
+        controller.enqueue(encoded.slice(offset, offset + 32_768));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: { "content-type": "application/json" } });
 }

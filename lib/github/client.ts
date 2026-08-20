@@ -19,7 +19,6 @@ import type {
 } from "./types";
 import {
   isRecord,
-  numberField,
   safeHttpsUrl,
   stringField,
 } from "./validation";
@@ -28,6 +27,8 @@ const API_ORIGIN = "https://api.github.com";
 const GRAPHQL_URL = "https://api.github.com/graphql";
 const API_VERSION = "2026-03-10";
 const MAX_RESPONSE_BYTES = 1_500_000;
+const REQUEST_DEADLINE_MS = 12_000;
+const PROJECT_CONCURRENCY = 2;
 
 export class GitHubApiError extends Error {
   constructor(
@@ -44,29 +45,35 @@ interface GitHubClientOptions {
   token?: string;
   fetchImpl?: typeof fetch;
   now?: () => Date;
+  deadlineMs?: number;
 }
 
 export class GitHubClient {
   private readonly token: string | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => Date;
+  private readonly deadlineAt: number;
 
   constructor(options: GitHubClientOptions = {}) {
     this.token = options.token?.trim() || undefined;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.now = options.now ?? (() => new Date());
+    this.deadlineAt = Date.now() + (options.deadlineMs ?? REQUEST_DEADLINE_MS);
   }
 
   async fetchProfile(login: string): Promise<ProfileSnapshot> {
-    const user = await this.getJson(`/users/${encodeURIComponent(login)}`);
-    const repositories = await this.getJson(
-      `/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100`,
-    );
+    const [user, repositories] = await Promise.all([
+      this.getJson(`/users/${encodeURIComponent(login)}`),
+      this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100`),
+    ]);
     if (!isRecord(user) || !Array.isArray(repositories)) {
       throw new GitHubApiError("invalid_response", "GitHub returned an unexpected profile shape");
     }
 
-    const parsedRepositories = repositories.filter(isRecord);
+    if (repositories.some((repository) => !isRecord(repository))) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository list");
+    }
+    const parsedRepositories = repositories;
     if (parsedRepositories.some((repository) => repository.private === true)) {
       throw privateDataError("GitHub returned a private repository in a public profile response");
     }
@@ -76,8 +83,8 @@ export class GitHubClient {
     let latestPushAt: string | null = null;
 
     for (const repository of parsedRepositories) {
-      stars += numberField(repository, "stargazers_count");
-      forks += numberField(repository, "forks_count");
+      stars += requiredMetric(repository, "stargazers_count");
+      forks += requiredMetric(repository, "forks_count");
       const language = stringField(repository, "language");
       if (language) languageCounts.set(language, (languageCounts.get(language) ?? 0) + 1);
       const pushedAt = stringField(repository, "pushed_at");
@@ -89,14 +96,14 @@ export class GitHubClient {
       login: stringField(user, "login") ?? login,
       name: stringField(user, "name"),
       profileUrl: safeHttpsUrl(user.html_url) ?? `https://github.com/${encodeURIComponent(login)}`,
-      publicRepositories: numberField(user, "public_repos"),
-      followers: numberField(user, "followers"),
-      following: numberField(user, "following"),
+      publicRepositories: requiredMetric(user, "public_repos"),
+      followers: requiredMetric(user, "followers"),
+      following: requiredMetric(user, "following"),
       stars,
       forks,
       primaryLanguages: toLanguageSignals(languageCounts),
       latestPushAt,
-      repositoriesTruncated: numberField(user, "public_repos") > parsedRepositories.length,
+      repositoriesTruncated: requiredMetric(user, "public_repos") > parsedRepositories.length,
       freshness: {
         generatedAt: this.now().toISOString(),
         source: "github-rest",
@@ -133,27 +140,37 @@ export class GitHubClient {
       throw new GitHubApiError("invalid_response", "GitHub returned no contribution calendar");
     }
 
-    const weeks = Array.isArray(calendar.weeks) ? calendar.weeks.filter(isRecord) : [];
+    if (!Array.isArray(calendar.weeks) || calendar.weeks.some((week) => !isRecord(week))) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
+    }
+    const weeks = calendar.weeks as Record<string, unknown>[];
     const contributionDays: ContributionDay[] = [];
     for (const week of weeks) {
-      const weekDays = Array.isArray(week.contributionDays)
-        ? week.contributionDays.filter(isRecord)
-        : [];
+      if (!Array.isArray(week.contributionDays) || week.contributionDays.some((day) => !isRecord(day))) {
+        throw new GitHubApiError("invalid_response", "GitHub returned invalid contribution days");
+      }
+      const weekDays = week.contributionDays as Record<string, unknown>[];
       for (const day of weekDays) {
         const date = stringField(day, "date");
-        if (date) contributionDays.push({ date, count: numberField(day, "contributionCount") });
+        if (!date) throw new GitHubApiError("invalid_response", "GitHub returned a contribution day without a date");
+        contributionDays.push({ date, count: requiredMetric(day, "contributionCount") });
       }
     }
 
-    const calendarDays = parseContributionCalendar({ version: 1, days: contributionDays }).days;
+    let calendarDays: ContributionDay[];
+    try {
+      calendarDays = parseContributionCalendar({ version: 1, days: contributionDays }).days;
+    } catch {
+      throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
+    }
     return {
       version: 1,
       login,
       totalContributions: calendarDays.reduce((total, day) => total + day.count, 0),
-      commits: numberField(collection, "totalCommitContributions"),
-      issues: numberField(collection, "totalIssueContributions"),
-      pullRequests: numberField(collection, "totalPullRequestContributions"),
-      reviews: numberField(collection, "totalPullRequestReviewContributions"),
+      commits: requiredMetric(collection, "totalCommitContributions"),
+      issues: requiredMetric(collection, "totalIssueContributions"),
+      pullRequests: requiredMetric(collection, "totalPullRequestContributions"),
+      reviews: requiredMetric(collection, "totalPullRequestReviewContributions"),
       days: calendarDays.map(({ date, count }) => ({ date, count })),
       freshness: {
         generatedAt: this.now().toISOString(),
@@ -168,14 +185,17 @@ export class GitHubClient {
     repositories: readonly string[],
     lifecycles: ReadonlyMap<string, ProjectLifecycle>,
   ): Promise<ProjectBoardSnapshot> {
-    const projects: ProjectSnapshot[] = [];
     for (const repository of repositories) {
       const lifecycle = lifecycles.get(repository.toLowerCase());
       if (!lifecycle) {
         throw new GitHubApiError("invalid_response", "Every project requires an explicit core lifecycle", 400);
       }
-      projects.push(await this.fetchProject(owner, repository, lifecycle));
     }
+    const projects = await mapWithConcurrency(repositories, PROJECT_CONCURRENCY, async (repository) => {
+      const lifecycle = lifecycles.get(repository.toLowerCase());
+      if (!lifecycle) throw new GitHubApiError("invalid_response", "Every project requires an explicit core lifecycle", 400);
+      return this.fetchProject(owner, repository, lifecycle);
+    });
     return {
       version: 1,
       owner,
@@ -198,8 +218,10 @@ export class GitHubClient {
     if (repo.private === true) throw privateDataError("CommitAtlas only serves public GitHub repositories");
 
     const defaultBranch = stringField(repo, "default_branch") ?? "main";
-    const release = await this.fetchLatestRelease(owner, repository);
-    const ci = await this.fetchLatestRun(owner, repository, defaultBranch);
+    const [release, ci] = await Promise.all([
+      this.fetchLatestRelease(owner, repository),
+      this.fetchLatestRun(owner, repository, defaultBranch),
+    ]);
     const license = isRecord(repo.license) ? stringField(repo.license, "spdx_id") : null;
 
     return {
@@ -210,9 +232,9 @@ export class GitHubClient {
       websiteUrl: safeHttpsUrl(repo.homepage),
       lifecycle: configuredLifecycle,
       primaryLanguage: stringField(repo, "language"),
-      stars: numberField(repo, "stargazers_count"),
-      forks: numberField(repo, "forks_count"),
-      openIssues: numberField(repo, "open_issues_count"),
+      stars: requiredMetric(repo, "stargazers_count"),
+      forks: requiredMetric(repo, "forks_count"),
+      openIssues: requiredMetric(repo, "open_issues_count"),
       pushedAt: stringField(repo, "pushed_at"),
       license: license === "NOASSERTION" ? null : license,
       ci,
@@ -264,11 +286,10 @@ export class GitHubClient {
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<Record<string, unknown>> {
-    const response = await this.fetchImpl(GRAPHQL_URL, {
+    const response = await this.fetchWithDeadline(GRAPHQL_URL, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ query, variables }),
-      signal: AbortSignal.timeout(10_000),
     });
     const payload = await this.readResponse(response, false);
     if (!isRecord(payload)) {
@@ -282,9 +303,8 @@ export class GitHubClient {
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith("/")) {
       throw new GitHubApiError("invalid_response", "Refused a non-GitHub API target");
     }
-    const response = await this.fetchImpl(url, {
+    const response = await this.fetchWithDeadline(url, {
       headers: this.headers(),
-      signal: AbortSignal.timeout(10_000),
     });
     return this.readResponse(response, allowMissing);
   }
@@ -314,12 +334,12 @@ export class GitHubClient {
         response.headers.get("retry-after") ?? response.headers.get("x-ratelimit-reset"),
       );
     }
-    const length = Number(response.headers.get("content-length") ?? 0);
-    if (length > MAX_RESPONSE_BYTES) {
+    const declaredLength = response.headers.get("content-length");
+    if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > MAX_RESPONSE_BYTES) {
       await response.body?.cancel();
       throw new GitHubApiError("invalid_response", "GitHub response exceeded the allowed size");
     }
-    const payload: unknown = await response.json();
+    const payload = await this.readBoundedJson(response);
     if (!isRecord(payload) && !Array.isArray(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
     }
@@ -327,6 +347,69 @@ export class GitHubClient {
       throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
     }
     return payload;
+  }
+
+  private async fetchWithDeadline(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+    const timeout = AbortSignal.timeout(this.remainingDeadline());
+    try {
+      return await this.withRemainingDeadline(this.fetchImpl(input, { ...init, signal: timeout }));
+    } catch (error) {
+      if (error instanceof GitHubApiError) throw error;
+      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+    }
+  }
+
+  private async readBoundedJson(response: Response): Promise<unknown> {
+    if (!response.body) {
+      throw new GitHubApiError("invalid_response", "GitHub returned an empty response body");
+    }
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let byteLength = 0;
+    try {
+      while (true) {
+        const { done, value } = await this.withRemainingDeadline(reader.read());
+        if (done) break;
+        byteLength += value.byteLength;
+        if (byteLength > MAX_RESPONSE_BYTES) {
+          throw new GitHubApiError("invalid_response", "GitHub response exceeded the allowed size");
+        }
+        chunks.push(value);
+      }
+    } catch (error) {
+      await reader.cancel();
+      if (error instanceof GitHubApiError) throw error;
+      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+    }
+    const payloadText = new TextDecoder().decode(concatChunks(chunks, byteLength));
+    try {
+      return JSON.parse(payloadText) as unknown;
+    } catch {
+      throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
+    }
+  }
+
+  private async withRemainingDeadline<T>(operation: Promise<T>): Promise<T> {
+    const remaining = this.remainingDeadline();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<T>((_, reject) => {
+          timeout = setTimeout(() => reject(new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline")), remaining);
+        }),
+      ]);
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
+  }
+
+  private remainingDeadline(): number {
+    const remaining = this.deadlineAt - Date.now();
+    if (remaining <= 0) {
+      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+    }
+    return remaining;
   }
 }
 
@@ -350,6 +433,42 @@ function toLanguageSignals(counts: ReadonlyMap<string, number>): LanguageSignal[
 
 function privateDataError(message: string): GitHubApiError {
   return new GitHubApiError("private_data", message, 403);
+}
+
+function requiredMetric(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} metric`);
+  }
+  return value;
+}
+
+function concatChunks(chunks: readonly Uint8Array[], byteLength: number): Uint8Array {
+  const combined = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined;
+}
+
+async function mapWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  mapper: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(values.length);
+  let nextIndex = 0;
+  async function worker(): Promise<void> {
+    while (nextIndex < values.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(values[index]!);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, worker));
+  return results;
 }
 
 function workflowObservation(run: Record<string, unknown>): CiObservation {

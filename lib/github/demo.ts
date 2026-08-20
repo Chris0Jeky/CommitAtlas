@@ -28,10 +28,11 @@ export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
   };
 }
 
-export function demoContributions(login: string, now = new Date()): ContributionSnapshot {
-  const days = Array.from({ length: 120 }, (_, offset) => {
+export function demoContributions(login: string, requestedDays = 365, now = new Date()): ContributionSnapshot {
+  const dayCount = Math.min(Math.max(requestedDays, 7), 365);
+  const days = Array.from({ length: dayCount }, (_, offset) => {
     const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    date.setUTCDate(date.getUTCDate() - (119 - offset));
+    date.setUTCDate(date.getUTCDate() - (dayCount - 1 - offset));
     return {
       date: date.toISOString().slice(0, 10),
       count: (offset * 7 + Math.floor(offset / 9)) % 8,
