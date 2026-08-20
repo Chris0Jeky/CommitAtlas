@@ -86,6 +86,11 @@ at 1440x900 and 390x844; no horizontal mobile overflow was found. This is useful
 must be rerun after the API/SVG/card-route integration. The local development server used for that
 inspection was stopped during checkpoint cleanup.
 
+At shutdown, repeated Vite hot reloads after dependency/build output logged React's "multiple
+renderers concurrently rendering the same context provider" warning. It was not observed as a
+production-build failure; explicitly try to reproduce it under the final production-server QA
+instead of assuming it is harmless.
+
 One known Studio polish item remains: treat the initial `your-commitatlas-host.example` base as a
 placeholder in the helper message, not only `localhost`; after Preview it should bind to the actual
 Studio origin. Do not invent a production domain.
