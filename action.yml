@@ -1,0 +1,43 @@
+name: CommitAtlas static portfolio
+description: Generate compact, source-labelled GitHub portfolio SVGs from logged-out public data.
+author: CommitAtlas contributors
+
+branding:
+  icon: activity
+  color: orange
+
+inputs:
+  config:
+    description: Repository-relative path to the tracked CommitAtlas JSON config.
+    required: false
+    default: .commitatlas.json
+  output-dir:
+    description: Optional repository-relative output directory override.
+    required: false
+  as-of:
+    description: Optional UTC date override in YYYY-MM-DD form.
+    required: false
+  dry-run:
+    description: Validate and render without writing files.
+    required: false
+    default: "false"
+
+outputs:
+  manifest:
+    description: Repository-relative path to the generated manifest.
+  atlas:
+    description: Repository-relative path to atlas.svg when selected.
+  profile:
+    description: Repository-relative path to profile.svg when selected.
+  streak:
+    description: Repository-relative path to streak.svg when selected.
+  activity:
+    description: Repository-relative path to activity.svg when selected.
+  languages:
+    description: Repository-relative path to languages.svg when selected.
+  projects:
+    description: Repository-relative path to projects.svg when selected.
+
+runs:
+  using: node24
+  main: action/dist/index.js
