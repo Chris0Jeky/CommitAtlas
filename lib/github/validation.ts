@@ -110,7 +110,7 @@ export function rejectUnknownParameters(
 }
 
 export function safeHttpsUrl(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 500) return null;
+  if (typeof value !== "string" || [...value].length > 500) return null;
   try {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password ? url.toString() : null;
@@ -131,5 +131,8 @@ function isWorkflowIdentity(value: string): value is ProjectWorkflow {
   return value === value.trim()
     && [...value].length >= 1
     && [...value].length <= MAX_WORKFLOW_CODE_POINTS
-    && !/[\u0000-\u001f\u007f]/.test(value);
+    && ![...value].some((character) => {
+      const code = character.codePointAt(0)!;
+      return code <= 0x1f || code === 0x7f;
+    });
 }

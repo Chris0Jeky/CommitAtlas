@@ -21,7 +21,7 @@ import type {
 import {
   isRecord,
   safeHttpsUrl,
-  stringField,
+  stringField as rawStringField,
 } from "./validation";
 
 const API_ORIGIN = "https://api.github.com";
@@ -30,6 +30,23 @@ const API_VERSION = "2026-03-10";
 const MAX_RESPONSE_BYTES = 1_500_000;
 const REQUEST_DEADLINE_MS = 12_000;
 const PROJECT_CONCURRENCY = 2;
+const GITHUB_TEXT_LIMITS = {
+  profileLogin: 39,
+  profileName: 200,
+  repositoryName: 100,
+  repositoryDescription: 500,
+  language: 80,
+  branch: 255,
+  timestamp: 35,
+  license: 100,
+  releaseTag: 200,
+  releaseName: 200,
+  assetName: 255,
+  workflowStatus: 32,
+  workflowConclusion: 64,
+  commitSha: 64,
+  contributionDate: 10,
+} as const;
 
 export class GitHubApiError extends Error {
   constructor(
@@ -86,16 +103,16 @@ export class GitHubClient {
     for (const repository of parsedRepositories) {
       stars += requiredMetric(repository, "stargazers_count");
       forks += requiredMetric(repository, "forks_count");
-      const language = stringField(repository, "language");
+      const language = textField(repository, "language", GITHUB_TEXT_LIMITS.language);
       if (language) languageCounts.set(language, (languageCounts.get(language) ?? 0) + 1);
-      const pushedAt = stringField(repository, "pushed_at");
+      const pushedAt = textField(repository, "pushed_at", GITHUB_TEXT_LIMITS.timestamp);
       if (pushedAt && (!latestPushAt || pushedAt > latestPushAt)) latestPushAt = pushedAt;
     }
 
     return {
       version: 1,
-      login: stringField(user, "login") ?? login,
-      name: stringField(user, "name"),
+      login: textField(user, "login", GITHUB_TEXT_LIMITS.profileLogin) ?? login,
+      name: textField(user, "name", GITHUB_TEXT_LIMITS.profileName),
       profileUrl: safeHttpsUrl(user.html_url) ?? `https://github.com/${encodeURIComponent(login)}`,
       publicRepositories: requiredMetric(user, "public_repos"),
       followers: requiredMetric(user, "followers"),
@@ -154,7 +171,7 @@ export class GitHubClient {
       }
       const weekDays = week.contributionDays as Record<string, unknown>[];
       for (const day of weekDays) {
-        const date = stringField(day, "date");
+        const date = textField(day, "date", GITHUB_TEXT_LIMITS.contributionDate);
         if (!date) throw new GitHubApiError("invalid_response", "GitHub returned a contribution day without a date");
         contributionDays.push({ date, count: requiredMetric(day, "contributionCount") });
       }
@@ -222,7 +239,7 @@ export class GitHubClient {
     if (!isRecord(repo)) throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository");
     if (repo.private === true) throw privateDataError("CommitAtlas only serves public GitHub repositories");
 
-    const defaultBranch = stringField(repo, "default_branch") ?? "main";
+    const defaultBranch = textField(repo, "default_branch", GITHUB_TEXT_LIMITS.branch) ?? "main";
     const [release, ci] = await Promise.all([
       this.fetchLatestRelease(owner, repository),
       configuredWorkflow
@@ -234,20 +251,20 @@ export class GitHubClient {
           null,
         )),
     ]);
-    const license = isRecord(repo.license) ? stringField(repo.license, "spdx_id") : null;
+    const license = isRecord(repo.license) ? textField(repo.license, "spdx_id", GITHUB_TEXT_LIMITS.license) : null;
 
     return {
       repo: `${owner}/${repository}`,
-      name: stringField(repo, "name") ?? repository,
-      description: stringField(repo, "description"),
+      name: textField(repo, "name", GITHUB_TEXT_LIMITS.repositoryName) ?? repository,
+      description: textField(repo, "description", GITHUB_TEXT_LIMITS.repositoryDescription),
       sourceUrl: safeHttpsUrl(repo.html_url) ?? `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
       websiteUrl: safeHttpsUrl(repo.homepage),
       lifecycle: configuredLifecycle,
-      primaryLanguage: stringField(repo, "language"),
+      primaryLanguage: textField(repo, "language", GITHUB_TEXT_LIMITS.language),
       stars: requiredMetric(repo, "stargazers_count"),
       forks: requiredMetric(repo, "forks_count"),
       openIssues: requiredMetric(repo, "open_issues_count"),
-      pushedAt: stringField(repo, "pushed_at"),
+      pushedAt: textField(repo, "pushed_at", GITHUB_TEXT_LIMITS.timestamp),
       license: license === "NOASSERTION" ? null : license,
       ci,
       release,
@@ -263,17 +280,17 @@ export class GitHubClient {
     const assets = Array.isArray(result.assets) ? result.assets.filter(isRecord) : [];
     const firstAsset = assets.find((asset) => safeHttpsUrl(asset.browser_download_url));
     const url = safeHttpsUrl(result.html_url);
-    const publishedAt = stringField(result, "published_at");
-    const tag = stringField(result, "tag_name");
+    const publishedAt = textField(result, "published_at", GITHUB_TEXT_LIMITS.timestamp);
+    const tag = textField(result, "tag_name", GITHUB_TEXT_LIMITS.releaseTag);
     if (!url || !publishedAt || !tag) return null;
     return {
       tag,
-      name: stringField(result, "name") ?? tag,
+      name: textField(result, "name", GITHUB_TEXT_LIMITS.releaseName) ?? tag,
       url,
       publishedAt,
       download: firstAsset
         ? {
-            name: stringField(firstAsset, "name") ?? "Release asset",
+            name: textField(firstAsset, "name", GITHUB_TEXT_LIMITS.assetName) ?? "Release asset",
             url: safeHttpsUrl(firstAsset.browser_download_url)!,
           }
         : null,
@@ -299,7 +316,12 @@ export class GitHubClient {
       return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: true }, this.now()), workflow, null, null);
     }
     const status = calculateGitHubCiState(workflowObservation(run), this.now());
-    return toJsonCiSignal(status, workflow, safeHttpsUrl(run.html_url), stringField(run, "head_sha"));
+    return toJsonCiSignal(
+      status,
+      workflow,
+      safeHttpsUrl(run.html_url),
+      textField(run, "head_sha", GITHUB_TEXT_LIMITS.commitSha),
+    );
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<Record<string, unknown>> {
@@ -486,6 +508,14 @@ function assertPublicContributionCollection(collection: Record<string, unknown>)
   }
 }
 
+function textField(record: Record<string, unknown>, key: string, maxCodePoints: number): string | null {
+  const value = rawStringField(record, key);
+  if (value !== null && [...value].length > maxCodePoints) {
+    throw new GitHubApiError("invalid_response", `GitHub returned an oversized ${key} field`);
+  }
+  return value;
+}
+
 function retryAfterValue(headers: Headers, now: Date): string | null {
   const retryAfter = headers.get("retry-after");
   if (retryAfter !== null) return retryAfter;
@@ -539,8 +569,11 @@ function workflowObservation(run: Record<string, unknown>): CiObservation {
   return {
     available: true,
     configured: true,
-    conclusion: toCoreConclusion(stringField(run, "status"), stringField(run, "conclusion")),
-    updatedAt: stringField(run, "updated_at") ?? undefined,
+    conclusion: toCoreConclusion(
+      textField(run, "status", GITHUB_TEXT_LIMITS.workflowStatus),
+      textField(run, "conclusion", GITHUB_TEXT_LIMITS.workflowConclusion),
+    ),
+    updatedAt: textField(run, "updated_at", GITHUB_TEXT_LIMITS.timestamp) ?? undefined,
   };
 }
 

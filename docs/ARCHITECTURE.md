@@ -35,6 +35,9 @@ project action is keyboard-accessible.
   query, it requires an authenticated GitHub REST scope proof containing only empty or `public_repo`
   classic scopes and rejects any restricted contribution collection. It also rejects any emitted URL
   with credentials. Private portfolio output belongs to static generation owned by the repository author.
+- Every GitHub-provided text field is bounded by its normalized role before it reaches a JSON snapshot
+  or renderer. Oversized names, descriptions, languages, release metadata, workflow fields, and dates
+  fail closed as invalid upstream data; optional invalid URLs are omitted after HTTPS validation.
 - Renderers accept normalized data, escape every text node, and emit no scripts, remote images,
   `foreignObject`, event attributes, or arbitrary CSS.
 - Cache age and source availability are visible product data. Partial responses remain partial.

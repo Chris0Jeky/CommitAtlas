@@ -277,6 +277,41 @@ test("rejects malformed required metrics rather than treating them as zero", asy
   );
 });
 
+test("rejects oversized GitHub names, descriptions, languages, and release metadata", async () => {
+  const profileFetch: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname.endsWith("/repos")) return json([]);
+    return json({ login: "octocat", name: "x".repeat(201), public_repos: 0, followers: 0, following: 0 });
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl: profileFetch, now: () => NOW }).fetchProfile("octocat"),
+    isInvalidResponse,
+  );
+
+  for (const fields of [
+    { description: "x".repeat(501) },
+    { language: "😀".repeat(81) },
+  ]) {
+    await assert.rejects(
+      new GitHubClient({ fetchImpl: projectTextFetch(fields), now: () => NOW }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]])),
+      isInvalidResponse,
+    );
+  }
+
+  await assert.rejects(
+    new GitHubClient({
+      fetchImpl: projectTextFetch({}, {
+        html_url: "https://github.com/acme/atlas/releases/tag/v1",
+        published_at: "2026-08-18T00:00:00Z",
+        tag_name: "x".repeat(201),
+        assets: [],
+      }),
+      now: () => NOW,
+    }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]])),
+    isInvalidResponse,
+  );
+});
+
 test("prefers upstream Retry-After for 403 rate limits", async () => {
   const fetchImpl: typeof fetch = async () => new Response(null, {
     status: 403,
@@ -416,6 +451,19 @@ function projectRepository(name: string): Record<string, unknown> {
     forks_count: 0,
     open_issues_count: 0,
   };
+}
+
+function projectTextFetch(repositoryFields: Record<string, unknown>, release: Record<string, unknown> | null = null): typeof fetch {
+  return async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return json({ ...projectRepository("atlas"), ...repositoryFields });
+    if (url.pathname.endsWith("/releases/latest")) return release ? json(release) : json({}, 404);
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+}
+
+function isInvalidResponse(error: unknown): boolean {
+  return error instanceof GitHubApiError && error.code === "invalid_response";
 }
 
 function streamedJson(body: string): Response {

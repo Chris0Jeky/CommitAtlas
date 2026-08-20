@@ -153,6 +153,20 @@ test("uses only aligned configured workflows in the built Worker project route",
   assert.equal(wrongPayload.projects[0].ci.state, "failing");
 });
 
+test("rejects oversized GitHub text before the built Worker emits a snapshot", async () => {
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return githubJson({ login: "octocat", name: "x".repeat(201), public_repos: 0, followers: 0, following: 0 });
+    }
+    if (url.pathname.endsWith("/repos")) return githubJson([]);
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => request("/api/v1/profile?user=octocat"));
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_response");
+});
+
 async function withMockedFetch(fetchImpl, operation) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
