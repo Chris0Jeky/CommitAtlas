@@ -284,7 +284,9 @@ export default function StudioClient() {
           <div className="markdown-panel">
             <div><p>README Markdown</p><button type="button" onClick={copyMarkdown}>Copy Markdown</button></div>
             <textarea aria-label="Generated README Markdown" readOnly value={markdown || "Select one or more cards to generate Markdown."} />
-            {baseUrl.includes("localhost") && <small>Local URLs are for preview only. Deployed Studio output automatically uses its public origin.</small>}
+            {(baseUrl.includes("localhost") || baseUrl.includes("your-commitatlas-host.example")) && (
+              <small>Run Preview to bind these URLs to this Studio origin. Local URLs are for preview only.</small>
+            )}
           </div>
         </section>
       </form>
