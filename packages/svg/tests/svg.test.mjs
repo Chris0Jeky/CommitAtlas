@@ -39,7 +39,8 @@ function assertSafeSvg(output) {
     assert.doesNotMatch(output, forbidden, `forbidden SVG construct matched: ${forbidden}`);
   }
   assertXml10(output);
-  assert.ok(output.length < 30_000, `SVG exceeded 30KB budget (${output.length})`);
+  const bytes = Buffer.byteLength(output, "utf8");
+  assert.ok(bytes < 30_000, `SVG exceeded 30KB budget (${bytes} UTF-8 bytes)`);
 }
 
 test("primitives are deterministic and safe", () => {
@@ -182,9 +183,22 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
     ...dates(366),
     { date: "not-a-date", count: 99 },
   ] });
-  assert.ok(activity364.length < 30_000, `364-day SVG exceeded budget (${activity364.length})`);
-  assert.ok(activity366.length < 30_000, `366-day SVG exceeded budget (${activity366.length})`);
-  assert.match(activity366, /2026-01-01: 5 contributions/);
+  const escapedMetadata = renderActivityCard({ days: dates(366), periodLabel: "&".repeat(32) }, {
+    title: "&".repeat(96), description: "&".repeat(180),
+  });
+  const unicodeMetadata = renderActivityCard({ days: dates(366), periodLabel: "😀".repeat(32) }, {
+    title: "😀".repeat(96), description: "😀".repeat(180),
+  });
+  for (const [label, output] of [
+    ["364-day", activity364], ["366-day", activity366],
+    ["escaped metadata", escapedMetadata], ["unicode metadata", unicodeMetadata],
+  ]) {
+    const bytes = Buffer.byteLength(output, "utf8");
+    assert.ok(bytes < 30_000, `${label} SVG exceeded budget (${bytes} UTF-8 bytes)`);
+  }
+  assert.match(activity366, /aria-label="2026-01-01: 5 contributions"/);
+  assert.match(escapedMetadata, /aria-label="2025-01-01: 0 contributions"/);
+  assert.match(unicodeMetadata, /aria-label="2026-01-01: 5 contributions"/);
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
   assert.match(activity364, />P{31}…<\/text>/);
 });
@@ -241,6 +255,6 @@ test("labels expose signal state without depending on color", () => {
   for (const label of ["Active", "Maintained", "Paused", "Archived", "Experimental", "Passing", "Failing", "Pending", "Unavailable", "Unconfigured", "Stale"]) {
     assert.match(board, new RegExp(label));
   }
-  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /2026-08-18: 0 contributions/);
+  assert.match(renderActivityCard({ days: [{ date: "2026-08-18", count: 0 }, { date: "2026-08-19", count: 4 }] }), /aria-label="2026-08-18: 0 contributions"/);
   assert.match(renderLanguagesCard({ languages: [{ name: "Rust", percentage: 100 }] }), /Rust/);
 });
