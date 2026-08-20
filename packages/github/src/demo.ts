@@ -6,6 +6,54 @@ import type {
   ProjectWorkflow,
 } from "./types.js";
 
+export interface DemoContributionBreakdown {
+  commits: number;
+  issues: number;
+  pullRequests: number;
+  reviews: number;
+}
+
+const DEMO_BREAKDOWN_WEIGHTS = [
+  ["commits", 64],
+  ["issues", 5],
+  ["pullRequests", 14],
+  ["reviews", 17],
+] as const satisfies ReadonlyArray<readonly [keyof DemoContributionBreakdown, number]>;
+
+/** Allocate a synthetic activity total without rounding drift or unsafe intermediate products. */
+export function demoContributionBreakdown(total: number): DemoContributionBreakdown {
+  if (!Number.isSafeInteger(total) || total < 0) {
+    throw new RangeError("Demo contribution totals must be non-negative safe integers");
+  }
+  if (total === 0) {
+    return { commits: 0, issues: 0, pullRequests: 0, reviews: 0 };
+  }
+
+  const quotient = Math.floor(total / 100);
+  const remainder = total % 100;
+  const allocations = DEMO_BREAKDOWN_WEIGHTS.map(([key, weight], order) => {
+    const weightedRemainder = remainder * weight;
+    return {
+      key,
+      order,
+      value: quotient * weight + Math.floor(weightedRemainder / 100),
+      remainder: weightedRemainder % 100,
+    };
+  });
+  const assigned = allocations.reduce((sum, allocation) => sum + allocation.value, 0);
+  const leftover = total - assigned;
+
+  allocations.sort((left, right) => right.remainder - left.remainder || left.order - right.order);
+  const result: DemoContributionBreakdown = { commits: 0, issues: 0, pullRequests: 0, reviews: 0 };
+  for (const allocation of allocations) {
+    result[allocation.key] = allocation.value;
+  }
+  for (let index = 0; index < leftover; index += 1) {
+    result[allocations[index]!.key] += 1;
+  }
+  return result;
+}
+
 /** Deterministic-shaped synthetic data for previews and offline examples. */
 export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
   const stableTimestamp = utcDayTimestamp(now);
@@ -42,14 +90,13 @@ export function demoContributions(login: string, requestedDays = 365, now = new 
       level: Math.min(4, Math.ceil(((offset * 7 + Math.floor(offset / 9)) % 8) / 2)),
     };
   });
+  const totalContributions = days.reduce((sum, day) => sum + day.count, 0);
+  const breakdown = demoContributionBreakdown(totalContributions);
   return {
     version: 1,
     login,
-    totalContributions: days.reduce((sum, day) => sum + day.count, 0),
-    commits: 284,
-    issues: 23,
-    pullRequests: 61,
-    reviews: 74,
+    totalContributions,
+    ...breakdown,
     breakdownBasis: "exact-counts",
     days,
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
