@@ -310,7 +310,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
 }
 
 export function renderActivityCard(data: ActivityCardData, options?: RenderOptions): string {
-  const days = data.days.filter((day) => isValidIsoDate(day.date)).slice(-MAX_ACTIVITY_DAYS);
+  const days = data.days.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-MAX_ACTIVITY_DAYS);
   const max = Math.max(1, ...days.map((day) => finite(day.count)));
   const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
   const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
@@ -319,16 +319,18 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += text(width - 34, 48, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const columns = Math.min(53, Math.max(1, Math.ceil(days.length / 7))); const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
   const start = 40; const top = 66;
+  const accessibilitySummary = days.map((day) => `${day.date}: ${formatNumber(day.count, false)} contributions`).join("; ");
+  out += `<g role="group" aria-label="${escapeXml(accessibilitySummary)}"/>`;
   const cellsByFill = new Map<string, string[]>();
   days.forEach((day, index) => {
     const column = Math.floor(index / 7); const row = index % 7; const intensity = Math.min(1, finite(day.count) / max);
     const fill = intensity === 0 ? t.background : intensity < 0.34 ? t.border : intensity < 0.67 ? t.accent : t.positive;
     const x = start + column * (cell + 2); const y = top + row * (cell + 2);
     const cells = cellsByFill.get(fill) ?? [];
-    cells.push(`<path d="M${x} ${y}h${cell}v${cell}H${x}" aria-label="${escapeXml(`${day.date}: ${formatNumber(day.count)} contributions`)}"/>`);
+    cells.push(`<path d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
     cellsByFill.set(fill, cells);
   });
-  for (const [fill, cells] of cellsByFill) out += `<g fill="${fill}">${cells.join("")}</g>`;
+  for (const [fill, cells] of cellsByFill) out += `<g aria-hidden="true" fill="${fill}">${cells.join("")}</g>`;
   out += text(40, top + 7 * (cell + 2) + 19, "Less", 10, t.muted) + text(78, top + 7 * (cell + 2) + 19, "More", 10, t.muted);
   out += `<rect x="${width - 94}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.background}"/><rect x="${width - 78}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.border}"/><rect x="${width - 62}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.accent}"/><rect x="${width - 46}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.positive}"/>`;
   return out + svgEnd();

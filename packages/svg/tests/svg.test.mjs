@@ -183,24 +183,33 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
     ...dates(366),
     { date: "not-a-date", count: 99 },
   ] });
-  const escapedMetadata = renderActivityCard({ days: dates(366), periodLabel: "&".repeat(32) }, {
-    title: "&".repeat(96), description: "&".repeat(180),
-  });
-  const unicodeMetadata = renderActivityCard({ days: dates(366), periodLabel: "😀".repeat(32) }, {
-    title: "😀".repeat(96), description: "😀".repeat(180),
-  });
+  const adversarialDays = dates(366).map((day) => ({ ...day, count: 100000 }));
+  const escapedOutputs = [
+    ["ampersand", "&"], ["apostrophe", String.fromCharCode(39)], ["emoji", "😀"],
+  ].map(([label, character]) => [label, renderActivityCard({ days: adversarialDays, periodLabel: character.repeat(32) }, {
+    title: character.repeat(96), description: character.repeat(180),
+  })]);
   for (const [label, output] of [
-    ["364-day", activity364], ["366-day", activity366],
-    ["escaped metadata", escapedMetadata], ["unicode metadata", unicodeMetadata],
+    ["364-day", activity364], ["366-day", activity366], ...escapedOutputs,
   ]) {
     const bytes = Buffer.byteLength(output, "utf8");
     assert.ok(bytes < 30_000, `${label} SVG exceeded budget (${bytes} UTF-8 bytes)`);
   }
-  assert.match(activity366, /aria-label="2026-01-01: 5 contributions"/);
-  assert.match(escapedMetadata, /aria-label="2025-01-01: 0 contributions"/);
-  assert.match(unicodeMetadata, /aria-label="2026-01-01: 5 contributions"/);
+  assert.match(activity366, /aria-label="[^\"]*2026-01-01: 5 contributions/);
+  assert.match(escapedOutputs[0][1], /aria-label="2025-01-01: 100,000 contributions/);
+  assert.match(escapedOutputs[2][1], /aria-label="2025-01-01: 100,000 contributions/);
+  assert.match(escapedOutputs[0][1], /2025-01-01: 100,000 contributions/);
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
   assert.match(activity364, />P{31}…<\/text>/);
+});
+
+test("activity accessibility summary remains chronological while visual cells stay hidden", () => {
+  const output = renderActivityCard({ days: [
+    { date: "2026-08-19", count: 9 }, { date: "2026-08-18", count: 1 },
+  ] });
+  assert.match(output, /role="group" aria-label="2026-08-18: 1 contributions; 2026-08-19: 9 contributions"/);
+  assert.ok(output.indexOf("2026-08-18: 1 contributions") < output.indexOf("2026-08-19: 9 contributions"));
+  assert.match(output, /<g aria-hidden="true" fill=/);
 });
 
 test("missing profile and streak fields stay honestly unavailable", () => {
