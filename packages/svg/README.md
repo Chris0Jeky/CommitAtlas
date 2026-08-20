@@ -22,3 +22,9 @@ const svg = renderProfileCard({
 ```
 
 Published packages contain compiled JavaScript and TypeScript declarations in `dist`.
+
+Renderer inputs are bounded for portable README use: dimensions clamp to renderer-safe ranges,
+accessible title and description labels are length-limited, and activity cards accept up to a
+full 366-day window while remaining below the 30KB SVG output budget. Language cards use one
+source basis per input (bytes or percentages); mixed bases are rejected. Profile cards render an
+optional source-backed aggregate `stars` value when supplied and leave it absent otherwise.
