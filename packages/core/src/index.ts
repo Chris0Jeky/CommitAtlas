@@ -128,7 +128,7 @@ export type ContributionCalendar = z.infer<typeof ContributionCalendarSchema>;
 
 function parseDays(input: unknown): ContributionDay[] {
   const days = Array.isArray(input) ? input : ContributionCalendarSchema.parse(input).days;
-  const parsed = z.array(ContributionDaySchema).max(400).parse(days);
+  const parsed = z.array(ContributionDaySchema).min(1).max(400).parse(days);
   const sorted = [...parsed].sort((a, b) => a.date.localeCompare(b.date));
   for (let index = 1; index < sorted.length; index += 1) {
     if (sorted[index - 1]?.date === sorted[index]?.date) throw new Error(`Duplicate contribution date: ${sorted[index]?.date}`);
