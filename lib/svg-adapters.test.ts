@@ -1,0 +1,138 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type {
+  ContributionSnapshot,
+  ProfileSnapshot,
+  ProjectBoardSnapshot,
+} from "./github/types";
+import { GitHubApiError } from "./github/client";
+import {
+  contributionCalendar,
+  toActivityCard,
+  toLanguagesCard,
+  toProfileCard,
+  toProjectBoard,
+  toStreakCard,
+} from "./svg-adapters";
+
+const freshness = { generatedAt: "2026-08-20T00:00:00.000Z", source: "synthetic-demo" as const, mode: "demo" as const };
+
+function contributions(days: ContributionSnapshot["days"]): ContributionSnapshot {
+  return {
+    version: 1,
+    login: "octocat",
+    totalContributions: days.reduce((sum, day) => sum + day.count, 0),
+    commits: 0,
+    issues: 0,
+    pullRequests: 0,
+    reviews: 0,
+    days,
+    freshness,
+  };
+}
+
+test("profile adapter falls back to login and preserves source-backed stars", () => {
+  const snapshot: ProfileSnapshot = {
+    version: 1,
+    login: "octocat",
+    name: null,
+    profileUrl: "https://github.com/octocat",
+    publicRepositories: 2,
+    followers: 3,
+    following: 4,
+    stars: 17,
+    forks: 5,
+    primaryLanguages: [],
+    latestPushAt: null,
+    repositoriesTruncated: false,
+    freshness,
+  };
+  assert.deepEqual(toProfileCard(snapshot), {
+    name: "octocat", login: "octocat", repositories: 2, followers: 3, following: 4, stars: 17,
+  });
+});
+
+test("contribution adapters sort leap-day input and use its latest UTC day as as-of", () => {
+  const snapshot = contributions([
+    { date: "2024-03-02", count: 3 },
+    { date: "2024-02-29", count: 1 },
+    { date: "2024-02-28", count: 1 },
+    { date: "2024-03-01", count: 0 },
+  ]);
+  assert.deepEqual(toStreakCard(snapshot), {
+    current: 1, longest: 2, total: 5, activeDays: 3, lastActive: "2024-03-02",
+  });
+  const activity = toActivityCard(snapshot, 7);
+  assert.equal(activity.periodLabel, "2024-02-25 → 2024-03-02");
+  assert.deepEqual(activity.days.slice(-4), [
+    { date: "2024-02-28", count: 1 },
+    { date: "2024-02-29", count: 1 },
+    { date: "2024-03-01", count: 0 },
+    { date: "2024-03-02", count: 3 },
+  ]);
+});
+
+test("an explicit all-zero calendar renders a zero streak rather than becoming unavailable", () => {
+  const snapshot = contributions([
+    { date: "2026-08-18", count: 0 },
+    { date: "2026-08-19", count: 0 },
+  ]);
+  assert.deepEqual(toStreakCard(snapshot), {
+    current: 0, longest: 0, total: 0, activeDays: 0, lastActive: undefined,
+  });
+});
+
+test("invalid or duplicate contribution days fail as bounded upstream data errors", () => {
+  assert.throws(
+    () => contributionCalendar(contributions([
+      { date: "2026-08-19", count: 1 },
+      { date: "2026-08-19", count: 2 },
+    ])),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("language and project adapters preserve explicit semantics and omit SVG actions", () => {
+  const profile: ProfileSnapshot = {
+    version: 1,
+    login: "octocat",
+    name: "Octocat",
+    profileUrl: "https://github.com/octocat",
+    publicRepositories: 3,
+    followers: 1,
+    following: 2,
+    stars: 0,
+    forks: 0,
+    primaryLanguages: [{ name: "TypeScript", repositories: 2, share: 66.7 }],
+    latestPushAt: null,
+    repositoriesTruncated: false,
+    freshness,
+  };
+  assert.deepEqual(toLanguagesCard(profile), { languages: [{ name: "TypeScript", percentage: 66.7 }] });
+
+  const board: ProjectBoardSnapshot = {
+    version: 1,
+    owner: "acme",
+    projects: [{
+      repo: "acme/atlas",
+      name: "atlas",
+      description: null,
+      sourceUrl: "https://github.com/acme/atlas",
+      websiteUrl: null,
+      lifecycle: "planned",
+      primaryLanguage: "TypeScript",
+      stars: 2,
+      forks: 0,
+      openIssues: 0,
+      pushedAt: null,
+      license: null,
+      ci: { state: "unavailable", label: "CI unavailable", workflow: null, url: null, checkedAt: null, headSha: null },
+      release: null,
+    }],
+    freshness,
+  };
+  assert.deepEqual(toProjectBoard(board), {
+    projects: [{ name: "atlas", lifecycle: "experimental", ci: "unavailable", stars: 2 }],
+  });
+});
+
