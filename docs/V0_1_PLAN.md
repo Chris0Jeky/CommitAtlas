@@ -3,8 +3,9 @@
 Status: active saved plan, not a completion claim. API step 1, SVG step 2, core manifest hardening,
 and all five versioned routes are merged. The Studio is integrated on a saved remote branch, has
 passed the full local and hosted gate plus production desktop/mobile QA, and is open as PR #47. Its
-fresh independent review found one HIGH contribution-card copy blocker, so the fix, post-fix proof,
-and merge remain.
+fresh independent review found one confirmed HIGH contribution-card copy blocker. A later connector
+review added eight unresolved threads that still need direct causal triage, so the bounded fix round,
+post-fix proof, and merge remain.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live PR checks and unresolved review threads.
 
@@ -151,10 +152,12 @@ Production desktop/mobile browser QA covered:
 The complete evidence and browser-control limitation are in
 [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). Ready PR #47 is intentionally unmerged because
 the independent review proved that live/no-contribution copy output still includes Streak and
-Activity URLs that return 503. Apply only the bounded availability/omission fix, repeat the affected
-browser checks and full gate, obtain one fresh post-fix review and exact-head hosted CI, reconcile
-threads, and merge only after the renewed aging floor. Full keyboard-only traversal remains a
-separate unverified pre-release check because the available browser controller could not move focus.
+Activity URLs that return 503. The connector subsequently added eight unresolved threads against
+the same code head. Reproduce and causally classify them, apply only confirmed CRITICAL/HIGH fixes
+in the single bounded fix round, repeat the affected browser checks and full gate, obtain one fresh
+post-fix review and exact-head hosted CI, reconcile every thread, and merge only after the renewed
+aging floor. Full keyboard-only traversal remains a separate unverified pre-release check because
+the available browser controller could not move focus.
 
 ### 5. Build the static generator package
 
@@ -262,7 +265,8 @@ gh pr list --repo Chris0Jeky/CommitAtlas --state open
 gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
 ```
 
-Resume the saved Studio branch, fix only the PR #47 contribution-card copy blocker, repeat the
-affected browser checks and full gate, and ship it only at an exact green reviewed head. Preserve one
+Resume the saved Studio branch, triage the eight unresolved connector threads, fix the confirmed
+contribution-card copy blocker plus only other causally confirmed CRITICAL/HIGH defects, repeat the
+affected browser checks and full gate, and ship only at an exact green reviewed head. Preserve one
 writer per checkout, use small present-tense commits, and tear down auxiliary worktrees after their
 clean pushed heads are recorded.

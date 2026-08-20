@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 16:13 BST
+Last verified: 2026-08-20 16:18 BST
 
 This is an intentional stop checkpoint, not a completion, deployment, or release claim. GitHub,
 Git, CI, branches, worktrees, and open work were re-read before it was committed. Fetch again when
@@ -22,7 +22,9 @@ Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md)
   [run 32384234212](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32384234212).
 - Production desktop/mobile browser QA was completed and is preserved in
   [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). A fresh independent review then found one
-  HIGH copy-truth blocker, so PR #47 is intentionally open and unmerged.
+  HIGH copy-truth blocker. A later Codex connector review added eight unresolved threads against
+  code head `022dd5d`; they are inventoried in the same handoff and await direct causal triage.
+  PR #47 is intentionally open and unmerged.
 - Open pull requests are Studio [#47](https://github.com/Chris0Jeky/CommitAtlas/pull/47) and
   Dependabot [#5](https://github.com/Chris0Jeky/CommitAtlas/pull/5) and
   [#6](https://github.com/Chris0Jeky/CommitAtlas/pull/6).
@@ -39,10 +41,10 @@ Action architecture is in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md)
   optional separate decision and must not be claimed without registry proof.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
-GitHub REST, GraphQL, and Git were all available during this closeout. PR #47 had no posted reviews,
-inline comments, or review threads; GraphQL reported 1,063 remaining requests at the snapshot. The
-independent local review finding remains binding even though GitHub currently reports the PR as
-mergeable.
+GitHub REST, GraphQL, and Git were all available during this closeout. A Codex connector review of
+`022dd5d` posted eight unresolved threads shortly after the first snapshot. They were read and saved
+but not replied to, resolved, or implemented during this stop checkpoint. The independent local
+review finding remains binding even though GitHub currently reports the PR as mergeable.
 
 ## Shipped on `main`
 
@@ -133,6 +135,8 @@ and a deterministic non-publishing Node 24 Action.
 
 - The focused fix for the confirmed HIGH review blocker: live public Markdown must omit Streak and
   Activity while contribution data is unavailable instead of generating two 503 image URLs.
+- Direct causal triage of all eight late connector threads, followed by fixes only for confirmed
+  CRITICAL/HIGH defects and explicit tracking or decline of nonblocking findings.
 - Full sequential keyboard traversal, which the available browser-control layer could not prove.
 - Post-fix production regression QA, fresh independent review, exact-head hosted CI, renewed aging
   floor, final thread reconciliation, and merge for PR #47.
@@ -152,6 +156,10 @@ and a deterministic non-publishing Node 24 Action.
 - Dependabot #5/#6 should be reconciled only after the feature dependency graph settles.
 - PR #47 currently copies two broken contribution-card URLs in a supported live/no-token state;
   leave it unmerged until the bounded fix and post-fix proof are complete.
+- Eight late connector threads remain unresolved. They report partial star totals, unsupported CI
+  health, stale validated-origin reuse, workflow delimiter collisions, action-host validation drift,
+  paper-theme contrast, whitespace-sensitive actions, and positive-looking zero-day bars. These are
+  review findings, not independently reverified claims at this stop.
 - Keyboard semantics and focus styling were inspected, but a complete keyboard-only traversal is
   still not verified due the browser-control limitation.
 
@@ -159,14 +167,16 @@ and a deterministic non-publishing Node 24 Action.
 
 1. Fetch and confirm PR #47 still points to the saved branch; inspect any newer commit rather than
    assuming this checkpoint is current.
-2. Implement only the contribution-card availability/copy fix specified in
-   [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md).
-3. Rerun focused and full gates plus the affected production browser paths, push the fix, obtain a
+2. Reproduce and causally classify the eight unresolved connector threads linked from
+   [STUDIO_QA_2026-08-20.md](./STUDIO_QA_2026-08-20.md). Fix only confirmed CRITICAL/HIGH defects in
+   the one permitted fix round; track or decline nonblocking findings rather than expanding scope.
+3. Include the already-confirmed contribution-card availability/copy fix in that bounded round.
+4. Rerun focused and full gates plus the affected production browser paths, push the fix, obtain a
    fresh exact-head independent review and hosted CI, reconcile threads, observe the renewed aging
    floor, and merge PR #47 with a merge commit only when every gate is green.
-4. Repeat the full keyboard-only traversal with a capable driver or a real keyboard before release.
-5. Address #45 and #46 before release unless direct product evidence proves they are nonblocking.
-6. Continue the remaining ordered commits in `STATIC_GENERATOR_PLAN.md`; then reconcile dependencies,
+5. Repeat the full keyboard-only traversal with a capable driver or a real keyboard before release.
+6. Address #45 and #46 before release unless direct product evidence proves they are nonblocking.
+7. Continue the remaining ordered commits in `STATIC_GENERATOR_PLAN.md`; then reconcile dependencies,
    finish truthful docs, deploy through Sites, browser-verify the public origin, and release `v0.1.0`.
 
 ## Clean resume commands
