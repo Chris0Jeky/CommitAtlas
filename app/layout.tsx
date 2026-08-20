@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     description: "Accessible GitHub cards and a truthful project-health dashboard in one open-source toolkit.",
     type: "website",
     url: "/",
-    images: [{ url: "/og.png", width: 1728, height: 907, alt: "CommitAtlas GitHub portfolio dashboard" }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "CommitAtlas GitHub portfolio dashboard" }],
   },
   twitter: { card: "summary_large_image", images: ["/og.png"] },
 };
