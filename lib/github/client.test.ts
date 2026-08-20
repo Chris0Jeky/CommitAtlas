@@ -611,6 +611,45 @@ test("prefers upstream Retry-After for 403 rate limits", async () => {
   );
 });
 
+test("accepts each HTTP Retry-After form", async () => {
+  for (const retryAfter of [
+    "Wed, 21 Oct 2015 07:28:00 GMT",
+    "Sunday, 06-Nov-94 08:49:37 GMT",
+    "Sun Nov  6 08:49:37 1994",
+  ]) {
+    const fetchImpl: typeof fetch = async () => new Response(null, {
+      status: 429,
+      headers: { "retry-after": retryAfter },
+    });
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => error instanceof GitHubApiError && error.retryAfter === retryAfter,
+    );
+  }
+});
+
+test("rejects malformed Retry-After values and uses a valid reset fallback", async () => {
+  for (const retryAfter of [
+    "soon",
+    "12.5",
+    "-1",
+    "Sun, 31 Feb 2026 00:00:00 GMT",
+    "Mon, 21 Oct 2015 07:28:00 GMT",
+  ]) {
+    const fetchImpl: typeof fetch = async () => new Response(null, {
+      status: 429,
+      headers: {
+        "retry-after": retryAfter,
+        "x-ratelimit-reset": String(NOW.getTime() / 1000 + 45),
+      },
+    });
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => error instanceof GitHubApiError && error.retryAfter === "45",
+    );
+  }
+});
+
 test("converts the x-ratelimit-reset epoch to a 429 retry delta", async () => {
   const fetchImpl: typeof fetch = async () => new Response(null, {
     status: 429,

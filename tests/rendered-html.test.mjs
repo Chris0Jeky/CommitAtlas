@@ -262,6 +262,24 @@ test("rejects oversized GitHub text before the built Worker emits a snapshot", a
   assert.equal((await response.json()).error.code, "invalid_response");
 });
 
+test("returns a validated rate-limit retry hint without caching the error", async () => {
+  const response = await withMockedFetch(async () => new Response(null, {
+    status: 429,
+    headers: {
+      "retry-after": "not-a-delay",
+      "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 45),
+    },
+  }), () => request("/api/v1/profile?user=octocat"));
+
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const retryAfterHeader = response.headers.get("retry-after");
+  assert.notEqual(retryAfterHeader, null);
+  const retryAfter = Number(retryAfterHeader);
+  assert.ok(Number.isInteger(retryAfter) && retryAfter >= 0 && retryAfter <= 45);
+  assert.equal((await response.json()).error.code, "github_rate_limited");
+});
+
 async function withMockedFetch(fetchImpl, operation) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
