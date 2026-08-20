@@ -555,6 +555,10 @@ function assertRequestedContributionWindow(
   requestedDays: number,
 ): void {
   const available = new Set(calendarDays.map(({ date }) => date));
+  const end = to.toISOString().slice(0, 10);
+  if (calendarDays.some(({ date }) => date > end)) {
+    throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
+  }
   const first = new Date(to);
   first.setUTCDate(first.getUTCDate() - (requestedDays - 1));
   for (let offset = 0; offset < requestedDays; offset += 1) {

@@ -107,6 +107,19 @@ test("fails closed for unsafe or unproven contribution credentials in the built 
   }
 });
 
+test("rejects future contribution days in the built Worker", async () => {
+  const response = await withMockedFetch(async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    assert.equal(url.pathname, "/graphql");
+    const { variables } = JSON.parse(String(init?.body));
+    return githubJson(publicContributionPayload({}, variables.to.slice(0, 10), true));
+  }, () => request("/api/v1/contributions?user=octocat&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).error.code, "invalid_response");
+});
+
 test("makes token-backed profile and project guesses indistinguishable before GitHub resource lookup", async () => {
   for (const [scopes, token] of [["repo", "server-secret"], [null, "server-secret"], ["", "github_pat_private"]]) {
     const calls = [];
@@ -219,8 +232,9 @@ async function withMockedFetch(fetchImpl, operation) {
   }
 }
 
-function publicContributionPayload(restrictions = {}, endingDate = "2026-08-18") {
-  const dates = Array.from({ length: 7 }, (_, offset) => shiftUtcDate(endingDate, -6 + offset));
+function publicContributionPayload(restrictions = {}, endingDate = "2026-08-18", includeFuture = false) {
+  const dates = Array.from({ length: 8 }, (_, offset) => shiftUtcDate(endingDate, -7 + offset));
+  if (includeFuture) dates.push(shiftUtcDate(endingDate, 1));
   return {
     data: {
       user: {
