@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  InputError,
+  parseGitHubHandle,
+  parseLifecycleMap,
+  parseRepositoryNames,
+  parseWorkflowMap,
+  rejectUnknownParameters,
+  safeHttpsUrl,
+} from "./validation";
+
+test("accepts bounded GitHub identifiers", () => {
+  assert.equal(parseGitHubHandle("octo-cat"), "octo-cat");
+  assert.deepEqual(parseRepositoryNames("alpha, beta.repo, gamma_repo"), [
+    "alpha",
+    "beta.repo",
+    "gamma_repo",
+  ]);
+});
+
+test("rejects ambiguous and unbounded identifiers", () => {
+  assert.throws(() => parseGitHubHandle("-owner"), InputError);
+  assert.throws(() => parseRepositoryNames("alpha,ALPHA"), /duplicates/);
+  assert.throws(() => parseRepositoryNames("a,b,c,d,e,f,g"), /one and six/);
+  assert.throws(() => parseRepositoryNames("../secret"), /invalid/);
+});
+
+test("requires an explicit core lifecycle for every requested repository", () => {
+  const states = parseLifecycleMap("alpha:active,beta:maintenance,gamma:planned", ["alpha", "beta", "gamma"]);
+  assert.equal(states.get("alpha"), "active");
+  assert.equal(states.get("beta"), "maintenance");
+  assert.equal(states.get("gamma"), "planned");
+  assert.throws(() => parseLifecycleMap("alpha:active", ["alpha", "beta"]), /exactly one/);
+  assert.throws(() => parseLifecycleMap("alpha:healthy", ["alpha"]), /invalid/);
+});
+
+test("aligns optional workflow identities to the requested repository subset", () => {
+  const workflows = parseWorkflowMap("alpha:ci.yml,gamma:.github/workflows/release.yml", ["alpha", "beta", "gamma"]);
+  assert.equal(workflows.get("alpha"), "ci.yml");
+  assert.equal(workflows.get("beta"), undefined);
+  assert.equal(workflows.get("gamma"), ".github/workflows/release.yml");
+  assert.throws(() => parseWorkflowMap("other:ci.yml", ["alpha"]), /requested repositories/);
+  assert.throws(() => parseWorkflowMap("alpha:", ["alpha"]), /invalid/);
+  assert.throws(() => parseWorkflowMap("alpha:ci.yml,alpha:docs.yml", ["alpha"]), /duplicate/);
+  for (const workflow of [".", "..", ".github/../ci.yml", ".github\\..\\ci.yml"]) {
+    assert.throws(() => parseWorkflowMap(`alpha:${workflow}`, ["alpha"]), /invalid/);
+  }
+});
+
+test("rejects unknown query parameters", () => {
+  const query = new URLSearchParams("user=octocat&token=secret");
+  assert.throws(() => rejectUnknownParameters(query, ["user"]), /token/);
+  assert.throws(() => rejectUnknownParameters(new URLSearchParams("user=octocat&user=octocat"), ["user"]), /duplicate/);
+});
+
+test("permits only bounded HTTPS links", () => {
+  assert.equal(safeHttpsUrl("https://example.com/docs"), "https://example.com/docs");
+  assert.equal(safeHttpsUrl("http://example.com"), null);
+  assert.equal(safeHttpsUrl("javascript:alert(1)"), null);
+  assert.equal(safeHttpsUrl("https://token@example.com/docs"), null);
+});

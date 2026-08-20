@@ -29,7 +29,15 @@ project action is keyboard-accessible.
 - Query parameters are allowlisted, length-bounded, canonicalized, and versioned under `/api/v1`.
 - Outbound requests target GitHub API hosts only. Manifest links are displayed after HTTPS
   validation but are never fetched by the service.
-- GitHub tokens are server/action secrets only. They are never accepted in URLs or browser state.
+- GitHub tokens are server/action secrets only. The optional `GITHUB_TOKEN` Worker binding is set
+  with `wrangler secret put GITHUB_TOKEN`; it is never accepted in URLs or browser state.
+- The shared hosted API rejects private repository responses. Before its viewer-scoped contribution
+  query, it requires an authenticated GitHub REST scope proof containing only empty or `public_repo`
+  classic scopes and rejects any restricted contribution collection. It also rejects any emitted URL
+  with credentials. Private portfolio output belongs to static generation owned by the repository author.
+- Every GitHub-provided text field is bounded by its normalized role before it reaches a JSON snapshot
+  or renderer. Oversized names, descriptions, languages, release metadata, workflow fields, and dates
+  fail closed as invalid upstream data; optional invalid URLs are omitted after HTTPS validation.
 - Renderers accept normalized data, escape every text node, and emit no scripts, remote images,
   `foreignObject`, event attributes, or arbitrary CSS.
 - Cache age and source availability are visible product data. Partial responses remain partial.
@@ -58,3 +66,8 @@ projects:
 
 The manifest is fetched only from a validated GitHub `owner/repo/path` source. V1 limits a project
 board to six entries to cap API work and keep the README card legible.
+
+The JSON project route mirrors this declaration with an exact `states=repo:lifecycle` map and an
+optional `workflows=repo:workflow` subset map. A project with no workflow entry is explicitly
+unconfigured and makes no workflow-runs request; an unavailable declared workflow is never a
+passing signal.

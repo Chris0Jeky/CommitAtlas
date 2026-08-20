@@ -8,6 +8,19 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const HANDLE_PATTERN = /^(?!-)(?!.*--)[A-Za-z0-9-]{1,39}(?<!-)$/;
 const REPOSITORY_NAME_PATTERN = /^(?!\.{1,2}$)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/;
 
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.codePointAt(0)!;
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+}
+
+const WorkflowIdentitySchema = z.string()
+  .refine((value) => !containsControlCharacter(value), "Workflow identity must not contain control characters")
+  .trim()
+  .max(200)
+  .refine((value) => !value.replace(/[\\]/g, "/").split("/").some((segment) => segment === "." || segment === ".."), "Workflow identity must not contain dot path segments");
+
 function isUtcDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
@@ -102,7 +115,7 @@ const ProjectManifestEntrySchema = z.object({
   repo: GitHubRepositorySlugSchema,
   label: z.string().trim().min(1).max(80),
   lifecycle: ProjectLifecycleSchema,
-  workflow: z.string().trim().max(200).optional(),
+  workflow: WorkflowIdentitySchema.optional(),
   links: ProjectLinksSchema.default({}),
 }).strict();
 
@@ -117,13 +130,20 @@ export type GitHubManifestInput = ProjectManifest;
 
 export function parseManifest(input: unknown): ProjectManifest {
   const parsed = ProjectManifestSchema.parse(input);
-  return {
-    version: CORE_VERSION,
-    projects: parsed.projects.map((project) => ({
+  const seenRepositories = new Set<string>();
+  const projects = parsed.projects.map((project) => {
+    const repositoryKey = project.repo.toLowerCase();
+    if (seenRepositories.has(repositoryKey)) throw new Error(`Duplicate repository: ${project.repo}`);
+    seenRepositories.add(repositoryKey);
+    return {
       ...project,
       repo: project.repo.split("/").map((part, index) => index === 0 ? part.toLowerCase() : part).join("/"),
       label: project.label.trim(),
-    })),
+    };
+  });
+  return {
+    version: CORE_VERSION,
+    projects,
   };
 }
 

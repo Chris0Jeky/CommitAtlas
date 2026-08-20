@@ -44,6 +44,31 @@ describe("core contracts", () => {
     expect(() => parseManifest({ version: 1, projects: [{ repo: "owner/repo", label: "repo", lifecycle: "active", links: { docs: "http://localhost/docs" } }] })).toThrow();
   });
 
+  it("rejects duplicate manifest repositories after full-slug normalization", () => {
+    expect(() => parseManifest({
+      version: 1,
+      projects: [
+        { repo: "  Owner/Repo  ", label: "first", lifecycle: "active", links: {} },
+        { repo: "owner/repo", label: "second", lifecycle: "active", links: {} },
+      ],
+    })).toThrow("Duplicate repository");
+  });
+
+  it("rejects unsafe workflow identities while retaining valid filename and numeric forms", () => {
+    const manifest = (workflow: string) => ({
+      version: 1 as const,
+      projects: [{ repo: "owner/repo", label: "repo", lifecycle: "active" as const, workflow, links: {} }],
+    });
+
+    for (const workflow of [".", "..", ".github/../ci.yml", ".github\\..\\ci.yml", "ci\u0000.yml", "ci\n.yml", "ci\u007f.yml"]) {
+      expect(() => parseManifest(manifest(workflow)), workflow).toThrow();
+    }
+
+    for (const workflow of ["  ci.yml  ", "12345", ".github/workflows/build.yml", ".github\\workflows\\build.yml", "encoded-%2e%2e.yml"]) {
+      expect(parseManifest(manifest(workflow)).projects[0]?.workflow).toBe(workflow.trim());
+    }
+  });
+
   it("calculates current and longest UTC streaks across a leap day and a gap", () => {
     expect(calculateStreaks(calendar, { asOf: "2024-02-29" })).toMatchObject({ current: 2, longest: 2 });
     expect(calculateStreaks(calendar, { asOf: "2024-03-03" })).toMatchObject({ current: 1, longest: 2 });
