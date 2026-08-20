@@ -256,10 +256,10 @@ export function calculateActivitySeries(input: unknown, options: ActivityOptions
 export const buildActivitySeries = calculateActivitySeries;
 
 export const ContributionBreakdownSchema = z.object({
-  commits: z.number().int().min(0).max(MAX_SAFE_INTEGER),
-  issues: z.number().int().min(0).max(MAX_SAFE_INTEGER),
-  pullRequests: z.number().int().min(0).max(MAX_SAFE_INTEGER),
-  reviews: z.number().int().min(0).max(MAX_SAFE_INTEGER),
+  commits: z.number().finite().min(0).max(MAX_SAFE_INTEGER),
+  issues: z.number().finite().min(0).max(MAX_SAFE_INTEGER),
+  pullRequests: z.number().finite().min(0).max(MAX_SAFE_INTEGER),
+  reviews: z.number().finite().min(0).max(MAX_SAFE_INTEGER),
 }).strict();
 export type ContributionBreakdown = z.infer<typeof ContributionBreakdownSchema>;
 
@@ -268,7 +268,21 @@ export const ContributionMetricsOptionsSchema = ContributionBreakdownSchema.exte
   days: z.number().int().min(1).max(366),
   trendWeeks: z.number().int().min(1).max(16).default(12),
   breakdownBasis: z.enum(["exact-counts", "public-profile-percentages"]).default("exact-counts"),
-}).strict();
+}).strict().superRefine((value, context) => {
+  const values = [value.commits, value.issues, value.pullRequests, value.reviews];
+  if (value.breakdownBasis === "exact-counts" && values.some((item) => !Number.isSafeInteger(item))) {
+    context.addIssue({ code: "custom", message: "Exact contribution breakdowns must contain safe integers" });
+  }
+  if (value.breakdownBasis === "public-profile-percentages") {
+    if (values.some((item) => item > 100)) {
+      context.addIssue({ code: "custom", message: "Public profile percentages must be between 0 and 100" });
+    }
+    const total = values.reduce((sum, item) => sum + item, 0);
+    if (total !== 0 && (total < 99 || total > 101)) {
+      context.addIssue({ code: "custom", message: "Public profile percentages must total approximately 100" });
+    }
+  }
+});
 export type ContributionMetricsOptions = z.input<typeof ContributionMetricsOptionsSchema>;
 
 export interface ContributionTrendBucket {

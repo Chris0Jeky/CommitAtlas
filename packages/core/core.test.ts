@@ -133,6 +133,30 @@ describe("core contracts", () => {
     expect(metrics).not.toHaveProperty("percentile");
   });
 
+  it("distinguishes exact integer counts from public profile activity percentages", () => {
+    const day = [{ date: "2024-03-03", count: 1, level: 1 }];
+    const percentages = calculateContributionMetrics(day, {
+      asOf: "2024-03-03",
+      days: 1,
+      commits: 77.8,
+      issues: 6.7,
+      pullRequests: 12.6,
+      reviews: 2.9,
+      breakdownBasis: "public-profile-percentages",
+    });
+    expect(percentages.breakdownBasis).toBe("public-profile-percentages");
+    expect(percentages.breakdown.commits).toBe(77.8);
+    expect(() => calculateContributionMetrics(day, {
+      asOf: "2024-03-03",
+      days: 1,
+      commits: 1.5,
+      issues: 0,
+      pullRequests: 0,
+      reviews: 0,
+      breakdownBasis: "exact-counts",
+    })).toThrow("safe integers");
+  });
+
   it("reports incomplete contribution coverage instead of silently treating missing days as observed zeroes", () => {
     const metrics = calculateContributionMetrics(calendar, {
       asOf: "2024-03-03",
