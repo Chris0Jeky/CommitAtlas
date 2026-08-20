@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
+import { buildStudioRouteUrl, type StudioCardKind } from "./studio-urls";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
-type CardKind = "profile" | "streak" | "activity" | "languages" | "projects";
+type CardKind = StudioCardKind;
 
 interface ProjectDraft {
   id: number;
@@ -94,6 +95,7 @@ const cardLabels: Record<CardKind, string> = {
 };
 
 let nextProjectId = 3;
+const PLACEHOLDER_BASE_URL = "https://your-commitatlas-host.example";
 
 export default function StudioClient() {
   const [handle, setHandle] = useState("octocat");
@@ -106,30 +108,27 @@ export default function StudioClient() {
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
   const [phase, setPhase] = useState<"ready" | "loading" | "error">("ready");
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
-  const [baseUrl, setBaseUrl] = useState("https://your-commitatlas-host.example");
+  const [baseUrl, setBaseUrl] = useState(PLACEHOLDER_BASE_URL);
 
   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
   const markdown = useMemo(() => {
     return (Object.keys(cardLabels) as CardKind[])
       .filter((kind) => selectedCards.has(kind) && (kind !== "projects" || activeProjects.length > 0))
       .map((kind) => {
-        const path = kind === "projects" ? "/api/v1/projects.svg" : `/api/v1/cards/${kind}.svg`;
-        const query = kind === "projects"
-          ? new URLSearchParams({
-              owner: handle.trim() || "octocat",
-              repos: activeProjects.map((project) => project.repo.trim()).join(","),
-              states: activeProjects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","),
-              theme,
-            })
-          : new URLSearchParams({ user: handle.trim() || "octocat", theme });
-        if (demo) query.set("demo", "true");
-        return `![CommitAtlas ${cardLabels[kind]}](${baseUrl}${path}?${query.toString()})`;
+        const url = buildStudioRouteUrl(kind, {
+          owner: handle.trim() || "octocat",
+          projects: activeProjects,
+          theme,
+          demo,
+        });
+        return `![CommitAtlas ${cardLabels[kind]}](${baseUrl}${url})`;
       })
       .join("\n");
   }, [activeProjects, baseUrl, demo, handle, selectedCards, theme]);
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setBaseUrl(PLACEHOLDER_BASE_URL);
     const login = handle.trim();
     if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
       setPhase("error");
@@ -138,7 +137,6 @@ export default function StudioClient() {
     }
 
     setPhase("loading");
-    setBaseUrl(window.location.origin);
     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
     try {
       const common = `user=${encodeURIComponent(login)}&demo=${demo}`;
@@ -149,13 +147,19 @@ export default function StudioClient() {
         fetchJson<ProfileSnapshot>(`/api/v1/profile?${common}`),
         contributionPromise,
         activeProjects.length
-          ? fetchJson<ProjectBoardSnapshot>(projectUrl(login, activeProjects, demo))
+          ? fetchJson<ProjectBoardSnapshot>(buildStudioRouteUrl("projects", {
+              owner: login,
+              projects: activeProjects,
+              theme,
+              demo,
+            }, "json"))
           : Promise.resolve(null),
       ]);
 
       setProfile(nextProfile);
       setContributions(contributionResult.value);
       setBoard(nextBoard);
+      setBaseUrl(window.location.origin);
       setPhase("ready");
       setNotice(
         contributionResult.error
@@ -317,16 +321,6 @@ function StarterProjectRow({ project, index, owner }: { project: ProjectDraft; i
   const tone = index === 0 ? "good" : index === 1 ? "warn" : "muted";
   const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo)}`], ["Docs", safeUrl(project.docs)], ["Install", safeUrl(project.install)], ["Download", safeUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
   return <article className="dashboard-project synthetic"><div className="project-title"><span className={`signal-dot ${tone}`} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={tone}>{state}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{project.workflow || "Default"}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
-}
-
-function projectUrl(owner: string, projects: ProjectDraft[], demo: boolean): string {
-  const parameters = new URLSearchParams({
-    owner,
-    repos: projects.map((project) => project.repo.trim()).join(","),
-    states: projects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","),
-    demo: String(demo),
-  });
-  return `/api/v1/projects?${parameters.toString()}`;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
