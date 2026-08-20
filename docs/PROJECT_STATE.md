@@ -1,150 +1,157 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 13:23 BST
+Last verified: 2026-08-20 13:56 BST
 
-This is a deliberate session checkpoint, not a completion or release claim. Every intentional
-change is committed and pushed on the branches named below, both auxiliary worktrees have been
-removed, and the sole remaining checkout is tracked-clean before this documentation update. Fetch
-GitHub and re-read live CI and review state before resuming; live evidence outranks this file.
+This is an intentional end-of-session checkpoint, not a completion or release claim. GitHub, Git,
+CI, and unresolved review threads were re-read before this file was updated. Fetch again when
+resuming because live evidence outranks this checkpoint.
 
 The detailed remaining build plan is in [V0_1_PLAN.md](./V0_1_PLAN.md).
 
+## Live repository snapshot
+
+- `main`: `975b69429b6b5ec417e5868930c229ec6d7bd9cc`, the merge commit for
+  [PR #25](https://github.com/Chris0Jeky/CommitAtlas/pull/25).
+- Open implementation PR: [#39](https://github.com/Chris0Jeky/CommitAtlas/pull/39), SVG release
+  hardening. It is deliberately blocked as described below.
+- Open dependency PRs: [#5](https://github.com/Chris0Jeky/CommitAtlas/pull/5) and
+  [#6](https://github.com/Chris0Jeky/CommitAtlas/pull/6). Reconcile them late, after feature branch
+  integration, so their checks exercise the final dependency graph.
+- No Sites deployment, repository homepage, versioned release, or npm publication exists yet.
+- There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
+
 ## Shipped on `main`
 
-Current baseline: `b6856d96d3cb73a9185b10a31086fc1f145e7c00`, merged by
-[PR #27](https://github.com/Chris0Jeky/CommitAtlas/pull/27).
+The baseline now includes:
 
 - Product identity, responsive Sites-compatible Vinext workspace, repository/community metadata,
   locked CI, Dependabot, secret scanning, and canonical GPL-3.0-only licensing.
-- `@commit-atlas/core` contracts for bounded GitHub inputs, contribution calendars and streaks,
-  activity, language bytes, explicit lifecycle, and truthful CI freshness.
-- `@commit-atlas/svg` deterministic accessible renderers for profile, streak, activity, language,
-  and project-summary cards across four themes.
-- Both packages prepack ES2020 JavaScript and declarations, ship their README and licence, and can
-  be imported by an ordinary clean Node consumer.
-- The root quality gate covers typecheck, lint, core/SVG tests, both package dry-run packs, product
-  build, and rendered smoke tests.
+- `@commit-atlas/core` bounded inputs and truthful calculations for contribution calendars,
+  streaks, activity, language bytes, lifecycle, and CI freshness.
+- `@commit-atlas/svg` deterministic profile, streak, activity, language, and project-summary
+  renderers across four themes. Release hardening remains in PR #39 and is not shipped.
+- Versioned JSON profile, contribution, project, and health routes from PR #25, with bounded
+  upstream transport, stable ETags, public/private cache separation, configured-workflow CI truth,
+  public-only credential proof, and private-repository oracle regressions.
+- Root checks for typecheck, lint, core/API/SVG tests, package dry-run packs, production build, and
+  rendered Worker smoke tests.
 
-No deployment, versioned release, or npm publication has occurred.
-
-## Saved remote implementation branches
-
-### JSON API — hosted green, still blocked
-
-- Branch: `feat/github-api-hardened`
-- Pull request: [#25](https://github.com/Chris0Jeky/CommitAtlas/pull/25)
-- Pushed head: `68dfbcc49623005e2aac9d326722cd7bf2dd9d68`
-- Hosted Quality gate at that exact head: passed.
-- Local full gate: passed; core 13, GitHub API 30, SVG 9, built-worker/API 8, both package
-  dry-run packs, typecheck, and lint. `git diff --check` also passed.
-
-The branch implements bounded versioned JSON profile, contribution, project, and health routes;
-synthetic fixtures; request-scoped Worker token binding; one request-wide deadline; bounded GitHub
-response streaming and concurrency; stable canonical ETags and 304s; and public/private cache
-separation. The final saved commits are deliberately small:
-
-- `2e5173f` proves a contribution token has only empty/`public_repo` classic scopes, checks GitHub's
-  restricted-contribution fields, and fails closed before publishing unsafe data.
-- `2fd91d5` carries each configured workflow through validation and queries only that workflow for
-  CI health; it no longer treats an arbitrary newest workflow as CI.
-- `68dfbcc` applies field-appropriate code-point bounds to GitHub text before snapshots reach HTML
-  or SVG consumers.
-
-Four P1 review threads remain unresolved. The first three correspond to those fixes and are waiting
-for a fresh independent review before resolution. The fourth is a separate **HIGH merge blocker**:
-profile/project REST routes can still use a deployment token capable of seeing private repositories,
-so an anonymous caller could distinguish a guessed private repository from an inaccessible one.
-Before merging, prove the service credential is public-only before *any* public GitHub lookup, or
-make private/inaccessible responses indistinguishable. Add an explicit oracle regression test, run
-the full gate, push, obtain fresh review, and resolve all four threads only with evidence.
-
-Nonblocking API follow-ups remain [#30](https://github.com/Chris0Jeky/CommitAtlas/issues/30),
+PR #25 merged only after exact-head CI passed, a scoped security re-review passed, and all review
+threads were reconciled. Its retained nonblocking work is tracked in
+[#30](https://github.com/Chris0Jeky/CommitAtlas/issues/30),
 [#32](https://github.com/Chris0Jeky/CommitAtlas/issues/32),
-[#33](https://github.com/Chris0Jeky/CommitAtlas/issues/33), and
-[#34](https://github.com/Chris0Jeky/CommitAtlas/issues/34). Issue #34 now also records malformed
-release payloads, canonical identifier schemas, safe-integer metrics, and worker cancellation.
+[#33](https://github.com/Chris0Jeky/CommitAtlas/issues/33),
+[#34](https://github.com/Chris0Jeky/CommitAtlas/issues/34), and
+[#38](https://github.com/Chris0Jeky/CommitAtlas/issues/38).
 
-### SVG hardening — both candidates parked
+## Saved implementation branches
 
-- Original branch: `fix/svg-release-hardening`, head
-  `50db00664ddd7f8739228b4e508f72c519261ebc`, closed [PR #29](https://github.com/Chris0Jeky/CommitAtlas/pull/29).
-- Replacement branch: `fix/svg-release-hardening-v2`, head
-  `695e52cd7566129ea0e34d14385e3233e8dd6ee7`, closed [PR #35](https://github.com/Chris0Jeky/CommitAtlas/pull/35).
-- Hosted Quality gate at both saved heads: passed.
-- Replacement local evidence: root `npm run check`, SVG 14/14, package dry-run pack, and
-  `git diff --check` passed.
+### SVG release hardening v3 — pushed, reviewed, blocked
 
-Both branches are preserved remotely but must not be merged. Fresh independent review of PR #35
-proved two HIGH release-contract defects despite green CI:
+- Worktree: `work/CommitAtlas-svg-v3`
+- Branch: `fix/svg-release-hardening-v3`
+- Pull request: [#39](https://github.com/Chris0Jeky/CommitAtlas/pull/39)
+- Pushed head: `78a444a7f52ca1779cf738699fec97006be4690d`
+- Hosted Quality gate at that head: passed.
+- Local evidence: root `npm run check`; SVG 17/17; package dry-run; clean Node consumer import;
+  `git diff --check`; and maximum 366-day activity outputs of 26,841 bytes (ampersand), 27,245
+  bytes (apostrophe), and 26,437 bytes (emoji), all below the 30,000-byte contract.
 
-1. A valid 366-day card with `count: 100000` and maximum bounded metadata is 30,491 UTF-8 bytes
-   with apostrophes and 30,087 bytes with ampersands, exceeding the documented sub-30 KB promise.
-2. `renderLanguagesCard` rejects the canonical `aggregateLanguages()` result because core correctly
-   returns both `bytes` and the derived `percentage`.
+Do not merge this head. `main` moved after PR #25 merged, so the branch needs a merge from current
+`origin/main` and exact-head reproof. More importantly, both the connector review and an independent
+fresh-context review found the same accessibility defect: the chronological date/count summary is
+on a child of `<svg role="img">`, whose descendants are presentational to assistive technology.
+Move that summary into the outer SVG's accessible description, remove the ineffective nested
+group, and add a regression that checks the root description plus the worst-case byte budget.
 
-The complete replacement acceptance is saved in
-[#37](https://github.com/Chris0Jeky/CommitAtlas/issues/37). Chronological activity exposure and
-normalized project-board layout are [#36](https://github.com/Chris0Jeky/CommitAtlas/issues/36),
-and minimum-height clipping is [#31](https://github.com/Chris0Jeky/CommitAtlas/issues/31). Issues
-[#20](https://github.com/Chris0Jeky/CommitAtlas/issues/20) and
-[#21](https://github.com/Chris0Jeky/CommitAtlas/issues/21) stay open until a safe replacement lands.
-All PR #35 review threads were replied to and either tracked or promoted to #37 before the PR was
-closed.
+PR #39 has one unresolved review thread for that defect. Its body currently closes #20, #21, #31,
+#36, and #37; those issues must remain open until the corrected, current-base PR is proved and
+merged. The lower review observation is that fill-grouped visual paths are not literally in date
+order; because they are `aria-hidden`, this is not the current accessibility blocker, but the issue
+#36 acceptance wording should be reconciled truthfully before closure.
 
-### Studio/dashboard — polished checkpoint, not integrated
+### SVG route foundation — pushed, no PR
 
+- Worktree: `work/CommitAtlas-routes`
+- Branch: `feat/svg-card-routes`
+- Base: current `main` at `975b69429b6b5ec417e5868930c229ec6d7bd9cc`
+- Head: `1179d301aa0a8a43ea02e9161b396b265d877d63`
+- Remote branch: `origin/feat/svg-card-routes` at the same head.
+- Commits: `48b7f88` adds strict canonical query contracts and duplicate-key rejection;
+  `1179d30` adds the secure SVG response helper with byte-exact SHA-256 ETags, 200/304 header
+  parity, public/private cache modes, CORS/CORP, and restrictive SVG security headers.
+- Evidence: focused query/HTTP tests 20/20; typecheck; lint; full `npm run check`; and
+  `git diff --check` all passed.
+
+This lane is intentionally foundation-only. It does not yet expose an SVG endpoint. Do not open a
+PR until the renderer base is settled and the five thin routes are implemented.
+
+### Studio/dashboard — pushed, not integrated
+
+- Worktree: `work/CommitAtlas` (primary checkout)
 - Branch: `feat/studio-dashboard`
-- Pushed product head before this state-only update: `0ca0dd9e77d8d7d20d2a2564a264486f6a084b43`
+- Parent of this checkpoint commit: `4159acdda5ccf98a3ced442e3df71440d4b8eb47`
 - No pull request is open because the generated SVG endpoints do not exist yet.
 
-The branch contains a responsive landing page and accessible Studio with live or explicitly
-synthetic previews, four themes, card selection, up to six declared project configurations,
-truthful partial-data handling, real HTML actions only when URLs exist, freshness/provenance, and
-copyable README Markdown. Commit `6434d40` makes placeholder and localhost embed origins explicit;
-commit `0ca0dd9` adds the original branded `public/og.png` social asset.
+This branch contains the responsive landing page and accessible Studio, synthetic and public-data
+preview modes, four themes, selectable cards, up to six declared project configurations, truthful
+partial-data handling, HTTPS HTML actions, copyable README Markdown, and the original branded
+`public/og.png`. It is 21 mainline commits behind and has ten unique commits including this checkpoint;
+merge current `origin/main` only after the SVG and route work lands, then preserve the union of all
+tests. The Studio must also include each configured workflow in generated project URLs.
 
-The current root `npm run check` passed on 2026-08-20: typecheck, lint, 13 core tests, 9 SVG tests,
-both package dry-run packs, Vinext production build, and two rendered Studio/product smoke tests.
-Earlier visual inspection at 1440x900 and 390x844 found no horizontal mobile overflow. That is
-checkpoint evidence only and must be repeated after integration.
+The previous root `npm run check` and 1440x900/390x844 visual pass were green before API/route
+integration. They are historical evidence, not proof of the final product. Repeated Vite hot reloads
+once logged React's “multiple renderers concurrently rendering the same context provider” warning;
+production-server QA must explicitly attempt to reproduce it.
 
-Repeated Vite hot reloads once logged React's "multiple renderers concurrently rendering the same
-context provider" warning. It did not fail a production build, but the final production-server QA
-must explicitly try to reproduce it. The social image must also be served and inspected through the
-final deployed origin before metadata is considered complete.
+## Verification at this checkpoint
 
-## Durable product decisions
+- Git was fetched from every remote and all three active worktrees were inventoried.
+- API PR #25 is confirmed merged at `975b694`; its exact-head Quality gate passed.
+- PR #39 is confirmed open at `78a444a`, with a passed Quality gate and one unresolved,
+  non-outdated accessibility review thread.
+- Open PRs are exactly #39, #6, and #5. Open issues are #20, #21, #28, #30–#34, and #36–#38.
+- No secrets or private data were added to the saved state.
 
-- The shared service is public-data-only. Private output is an explicit self-hosted/static mode;
-  tokens never enter URLs, fixtures, logs, cards, or tracked files.
-- Lifecycle is declared, never guessed. Missing or stale CI is never rendered as passing.
-- README SVGs are portable summaries. Source, Docs, Install, Download, Release, and CI actions live
-  in the HTML dashboard because links inside an image-embedded SVG are not reliable on GitHub.
-- Action URLs are display-only HTTPS links without credentials; CommitAtlas never fetches them.
-- Language percentages must name their basis. Repository-language share is not proficiency, and
-  byte-weighted output must use the canonical core aggregate rather than silently changing meaning.
-- npm is the package manager for this workspace. Repository releases and npm publication are
-  separate claims and require separate proof.
+## Not completed or not verified
 
-## Closeout boundary
+- A corrected, current-base SVG head; exact-head CI/review; and PR #39 merge.
+- The five SVG HTTP routes, adapters, full demo/live-shaped route tests, or a route PR.
+- Studio integration, production browser/accessibility/cache/error QA, or a final social metadata
+  check through a deployed origin.
+- The static generator package, bundled Node 24 Action, operator documentation, Sites deployment,
+  public URL, GitHub homepage, `v0.1.0` GitHub release, or npm publication.
+- Live contribution behavior with a real credential that the service can positively prove is
+  public-only.
+- The root form `npm pack --dry-run --workspace @commit-atlas/svg`; the repository does not declare
+  npm workspaces. Package-local dry-run packing passed.
 
-Changed and saved:
+## Next safe slice
 
-- Root Studio/social work is pushed on `feat/studio-dashboard`.
-- API fixes are pushed on `feat/github-api-hardened`, with exact hosted CI and thread state recorded.
-- Both SVG review branches are pushed; the unsafe replacement PR is closed and its findings are in
-  #31, #36, and #37.
-- The static generator, Action, route, QA, deployment, and release plans are now durable in
-  [V0_1_PLAN.md](./V0_1_PLAN.md).
-- Auxiliary API and SVG worktrees were removed after their tracked-clean status was confirmed.
-  Only ignored, reproducible dependencies/build output was discarded.
+1. On `fix/svg-release-hardening-v3`, merge current `origin/main`, fix the outer SVG accessible
+   description, add the focused regression, and re-run the full/local package checks.
+2. Push that corrected head, reply to and resolve the single review thread with evidence, wait for
+   exact-head hosted CI and the required aging window, obtain a fresh scoped review, then merge PR
+   #39 with a merge commit.
+3. Update `feat/svg-card-routes` from the new `main`; finish the adapters and five thin routes in
+   small commits; run built-Worker route smokes and open one ready PR.
+4. Merge the resulting mainline into `feat/studio-dashboard`, integrate real route URLs and
+   workflows, then repeat the full production browser and accessibility pass.
+5. Continue with `packages/static`, the bundled Node 24 Action, final docs, Sites deployment,
+   repository metadata, and the `v0.1.0` release exactly as specified in V0_1_PLAN.md.
 
-Not verified or not completed:
+## Clean resume commands
 
-- A fresh review of API head `68dfbcc`, the remaining private-repository oracle fix, and PR #25 merge.
-- A safe SVG replacement, versioned SVG routes, static generator, bundled Action, final integration,
-  production browser/accessibility pass, Sites deployment, public URL, GitHub homepage, v0.1.0
-  release, or npm publication.
-- Live contribution behavior with a real public-only Worker credential.
+```powershell
+Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtlas'
+git fetch --all --prune
+git status --short --branch
+git worktree list --porcelain
+gh pr list --repo Chris0Jeky/CommitAtlas --state open
+gh pr view 39 --repo Chris0Jeky/CommitAtlas --json headRefOid,state,statusCheckRollup,mergeStateStatus,url
+gh issue list --repo Chris0Jeky/CommitAtlas --state open --limit 100
+```
 
-There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
+Start by reading this file and `V0_1_PLAN.md`; do not infer that an old green check covers a moved
+base or a new head.

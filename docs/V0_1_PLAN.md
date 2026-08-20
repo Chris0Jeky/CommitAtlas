@@ -1,7 +1,8 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: saved plan, not a completion claim. Start every resume by fetching `origin`, reading
-[PROJECT_STATE.md](./PROJECT_STATE.md), and inspecting live PR checks and unresolved review threads.
+Status: active saved plan, not a completion claim. API step 1 is merged; SVG step 2 and the route
+foundation for step 3 are saved on the exact branches in [PROJECT_STATE.md](./PROJECT_STATE.md).
+Start every resume by fetching `origin` and inspecting live PR checks and unresolved review threads.
 
 ## v0.1 definition of done
 
@@ -22,29 +23,24 @@ CommitAtlas v0.1 is complete only when all of the following are true:
 
 ## Ordered release-critical path
 
-### 1. Close the API boundary
+### 1. Close the API boundary — completed
 
-Continue PR #25 from `68dfbcc49623005e2aac9d326722cd7bf2dd9d68`.
+PR #25 merged as `975b69429b6b5ec417e5868930c229ec6d7bd9cc` after exact-head CI, a fresh
+security/truth review, and review-thread reconciliation. The shipped boundary preflights configured
+credentials before public REST or GraphQL lookups, rejects unsafe token/scope combinations, prevents
+private-repository existence oracles, binds CI to configured workflows, rejects normalized workflow
+path traversal, and bounds upstream text.
 
-1. Preflight the configured token before every public GitHub API use, not only the contribution
-   GraphQL request. Accept only verifiably public-only credentials; fail closed before a guessed
-   private repository can produce a distinct response.
-2. Add fixtures proving private, inaccessible, and nonexistent repository guesses cannot be used as
-   an anonymous existence oracle.
-3. Re-run API tests and the full root gate. Inspect the diff, push one focused commit, and restart
-   the exact-head CI and three-minute aging window.
-4. Obtain one fresh independent security/truth review. Resolve the three already-fixed P1 threads
-   and the remaining oracle thread only when the new head proves them all.
-5. Merge with a merge commit only when CI is green and no CRITICAL/HIGH thread remains. Recheck the
-   merged PR once for late connector feedback.
+Keep #30, #32, #33, #34, and #38 explicit. Fix a follow-up before release only if it can produce
+wrong, unsafe, or materially misleading v0.1 output; otherwise retain it by name in release notes.
 
-Keep #30, #32, #33, and #34 explicit. Fix a follow-up before release only if it can produce wrong,
-unsafe, or materially misleading v0.1 output; otherwise retain it by name in release notes.
+### 2. Replace SVG hardening safely — active and blocked
 
-### 2. Replace SVG hardening safely
-
-Do not reopen or merge PR #29 or #35. Create a new branch from current `main` and carry forward only
-reviewed behavior.
+Do not reopen or merge PR #29 or #35. PR #39 on `fix/svg-release-hardening-v3` carries the reviewed
+replacement at `78a444a7f52ca1779cf738699fec97006be4690d`, but it must not merge yet. Merge the
+current `origin/main` base, move the chronological activity summary into the outer SVG accessible
+description, remove the ineffective nested group, add a root-description regression, and re-prove
+the resulting head locally and in hosted CI before resolving the open review thread.
 
 Required contracts:
 
@@ -66,7 +62,13 @@ Close #20, #21, #31, #36, and #37 only after direct tests prove their acceptance
 `npm run check`, the focused SVG suite, byte-level adversarial cases, `git diff --check`, and package
 dry-run/clean-consumer import before exact-head CI and fresh review.
 
-### 3. Add the five versioned SVG routes
+### 3. Add the five versioned SVG routes — foundation saved
+
+The remote branch `feat/svg-card-routes` is saved at
+`1179d301aa0a8a43ea02e9161b396b265d877d63`. Its two foundation commits provide strict canonical
+query parsing and the secure SVG response/ETag/header helper; 20 focused tests and the full root gate
+passed. It intentionally has no route handlers yet. Update it from `main` after PR #39 lands, then
+continue with the surfaces below.
 
 Create these exact public surfaces:
 
