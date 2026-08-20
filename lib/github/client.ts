@@ -440,9 +440,10 @@ function retryAfterValue(headers: Headers, now: Date): string | null {
   if (retryAfter !== null) return retryAfter;
 
   const reset = headers.get("x-ratelimit-reset");
-  if (reset === null || reset.trim() === "") return null;
-  const resetEpoch = Number(reset);
-  if (!Number.isFinite(resetEpoch)) return null;
+  const normalizedReset = reset?.trim() ?? "";
+  if (!/^\d+$/.test(normalizedReset)) return null;
+  const resetEpoch = Number(normalizedReset);
+  if (!Number.isSafeInteger(resetEpoch)) return null;
   const nowEpoch = Math.floor(now.getTime() / 1000);
   return String(Math.max(0, resetEpoch - nowEpoch));
 }

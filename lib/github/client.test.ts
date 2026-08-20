@@ -212,6 +212,23 @@ test("clamps past reset epochs to zero for 403 and 429 rate limits", async () =>
   }
 });
 
+test("omits malformed x-ratelimit-reset retry hints", async () => {
+  for (const reset of ["not-an-epoch", "123.5", "-1", "999999999999999999999"]) {
+    const fetchImpl: typeof fetch = async () => new Response(null, {
+      status: 429,
+      headers: { "x-ratelimit-reset": reset },
+    });
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError);
+        assert.equal(error.retryAfter, null);
+        return true;
+      },
+    );
+  }
+});
+
 test("enforces the response limit for chunked bodies without Content-Length", async () => {
   const oversizedJson = JSON.stringify({ payload: "x".repeat(1_500_000) });
   const fetchImpl: typeof fetch = async () => streamedJson(oversizedJson);
