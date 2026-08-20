@@ -49,7 +49,8 @@ test("profile adapter falls back to login and preserves source-backed stars", ()
     freshness,
   };
   assert.deepEqual(toProfileCard(snapshot), {
-    name: "octocat", login: "octocat", repositories: 2, followers: 3, following: 4, stars: 17,
+    name: "octocat", login: "octocat", repositories: 2, followers: 3, following: 4,
+    source: "synthetic-demo", stars: 17,
   });
 });
 
@@ -66,9 +67,10 @@ test("contribution adapters sort leap-day input and use its latest UTC day as as
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
     current: 1, longest: 2, windowDays: 7, boundary: { current: "closed", longest: "closed" },
-    total: 5, activeDays: 3, lastActive: "2024-03-02",
+    total: 5, activeDays: 3, lastActive: "2024-03-02", source: "synthetic-demo",
   });
   const activity = toActivityCard(snapshot, 7);
+  assert.equal(activity.source, "synthetic-demo");
   assert.equal(activity.periodLabel, "2024-02-25 → 2024-03-02");
   assert.deepEqual(activity.days.slice(-4), [
     { date: "2024-02-28", count: 1 },
@@ -90,7 +92,7 @@ test("an explicit all-zero calendar renders a zero streak rather than becoming u
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
     current: 0, longest: 0, windowDays: 7, boundary: { current: "closed", longest: "closed" },
-    total: 0, activeDays: 0, lastActive: undefined,
+    total: 0, activeDays: 0, lastActive: undefined, source: "synthetic-demo",
   });
 });
 
@@ -141,7 +143,9 @@ test("language and project adapters preserve explicit semantics and omit SVG act
     repositoriesTruncated: false,
     freshness,
   };
-  assert.deepEqual(toLanguagesCard(profile), { languages: [{ name: "TypeScript", percentage: 66.7 }] });
+  assert.deepEqual(toLanguagesCard(profile), {
+    source: "synthetic-demo", languages: [{ name: "TypeScript", percentage: 66.7 }],
+  });
 
   const board: ProjectBoardSnapshot = {
     version: 1,
@@ -165,6 +169,7 @@ test("language and project adapters preserve explicit semantics and omit SVG act
     freshness,
   };
   assert.deepEqual(toProjectBoard(board), {
+    source: "synthetic-demo",
     projects: [{ name: "atlas", lifecycle: "experimental", ci: "unavailable", stars: 2 }],
   });
 });

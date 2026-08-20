@@ -52,7 +52,13 @@ export interface RenderOptions {
   readonly motion?: "none" | "subtle";
 }
 
-export interface ProfileCardData {
+export type CardSource = "public-github" | "public-profile" | "synthetic-demo";
+
+export interface SourceLabelledCardData {
+  readonly source?: CardSource;
+}
+
+export interface ProfileCardData extends SourceLabelledCardData {
   readonly name: string;
   readonly login: string;
   readonly bio?: string;
@@ -66,7 +72,7 @@ export interface ProfileCardData {
   readonly stars?: number;
 }
 
-export interface StreakCardData {
+export interface StreakCardData extends SourceLabelledCardData {
   readonly current: number;
   readonly longest: number;
   readonly total?: number;
@@ -84,7 +90,7 @@ export interface ActivityDay {
   readonly count: number;
 }
 
-export interface ActivityCardData {
+export interface ActivityCardData extends SourceLabelledCardData {
   readonly days: readonly ActivityDay[];
   readonly total?: number;
   readonly periodLabel?: string;
@@ -100,7 +106,7 @@ export interface LanguageStat {
   readonly color?: string;
 }
 
-export interface LanguagesCardData {
+export interface LanguagesCardData extends SourceLabelledCardData {
   readonly languages: readonly LanguageStat[];
   readonly totalBytes?: number;
 }
@@ -126,7 +132,7 @@ export interface ProjectSignal {
   readonly links?: ProjectLinks;
 }
 
-export interface ProjectBoardData {
+export interface ProjectBoardData extends SourceLabelledCardData {
   readonly projects: readonly ProjectSignal[];
 }
 
@@ -178,7 +184,7 @@ export interface AtlasCardData {
     readonly unavailable: number;
   };
   readonly generatedAt: string;
-  readonly source: "public-github" | "public-profile" | "synthetic-demo";
+  readonly source: CardSource;
 }
 
 const DEFAULT_OPTIONS: Required<Pick<RenderOptions, "theme" | "width" | "height">> = {
@@ -338,6 +344,34 @@ function link(textValue: string, href: string | undefined, x: number, y: number,
   return safe ? `<a href="${escapeXml(safe)}" target="_blank" rel="noopener" aria-label="${label}">${body}</a>` : body;
 }
 
+function sourceMetadata(
+  source: CardSource | undefined,
+  title: string,
+  description: string,
+): { title: string; description: string } {
+  if (source !== "synthetic-demo") return { title, description };
+  return {
+    title: boundedLabel(`Synthetic demo: ${title}`, "Synthetic demo card", MAX_TITLE_LENGTH),
+    description: boundedLabel(
+      `Synthetic demonstration data, not live GitHub data. ${description}`,
+      "Synthetic demonstration data, not live GitHub data.",
+      MAX_DESCRIPTION_LENGTH,
+    ),
+  };
+}
+
+function sourceMarker(
+  source: CardSource | undefined,
+  x: number,
+  y: number,
+  theme: SvgTheme,
+  anchor: "start" | "end" = "end",
+): string {
+  return source === "synthetic-demo"
+    ? `<g aria-hidden="true">${text(x, y, "SYNTHETIC DEMO", 9, theme.warning, 750, anchor)}</g>`
+    : "";
+}
+
 export function renderProfileCard(data: ProfileCardData, options?: RenderOptions): string {
   const rawLogin = String(data.login ?? "").replace(/^@/, "").trim();
   const name = truncateText(String(data.name ?? "").trim() || rawLogin || "GitHub user", 30);
@@ -350,8 +384,10 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   const compact = o.height < 200;
   const bioY = compact && data.location ? 94 : 103;
   const locationY = compact ? 110 : 127;
-  let out = svgStart(width, o.height, t, o.title ?? `${name} profile`, o.description ?? `GitHub profile for ${name}.`);
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += panel(16, 16, width - 32, o.height - 32, t);
+  out += sourceMarker(data.source, 34, 31, t, "start");
   out += `<circle cx="64" cy="73" r="31" fill="${t.accent}"/><text x="64" y="82" fill="${t.background}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="24" font-weight="800" text-anchor="middle">${escapeXml(([...name][0] ?? "?").toUpperCase())}</text>`;
   out += text(112, 54, name, 24, t.text, 750) + text(112, 77, `@${login}`, 13, t.muted);
   if (bio) out += text(112, bioY, bio, 13, t.text);
@@ -386,11 +422,13 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   const windowLabel = windowDays ? `${windowDays}-day window` : "returned window";
   const currentOpen = data.boundary?.current === "open";
   const currentValue = `${formatNumber(finite(data.current), false)}${currentOpen ? "+" : ""}`;
+  const metadata = sourceMetadata(data.source, o.title, o.description);
   const accessibleDescription = data.boundary
-    ? `${o.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(finite(data.current), false)} days. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
-    : o.description;
-  let out = svgStart(width, o.height, t, o.title ?? "Contribution streak", o.description ?? "Current and longest GitHub contribution streaks.", accessibleDescription);
+    ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(finite(data.current), false)} days. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
+    : metadata.description;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += panel(16, 16, width - 32, o.height - 32, t);
+  out += sourceMarker(data.source, width - 34, 31, t);
   out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
   out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
@@ -410,12 +448,14 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   const max = Math.max(1, ...days.map((day) => finite(day.count)));
   const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
   const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
+  const metadata = sourceMetadata(data.source, o.title, o.description);
   const accessibilitySummary = days.map((day) => `${day.date} ${formatNumber(day.count, false)}`).join("; ");
   const accessibleDescription = accessibilitySummary
-    ? `${o.description} Contributions by date, chronologically: ${accessibilitySummary}`
-    : o.description;
-  let out = svgStart(width, o.height, t, o.title, o.description, accessibleDescription);
+    ? `${metadata.description} Contributions by date, chronologically: ${accessibilitySummary}`
+    : metadata.description;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, periodLabel, 11, t.muted, 700);
+  out += sourceMarker(data.source, width - 34, 29, t);
   out += text(width - 34, 48, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const columns = Math.min(53, Math.max(1, Math.ceil(days.length / 7))); const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
   const start = 40; const top = 66;
@@ -449,8 +489,10 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
   const percentageFor = (item: LanguageStat): number => Number.isFinite(item.percentage)
     ? Math.min(100, finite(item.percentage))
     : finite(item.bytes) / Math.max(1, byteTotal) * 100;
-  let out = svgStart(width, o.height, t, o.title, o.description);
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, "LANGUAGES", 11, t.muted, 700);
+  out += sourceMarker(data.source, width - 34, 48, t);
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
   languages.forEach((item, index) => {
     const raw = percentageFor(item);
@@ -473,7 +515,9 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   const columns = normalizedWidth >= 620 ? 2 : 1; const rows = Math.max(1, Math.ceil(projects.length / columns));
   const o = optionsFor(options, 68 + rows * 90, "Project signals", "Project lifecycle and CI signals for selected GitHub repositories.", 68 + rows * 90, 700); const t = o.theme; const width = o.width;
   const height = o.height; const cardWidth = (width - 48 - (columns - 1) * 12) / columns;
-  let out = svgStart(width, height, t, o.title, o.description);
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  let out = svgStart(width, height, t, metadata.title, metadata.description);
+  out += sourceMarker(data.source, width - 24, 18, t);
   out += text(24, 34, "PROJECT SIGNALS", 12, t.muted, 750);
   if (projects.length < totalProjects) out += text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
   projects.forEach((project, index) => {

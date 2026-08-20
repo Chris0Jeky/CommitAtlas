@@ -6,6 +6,7 @@ import {
 } from "@/packages/core/src/index";
 import type {
   ActivityCardData,
+  CardSource,
   LanguagesCardData,
   ProfileCardData,
   ProjectBoardData,
@@ -16,10 +17,16 @@ import { toSvgCiState, toSvgLifecycle } from "./github/adapters";
 import { GitHubApiError } from "./github/client";
 import type {
   ContributionSnapshot,
+  Freshness,
   ProfileSnapshot,
   ProjectBoardSnapshot,
   ProjectSnapshot,
 } from "./github/types";
+
+function toCardSource(freshness: Freshness): CardSource {
+  if (freshness.mode === "demo" || freshness.source === "synthetic-demo") return "synthetic-demo";
+  return freshness.source === "github-profile-html" ? "public-profile" : "public-github";
+}
 
 /** Convert the public profile contract without fabricating contribution data. */
 export function toProfileCard(snapshot: ProfileSnapshot): ProfileCardData {
@@ -29,6 +36,7 @@ export function toProfileCard(snapshot: ProfileSnapshot): ProfileCardData {
     repositories: snapshot.publicRepositories,
     followers: snapshot.followers,
     following: snapshot.following,
+    source: toCardSource(snapshot.freshness),
     ...(snapshot.repositoriesTruncated ? {} : { stars: snapshot.stars }),
   };
 }
@@ -63,6 +71,7 @@ export function toStreakCard(snapshot: ContributionSnapshot, expectedDays: numbe
     total,
     activeDays,
     lastActive,
+    source: toCardSource(snapshot.freshness),
   };
 }
 
@@ -75,6 +84,7 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
     days: series.points.map(({ date, count }) => ({ date, count })),
     total: series.total,
     periodLabel: `${series.from} → ${series.to}`,
+    source: toCardSource(snapshot.freshness),
   };
 }
 
@@ -87,6 +97,7 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
     );
   }
   return {
+    source: toCardSource(snapshot.freshness),
     languages: snapshot.primaryLanguages.map((language) => ({
       name: language.name,
       percentage: language.share,
@@ -95,7 +106,7 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
 }
 
 export function toProjectBoard(snapshot: ProjectBoardSnapshot): ProjectBoardData {
-  return { projects: snapshot.projects.map(toProjectSignal) };
+  return { source: toCardSource(snapshot.freshness), projects: snapshot.projects.map(toProjectSignal) };
 }
 
 function toProjectSignal(project: ProjectSnapshot): ProjectSignal {

@@ -1,6 +1,7 @@
 import { calculateContributionMetrics, parseContributionCalendar } from "@commit-atlas/core";
 import type {
   ContributionSnapshot,
+  Freshness,
   PortfolioSnapshot,
   ProfileSnapshot,
   ProjectBoardSnapshot,
@@ -14,12 +15,18 @@ import {
   renderProjectBoard,
   renderStreakCard,
   type AtlasCardData,
+  type CardSource,
   type ProjectSignal,
 } from "@commit-atlas/svg";
 import type { StaticCardName, StaticConfig } from "./config.js";
 
 export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg";
 export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
+
+function toCardSource(freshness: Freshness): CardSource {
+  if (freshness.mode === "demo" || freshness.source === "synthetic-demo") return "synthetic-demo";
+  return freshness.source === "github-profile-html" ? "public-profile" : "public-github";
+}
 
 export function assembleStaticPortfolio(
   profile: ProfileSnapshot,
@@ -82,6 +89,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       followers: profile.followers,
       following: profile.following,
       contributions: metrics.total,
+      source: toCardSource(profile.freshness),
       ...(profile.repositoriesTruncated ? {} : { stars: profile.stars }),
     }, { ...common, width });
   }
@@ -93,6 +101,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       boundary: metrics.streak.boundary,
       total: metrics.total,
       activeDays: metrics.activeDays,
+      source: toCardSource(contributions.freshness),
       ...(lastActive ? { lastActive } : {}),
     }, { ...common, width });
   }
@@ -101,16 +110,19 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       days: contributions.days,
       total: metrics.total,
       periodLabel: `${metrics.window.from} → ${metrics.window.to}`,
+      source: toCardSource(contributions.freshness),
     }, { ...common, width });
   }
   if (selected.has("languages")) {
     if (profile.repositoriesTruncated) throw new Error("Language distribution is unavailable for a truncated repository list");
     artifacts["languages.svg"] = renderLanguagesCard({
+      source: toCardSource(profile.freshness),
       languages: profile.primaryLanguages.map((language) => ({ name: language.name, percentage: language.share })),
     }, { ...common, width });
   }
   if (selected.has("projects")) {
     artifacts["projects.svg"] = renderProjectBoard({
+      source: toCardSource(projects?.freshness ?? snapshot.freshness),
       projects: (projects?.projects ?? []).map(toProjectSignal),
     }, { ...common, width: dashboardWidth });
   }

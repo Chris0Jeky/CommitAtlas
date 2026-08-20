@@ -76,6 +76,25 @@ test("renders all rich widgets deterministically from one snapshot", () => {
   for (const svg of Object.values(first)) {
     assert.match(svg, /^<svg/);
     assert.doesNotMatch(svg, /<script\b|<foreignObject\b|<image\b/i);
+    assert.doesNotMatch(svg, /SYNTHETIC DEMO|Synthetic demo:|Synthetic demonstration data/);
+  }
+});
+
+test("propagates synthetic source truth to every standalone static card", () => {
+  const base = snapshot();
+  const demoFreshness = { generatedAt, source: "synthetic-demo", mode: "demo" };
+  const rendered = renderStaticArtifacts({
+    ...base,
+    profile: { ...base.profile, freshness: demoFreshness },
+    contributions: { ...base.contributions, freshness: demoFreshness },
+    projects: { ...base.projects, freshness: demoFreshness },
+    freshness: demoFreshness,
+  }, config());
+  for (const name of ["profile.svg", "streak.svg", "activity.svg", "languages.svg", "projects.svg"]) {
+    const svg = rendered[name];
+    assert.match(svg, />SYNTHETIC DEMO<\/text>/, name);
+    assert.match(svg, /<title>Synthetic demo:/, name);
+    assert.match(svg, /<desc>Synthetic demonstration data, not live GitHub data\./, name);
   }
 });
 

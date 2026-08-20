@@ -32,7 +32,9 @@ test("serves all five synthetic SVG cards with their planned public cache window
     assert.equal(response.headers.get("cache-control"), `public, max-age=60, s-maxage=${edgeSeconds}`, path);
     const body = await response.text();
     assert.match(body, /^<svg [^>]*role="img"/);
-    assert.match(body, /<title>[^<]+<\/title><desc>[^<]+<\/desc>/);
+    assert.match(body, /aria-label="Synthetic demo: [^"]+"/);
+    assert.match(body, /<title>Synthetic demo: [^<]+<\/title><desc>Synthetic demonstration data, not live GitHub data\./);
+    assert.match(body, />SYNTHETIC DEMO<\/text>/);
     assert.doesNotMatch(body, /undefined|NaN/);
   }
 });

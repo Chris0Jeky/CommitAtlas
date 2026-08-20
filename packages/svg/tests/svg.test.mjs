@@ -105,6 +105,41 @@ test("all renderers emit accessible safe SVG", () => {
   assert.doesNotMatch(board, /<a\b|href=/);
 });
 
+test("all standalone cards disclose synthetic data visibly and accessibly while live cards omit it", () => {
+  const synthetic = [
+    renderProfileCard({
+      name: "Demo", login: "demo", repositories: 1, followers: 2, following: 3,
+      source: "synthetic-demo",
+    }),
+    renderStreakCard({ current: 4, longest: 9, source: "synthetic-demo" }),
+    renderActivityCard({ days: [{ date: "2026-08-20", count: 3 }], source: "synthetic-demo" }),
+    renderLanguagesCard({ languages: [{ name: "TypeScript", percentage: 100 }], source: "synthetic-demo" }),
+    renderProjectBoard({
+      projects: [{ name: "Atlas", lifecycle: "active", ci: "passing" }], source: "synthetic-demo",
+    }),
+  ];
+  for (const output of synthetic) {
+    assert.match(output, /aria-label="Synthetic demo: [^"]+"/);
+    assert.match(output, /<title>Synthetic demo: [^<]+<\/title>/);
+    assert.match(output, /<desc>Synthetic demonstration data, not live GitHub data\./);
+    assert.match(output, />SYNTHETIC DEMO<\/text>/);
+  }
+
+  const live = [
+    renderProfileCard({
+      name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+      source: "public-github",
+    }),
+    renderStreakCard({ current: 4, longest: 9, source: "public-profile" }),
+    renderActivityCard({ days: [], source: "public-github" }),
+    renderLanguagesCard({ languages: [], source: "public-github" }),
+    renderProjectBoard({ projects: [], source: "public-github" }),
+  ];
+  for (const output of live) {
+    assert.doesNotMatch(output, /SYNTHETIC DEMO|Synthetic demo:|Synthetic demonstration data/);
+  }
+});
+
 test("streak cards distinguish boundary-open values from observed-window values", () => {
   const open = renderStreakCard({
     current: 365,
