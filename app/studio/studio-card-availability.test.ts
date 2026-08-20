@@ -7,9 +7,18 @@ import {
 } from "./studio-card-availability";
 import type { StudioCardKind } from "./studio-urls";
 
-const kinds: StudioCardKind[] = ["atlas", "profile", "streak", "activity", "languages", "projects"];
+const kinds: StudioCardKind[] = [
+  "atlas",
+  "profile",
+  "streak",
+  "breakdown",
+  "rhythm",
+  "activity",
+  "languages",
+  "projects",
+];
 
-test("keeps all six cards available in synthetic mode", () => {
+test("keeps all eight cards available in synthetic mode", () => {
   assert.deepEqual(
     kinds.filter((kind) => isStudioCardAvailable(kind, {
       demo: true,
@@ -49,7 +58,7 @@ test("omits Languages when a live preview has only a truncated repository list",
       hasCurrentContributions: true,
       hasCurrentLanguages: false,
     })),
-    ["atlas", "profile", "streak", "activity", "projects"],
+    ["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "projects"],
   );
 });
 

@@ -1,6 +1,14 @@
 import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
 
-export type StudioCardKind = "atlas" | "profile" | "streak" | "activity" | "languages" | "projects";
+export type StudioCardKind =
+  | "atlas"
+  | "profile"
+  | "streak"
+  | "breakdown"
+  | "rhythm"
+  | "activity"
+  | "languages"
+  | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
 export interface StudioProjectInput {
@@ -58,6 +66,8 @@ const cardPaths: Record<Exclude<StudioCardKind, "projects">, string> = {
   atlas: "/api/v1/cards/atlas.svg",
   profile: "/api/v1/cards/profile.svg",
   streak: "/api/v1/cards/streak.svg",
+  breakdown: "/api/v1/cards/breakdown.svg",
+  rhythm: "/api/v1/cards/rhythm.svg",
   activity: "/api/v1/cards/activity.svg",
   languages: "/api/v1/cards/languages.svg",
 };
@@ -95,7 +105,9 @@ export function buildStudioRouteUrl(
     query.set("motion", options.motion ?? "subtle");
     query.set("layout", options.layout ?? "wide");
   }
-  if (kind === "activity" && options.days !== undefined) query.set("days", String(options.days));
+  if ((kind === "activity" || kind === "breakdown" || kind === "rhythm") && options.days !== undefined) {
+    query.set("days", String(options.days));
+  }
 
   const path = kind === "projects"
     ? projectSurface === "json" ? "/api/v1/projects" : "/api/v1/projects.svg"

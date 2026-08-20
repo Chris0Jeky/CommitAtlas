@@ -12,7 +12,7 @@ export function isStudioCardAvailable(
 ): boolean {
   if (availability.demo) return true;
   if (kind === "languages") return availability.hasCurrentLanguages;
-  if (kind !== "atlas" && kind !== "streak" && kind !== "activity") return true;
+  if (kind === "profile" || kind === "projects") return true;
   return availability.hasCurrentContributions;
 }
 

@@ -22,10 +22,10 @@ test("live Markdown omits unavailable contribution cards exactly", () => {
     "Languages",
     "Projects",
   ]);
-  assert.doesNotMatch(markdown, /streak\.svg|activity\.svg/);
+  assert.doesNotMatch(markdown, /streak\.svg|breakdown\.svg|rhythm\.svg|activity\.svg/);
 });
 
-test("synthetic Markdown restores all six retained selections", () => {
+test("synthetic Markdown restores all eight retained selections", () => {
   const markdown = buildStudioMarkdown({
     baseUrl: "https://atlas.example",
     owner: "octocat",
@@ -37,9 +37,11 @@ test("synthetic Markdown restores all six retained selections", () => {
     hasCurrentLanguages: false,
   });
 
-  assert.equal(markdown.split("\n").length, 6);
+  assert.equal(markdown.split("\n").length, 8);
   assert.match(markdown, /atlas\.svg/);
   assert.match(markdown, /streak\.svg/);
+  assert.match(markdown, /breakdown\.svg/);
+  assert.match(markdown, /rhythm\.svg/);
   assert.match(markdown, /activity\.svg/);
 });
 
@@ -55,7 +57,7 @@ test("project Markdown remains absent without a declared repository", () => {
     hasCurrentLanguages: true,
   });
 
-  assert.equal(markdown.split("\n").length, 5);
+  assert.equal(markdown.split("\n").length, 7);
   assert.doesNotMatch(markdown, /projects\.svg/);
 });
 
@@ -75,6 +77,8 @@ test("live Markdown omits a Languages URL backed by truncated repositories", () 
     "Atlas",
     "Profile",
     "Streak",
+    "Breakdown",
+    "Rhythm",
     "Activity",
     "Projects",
   ]);

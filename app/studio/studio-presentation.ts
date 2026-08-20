@@ -34,6 +34,20 @@ const STUDIO_GALLERY_CARDS: Readonly<Record<StudioCardKind, Omit<StudioGalleryCa
     span: "half",
     compact: true,
   },
+  breakdown: {
+    title: "Contribution breakdown",
+    purpose: "Exact categorized counts when available; otherwise clearly labelled public-profile percentages.",
+    dimensions: "720 × 220",
+    span: "half",
+    compact: false,
+  },
+  rhythm: {
+    title: "Personal rhythm",
+    purpose: "Transparent personal consistency based on density and streak — not a GitHub rank.",
+    dimensions: "720 × 220",
+    span: "half",
+    compact: false,
+  },
   activity: {
     title: "Activity map",
     purpose: "A compact calendar view of public contribution density over time.",

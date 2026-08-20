@@ -5,7 +5,7 @@ const capabilities = [
   {
     number: "01",
     title: "Contribution signals",
-    body: "Profile, streak, activity, and language cards built from bounded, explicit data contracts.",
+    body: "Profile, streak, breakdown, rhythm, activity, and language cards built from bounded, explicit data contracts.",
   },
   {
     number: "02",

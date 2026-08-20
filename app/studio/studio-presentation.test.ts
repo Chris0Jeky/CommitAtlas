@@ -60,7 +60,16 @@ test("project actions use the shared host and credential boundary", () => {
 });
 
 test("gallery exposes only selected, currently available cards", () => {
-  const selectedCards = new Set(["atlas", "profile", "streak", "activity", "languages", "projects"] as const);
+  const selectedCards = new Set([
+    "atlas",
+    "profile",
+    "streak",
+    "breakdown",
+    "rhythm",
+    "activity",
+    "languages",
+    "projects",
+  ] as const);
   const cards = buildStudioGalleryCards({
     selectedCards,
     availability: { demo: false, hasCurrentContributions: false, hasCurrentLanguages: true },
@@ -70,6 +79,38 @@ test("gallery exposes only selected, currently available cards", () => {
   assert.deepEqual(cards.map((card) => card.kind), ["profile", "languages", "projects"]);
   assert.equal(cards.find((card) => card.kind === "projects")?.dimensions, "720 × 248");
   assert.equal(cards.find((card) => card.kind === "profile")?.compact, true);
+});
+
+test("gallery pairs the two insight cards with truthful presentation metadata", () => {
+  const cards = buildStudioGalleryCards({
+    selectedCards: new Set([
+      "atlas",
+      "profile",
+      "streak",
+      "breakdown",
+      "rhythm",
+      "activity",
+      "languages",
+      "projects",
+    ] as const),
+    availability: { demo: true, hasCurrentContributions: false, hasCurrentLanguages: false },
+    projectCount: 2,
+  });
+
+  assert.deepEqual(cards.map((card) => card.kind), [
+    "atlas",
+    "profile",
+    "streak",
+    "breakdown",
+    "rhythm",
+    "activity",
+    "languages",
+    "projects",
+  ]);
+  assert.deepEqual(cards.map((card) => card.span), ["full", "half", "half", "half", "half", "full", "half", "half"]);
+  assert.equal(cards.find((card) => card.kind === "breakdown")?.dimensions, "720 × 220");
+  assert.match(cards.find((card) => card.kind === "breakdown")?.purpose ?? "", /exact categorized counts.*public-profile percentages/i);
+  assert.match(cards.find((card) => card.kind === "rhythm")?.purpose ?? "", /transparent personal consistency.*not a GitHub rank/i);
 });
 
 test("gallery selection and empty projects independently remove their previews", () => {

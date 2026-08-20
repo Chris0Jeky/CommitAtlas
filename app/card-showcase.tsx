@@ -38,6 +38,20 @@ const CARD_META: Readonly<Record<StudioCardKind, { title: string; purpose: strin
     height: 180,
     span: "half",
   },
+  breakdown: {
+    title: "Contribution breakdown",
+    purpose: "Exact categorized counts when available; otherwise clearly labelled public-profile percentages.",
+    width: 720,
+    height: 220,
+    span: "half",
+  },
+  rhythm: {
+    title: "Personal rhythm",
+    purpose: "Transparent personal consistency based on density and streak — not a GitHub rank.",
+    width: 720,
+    height: 220,
+    span: "half",
+  },
   activity: {
     title: "Activity map",
     purpose: "A compact calendar view of public contribution density over time.",
@@ -61,7 +75,16 @@ const CARD_META: Readonly<Record<StudioCardKind, { title: string; purpose: strin
   },
 };
 
-const CARD_KINDS: readonly StudioCardKind[] = ["atlas", "profile", "streak", "activity", "languages", "projects"];
+const CARD_KINDS: readonly StudioCardKind[] = [
+  "atlas",
+  "profile",
+  "streak",
+  "breakdown",
+  "rhythm",
+  "activity",
+  "languages",
+  "projects",
+];
 
 function cardUrl(kind: StudioCardKind): string {
   return buildStudioRouteUrl(kind, LANDING_OPTIONS);

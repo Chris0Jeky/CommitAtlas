@@ -36,12 +36,18 @@ test("server-renders the CommitAtlas product surface", async () => {
     "/api/v1/cards/atlas.svg?",
     "/api/v1/cards/profile.svg?",
     "/api/v1/cards/streak.svg?",
+    "/api/v1/cards/breakdown.svg?",
+    "/api/v1/cards/rhythm.svg?",
     "/api/v1/cards/activity.svg?",
     "/api/v1/cards/languages.svg?",
     "/api/v1/projects.svg?",
   ]) assert.match(html, new RegExp(family.replace(/[.?]/g, "\\$&")));
   assert.match(html, /Synthetic demo/);
   assert.match(html, /No GitHub calls are made to render this page/);
+  assert.match(html, /Exact categorized counts when available; otherwise clearly labelled public-profile percentages/);
+  assert.match(html, /Transparent personal consistency based on density and streak — not a GitHub rank/);
+  assert.match(html, /aria-label="Open the synthetic Contribution breakdown SVG"/);
+  assert.match(html, /aria-label="Open the synthetic Personal rhythm SVG"/);
   assert.match(html, /Open SVG/);
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
@@ -62,6 +68,8 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /Declare lifecycle yourself/);
   assert.match(html, /Open links below/);
   assert.match(html, /README Markdown/);
+  assert.match(html, /Contribution breakdown/);
+  assert.match(html, /Personal rhythm/);
   assert.match(html, /Run Preview to bind these URLs to this Studio origin/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%|Building in public, one useful commit/);
 });

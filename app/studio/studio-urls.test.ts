@@ -15,11 +15,13 @@ const projects = [
   { repo: "gamma", lifecycle: "paused", workflow: "  " },
 ];
 
-test("builds all six shipped card paths", () => {
+test("builds all eight shipped card paths", () => {
   const paths: Record<StudioCardKind, string> = {
     atlas: "/api/v1/cards/atlas.svg",
     profile: "/api/v1/cards/profile.svg",
     streak: "/api/v1/cards/streak.svg",
+    breakdown: "/api/v1/cards/breakdown.svg",
+    rhythm: "/api/v1/cards/rhythm.svg",
     activity: "/api/v1/cards/activity.svg",
     languages: "/api/v1/cards/languages.svg",
     projects: "/api/v1/projects.svg",
@@ -130,6 +132,18 @@ test("emits card URLs in the public route canonical order", () => {
     demo: true,
     days: 90,
   }), "/api/v1/cards/activity.svg?user=octocat&demo=true&theme=paper&days=90");
+  assert.equal(buildStudioRouteUrl("breakdown", {
+    owner: "octocat",
+    theme: "paper",
+    demo: true,
+    days: 30,
+  }), "/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=paper&days=30");
+  assert.equal(buildStudioRouteUrl("rhythm", {
+    owner: "octocat",
+    theme: "aurora",
+    demo: false,
+    days: 120,
+  }), "/api/v1/cards/rhythm.svg?user=octocat&demo=false&theme=aurora&days=120");
   assert.equal(buildStudioRouteUrl("atlas", {
     owner: "octocat",
     theme: "ember",
