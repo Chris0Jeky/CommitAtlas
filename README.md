@@ -4,62 +4,61 @@
 
 ### Your GitHub work, mapped clearly.
 
-A modular toolkit for beautiful GitHub cards and a project dashboard that explains what is active,
-what is healthy, and where people should go next.
+One cohesive toolkit for contribution analytics, streaks, project health, README widgets, and a
+live portfolio Studio.
 
 [![CI](https://github.com/Chris0Jeky/CommitAtlas/actions/workflows/ci.yml/badge.svg)](https://github.com/Chris0Jeky/CommitAtlas/actions/workflows/ci.yml)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-ff7a45.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-ffc857.svg)](tsconfig.json)
 
-[Open the live Studio](https://commitatlas.jeky-tck.chatgpt.site/studio)
+[Open the live Studio](https://commitatlas.jeky-tck.chatgpt.site/studio) ·
+[Run the demonstration](docs/DEMO_GUIDE.md)
 
 </div>
 
-> **Public demonstration.** The typed API, five SVG endpoints, project dashboard, and Studio are
-> deployed together at [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site/).
-> Static generation, packaged automation, and the `v0.1.0` release remain pre-release work.
+> **v0.1 release candidate.** The hosted API and Studio, six-card static generator, and bundled
+> Node 24 Action are implemented. The GitHub `v0.1.0` release and npm publication are still separate
+> release decisions and are not claimed here.
 
-## Why CommitAtlas
+## The complete operating picture
 
-Existing README cards are excellent at individual visuals. CommitAtlas connects them into one
-truthful portfolio surface.
+The primary Atlas condenses a full year of public activity into one `860 × 380` SVG:
 
-| Principle | What it means |
-| --- | --- |
-| One toolkit | Profile, streak, activity, language, and project cards share contracts and themes. |
-| Project signals | Explicit lifecycle, exact CI/release state, and Docs/Install/Download actions. |
-| Honest unknowns | Missing, stale, and unavailable data never masquerade as healthy. |
-| Two reliability modes | A cache-first hosted API for convenience; static generation for durability. |
-| Public by default | Shared hosting uses public data. Tokens stay server-side or inside your Action. |
-| Accessible output | Labeled SVGs, curated contrast, keyboard-friendly HTML, and reduced motion. |
+- 365-day contribution heatmap, total, active-day density, daily average, and peak day;
+- current and longest streak inside the displayed window;
+- commit, pull-request, issue, and review mix from GitHub's public profile percentages;
+- 12-bucket momentum, recent-versus-previous 28-day change, and a transparent rhythm score;
+- source-backed language distribution and configured project CI health;
+- four themes, wide/compact layouts, and optional subtle load motion with reduced-motion support.
 
-## Available v0.1 surfaces
+The rhythm score summarizes consistency and breadth inside the displayed window. It is deliberately
+not presented as a universal GitHub ranking or a comparison with other developers.
 
-```text
-/api/v1/cards/profile.svg     contribution and repository summary
-/api/v1/cards/streak.svg      current + longest UTC streak
-/api/v1/cards/activity.svg    bounded contribution trend
-/api/v1/cards/languages.svg   repository-language distribution
-/api/v1/projects.svg          compact project signal board
-/api/v1/projects              source-backed project JSON
-/studio                       configure, preview, and copy embeds
-```
+## Pick only what you need
 
-README project boards are visual summaries. Individual Docs, Install, Download, Release, and CI
-links live in the HTML dashboard because an externally embedded SVG is one image link, not a
-reliable group of buttons.
+| Surface | What it shows | Hosted route / static file |
+| --- | --- | --- |
+| Atlas | Density, heatmap, streaks, collaboration mix, momentum, rhythm, languages, project health | `/api/v1/cards/atlas.svg` / `atlas.svg` |
+| Profile | Public repositories, followers, following, stars, contribution total | `/api/v1/cards/profile.svg` / `profile.svg` |
+| Streak | Current and longest-in-window streak, active days, last activity | `/api/v1/cards/streak.svg` / `streak.svg` |
+| Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
+| Languages | Repository-language byte share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
+| Projects | Up to six curated projects with lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` |
+
+The [Studio](https://commitatlas.jeky-tck.chatgpt.site/studio) configures, previews, and copies
+embeds. Project Docs, Install, Download, Release, Source, and CI actions live in its accessible HTML
+dashboard: a README-embedded SVG is one linked image and cannot reliably contain independent links.
 
 ## Hosted examples
 
-- [Profile card — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=Chris0Jeky&demo=false&theme=ember)
-- [Languages card — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=Chris0Jeky&demo=false&theme=ember)
-- [Streak card — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
-- [Activity card — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
-- [Project board — synthetic fixture](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
+- [Rich Atlas — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
+- [Streak — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Activity — live public profile](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=Chris0Jeky&demo=false&theme=ember&days=365)
+- [Profile — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Languages — live public data](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=Chris0Jeky&demo=false&theme=ember)
+- [Project board — deterministic demo](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
 
-## Quick start
-
-Try the [hosted Studio](https://commitatlas.jeky-tck.chatgpt.site/studio), or run CommitAtlas locally.
+## Run locally
 
 Requirements: Node.js 22.13 or newer and npm.
 
@@ -70,38 +69,91 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. Run the local gate before contributing:
+Open `http://localhost:3000`. Run the complete local gate with:
 
 ```bash
 npm run check
 ```
 
-For the complete production-build walkthrough, use the
-[demonstration guide](docs/DEMO_GUIDE.md).
+## Generate dependable profile assets
 
-No GitHub token is required for the synthetic preview. Live contribution data requires the optional
-`GITHUB_TOKEN` Worker secret (or an Action secret); set it with `npx wrangler secret put GITHUB_TOKEN`.
-For the shared public route, classic tokens must expose only the empty or `public_repo` scope set;
-the service refuses missing or broader scope proofs. A token is read only by server-side GitHub requests
-— never put one in a URL, client-side setting, or committed file.
+Static generation is credential-free. It reads the logged-out GitHub profile view and public REST
+endpoints, renders every selected card from one snapshot, and writes a SHA-256 manifest. Copy the
+example, curate the projects, track the config, then generate:
+
+```bash
+cp .commitatlas.example.json .commitatlas.json
+git add .commitatlas.json
+npm run build:static
+node packages/static/dist/cli.js generate --config .commitatlas.json
+```
+
+The v1 config is intentionally one-owner and public-only. It rejects unknown fields, credentials,
+absolute/traversing/symlinked paths, untracked config, duplicate cards/projects, and invalid workflow
+identities. Generation validates all upstream data and SVG payloads before staged per-file
+replacement; unrelated files in the output directory are preserved.
+
+## Refresh with GitHub Actions
+
+The repository-root `action.yml` runs on Node 24 and only generates files. It never commits, pushes,
+uploads, or receives `GITHUB_TOKEN`. Pin it to an immutable CommitAtlas commit in consumer workflows:
+
+```yaml
+name: Refresh CommitAtlas
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Chris0Jeky/CommitAtlas@COMMIT_SHA
+        with:
+          config: .commitatlas.json
+      - name: Commit changed public assets
+        shell: bash
+        run: |
+          if git diff --quiet -- assets/commitatlas; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- assets/commitatlas
+          git commit -m "chore(profile): refresh CommitAtlas"
+          git push
+```
+
+The workflow's built-in token is used only by checkout/git push. It is not passed to CommitAtlas's
+data layer. A failed refresh leaves the last committed profile assets available.
+
+## Public-data and privacy boundary
+
+Credential-free contribution cards use GitHub's logged-out public profile view. That view can include
+anonymous aggregate contribution counts a user has elected to display, but CommitAtlas requests no
+private repository names, commits, URLs, or other private details. Activity-type values from that view
+are labelled as percentages, not fabricated exact counts.
+
+Hosted requests may optionally use a server-side classic public-only token, but the client requires
+positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data
+credentials. Never place a token in a URL, browser setting, config, generated file, or committed fixture.
 
 ## Design and evidence
 
 - [Architecture and security boundaries](docs/ARCHITECTURE.md)
 - [Competitive research and product gap](docs/RESEARCH.md)
-- [Complete local demonstration](docs/DEMO_GUIDE.md)
+- [Complete demonstration guide](docs/DEMO_GUIDE.md)
+- [Static generator and Action contract](docs/STATIC_GENERATOR_PLAN.md)
 - [Studio production QA](docs/STUDIO_QA_2026-08-20.md)
 - [Live project state](docs/PROJECT_STATE.md)
-- [v0.1 implementation plan](docs/V0_1_PLAN.md)
+- [v0.1 release plan](docs/V0_1_PLAN.md)
 
-CommitAtlas does not invent a universal developer rank, language proficiency, CI result, project
-lifecycle, or download URL. It shows facts, configured intent, source availability, and freshness.
-
-## Contributing
-
-The repository is intentionally growing in independently reviewable slices. Each metric or renderer
-must arrive with a fixture, focused tests, documentation, and a working example. See [AGENTS.md](AGENTS.md)
-for the measured local commands and invariants; contributor and security policies land before v0.1.
+CommitAtlas does not invent a global developer rank, language proficiency, CI result, lifecycle,
+release, or download URL. It shows source-backed facts, explicitly configured intent, source
+availability, and freshness.
 
 ## License
 

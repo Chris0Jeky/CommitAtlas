@@ -1,10 +1,10 @@
 # CommitAtlas v0.1 implementation plan
 
-Status: active saved plan, not a `v0.1.0` completion claim. API step 1, SVG step 2, core manifest
-hardening, all five versioned routes, and the Studio are merged. The public deployment and GitHub
-profile demonstration are complete and have passed local/hosted gates, desktop/mobile production
-QA, and independent review. The static generator, Action, release documentation, package publishing,
-keyboard traversal, and GitHub release remain.
+Status: active release-candidate plan, not a `v0.1.0` completion claim. The bounded API, six SVG
+surfaces, rich Atlas, Studio, public-profile contribution source, static generator, and credential-free
+Node 24 Action are implemented locally. Publication of this candidate, refreshed production/profile
+QA, final documentation/state reconciliation, package publishing, keyboard traversal, and a GitHub
+release remain until directly verified.
 Exact refs and evidence are in [PROJECT_STATE.md](./PROJECT_STATE.md). Start every resume by fetching
 `origin` and inspecting live CI, issues, releases, deployment state, and unresolved PR review
 threads.
@@ -13,12 +13,12 @@ threads.
 
 CommitAtlas v0.1 is complete only when all of the following are true:
 
-- The bounded JSON API and all five SVG endpoints are merged on `main` with exact-head CI and review.
-- Profile, streak, activity, languages, and project-board cards work in demo and supported live modes.
+- The bounded JSON API and all six SVG surfaces are merged on `main` with exact-head CI and review.
+- Atlas, profile, streak, activity, languages, and project-board cards work in demo and supported live modes.
 - The Studio uses the shipped endpoints, handles partial/unavailable data truthfully, and passes
   desktop, mobile, keyboard, accessibility, action-link, copy, error, and cache behavior checks.
-- The static generator and bundled local GitHub Action create the same five files without exposing
-  credentials or publishing anything automatically.
+- The static generator and bundled local GitHub Action create the selected six-card set plus a hash
+  manifest without exposing credentials or publishing anything automatically.
 - README, architecture, security, API, CLI, Action, and operator documentation match real behavior.
 - The production build is deployed through Sites, the exact public URL is browser-verified, and the
   repository homepage and social metadata use that real URL.
@@ -67,12 +67,12 @@ Issues #20, #21, #31, #36, and #37 closed through that merged PR after direct te
 acceptance. Maximum 366-day activity outputs remained below the 30,000-byte contract for maximum
 ampersand, apostrophe, and emoji metadata.
 
-### 3. Add the five versioned SVG routes — completed
+### 3. Add the six versioned SVG surfaces — completed
 
 PR #44 merged as `a876dc30ac34134f405b7b9a7d4ed3ae181e9407` after the corrected exact head
 `dff9c8825d262e4ceb625e67c399be06a6c3640e` passed the full local gate, fresh independent review,
 hosted CI, the aging floor, and review-thread reconciliation. It contains strict canonical query
-parsing, secure byte-exact SVG response/ETag headers, shared snapshot adapters, all five handlers,
+parsing, secure byte-exact SVG response/ETag headers, shared snapshot adapters, all six handlers,
 and built-Worker route proof.
 
 The reviewed fixes omit aggregate stars for truncated repository lists, reject truncated language
@@ -116,7 +116,7 @@ Every successful SVG response includes:
   one hour, projects about five minutes); token/private paths are `no-store`
 
 Invalid or unavailable requests return bounded JSON errors with `no-store`, never an error SVG that
-looks like healthy data. Demo/live-shaped fixtures cover all five routes, invalid/duplicate queries,
+looks like healthy data. Demo/live-shaped fixtures cover all six surfaces, invalid/duplicate queries,
 leap dates, empty languages, partial projects, 304 behavior, credential rejection, truncated
 repository aggregates, and gapped contribution windows.
 
@@ -155,81 +155,40 @@ the Sites origin and public GitHub profile were browser-verified. Two late P2 th
 explicitly parked. Full keyboard-only traversal remains a separate unverified pre-release check
 because the available browser controller could not reliably prove the complete focus path.
 
-### 5. Build the static generator package
+### 5. Build the static generator package — implemented locally
 
-The approved boundary, security matrix, fixture format, file semantics, package order, and proof
-matrix are preserved in [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md). That document is the
-authority for this step; it supersedes the earlier idea of keeping a second GitHub client inside
-`packages/static`.
+`@commit-atlas/github` now owns the hardened transport and public snapshot contracts, and
+`@commit-atlas/static` consumes it with `@commit-atlas/core` and `@commit-atlas/svg`. The tracked,
+same-owner `.commitatlas.json` selects any subset of Atlas, profile, streak, activity, languages, and
+projects. The CLI accepts `--config`, `--output-dir`, `--as-of`, and `--dry-run`.
 
-Core manifest/workflow validation was strengthened and merged through PR #43. The first remaining
-step is to publish the existing hardened transport and snapshot adapters as `@commit-atlas/github`,
-with the hosted app reduced to a thin HTTP caller. Add the explicit unavailable SVG state, then add
-`@commit-atlas/static` as the filesystem/config/fixture consumer of `@commit-atlas/core`,
-`@commit-atlas/svg`, and `@commit-atlas/github`.
+The shipped boundary is narrower than the earlier plan: v1 is credential-free, public-only, and has
+no private or fixture mode. It parses a complete logged-out GitHub profile contribution window,
+retains public activity-type percentages as percentages, and fails before output for malformed,
+gapped, unavailable, or inconsistent evidence.
 
-CLI contract:
+All selected SVG payloads derive from one `PortfolioSnapshot`; `manifest.json` records their exact
+window, bytes, and SHA-256 hashes. Repository-contained/tracked-path and symlink checks run before
+staged per-file replacement, and unrelated output siblings are preserved. Focused static tests and
+package dry runs pass locally. The exact implemented contract is in
+[STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md).
 
-```text
-commitatlas generate \
-  --config .commitatlas.json \
-  [--output-dir dist/commitatlas] \
-  [--as-of YYYY-MM-DD] \
-  [--fixture path/to/public-fixture.json]
-```
+### 6. Add the repository-local GitHub Action — implemented locally
 
-There is no token CLI argument. Read credentials only from the environment, reject token-shaped
-configuration/fixture keys, and resolve `asOf` exactly once. Config and manifest files must be local,
-tracked, repository-contained, and non-symlinked. An explicit output override wins; otherwise
-`config.outputDir` is required. The static manifest uses full slugs and may span owners, while the
-hosted projects route remains one-owner.
+The root `action.yml` uses `runs.using: node24` with a reproducibly bundled
+`action/dist/index.js`. Inputs are `config`, `output-dir`, `as-of`, and `dry-run`; outputs are the
+manifest plus paths for six possible card files.
 
-Always atomically write exactly these files without deleting unrelated output:
-
-```text
-profile.svg
-streak.svg
-activity.svg
-languages.svg
-projects.svg
-```
-
-Fixture mode uses strict synthetic raw GitHub HTTP transcripts through the same client, is offline,
-cannot accept a token, and is byte-deterministic for identical inputs. Public anonymous mode succeeds
-with contribution cards marked unavailable; unsafe supplied credentials, restricted/private data,
-malformed responses, and partial contribution windows fail before writes.
-
-All data and five payloads are validated before output is touched. Replace each destination
-atomically, preserve unrelated siblings, and do not claim a cross-file filesystem transaction.
-Tests cover the full token/visibility matrix, missing-versus-real-zero contributions, no-write error
-paths, deterministic fixtures, path containment, package contents, and an ordinary clean CLI
-consumer.
-
-### 6. Add the repository-local GitHub Action
-
-Add `.github/actions/static-generator/action.yml` plus a deterministically bundled entry generated
-from the static package. Use `runs.using: node24`: the current
-[GitHub Action metadata reference](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#runs-for-javascript-actions)
-supports Node 24, and GitHub's
-[Node 20 deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)
-directs Action maintainers to migrate to it. Recheck those primary sources at implementation time
-if the runner contract changes again.
-
-Inputs are config, optional output directory, explicit matching visibility, optional `as-of`, and
-optional `github-token` (required for private mode). The token exists only in memory/environment. The
-public example omits it. The Action validates tracked config/manifest, never echoes or serializes the
-token, never commits/pushes/uploads/publishes, and exposes exactly five repository-relative output
-paths. Its example workflow uses read-only `contents` and `actions` permissions.
-
-Bundle verification must prove the checked-in entry matches source and contains no token-like fixture
-or source secret. Pin release examples to immutable `v0.1.0`; a moving major tag is a separate release
-decision.
+The Action does not accept a credential and never commits, pushes, uploads, publishes, or deploys.
+A consumer workflow owns those operations and may use its built-in `GITHUB_TOKEN` only for checkout
+and git push. `npm run test:action` checks the metadata, no-token boundary, runtime behavior, and
+bundle parity. Consumers pin an immutable commit until a stable release/tag policy is published.
 
 ### 7. Finish release documentation and release
 
 Update README and package docs only with behavior that exists at the final head:
 
-- preserve the real deployed quick-start URLs and all five card examples;
+- preserve the real deployed quick-start URLs and all six card examples;
 - Studio workflow, API query/error/cache reference, manifest/config schemas, CLI and Action examples;
 - public/private threat boundary, credential handling, rate limits, self-hosting, accessibility, and
   troubleshooting;

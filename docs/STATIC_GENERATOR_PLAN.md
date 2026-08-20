@@ -1,115 +1,99 @@
-# CommitAtlas static generator architecture
+# Static generator and Action contract
 
-Status: approved v0.1 implementation plan; prerequisite 1 is merged, generator/Action not implemented
-or released.
+Status: implemented release-candidate architecture.
 
-Last reconciled: 2026-08-20. Recheck the linked GitHub platform contracts before implementing
-because Action runtimes and token semantics can change.
+Last reconciled: 2026-08-20. Recheck GitHub Action runtime and token contracts before a future
+release because platform behavior can change.
 
-This document preserves the architecture decision for the second real consumer of CommitAtlas's
-GitHub data layer: a local CLI and repository-local GitHub Action that render the same five cards as
-the hosted API without silently widening access to private data.
+## Shipped design
 
-## Decisions
+```text
+tracked .commitatlas.json
+          │
+          ▼
+@commit-atlas/static ──> @commit-atlas/github ──> logged-out GitHub profile + public REST
+          │                         │
+          └──────── one validated PortfolioSnapshot
+                                    │
+                                    ▼
+                             @commit-atlas/svg
+                                    │
+ atlas.svg · profile.svg · streak.svg · activity.svg · languages.svg · projects.svg
+                                    │
+                              manifest.json
+```
 
-### Publish the shared GitHub boundary
+`@commit-atlas/github` owns bounded GitHub transport, response validation, public snapshot types,
+and snapshot adapters. `@commit-atlas/static` owns tracked configuration, repository-contained path
+policy, snapshot orchestration, rendering, manifest hashes, and filesystem writes. The root Action
+is a small bundled Node 24 caller of the static package.
 
-Create `packages/github` as publishable `@commit-atlas/github`. Move the hardened transport,
-response types, GitHub-specific validation, and snapshot-to-card adapters out of the app-only
-`lib/github` boundary. The app and `@commit-atlas/static` must consume the package entry point; do
-not duplicate security logic or import package source through a root alias.
+The generator and Action are credential-free and public-only. They do not accept a token input,
+read `GITHUB_TOKEN`, commit, push, upload, deploy, or publish. A consumer workflow may separately use
+its built-in token to commit already-generated public assets.
 
-The package owns:
+## Configuration
 
-- the GitHub host allowlist, one bounded request deadline, response-size cap, and concurrency limit;
-- response-shape, URL, text, rate-limit, visibility, and public-credential validation;
-- public snapshot types and the profile, streak, activity, language, and project adapters.
-
-The package does not own app query parsing, Worker environment access, HTTP response headers/ETags,
-static filesystem policy, fixtures, CLI parsing, or Action glue.
-
-Before static generation, make two bounded shared-contract changes:
-
-- `@commit-atlas/core`: reject duplicate normalized repository slugs and workflow identities with
-  control characters or `.`/`..` path segments. Completed on `main` through PR #43.
-- `@commit-atlas/svg`: add an explicit unavailable-card renderer. Missing contribution access must
-  never be represented as a zero streak or zero activity.
-
-### Public and private modes
-
-Public mode succeeds anonymously. It fetches public REST profile/project data, omits unavailable
-profile contribution totals, and writes clearly labelled unavailable streak/activity cards when no
-approved contribution credential exists.
-
-If a token is supplied in public mode, reuse the shipped public-credential proof exactly:
-
-- a non-empty `X-OAuth-Scopes` value may contain only `public_repo` entries;
-- an empty-but-present scope header is accepted only for documented classic PAT/OAuth prefixes
-  `ghp_` or `gho_`;
-- an absent header, fine-grained PAT, Actions token, App token, user token, refresh token, or unknown
-  token form fails closed.
-
-Public mode also rejects private repository responses and any restricted-contribution signal. It
-must not begin writing output before all credential, upstream, parse, and render checks pass.
-
-Private CLI mode requires an explicit token and emits a non-sensitive warning that private-derived
-cards must not be committed to a public repository. Private Action mode additionally verifies that
-the current `GITHUB_REPOSITORY` is private before generation. Neither mode commits, pushes, uploads,
-publishes, caches private data, or logs/serializes the token.
-
-The policy derives from GitHub's current documentation for
-[Actions `GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token),
-[workflow permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions),
-[OAuth scope headers](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps),
-and the
-[contribution collection](https://docs.github.com/en/graphql/reference/objects#contributionscollection).
-
-### Configuration and manifests
-
-Use a local, tracked JSON configuration and a local, tracked v1 project manifest. Do not fetch a
-remote manifest.
+`.commitatlas.example.json` is the runnable v1 shape:
 
 ```json
 {
   "version": 1,
-  "user": "octocat",
-  "manifestPath": ".commitatlas.projects.json",
-  "visibility": "public",
-  "theme": "aurora",
+  "user": "Chris0Jeky",
+  "theme": "ember",
   "days": 365,
-  "asOf": "2026-08-20",
-  "outputDir": "dist/commitatlas"
+  "motion": "subtle",
+  "layout": "wide",
+  "outputDir": "assets/commitatlas",
+  "cards": ["atlas", "profile", "streak", "activity", "languages", "projects"],
+  "projects": [
+    {
+      "repo": "Chris0Jeky/CommitAtlas",
+      "label": "CommitAtlas",
+      "lifecycle": "active",
+      "workflow": "ci.yml",
+      "links": {
+        "docs": "https://github.com/Chris0Jeky/CommitAtlas#readme"
+      }
+    }
+  ]
 }
 ```
 
-The static manifest keeps full `owner/repo` slugs and may intentionally span owners. The hosted
-projects route remains one-owner in v0.1 because widening its public query surface has different
-cache and privacy consequences.
+V1 deliberately limits a config to one GitHub owner and one to six explicitly curated projects.
+The config must be a tracked regular JSON file below 64 KiB. Unknown fields, token-shaped additions,
+duplicate cards/projects, invalid GitHub handles, control characters, `.`/`..` workflow identities,
+absolute or traversing paths, and symlinked path components fail closed.
 
-An explicit CLI/Action output override wins over `config.outputDir`; otherwise the configured value
-is required. Apply the same explicit-override rule to `asOf` and resolve the UTC date once. Config,
-manifest, fixture, and output paths must be repository-contained; reject symlinks, traversal, and
-untracked config/manifest inputs.
+Lifecycle is owner-declared. CI is read only from the named workflow; a missing or unconfigured
+workflow is never reported as passing. Project links are validated data for adjacent HTML actions,
+not independent links embedded inside the SVG.
 
-### Synthetic offline fixtures
-
-`--fixture` installs an offline `fetch` implementation and cannot be combined with a token. Fixtures
-are versioned, explicitly synthetic raw GitHub HTTP transcripts, not already-normalized snapshots.
-They exercise the same parser and security boundary as live responses.
-
-Each entry identifies method and GitHub path (plus GraphQL operation when applicable), response
-status, a bounded allowlist of consumed headers, and either JSON or intentionally malformed UTF-8
-body data. Reject duplicate request identities, unknown routes, non-GitHub targets, unsupported
-encodings, non-synthetic provenance, and token/secret/authorization/cookie/password-like keys.
-
-The allowed response headers are limited to those the transport consumes, currently
-`content-type`, `content-length`, `retry-after`, `x-ratelimit-reset`, and `x-oauth-scopes`.
-
-### Exact-five-file output
-
-A successful generation writes only:
+## CLI
 
 ```text
+commitatlas generate
+  [--config .commitatlas.json]
+  [--output-dir assets/commitatlas]
+  [--as-of YYYY-MM-DD]
+  [--dry-run]
+```
+
+There is no token, visibility, private-mode, or fixture argument. `--output-dir` and `--as-of`
+explicitly override config/current-date values. `--dry-run` performs fetch, validation, metrics, and
+rendering without filesystem writes.
+
+Contribution history comes from GitHub's logged-out public profile view. That view may contain
+anonymous aggregates the account owner elected to display, but it exposes no private repository
+details to CommitAtlas. Activity type data is carried as public percentages, not invented counts.
+A malformed, incomplete, gapped, oversized, or unavailable response fails generation.
+
+## Output semantics
+
+The selected subset of these files is written:
+
+```text
+atlas.svg
 profile.svg
 streak.svg
 activity.svg
@@ -117,72 +101,45 @@ languages.svg
 projects.svg
 ```
 
-Fetch, validation, normalization, rendering, output-size checks, and path checks all complete before
-the output directory is changed. Stage all five payloads and atomically replace each destination;
-preserve unrelated sibling files. Promise atomic replacement per file, not an unsupported
-cross-file filesystem transaction. Any pre-write failure preserves the prior five cards.
+`manifest.json` records the generator, user, source, exact date window, generation time, byte count,
+and SHA-256 hash for every generated card. All upstream data, metrics, SVG contents, paths, and size
+limits are validated before writing begins. Payloads are staged in the output directory and replaced
+per file; unrelated sibling files are preserved. This is per-file atomic replacement, not a claim of
+a cross-file filesystem transaction.
 
-A real, complete all-zero contribution calendar renders zero. Missing, partial, gapped, restricted,
-or unapproved contribution data is unavailable or an error according to the mode; it is never
-zero-filled.
+All six renderers consume one `PortfolioSnapshot`, so every card and the manifest share one window
+and provenance. SVG validation rejects scripts, external images, and `foreignObject` content.
 
-## CLI and Action contracts
+## Action
 
-```text
-commitatlas generate \
-  --config .commitatlas.json \
-  [--output-dir dist/commitatlas] \
-  [--as-of YYYY-MM-DD] \
-  [--fixture path/to/public-fixture.json]
+The repository-root [`action.yml`](../action.yml) exposes `config`, `output-dir`, `as-of`, and
+`dry-run`, plus paths for the manifest and six possible card outputs. It runs the checked-in
+`action/dist/index.js` bundle using `node24`.
+
+The bundle must be regenerated by `npm run build:action`. `npm run test:action` checks metadata,
+credential absence, runtime behavior, and byte parity with source. Consumers should pin an immutable
+commit until a signed release/tag policy exists.
+
+## Proving commands
+
+```powershell
+npm.cmd run test:github
+npm.cmd run test:static
+npm.cmd run test:action
+npm.cmd run pack:github
+npm.cmd run pack:static
+npm.cmd run check
 ```
 
-There is no token argument or token-shaped config key. Live credentials are read only from the
-process environment/Action input and retained in memory.
+The package tarballs contain compiled JavaScript, TypeScript declarations, README, package metadata,
+and the canonical GPL-3.0-only licence. npm registry publication remains a separate, unclaimed step.
 
-The repository-local Action uses a deterministically generated CommonJS bundle:
+## Deliberately deferred
 
-```yaml
-runs:
-  using: node24
-  main: dist/index.cjs
-```
+- private-data generation;
+- multi-owner project configs;
+- offline raw-HTTP fixture transport;
+- a cross-file transactional store;
+- npm publication and a stable moving Action tag.
 
-Inputs are config, optional output directory, explicit matching visibility, optional `as-of`, and
-optional `github-token` (required for private mode). Outputs are exactly the five repository-relative
-card paths. The public example omits `github-token`; the Action never commits, pushes, uploads, or
-publishes. Recheck GitHub's
-[JavaScript Action metadata reference](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#runs-for-javascript-actions)
-before bundling.
-
-## Workspace and commit sequence
-
-Adopt npm workspaces for `packages/core`, `packages/svg`, `packages/github`, and `packages/static`.
-Use normal publishable semver dependencies and explicitly build in that order. Do not ship `file:`,
-deep-source, or root-alias dependencies.
-
-Implement as these reviewable commits after the Studio is merged. Commit 1 is already complete on
-`main`; continue at commit 2:
-
-1. `fix(core): harden manifest uniqueness and workflow identity`
-2. `refactor(github): publish hardened adapter package`
-3. `feat(svg): render unavailable card state`
-4. `feat(static): validate tracked config paths and raw fixtures`
-5. `feat(static): generate five cards from shared adapters`
-6. `feat(action): bundle Node 24 static generator action`
-7. `test(pack): prove package consumers and Action bundle parity`
-8. `docs(static): document verified CLI Action and privacy behavior`
-
-## Required proof
-
-- Existing GitHub transport regressions remain green after extraction.
-- Public/private/token-type matrix, private repositories, and restricted contributions.
-- Missing contributions versus a genuinely complete zero calendar.
-- Deterministic offline output and strict fixture consumption.
-- Exact five files, unrelated siblings preserved, and no writes on any pre-write failure.
-- Token sentinel absent from outputs, captured logs/errors, fixtures, and the Action bundle.
-- Path containment, symlink, tracking, malformed, oversized, and rate-limit cases.
-- Dry-run packs for all four packages and a clean tarball consumer that invokes the CLI.
-- Checked-in Action bundle exactly matches a clean regeneration.
-
-Publication remains a separate release decision. Do not claim npm availability without a successful
-registry publication and lookup.
+Those are future product decisions, not behavior implied by v1.

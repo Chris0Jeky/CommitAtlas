@@ -5,9 +5,10 @@ complete SVG string and are safe to put in a README or a static site: user text 
 escaped, links are restricted to `http`/`https`, and no scripts, images, stylesheets, or
 remote assets are emitted.
 
-The package includes profile, streak, activity, language, and six-project signal-board
-cards. Choose one of the four built-in themes (`aurora`, `midnight`, `paper`, or `ember`)
-and provide plain presentation data from your own GitHub adapter.
+The package includes a rich developer Atlas plus profile, streak, activity, language, and
+six-project signal-board cards. Choose one of the four built-in themes (`aurora`, `midnight`,
+`paper`, or `ember`) and provide plain presentation data from your own GitHub adapter. Renderers
+support optional subtle fixed CSS load motion and emit a reduced-motion override.
 
 ```ts
 import { renderProfileCard } from "@commit-atlas/svg";

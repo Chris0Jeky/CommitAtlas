@@ -1,8 +1,8 @@
 # CommitAtlas demonstration guide
 
 This walkthrough exercises every implemented v0.1 demonstration surface without requiring a
-GitHub token. It uses the production build and synthetic data for repeatability, then shows the
-supported live-public partial-data path.
+GitHub token. It uses synthetic data for repeatability, then the credential-free live public-profile
+path and static generator.
 
 ## Open the public demonstration
 
@@ -28,7 +28,7 @@ preview-only; the public Studio emits its real HTTPS origin.
 
 ### 1. Landing page
 
-- Inspect the product promise, five-card toolkit, project dashboard explanation, and navigation.
+- Inspect the product promise, rich Atlas, five focused widgets, project dashboard explanation, and navigation.
 - Resize from a desktop width to about 390 pixels. The navigation, glow, cards, and footer should
   remain inside the page with no horizontal scrolling.
 
@@ -62,15 +62,15 @@ preview-only; the public Studio emits its real HTTPS origin.
 
 ### 5. Supported live-public path
 
-- Select Live public and preview `octocat`.
-- Public profile/project data should load without a token.
-- Contribution history should be unavailable, not zero. Streak and Activity remain selected but
-  disabled and are omitted from Markdown; Profile, Languages, and Projects remain.
+- Select Live public and preview `Chris0Jeky`.
+- Public profile, contribution, language, and configured project data should load without a token.
+- Atlas, Streak, and Activity should show the complete requested contribution window from GitHub's
+  logged-out public profile view. Activity type values are percentages, not invented exact counts.
 - For a live profile whose public repository list is truncated, Languages likewise remains selected
   but disabled and is omitted from Markdown rather than producing a broken image URL.
-- If the anonymous GitHub quota is exhausted, the bounded rate-limit response is an expected
-  unavailable state. Use Synthetic for the deterministic walkthrough; do not add a private-capable
-  token merely to make the demo pass.
+- If a public GitHub endpoint is unavailable or its HTML shape becomes incomplete, the bounded error
+  is expected to fail closed. Use Synthetic for the deterministic walkthrough; do not add a
+  private-capable token merely to make the demo pass.
 - Switch back to Synthetic. All five retained selections should be available again.
 
 ### 6. Error retention
@@ -83,6 +83,7 @@ preview-only; the public Studio emits its real HTTPS origin.
 
 Open these public examples:
 
+- [Rich Atlas](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
 - [Profile SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember)
 - [Streak SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
 - [Activity SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
@@ -96,14 +97,30 @@ Open these public examples:
 Each SVG should identify itself accessibly and contain no buttons or scripts. Individual project
 actions belong in the HTML Studio dashboard.
 
+### 8. Static generator and Action bundle
+
+From a clean checkout, copy and track `.commitatlas.example.json` as `.commitatlas.json`, then run:
+
+```powershell
+npm.cmd run build:static
+node packages/static/dist/cli.js generate --config .commitatlas.json --dry-run
+node packages/static/dist/cli.js generate --config .commitatlas.json
+npm.cmd run test:action
+```
+
+Inspect `outputs/commitatlas`: it should contain six SVGs and `manifest.json`. Confirm one window and
+generation time across the bundle, re-hash each asset against its manifest entry, and open every SVG.
+The Action proof must regenerate `action/dist/index.js` without a diff and must not accept or emit a
+credential.
+
 ## QA checklist
 
 - Desktop: 1440x900, no horizontal overflow or clipped controls.
 - Mobile: 390x844, one-column Studio, no horizontal overflow.
-- Four themes and five cards visually inspected.
+- Four themes and six surfaces visually inspected.
 - Blank/configured workflows remain truthful.
 - Project add/remove and safe action links behave as described.
-- Synthetic/live-public/error paths expose their provenance and unavailable data.
+- Synthetic/live-public/error paths expose provenance and never turn unavailable data into zero.
 - Generated Markdown matches the selected, currently validated configuration.
 - Browser console has no application warnings/errors.
 - A real keyboard can reach and activate navigation, fields, details, checkboxes, Preview, Copy, and
@@ -115,7 +132,5 @@ current automation controller could not do so reliably.
 ## Deliberately outside this demonstration
 
 - No GitHub `v0.1.0` release or npm publication is claimed.
-- Token-backed live contribution data requires a server-side credential that CommitAtlas can prove
-  is public-only; do not paste a token into the browser.
-- The static five-file generator and Node 24 GitHub Action are planned in
-  [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md) but are not implemented yet.
+- Optional token-backed hosted contribution data requires a server-side credential that CommitAtlas
+  can prove is public-only; static generation and its Action remain credential-free.
