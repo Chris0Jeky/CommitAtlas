@@ -37,6 +37,10 @@ outputs:
     description: Repository-relative path to streak.svg when selected.
   activity:
     description: Repository-relative path to activity.svg when selected.
+  breakdown:
+    description: Repository-relative path to breakdown.svg when selected.
+  rhythm:
+    description: Repository-relative path to rhythm.svg when selected.
   languages:
     description: Repository-relative path to languages.svg when selected.
   projects:

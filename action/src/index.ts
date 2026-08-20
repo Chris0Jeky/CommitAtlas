@@ -27,6 +27,8 @@ async function run(): Promise<void> {
     ["profile", "profile.svg"],
     ["streak", "streak.svg"],
     ["activity", "activity.svg"],
+    ["breakdown", "breakdown.svg"],
+    ["rhythm", "rhythm.svg"],
     ["languages", "languages.svg"],
     ["projects", "projects.svg"],
   ] as const) {
