@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildStudioRouteUrl, type StudioCardKind } from "./studio-urls";
+import {
+  buildStudioConfigurationKey,
+  buildStudioRouteUrl,
+  resolveStudioBaseUrl,
+  type StudioCardKind,
+} from "./studio-urls";
 
 const projects = [
   { repo: "alpha", lifecycle: "active", workflow: "ci file.yml" },
@@ -70,4 +75,30 @@ test("preserves user, theme, days, and demo query semantics", () => {
   })}`);
   assert.equal(project.searchParams.get("theme"), "paper");
   assert.equal(project.searchParams.get("demo"), "true");
+});
+
+test("binds a successful origin to the exact route-affecting configuration", () => {
+  const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };
+  const key = buildStudioConfigurationKey(baseline);
+
+  assert.equal(key, buildStudioConfigurationKey({
+    ...baseline,
+    owner: "octocat",
+    projects: projects.map((project) => ({ ...project, repo: project.repo.trim() })),
+  }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "other" }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, theme: "paper" }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, demo: false }));
+  assert.notEqual(key, buildStudioConfigurationKey({
+    ...baseline,
+    projects: projects.map((project, index) => index === 0 ? { ...project, lifecycle: "paused" } : project),
+  }));
+  assert.notEqual(key, buildStudioConfigurationKey({
+    ...baseline,
+    projects: projects.map((project, index) => index === 0 ? { ...project, workflow: "other.yml" } : project),
+  }));
+
+  const validated = { key, origin: "https://atlas.example" };
+  assert.equal(resolveStudioBaseUrl(key, validated, "https://placeholder.example"), "https://atlas.example");
+  assert.equal(resolveStudioBaseUrl("changed", validated, "https://placeholder.example"), "https://placeholder.example");
 });

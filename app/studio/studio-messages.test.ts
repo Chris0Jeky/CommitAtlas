@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { retainedPreviewNotice } from "./studio-messages";
+import { contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
 
 test("labels retained preview data after an upstream failure", () => {
   assert.equal(
@@ -14,4 +14,11 @@ test("normalizes terminal punctuation without creating a doubled stop", () => {
     retainedPreviewNotice("Enter a valid GitHub handle before previewing.", "octocat"),
     "Enter a valid GitHub handle before previewing. Existing preview @octocat remains visible and was not replaced.",
   );
+});
+
+test("describes unavailable contributions without inventing a failure cause", () => {
+  const notice = contributionUnavailableNotice();
+  assert.match(notice, /Streak and Activity are unavailable/);
+  assert.match(notice, /omitted from README Markdown/);
+  assert.doesNotMatch(notice, /token|rate limit|outage/i);
 });

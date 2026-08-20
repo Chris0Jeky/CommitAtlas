@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test:core": "vitest run --config packages/core/vitest.config.ts",
     "test:github": "tsx --test lib/http.test.ts lib/github/client.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/svg-adapters.test.ts",
-    "test:studio": "tsx --test app/studio/studio-messages.test.ts app/studio/studio-urls.test.ts",
+    "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-urls.test.ts",
     "test:svg": "npm --prefix packages/svg test",
     "build:core": "npm --prefix packages/core run build",
     "pack:core": "npm --prefix packages/core run pack:dry-run",

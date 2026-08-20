@@ -2,8 +2,24 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { retainedPreviewNotice } from "./studio-messages";
-import { buildStudioRouteUrl, type StudioCardKind } from "./studio-urls";
+import { hasCurrentLiveContributions, isStudioCardAvailable } from "./studio-card-availability";
+import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
+import { contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
+import {
+  activityBarPercent,
+  contributionMetricLabel,
+  contributionWindowLabel,
+  findProjectDraft,
+  safeProjectActionUrl,
+  starterCiPresentation,
+  visibleProfileStars,
+} from "./studio-presentation";
+import {
+  buildStudioConfigurationKey,
+  buildStudioRouteUrl,
+  resolveStudioBaseUrl,
+  type StudioCardKind,
+} from "./studio-urls";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
 type CardKind = StudioCardKind;
@@ -32,6 +48,7 @@ interface ProfileSnapshot {
   followers: number;
   stars: number;
   forks: number;
+  repositoriesTruncated: boolean;
   freshness: Freshness;
 }
 
@@ -76,23 +93,21 @@ const starterProfile: ProfileSnapshot = {
   followers: 312,
   stars: 487,
   forks: 96,
+  repositoriesTruncated: false,
   freshness: { generatedAt: "", source: "synthetic-demo", mode: "demo" },
 };
+
+const starterContributionDays = Array.from(
+  { length: 120 },
+  (_, index) => ({ date: `demo-${index}`, count: (index * 5) % 8 }),
+);
 
 const starterContributions: ContributionSnapshot = {
-  totalContributions: 412,
+  totalContributions: starterContributionDays.reduce((total, day) => total + day.count, 0),
   pullRequests: 61,
   reviews: 74,
-  days: Array.from({ length: 28 }, (_, index) => ({ date: `demo-${index}`, count: (index * 5) % 8 })),
+  days: starterContributionDays,
   freshness: { generatedAt: "", source: "synthetic-demo", mode: "demo" },
-};
-
-const cardLabels: Record<CardKind, string> = {
-  profile: "Profile",
-  streak: "Streak",
-  activity: "Activity",
-  languages: "Languages",
-  projects: "Projects",
 };
 
 let nextProjectId = 3;
@@ -103,39 +118,56 @@ export default function StudioClient() {
   const [demo, setDemo] = useState(true);
   const [theme, setTheme] = useState("ember");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
-  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(new Set(Object.keys(cardLabels) as CardKind[]));
+  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(new Set(STUDIO_CARD_KINDS));
   const [profile, setProfile] = useState<ProfileSnapshot>(starterProfile);
   const [contributions, setContributions] = useState<ContributionSnapshot | null>(starterContributions);
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
   const [phase, setPhase] = useState<"ready" | "loading" | "error">("ready");
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
-  const [baseUrl, setBaseUrl] = useState(PLACEHOLDER_BASE_URL);
+  const [validatedPreview, setValidatedPreview] = useState<{ key: string; origin: string } | null>(null);
 
   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
+  const configurationKey = useMemo(() => buildStudioConfigurationKey({
+    owner: handle,
+    projects: activeProjects,
+    theme,
+    demo,
+  }), [activeProjects, demo, handle, theme]);
+  const hasCurrentContributions = hasCurrentLiveContributions({
+    demo,
+    currentConfigurationKey: configurationKey,
+    validatedConfigurationKey: validatedPreview?.key ?? null,
+    contributionsPresent: contributions !== null,
+  });
+  const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
   const markdown = useMemo(() => {
-    return (Object.keys(cardLabels) as CardKind[])
-      .filter((kind) => selectedCards.has(kind) && (kind !== "projects" || activeProjects.length > 0))
-      .map((kind) => {
-        const url = buildStudioRouteUrl(kind, {
-          owner: handle.trim() || "octocat",
-          projects: activeProjects,
-          theme,
-          demo,
-        });
-        return `![CommitAtlas ${cardLabels[kind]}](${baseUrl}${url})`;
-      })
-      .join("\n");
-  }, [activeProjects, baseUrl, demo, handle, selectedCards, theme]);
+    return buildStudioMarkdown({
+      baseUrl,
+      owner: handle.trim() || "octocat",
+      projects: activeProjects,
+      theme,
+      demo,
+      selectedCards,
+      hasCurrentContributions,
+    });
+  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, selectedCards, theme]);
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBaseUrl(PLACEHOLDER_BASE_URL);
+    setValidatedPreview(null);
     const login = handle.trim();
     if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
       setPhase("error");
       setNotice(retainedPreviewNotice("Enter a valid GitHub handle before previewing.", profile.login));
       return;
     }
+
+    const requestedConfigurationKey = buildStudioConfigurationKey({
+      owner: login,
+      projects: activeProjects,
+      theme,
+      demo,
+    });
 
     setPhase("loading");
     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
@@ -160,11 +192,11 @@ export default function StudioClient() {
       setProfile(nextProfile);
       setContributions(contributionResult.value);
       setBoard(nextBoard);
-      setBaseUrl(window.location.origin);
+      setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
       setPhase("ready");
       setNotice(
         contributionResult.error
-          ? "Profile and projects loaded. Contribution history is unavailable without a server-side token; no value was guessed."
+          ? contributionUnavailableNotice()
           : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
       );
     } catch (error) {
@@ -241,9 +273,18 @@ export default function StudioClient() {
 
           <fieldset className="card-picker">
             <legend>Cards to copy</legend>
-            {(Object.keys(cardLabels) as CardKind[]).map((kind) => (
-              <label key={kind}><input type="checkbox" checked={selectedCards.has(kind)} onChange={() => toggleCard(kind)} /><span>{cardLabels[kind]}</span></label>
-            ))}
+            {STUDIO_CARD_KINDS.map((kind) => {
+              const available = isStudioCardAvailable(kind, { demo, hasCurrentContributions });
+              return (
+                <label key={kind}>
+                  <input type="checkbox" checked={selectedCards.has(kind)} disabled={!available} onChange={() => toggleCard(kind)} />
+                  <span>{STUDIO_CARD_LABELS[kind]}</span>
+                </label>
+              );
+            })}
+            {!demo && !hasCurrentContributions && (
+              <p className="card-availability-note">Streak and Activity stay selected but are omitted until this live preview has contribution history.</p>
+            )}
           </fieldset>
 
           <div className="project-config-heading"><div><span>02</span><h2>Projects</h2></div><button type="button" onClick={() => projects.length < 6 && setProjects((current) => [...current, { id: nextProjectId++, repo: "", lifecycle: "planned", workflow: "", docs: "", install: "", download: "" }])} disabled={projects.length >= 6}>+ Add</button></div>
@@ -273,17 +314,17 @@ export default function StudioClient() {
 
           <article className={`live-profile-card theme-${theme}`}>
             <header><div><p>Developer atlas</p><h3>{profile.name || `@${profile.login}`}</h3><a href={profile.profileUrl} target="_blank" rel="noreferrer">@{profile.login} <span aria-hidden="true">↗</span></a></div><span>{profile.freshness.source}</span></header>
-            <div className="live-metrics"><div><strong>{formatNumber(contributions?.totalContributions)}</strong><span>Contributions</span></div><div><strong>{formatNumber(profile.stars)}</strong><span>Stars</span></div><div><strong>{formatNumber(profile.followers)}</strong><span>Followers</span></div><div><strong>{formatNumber(profile.publicRepositories)}</strong><span>Repositories</span></div></div>
+            <div className="live-metrics"><div><strong>{formatNumber(contributions?.totalContributions)}</strong><span>{contributionMetricLabel(contributions?.days.length ?? null)}</span></div><div title={profile.repositoriesTruncated ? "Star total unavailable because GitHub returned a partial repository list." : undefined}><strong>{formatNumber(visibleProfileStars(profile.stars, profile.repositoriesTruncated))}</strong><span>{profile.repositoriesTruncated ? "Stars unavailable" : "Stars"}</span></div><div><strong>{formatNumber(profile.followers)}</strong><span>Followers</span></div><div><strong>{formatNumber(profile.publicRepositories)}</strong><span>Repositories</span></div></div>
             <div className="live-activity" aria-label={contributions ? "Contribution activity for the latest 28 returned days" : "Contribution activity unavailable"}>
-              {activity.length ? activity.map((day) => <i key={day.date} title={`${day.date}: ${day.count}`} style={{ height: `${Math.max(8, (day.count / maxActivity) * 100)}%` }} />) : <p>Contribution history unavailable</p>}
+              {activity.length ? activity.map((day) => <i key={day.date} title={`${day.date}: ${day.count}`} style={{ height: `${activityBarPercent(day.count, maxActivity)}%` }} />) : <p>Contribution history unavailable</p>}
             </div>
-            <footer><span>{contributions ? `${activity.length}-day returned window` : "No contribution source"}</span><strong>{profile.freshness.generatedAt ? new Date(profile.freshness.generatedAt).toLocaleString() : "Starter fixture"}</strong></footer>
+            <footer><span>{contributions ? contributionWindowLabel(contributions.days.length, activity.length) : "No contribution source"}</span><strong>{profile.freshness.generatedAt ? new Date(profile.freshness.generatedAt).toLocaleString() : "Starter fixture"}</strong></footer>
           </article>
 
           <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{board?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Actions are HTML, not SVG</span></div>
           <div className="dashboard-list">
-            {(board?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={projects.find((item) => item.repo.toLowerCase() === project.name.toLowerCase())} />)}
-            {!board && activeProjects.map((project, index) => <StarterProjectRow key={project.id} project={project} index={index} owner={handle.trim() || "octocat"} />)}
+            {(board?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
+            {!board && activeProjects.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
             {!activeProjects.length && <div className="empty-projects"><strong>No projects selected</strong><span>Add a repository to build a project-health dashboard.</span></div>}
           </div>
 
@@ -304,8 +345,8 @@ export default function StudioClient() {
 
 function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: ProjectDraft }) {
   const actions = [
-    ["Source", project.sourceUrl], ["Website", project.websiteUrl], ["Docs", safeUrl(draft?.docs)],
-    ["Install", safeUrl(draft?.install)], ["Download", safeUrl(draft?.download) || project.release?.download?.url],
+    ["Source", project.sourceUrl], ["Website", project.websiteUrl], ["Docs", safeProjectActionUrl(draft?.docs)],
+    ["Install", safeProjectActionUrl(draft?.install)], ["Download", safeProjectActionUrl(draft?.download) || project.release?.download?.url],
     ["Release", project.release?.url], ["CI", project.ci.url],
   ].filter((item): item is [string, string] => Boolean(item[1]));
   return (
@@ -317,12 +358,10 @@ function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: Proj
   );
 }
 
-function StarterProjectRow({ project, index, owner }: { project: ProjectDraft; index: number; owner: string }) {
-  const states = ["Passing", "Pending", "Not configured"];
-  const state = states[index % states.length];
-  const tone = index === 0 ? "good" : index === 1 ? "warn" : "muted";
-  const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo)}`], ["Docs", safeUrl(project.docs)], ["Install", safeUrl(project.install)], ["Download", safeUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
-  return <article className="dashboard-project synthetic"><div className="project-title"><span className={`signal-dot ${tone}`} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={tone}>{state}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{project.workflow || "Default"}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
+function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: string }) {
+  const ci = starterCiPresentation(project.workflow);
+  const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", safeProjectActionUrl(project.docs)], ["Install", safeProjectActionUrl(project.install)], ["Download", safeProjectActionUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
+  return <article className="dashboard-project synthetic"><div className="project-title"><span className={`signal-dot ${ci.tone}`} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -336,14 +375,6 @@ async function fetchJson<T>(url: string): Promise<T> {
     throw new Error(message);
   }
   return response.json() as Promise<T>;
-}
-
-function safeUrl(value: string | null | undefined): string | null {
-  if (!value) return null;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" && !parsed.username && !parsed.password ? parsed.toString() : null;
-  } catch { return null; }
 }
 
 function ciTone(state: string): string {

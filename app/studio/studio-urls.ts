@@ -15,6 +15,30 @@ export interface StudioRouteOptions {
   projects?: StudioProjectInput[];
 }
 
+export function buildStudioConfigurationKey(options: StudioRouteOptions): string {
+  return JSON.stringify({
+    owner: options.owner.trim().toLowerCase(),
+    theme: options.theme,
+    demo: options.demo,
+    days: options.days ?? null,
+    projects: (options.projects ?? [])
+      .filter((project) => project.repo.trim())
+      .map((project) => ({
+        repo: project.repo.trim().toLowerCase(),
+        lifecycle: project.lifecycle,
+        workflow: project.workflow?.trim() ?? "",
+      })),
+  });
+}
+
+export function resolveStudioBaseUrl(
+  currentConfigurationKey: string,
+  validatedPreview: { key: string; origin: string } | null,
+  placeholder: string,
+): string {
+  return validatedPreview?.key === currentConfigurationKey ? validatedPreview.origin : placeholder;
+}
+
 const cardPaths: Record<Exclude<StudioCardKind, "projects">, string> = {
   profile: "/api/v1/cards/profile.svg",
   streak: "/api/v1/cards/streak.svg",

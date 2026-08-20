@@ -221,6 +221,8 @@ button, input { font: inherit; }
 .card-picker span { min-height: 31px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid rgba(238,233,225,.13); color: #817a70; font: 550 9px/1 var(--font-geist-mono), monospace; }
 .card-picker input:checked + span { color: var(--ink); border-color: rgba(255,200,87,.4); background: rgba(255,200,87,.07); }
 .card-picker input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.card-picker input:disabled + span { opacity: .46; cursor: not-allowed; border-style: dashed; }
+.card-availability-note { width: 100%; margin: 2px 0 0; color: #91897f; font-size: 9px; line-height: 1.5; }
 .project-config-heading { margin: 34px 0 0; padding-top: 27px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); }
 .project-config-heading > div { display: flex; align-items: center; gap: 10px; }
 .project-config-heading span { color: var(--ember); font: 600 9px/1 var(--font-geist-mono), monospace; }
