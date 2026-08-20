@@ -24,5 +24,7 @@ to use in a responsive HTML `<picture>` without desktop/mobile data drift.
 
 Config and output paths must remain inside the repository and may not traverse symlinks. Every input,
 metric, render, and output size is validated before staged per-file replacement; unrelated siblings
-remain untouched. The caller owns commits and deployment. The package has no private mode, fixture
+remain untouched. After successful replacement, known CommitAtlas filenames that are no longer in
+the manifest are removed so a disabled card or prior responsive layout cannot remain stale. The
+caller owns commits and deployment. The package has no private mode, fixture
 mode, token argument, or publication side effect.

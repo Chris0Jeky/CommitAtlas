@@ -106,6 +106,19 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
       assert.equal(body.byteLength, artifact.bytes);
       assert.equal(createHash("sha256").update(body).digest("hex"), artifact.sha256);
     }
+
+    const switched = parseStaticConfig({
+      ...rawConfig(),
+      cards: ["atlas"],
+      layout: "compact",
+      responsiveAtlas: true,
+    });
+    await generateStaticFromSnapshot({ root, config: switched, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas-wide.svg", "atlas.svg", "keep.txt", "manifest.json"]);
+
+    const narrowed = parseStaticConfig({ ...rawConfig(), cards: ["atlas"], layout: "compact" });
+    await generateStaticFromSnapshot({ root, config: narrowed, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "keep.txt", "manifest.json"]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

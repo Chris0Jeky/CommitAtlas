@@ -81,7 +81,8 @@ in HTML.
 The static package reads one tracked `.commitatlas.json`, fetches public data without a credential,
 builds one `PortfolioSnapshot`, renders a selected subset of six cards, and writes `manifest.json`
 with byte sizes and SHA-256 hashes. Repository-contained path and symlink checks run before output.
-All data and payloads validate before staged per-file replacement; unrelated siblings survive.
+All data and payloads validate before staged per-file replacement; unrelated siblings survive while
+stale files from the bounded set of CommitAtlas-managed artifact names are removed after success.
 When `responsiveAtlas` is enabled, the same snapshot also renders the alternate Atlas layout into
 the same manifest, so responsive consumers never compare two independently fetched datasets.
 

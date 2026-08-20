@@ -5,11 +5,17 @@ import { GitHubClient, type PortfolioSnapshot, type ProjectLifecycle, type Proje
 import {
   loadStaticConfig,
   resolveContainedPath,
+  STATIC_CARD_NAMES,
   type StaticConfig,
 } from "./config.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
+const MANAGED_ARTIFACT_NAMES = [
+  ...STATIC_CARD_NAMES.map((card) => `${card}.svg`),
+  "atlas-compact.svg",
+  "atlas-wide.svg",
+] as const;
 
 export interface GeneratedArtifact {
   readonly path: string;
@@ -135,6 +141,10 @@ async function writeArtifacts(
       staged.push({ temporary, destination: path.join(outputDir, payload.name) });
     }
     for (const file of staged) await rename(file.temporary, file.destination);
+    const current = new Set(payloads.map(({ name }) => name));
+    await Promise.all(MANAGED_ARTIFACT_NAMES
+      .filter((name) => !current.has(name))
+      .map((name) => rm(path.join(outputDir, name), { force: true })));
   } finally {
     await Promise.all(staged.map(({ temporary }) => rm(temporary, { force: true }).catch(() => undefined)));
   }

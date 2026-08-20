@@ -106,7 +106,8 @@ projects.svg
 and SHA-256 hash for every generated card. All upstream data, metrics, SVG contents, paths, and size
 limits are validated before writing begins. Payloads are staged in the output directory and replaced
 per file; unrelated sibling files are preserved. This is per-file atomic replacement, not a claim of
-a cross-file filesystem transaction.
+a cross-file filesystem transaction. After successful replacement, known CommitAtlas artifact names
+that are absent from the new manifest are removed to prevent stale responsive or deselected cards.
 
 All six renderers consume one `PortfolioSnapshot`, so every card and the manifest share one window
 and provenance. `responsiveAtlas` renders the alternate wide/compact layout from that same snapshot
