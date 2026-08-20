@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-20 13:56 BST
+Last verified: 2026-08-20 14:03 BST
 
 This is an intentional end-of-session checkpoint, not a completion or release claim. GitHub, Git,
 CI, and unresolved review threads were re-read before this file was updated. Fetch again when
@@ -90,15 +90,15 @@ PR until the renderer base is settled and the five thin routes are implemented.
 
 - Worktree: `work/CommitAtlas` (primary checkout)
 - Branch: `feat/studio-dashboard`
-- Parent of this checkpoint commit: `4159acdda5ccf98a3ced442e3df71440d4b8eb47`
+- Last product/plan head before the closeout docs: `4159acdda5ccf98a3ced442e3df71440d4b8eb47`
 - No pull request is open because the generated SVG endpoints do not exist yet.
 
 This branch contains the responsive landing page and accessible Studio, synthetic and public-data
 preview modes, four themes, selectable cards, up to six declared project configurations, truthful
 partial-data handling, HTTPS HTML actions, copyable README Markdown, and the original branded
-`public/og.png`. It is 21 mainline commits behind and has ten unique commits including this checkpoint;
-merge current `origin/main` only after the SVG and route work lands, then preserve the union of all
-tests. The Studio must also include each configured workflow in generated project URLs.
+`public/og.png`. It is behind current `main`; merge `origin/main` only after the SVG and route work
+lands, then preserve the union of all tests. The Studio must also include each configured workflow
+in generated project URLs.
 
 The previous root `npm run check` and 1440x900/390x844 visual pass were green before API/route
 integration. They are historical evidence, not proof of the final product. Repeated Vite hot reloads
