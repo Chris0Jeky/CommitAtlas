@@ -4,7 +4,7 @@ import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const siteUrl = "https://commitatlas.jeky-tck.chatgpt.site";
+const siteUrl = "https://commit-atlas.commit-atlas.workers.dev";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
