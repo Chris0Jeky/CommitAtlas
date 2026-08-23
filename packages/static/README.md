@@ -59,7 +59,14 @@ hosts and never requests any catalogued URL. The two link sources have different
 Either way the destination is made visible: every action in `projects.json` carries its `host` and
 an `external` flag, and `projects.md` appends `external host <hostname>` to any destination outside
 GitHub's own hosts — including allowlisted-but-not-GitHub ones such as `www.npmjs.com`.
-`*.github.io` counts as external too: GitHub Pages content is author-controlled, not GitHub-owned.
+
+The test is the **hostname**, not who authored what it serves. The unlabelled set is a fixed list of
+hostnames GitHub operates and a repository owner cannot choose; `<anything>.github.io` is labelled
+because that hostname *is* owner-chosen. So an unlabelled destination is not a safety claim about
+what is behind it: `github.com/<owner>/<repo>`, a gist, and a release asset on
+`objects.githubusercontent.com` are all owner-supplied and all go unlabelled, because a repository
+catalog is expected to link to the owner's own repository. The label reports only the thing a reader
+would not otherwise assume — that a destination is not on GitHub at all.
 
 With all eight cards and `responsiveAtlas: true`, the output
 contains 11 payload artifacts (eight SVGs, one Atlas companion, and two project catalogs) plus

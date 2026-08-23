@@ -18,6 +18,8 @@ import {
 } from "../dist/index.js";
 
 const generatedAt = "2026-08-20T12:00:00.000Z";
+/** A legal git ref name that `boundedText` trims away to nothing, unlike an ASCII space. */
+const NON_BREAKING_SPACE = "\u00a0";
 
 test("validates one contained config and rejects ambiguous projects or card selections", () => {
   const parsed = config();
@@ -263,6 +265,19 @@ test("wraps untrusted release tags and workflow names in delimiter-safe code spa
   assert.equal(codeSpan("has ` one"), "``has ` one``");
   assert.equal(codeSpan("`edge`"), "`` `edge` ``");
   assert.throws(() => codeSpan(""), /empty value as a Markdown code span/);
+
+  // The spec's "entirely spaces" exemption is U+0020 only. trim() also strips tab and NBSP, which
+  // would skip the padding here and lose a space at each end when the reader applies the rule.
+  assert.equal(codeSpan(" \t "), "`  \t  `");
+  assert.deepEqual(scanCodeSpans(codeSpan(" \t ")).map((span) => span.content), [" \t "]);
+  assert.equal(codeSpan(" "), "` `");
+  assert.equal(codeSpan(NON_BREAKING_SPACE), "`\u00a0`");
+  assert.equal(codeSpan("   "), "`   `");
+
+  // A tag of nothing but non-ASCII whitespace trims to empty: drop the parenthetical, do not throw.
+  const blank = renderProjectCatalogArtifacts(withRelease(NON_BREAKING_SPACE), config())["projects.md"];
+  assert.equal(markdownLine(blank, "- **Release:**"), "- **Release:** Atlas release");
+  assert.equal(JSON.parse(renderProjectCatalogArtifacts(withRelease(NON_BREAKING_SPACE), config())["projects.json"]).projects[0].release.tag, "");
 });
 
 test("emits no Markdown table rows, so a pipe can never break a cell", () => {
@@ -335,6 +350,38 @@ test("names every non-GitHub destination without dropping legitimate project web
   const website = JSON.parse(lookalike["projects.json"]).projects[0].actions.find((action) => action.kind === "website");
   assert.deepEqual([website.host, website.external], ["github.com.evil.example", true]);
   assert.match(lookalike["projects.md"], /external host `github\.com\.evil\.example`/);
+
+  // The rule is about the hostname, not who authored what it serves. A Pages hostname is chosen by
+  // its owner, so it is disclosed; a release asset on a fixed GitHub hostname is not, even though
+  // the binary behind it is entirely owner-supplied.
+  const pages = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        websiteUrl: "https://octocat.github.io/atlas",
+        release: {
+          tag: "v1",
+          name: "Atlas 1",
+          url: "https://github.com/octocat/atlas/releases/tag/v1",
+          publishedAt: generatedAt,
+          download: { name: "atlas.zip", url: "https://objects.githubusercontent.com/octocat/atlas.zip" },
+        },
+      }],
+    },
+  }, config());
+  const classified = JSON.parse(pages["projects.json"]).projects[0].actions
+    .map((action) => [action.kind, action.host, action.external]);
+  assert.deepEqual(classified, [
+    ["source", "github.com", false],
+    ["website", "octocat.github.io", true],
+    ["release", "github.com", false],
+    ["release-download", "objects.githubusercontent.com", false],
+    ["docs", "github.com", false],
+  ]);
+  assert.match(pages["projects.md"], /- \[Website\][^\n]*external host `octocat\.github\.io`/);
+  assert.doesNotMatch(pages["projects.md"], /- \[Release download\][^\n]*external host/);
 });
 
 test("never removes a projects catalog file CommitAtlas did not write", async () => {
@@ -434,8 +481,13 @@ function markdownLine(markdown, prefix) {
 /**
  * Independent CommonMark 0.31 §6.1 code-span scanner, written from the spec rather than from the
  * renderer: an opening backtick run is closed by the next run of exactly the same length, and a
- * single space is stripped from each end when the content begins and ends with one without being
- * all spaces. An opener with no matching closer is literal text.
+ * single U+0020 is stripped from each end when the content begins and ends with one without
+ * consisting entirely of them. An opener with no matching closer is literal text.
+ *
+ * Limitation: this scans one raw line for backticks only. A real parser resolves link destinations
+ * before code spans, so a backtick smuggled into a URL as `%60` looks line-destroying here while
+ * rendering correctly in practice. That direction is a false positive, never a false negative, so
+ * the scanner stays sound for what these tests assert.
  */
 function scanCodeSpans(line) {
   const runs = [...line.matchAll(/`+/g)];
@@ -451,7 +503,7 @@ function scanCodeSpans(line) {
     }
     const close = runs[closing];
     let content = line.slice(open.index + open[0].length, close.index);
-    if (content.startsWith(" ") && content.endsWith(" ") && content.trim() !== "") content = content.slice(1, -1);
+    if (content.startsWith(" ") && content.endsWith(" ") && !/^ *$/.test(content)) content = content.slice(1, -1);
     spans.push({ content, start: open.index, end: close.index + close[0].length });
     index = closing + 1;
   }

@@ -86,9 +86,20 @@ const ACTION_ORDER: readonly ProjectCatalogActionKind[] = [
  * back and may point anywhere; constraining it would break legitimate project websites.
  *
  * So this set is not an allowlist — it is the disclosure line. Any host outside it, allowlisted or
- * not, is emitted with `external: true` and labelled with its hostname in `projects.md`, which keeps
- * a non-GitHub destination from being presented as if it were GitHub-owned. `*.github.io` is
- * deliberately absent — GitHub Pages content is author-controlled, not GitHub-owned.
+ * not, is emitted with `external: true` and labelled with its hostname in `projects.md`.
+ *
+ * The rule is about the **hostname**, not about who authored what the hostname serves: these are
+ * fixed hostnames GitHub operates, none of which a repository owner can choose. `*.github.io` is
+ * absent because the label on a Pages hostname *is* author-chosen — `<anything>.github.io` is picked
+ * by its owner — not because Pages content is author-controlled.
+ *
+ * Content authorship is deliberately not the test, and the absence of a label is NOT a safety claim
+ * about the payload. Plenty of author-controlled content lives on these hostnames: every
+ * `github.com/<owner>/<repo>` page, every gist, and — the sharpest case — the `release-download`
+ * action, which points at an arbitrary binary the owner uploaded to
+ * `objects.githubusercontent.com`. All of those go unlabelled, because a reader of a repository
+ * catalog already expects the owner's own repository content. What the label adds is the one thing
+ * that is not expected: this destination is not on GitHub at all.
  *
  * This is a *rendering* boundary and is distinct from the outbound-fetch invariant: CommitAtlas still
  * fetches data only from GitHub-owned hosts. It never requests any of these URLs.
@@ -283,7 +294,13 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
     lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** ${codeSpan(project.repo)}`, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (${codeSpan(project.ci.workflow)})` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
     lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues/PRs`);
-    if (project.release) lines.push(`- **Release:** ${escapeMarkdown(project.release.name)} (${codeSpan(project.release.tag)})`);
+    // `boundedText` trims, so a tag of nothing but non-ASCII whitespace (a single U+00A0 is a legal
+    // git ref name) reaches here empty. Drop the parenthetical the way an absent `ci.workflow` is
+    // dropped, rather than throwing and failing every artifact over one cosmetic field.
+    if (project.release) {
+      const tag = project.release.tag ? ` (${codeSpan(project.release.tag)})` : "";
+      lines.push(`- **Release:** ${escapeMarkdown(project.release.name)}${tag}`);
+    }
     lines.push("", "### Actions", "");
     for (const action of project.actions) {
       const provenance = action.origin === "snapshot" ? "observed" : "configured";
@@ -311,13 +328,19 @@ function escapeMarkdown(value: string): string {
  * correct construction is a backtick fence longer than the longest backtick run in the content, plus
  * a single space of padding when the content starts or ends with a backtick (it would otherwise merge
  * into the fence) or when it both starts and ends with a space (the reader strips one from each end).
+ *
+ * The "consists entirely of spaces" exemption is U+0020 only, per the spec, so it is tested with
+ * `/^ *$/` rather than `String.prototype.trim()` — trim also strips tab, NBSP, U+2000-200A and
+ * U+3000, which would skip the padding for content like `" \t "` and silently lose a space at each
+ * end. Callers must not pass an empty string; every current call site is either structurally
+ * non-empty or guarded, and the throw is a programming-error guard, not a data path.
  */
 export function codeSpan(value: string): string {
   if (value.length === 0) throw new Error("Cannot render an empty value as a Markdown code span");
   const longestRun = (value.match(/`+/g) ?? []).reduce((longest, run) => Math.max(longest, run.length), 0);
   const fence = "`".repeat(longestRun + 1);
   const padded = value.startsWith("`") || value.endsWith("`")
-    || (value.startsWith(" ") && value.endsWith(" ") && value.trim() !== "");
+    || (value.startsWith(" ") && value.endsWith(" ") && !/^ *$/.test(value));
   const pad = padded ? " " : "";
   return `${fence}${pad}${value}${pad}${fence}`;
 }
