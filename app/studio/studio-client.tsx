@@ -151,10 +151,12 @@ export default function StudioClient() {
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
   const [previewCanvas, setPreviewCanvas] = useState<"auto" | "dark" | "light">("auto");
   const [validatedPreview, setValidatedPreview] = useState<{ key: string; origin: string } | null>(null);
-  // Configuration key of the newest preview request that has not produced a
-  // validated result. Set when a run starts, cleared only on success, so it
-  // survives a failed refresh of an unchanged configuration.
-  const [unresolvedRefreshKey, setUnresolvedRefreshKey] = useState<string | null>(null);
+  // Configuration keys whose preview request has not produced a validated result.
+  // A key is added when a run starts and removed only when that same key succeeds,
+  // so it survives a failed refresh of an unchanged configuration. This is a set
+  // rather than one key because a run for a different configuration must not
+  // overwrite — and thereby forget — an earlier configuration left unconfirmed.
+  const [unresolvedRefreshKeys, setUnresolvedRefreshKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
   const [previewConfiguration, setPreviewConfiguration] = useState<PreviewConfiguration>({
     owner: "octocat",
     projects: starterProjects,
@@ -203,7 +205,7 @@ export default function StudioClient() {
     demo,
     currentConfigurationKey: configurationKey,
     validatedConfigurationKey: validatedPreview?.key ?? null,
-    unresolvedRefreshKey,
+    unresolvedRefreshKeys,
     contributionsPresent: contributions !== null,
     repositoriesTruncated: profile.repositoriesTruncated,
   });
@@ -272,7 +274,7 @@ export default function StudioClient() {
     });
 
     setPhase("loading");
-    setUnresolvedRefreshKey(requestedConfigurationKey);
+    setUnresolvedRefreshKeys((current) => new Set(current).add(requestedConfigurationKey));
     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
     try {
       const common = `user=${encodeURIComponent(login)}&demo=${demo}`;
@@ -317,7 +319,12 @@ export default function StudioClient() {
         }));
       }
       setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
-      setUnresolvedRefreshKey(null);
+      // Resolve only this run's key; any other configuration left unconfirmed stays so.
+      setUnresolvedRefreshKeys((current) => {
+        const next = new Set(current);
+        next.delete(requestedConfigurationKey);
+        return next;
+      });
       setPhase("ready");
       setNotice(
         contributionResult.error
@@ -445,6 +452,15 @@ export default function StudioClient() {
               </details>
             ))}
           </div>
+          {/*
+            This `disabled` is load-bearing for the unresolved-evidence invariant, not
+            just a double-submit guard. It is the only thing keeping two preview runs
+            from overlapping: with two in flight for the same configuration, the first
+            to resolve would delete a key the second still owns and re-confirm evidence
+            the second has not returned. Comparing keys would not help — both runs share
+            one. Allowing concurrent runs requires a monotonic run id, so that a
+            resolving run clears the marker only if it is still the newest for its key.
+          */}
           <button className="preview-button" type="submit" disabled={phase === "loading"}>{phase === "loading" ? "Loading signals…" : "Preview atlas"}<span aria-hidden="true">→</span></button>
         </aside>
 
@@ -500,6 +516,14 @@ export default function StudioClient() {
           <div className="markdown-panel">
             <div><p>README Markdown</p><button type="button" onClick={copyMarkdown}>Copy Markdown</button></div>
             <textarea aria-label="Generated README Markdown" readOnly value={markdown || "Select one or more cards to generate Markdown."} />
+            {/*
+              The withheld-evidence explanation also lives beside the card picker, in the
+              other column. Repeat it here: this is where the short Markdown is read and
+              copied, so the reason it is short has to be legible without looking away.
+            */}
+            {!demo && refreshUnresolved && (
+              <small>{unconfirmedEvidenceNotice()}</small>
+            )}
             {(baseUrl.includes("localhost") || baseUrl.includes("your-commitatlas-host.example")) && (
               <small>Run Preview to bind these URLs to this Studio origin. Local URLs are for preview only.</small>
             )}
