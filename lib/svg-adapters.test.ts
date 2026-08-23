@@ -182,7 +182,7 @@ test("language and project adapters preserve explicit semantics and omit SVG act
       primaryLanguage: "TypeScript",
       stars: 2,
       forks: 0,
-      openIssues: 0,
+      openIssuesAndPullRequests: 0,
       pushedAt: null,
       license: null,
       ci: { state: "unavailable", label: "CI unavailable", workflow: null, url: null, checkedAt: null, headSha: null },

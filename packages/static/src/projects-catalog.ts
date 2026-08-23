@@ -44,7 +44,7 @@ export interface ProjectCatalogEntry {
   readonly primaryLanguage?: string;
   readonly stars: number;
   readonly forks: number;
-  readonly openIssues: number;
+  readonly openIssuesAndPullRequests: number;
   readonly pushedAt?: string;
   readonly ci: ProjectCatalogCi;
   readonly release?: ProjectCatalogRelease;
@@ -146,7 +146,7 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
     ...(project.primaryLanguage ? { primaryLanguage: boundedText(project.primaryLanguage, "language", MAX_LABEL) } : {}),
     stars: boundedCount(project.stars, "stars"),
     forks: boundedCount(project.forks, "forks"),
-    openIssues: boundedCount(project.openIssues, "open issues"),
+    openIssuesAndPullRequests: boundedCount(project.openIssuesAndPullRequests, "open issues and pull requests"),
     ...(project.pushedAt ? { pushedAt: boundedText(project.pushedAt, "pushedAt", 80) } : {}),
     ci: {
       state: project.ci.state,
@@ -231,7 +231,7 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
   for (const project of catalog.projects) {
     lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** \`${escapeCode(project.repo)}\``, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (\`${escapeCode(project.ci.workflow)}\`)` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
-    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues/PRs`);
+    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssuesAndPullRequests} open issues/PRs`);
     if (project.release) lines.push(`- **Release:** ${escapeMarkdown(project.release.name)} (\`${escapeCode(project.release.tag)}\`)`);
     lines.push("", "### Actions", "");
     for (const action of project.actions) lines.push(`- [${escapeMarkdown(action.label)}](${markdownUrl(action.url)}) — ${action.origin === "snapshot" ? "observed" : "configured"}`);
