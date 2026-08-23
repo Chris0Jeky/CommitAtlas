@@ -112,9 +112,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   rate limits.
 - GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
   Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
-- Open nonblocking work is tracked in #33, #34, #48, #49, and #50. #50 covers stricter generated
-  catalog boundaries; #49 covers direct package-renderer bounds. Do not reopen the completed
-  demonstration review loop unless release-impact evidence promotes an item.
+- Open nonblocking work is tracked in #33, #34, #48, and #50. #50 covers stricter generated
+  catalog boundaries. #49 closed the direct package-renderer bounds: breakdown window labels and
+  rhythm level/basis now truncate at the `@commit-atlas/svg` boundary, and valid adapter inputs
+  render byte-identically. Do not reopen the completed demonstration review loop unless
+  release-impact evidence promotes an item.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.

@@ -228,6 +228,16 @@ const MAX_TITLE_LENGTH = 96;
 const MAX_DESCRIPTION_LENGTH = 180;
 const MAX_ACTIVITY_PERIOD_LENGTH = 32;
 const MAX_ACTIVITY_DAYS = 366;
+/**
+ * Window boundary labels are ISO calendar dates (`YYYY-MM-DD`, 10 characters). The cap leaves
+ * headroom for other bounded date spellings while stopping a direct caller from pushing an
+ * unbounded string into the breakdown scope line and accessible description.
+ */
+const MAX_WINDOW_LABEL_LENGTH = 24;
+/** Rhythm levels are a five-value enum whose longest member (`relentless`) is 10 characters. */
+const MAX_RHYTHM_LEVEL_LENGTH = 24;
+/** The canonical rhythm basis sentence is 79 characters; the cap leaves room without unbounded growth. */
+const MAX_RHYTHM_BASIS_LENGTH = 120;
 
 /** Escape text and attribute values before they enter an SVG document. */
 export function escapeXml(value: unknown): string {
@@ -551,9 +561,12 @@ export function renderContributionBreakdownCard(
   const total = values.reduce((sum, value) => sum + value, 0);
   const colors = [t.accent, t.negative, t.positive, t.warning] as const;
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
+  // Window boundaries come from the caller, so bound them here rather than trusting the adapter.
+  const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
+  const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
   const basisDescription = publicProfileMix
     ? `GitHub public-profile percentages from calendar-year profile views; these are not exact counts and are not scoped to the requested ${formatNumber(data.window.days, false)}-day contribution-calendar window`
-    : `exact categorized counts for ${data.window.from} to ${data.window.to}, ${formatNumber(data.window.days, false)} days`;
+    : `exact categorized counts for ${windowFrom} to ${windowTo}, ${formatNumber(data.window.days, false)} days`;
   const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
@@ -564,7 +577,7 @@ export function renderContributionBreakdownCard(
   out += sourceMarker(data.source, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
-    : `${data.window.from} → ${data.window.to} · ${formatNumber(data.window.days, false)} days`;
+    : `${windowFrom} → ${windowTo} · ${formatNumber(data.window.days, false)} days`;
   out += text(34, 70, scopeLabel, 10, t.muted, 550);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
@@ -613,12 +626,15 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const t = o.theme;
   const width = o.width;
   const score = Math.min(100, finite(data.rhythm.score));
+  // Level and basis are caller-supplied prose; bound them so a direct caller cannot inflate the card.
+  const level = truncateText(data.rhythm.level, MAX_RHYTHM_LEVEL_LENGTH);
+  const basis = truncateText(data.rhythm.basis, MAX_RHYTHM_BASIS_LENGTH);
   const current = formatNumber(finite(data.currentStreak), false);
   const open = data.currentStreakBoundary === "open";
   const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
   const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
   const metadata = sourceMetadata(data.source, o.title, o.description);
-  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${data.rhythm.level}; this is not a GitHub rank. ${data.rhythm.basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${level}; this is not a GitHub rank. ${basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -632,7 +648,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   out += `<circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.background}" stroke-width="10"/><circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.accent}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${progress.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${centerX} ${centerY})"/>`;
   out += text(centerX, centerY + 7, `${Math.round(score)}`, 28, t.text, 800, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
   const infoX = compact ? 164 : 166;
-  out += text(infoX, compact ? 91 : 88, data.rhythm.level.toUpperCase(), 11, t.accent, 750);
+  out += text(infoX, compact ? 91 : 88, level.toUpperCase(), 11, t.accent, 750);
   out += text(infoX, compact ? 114 : 111, `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`, 11, t.text, 600);
   out += text(infoX, compact ? 134 : 131, `${formatNumber(data.window.days, false)}-day window · current ${streakText}`, 10, t.muted, 550);
   out += text(infoX, compact ? 154 : 151, open ? "Streak can continue beyond this window" : "Streak is bounded to this window", 9, t.muted, 550);

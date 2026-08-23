@@ -31,6 +31,35 @@ function assertXml10(output) {
   }
 }
 
+const XML_ENTITY = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/;
+const XML_TAG = /^<(\/?)([A-Za-z][\w:.-]*)((?:\s+[A-Za-z][\w:.-]*\s*=\s*"[^"<]*")*)\s*(\/?)>/;
+
+/**
+ * Strict-enough XML well-formedness scan: every element opens and closes in order, every
+ * attribute value is double-quoted and free of raw markup, and text content carries no
+ * unescaped `<`, `>`, or bare `&`. Node has no bundled XML parser and this package takes no
+ * runtime dependencies, so the scanner lives with the tests that need it.
+ */
+function assertWellFormedXml(output) {
+  const stack = [];
+  let index = 0;
+  while (index < output.length) {
+    const open = output.indexOf("<", index);
+    const textRun = output.slice(index, open === -1 ? output.length : open);
+    assert.doesNotMatch(textRun, />/, "unescaped '>' in text content");
+    assert.doesNotMatch(textRun, XML_ENTITY, "unescaped '&' in text content");
+    if (open === -1) break;
+    const tag = XML_TAG.exec(output.slice(open));
+    assert.ok(tag, `malformed tag at offset ${open}: ${JSON.stringify(output.slice(open, open + 90))}`);
+    const [matched, closing, name, attributes, selfClosing] = tag;
+    assert.doesNotMatch(attributes, XML_ENTITY, `unescaped '&' in <${name}> attributes`);
+    if (closing) assert.equal(stack.pop(), name, `mismatched closing tag </${name}>`);
+    else if (!selfClosing) stack.push(name);
+    index = open + matched.length;
+  }
+  assert.deepEqual(stack, [], `unclosed elements: ${stack.join(", ")}`);
+}
+
 function assertSafeSvg(output, { allowStyle = false } = {}) {
   assert.match(output, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" role="img"/);
   assert.match(output, /aria-label="[^"]+"/);
@@ -542,4 +571,111 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(compact, /Trend unavailable/);
   assert.match(compact, /Streak is bounded to this window/);
   assertSafeSvg(compact);
+});
+
+/** Derive window labels from the clock so a pinned date can never decay into a stale fixture. */
+function isoDaysAgo(days) {
+  return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+const GEOMETRY_ATTRIBUTE = /\s(stroke-dasharray|stroke-width|height|width|x1|y1|x2|y2|cx|cy|rx|x|y|r)="([^"]*)"/g;
+
+function assertFiniteGeometry(output) {
+  let inspected = 0;
+  for (const [, name, value] of output.matchAll(GEOMETRY_ATTRIBUTE)) {
+    for (const token of value.trim().split(/\s+/)) {
+      assert.ok(Number.isFinite(Number(token)), `non-finite ${name} attribute value ${JSON.stringify(token)}`);
+    }
+    inspected += 1;
+  }
+  assert.ok(inspected > 0, "expected geometry attributes to inspect");
+}
+
+const breakdownWindowBasis = { commits: 7, issues: 2, pullRequests: 1, reviews: 0 };
+
+function rhythmFixture(overrides = {}) {
+  return {
+    source: "public-github",
+    window: { from: isoDaysAgo(90), to: isoDaysAgo(0), days: 90 },
+    activeDays: 30, density: 33.3, currentStreak: 4, currentStreakBoundary: "open",
+    trend: { buckets: [0, 1, 3, 2], recent28Days: 6, previous28Days: 3, changePercent: 100, direction: "up" },
+    rhythm: {
+      score: 44, level: "steady",
+      basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)",
+    },
+    ...overrides,
+  };
+}
+
+test("insight cards bound hostile direct-caller text at the package boundary", () => {
+  // Control characters, a lone surrogate, RTL override and zero-width space, then unbounded filler.
+  const hostileProse = `${injection}\u202eRTL\u200bZWSP\u0001`;
+  const overlong = `${hostileProse}${"A".repeat(50_000)}`;
+  const breakdown = renderContributionBreakdownCard({
+    source: "public-github",
+    window: { from: overlong, to: overlong, days: 90 },
+    breakdown: breakdownWindowBasis,
+    basis: "exact-counts",
+  });
+  const rhythm = renderRhythmCard(rhythmFixture({
+    window: { from: overlong, to: overlong, days: 90 },
+    rhythm: { score: 44, level: overlong, basis: overlong },
+  }));
+  for (const output of [breakdown, rhythm]) {
+    assertSafeSvg(output);
+    assertWellFormedXml(output);
+    assertFiniteGeometry(output);
+    assert.doesNotMatch(output, /NaN|Infinity/);
+    assert.doesNotMatch(output, /<foreignObject/i);
+    assert.doesNotMatch(output, /A{200}/, "unbounded caller text reached the rendered card");
+    assert.match(output, /…/, "truncation must stay visible instead of dropping text silently");
+    // Far below the 30KB budget: the same inputs rendered over 100KB before the boundary clamp.
+    assert.ok(Buffer.byteLength(output, "utf8") < 6_000, `bounded card grew to ${Buffer.byteLength(output, "utf8")} bytes`);
+  }
+  // Hostile text is escaped and kept, not dropped: the prefix survives truncation.
+  assert.match(breakdown, /&lt;img src=x onerror=/);
+  assert.match(rhythm, /&lt;IMG SRC=X ONERROR=&quot;ALE…/);
+  // Valid adapter-shaped values stay verbatim, so bounding does not rewrite truthful labels.
+  const valid = renderRhythmCard(rhythmFixture());
+  assert.match(valid, /STEADY/);
+  assert.match(valid, /70% active-day density \(capped at 80%\) \+ 30% current streak \(capped at 30 days\)/);
+  assert.doesNotMatch(valid, /…/);
+});
+
+test("insight cards keep non-finite direct-caller numerics out of the rendered SVG", () => {
+  const from = isoDaysAgo(90);
+  const to = isoDaysAgo(0);
+  for (const value of [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NaN]) {
+    const outputs = [
+      renderContributionBreakdownCard({
+        window: { from, to, days: value },
+        breakdown: { commits: value, issues: value, pullRequests: value, reviews: value },
+        basis: "exact-counts",
+      }),
+      renderContributionBreakdownCard({
+        window: { from, to, days: value },
+        breakdown: { commits: value, issues: value, pullRequests: 25, reviews: 0 },
+        basis: "public-profile-percentages",
+      }),
+      renderRhythmCard(rhythmFixture({
+        window: { from, to, days: value },
+        activeDays: value, density: value, currentStreak: value,
+        trend: { buckets: [value, value, 1], recent28Days: value, previous28Days: value, changePercent: value, direction: "up" },
+        rhythm: { score: value, level: "steady", basis: "bounded basis" },
+      })),
+      renderRhythmCard(rhythmFixture({ trend: { buckets: [], recent28Days: value, previous28Days: null, changePercent: value, direction: "new" } })),
+    ];
+    for (const output of outputs) {
+      assertSafeSvg(output);
+      assertWellFormedXml(output);
+      assertFiniteGeometry(output);
+      assert.doesNotMatch(output, /NaN|Infinity/, `non-finite ${String(value)} leaked into the card`);
+    }
+  }
+  // A non-enum rhythm level must not crash the renderer or emit an unbounded label.
+  const coerced = renderRhythmCard(rhythmFixture({ rhythm: { score: 44, level: 42, basis: undefined } }));
+  assertSafeSvg(coerced);
+  assertWellFormedXml(coerced);
+  assert.match(coerced, />42</);
+  assert.doesNotMatch(coerced, /undefined/);
 });
