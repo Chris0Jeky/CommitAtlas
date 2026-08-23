@@ -170,25 +170,46 @@ async function writeArtifacts(
   const owned = await previouslyWritten(outputDir);
   const staged: { temporary: string; destination: string }[] = [];
   try {
-    for (const payload of [...payloads, { name: MANIFEST_NAME, body: `${JSON.stringify(manifest, null, 2)}\n` }]) {
-      const temporary = path.join(outputDir, `.${payload.name}.${randomUUID()}.tmp`);
-      await writeFile(temporary, payload.body, { encoding: "utf8", flag: "wx" });
-      staged.push({ temporary, destination: path.join(outputDir, payload.name) });
+    for (const payload of payloads) staged.push(await stage(outputDir, payload));
+    const stagedManifest = await stage(outputDir, {
+      name: MANIFEST_NAME,
+      body: `${JSON.stringify(manifest, null, 2)}\n`,
+    });
+    staged.push(stagedManifest);
+    for (const file of staged) {
+      if (file !== stagedManifest) await rename(file.temporary, file.destination);
     }
-    for (const file of staged) await rename(file.temporary, file.destination);
+    // Collect stale artifacts while the PREVIOUS manifest is still the one on disk. That manifest is
+    // the only ownership record, so installing the new one first would drop a name from `owned`
+    // before the file it names was removed: a crash or a failing `rm` inside that window leaks the
+    // stale artifact permanently, because no later run could then prove it was CommitAtlas's to
+    // delete. Cleaning up first needs no recovery state — an interrupted run just leaves the old
+    // manifest in place, and the next successful run repeats the same collection.
     const current = new Set(payloads.map(({ name }) => name));
     await Promise.all(MANAGED_ARTIFACT_NAMES
       .filter((name) => !current.has(name) && owned.has(name))
       .map((name) => rm(path.join(outputDir, name), { force: true })));
+    await rename(stagedManifest.temporary, stagedManifest.destination);
   } finally {
     await Promise.all(staged.map(({ temporary }) => rm(temporary, { force: true }).catch(() => undefined)));
   }
 }
 
+async function stage(
+  outputDir: string,
+  payload: { readonly name: string; readonly body: string },
+): Promise<{ temporary: string; destination: string }> {
+  const temporary = path.join(outputDir, `.${payload.name}.${randomUUID()}.tmp`);
+  await writeFile(temporary, payload.body, { encoding: "utf8", flag: "wx" });
+  return { temporary, destination: path.join(outputDir, payload.name) };
+}
+
 /**
  * Names the previous CommitAtlas manifest in this directory claims to have written.
  *
- * Read before the new manifest replaces it. Anything unreadable, non-CommitAtlas, or malformed yields
+ * Read before the new manifest replaces it, and that replacement is deliberately held back until
+ * cleanup has finished, so this record stays recoverable for the whole deletion window.
+ * Anything unreadable, non-CommitAtlas, or malformed yields
  * an empty set, so cleanup does nothing rather than guessing — deleting a caller's file is the worse
  * failure than leaving a stale artifact behind. Callers intersect the result with
  * `MANAGED_ARTIFACT_NAMES`, so a tampered manifest cannot direct a delete at an arbitrary path.

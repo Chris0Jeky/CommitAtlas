@@ -319,6 +319,12 @@ test("names every non-GitHub destination without dropping legitimate project web
   assert.match(md, /- \[Source\]\(https:\/\/github\.com\/octocat\/atlas\) — observed\n/);
   assert.doesNotMatch(md, /- \[CI\][^\n]*external host/);
 
+  // Configured links are restricted, not merely disclosed: a project's own domain never parses.
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], links: { docs: "https://atlas.example.com/docs" } }],
+  }), /allowed host/);
+
   const lookalike = renderProjectCatalogArtifacts({
     ...base,
     projects: {
@@ -366,6 +372,34 @@ test("never removes a projects catalog file CommitAtlas did not write", async ()
     })}\n`);
     await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
     assert.ok((await readdir(output)).includes("projects.md"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("keeps the ownership record recoverable when cleanup is interrupted", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-resume-"));
+  try {
+    const output = path.join(root, "assets", "commitatlas");
+    await mkdir(output, { recursive: true });
+    const withCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas", "projects"] });
+    const withoutCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas"] });
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    const ownedManifest = await readFile(path.join(output, "manifest.json"), "utf8");
+
+    // Interrupt cleanup for real: a non-recursive rm over a directory throws, so the run aborts
+    // partway through stale collection. The manifest must still be the one that records ownership.
+    await rm(path.join(output, "projects.md"), { force: true });
+    await mkdir(path.join(output, "projects.md"));
+    await writeFile(path.join(output, "projects.md", "blocker.txt"), "makes rm throw\n");
+    await assert.rejects(generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() }));
+    assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);
+
+    // A crash anywhere in that window leaves the same state, so the next good run finishes the job.
+    await rm(path.join(output, "projects.md"), { recursive: true, force: true });
+    await writeFile(path.join(output, "projects.md"), "stale catalog CommitAtlas wrote\n");
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json"]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

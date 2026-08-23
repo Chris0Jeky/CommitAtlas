@@ -61,10 +61,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   run, padded at backtick edges) and `projects.md` emits no Markdown table, so no upstream value can
   open a link, a cell, or a row. `projects.json`/`projects.md` are reserved managed names, and
   cleanup deletes a known filename only when the previous `manifest.json` recorded CommitAtlas as its
-  writer, so a pre-existing unowned file survives. Rendered destinations are disclosed rather than
-  restricted: every action carries `host` and `external`, and `projects.md` labels any non
-  GitHub-owned host, which keeps legitimate project websites working without presenting them as
-  GitHub-owned.
+  writer, so a pre-existing unowned file survives. Cleanup runs before the new manifest is installed,
+  so an interrupted run leaves the ownership record intact and the next run finishes the collection.
+  Observed repository homepages are disclosed rather than restricted, while configured `links` stay
+  on the core `ALLOWED_LINK_HOSTS` allowlist: every action carries `host` and `external`, and
+  `projects.md` labels any non GitHub-owned host, which keeps legitimate project websites working
+  without presenting them as GitHub-owned.
 - Buildable `@commit-atlas/core`, `@commit-atlas/github`, `@commit-atlas/svg`, and
   `@commit-atlas/static` packages with canonical GPL-3.0-only package metadata and clean-consumer
   pack/import proof.

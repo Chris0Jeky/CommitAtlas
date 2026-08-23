@@ -46,12 +46,20 @@ backtick. `projects.md` deliberately emits no Markdown table: a `|` is structura
 row, and prose is escaped before it is written, so no upstream value can open a cell or a row.
 
 A rendered link is not an outbound data fetch. CommitAtlas still fetches only from GitHub-owned
-hosts and never requests any catalogued URL, but a repository homepage and the configured
-`links` may legitimately point anywhere — a project's own domain, npm, PyPI, Read the Docs.
-Constraining those hosts would break real project websites, so the boundary is disclosure rather
-than restriction: every action in `projects.json` carries its `host` and an `external` flag, and
-`projects.md` appends `external host <hostname>` to any destination outside GitHub's own hosts.
-`*.github.io` counts as external — GitHub Pages content is author-controlled, not GitHub-owned.
+hosts and never requests any catalogued URL. The two link sources have different boundaries:
+
+- **Configured** `links` (`docs`, `install`, `download`) stay **restricted**. `ProjectLinkSchema` in
+  `@commit-atlas/core` accepts HTTPS on the fixed `ALLOWED_LINK_HOSTS` allowlist only, so a link on
+  a project's own domain is rejected at config-parse time, not merely labelled. Widen that allowlist
+  if a host belongs there; do not expect the catalog to carry an arbitrary configured host.
+- **Observed** repository homepages come from `repo.homepage` and may point **anywhere** an HTTPS URL
+  can. Constraining them would break real project websites, so that boundary is disclosure rather
+  than restriction.
+
+Either way the destination is made visible: every action in `projects.json` carries its `host` and
+an `external` flag, and `projects.md` appends `external host <hostname>` to any destination outside
+GitHub's own hosts — including allowlisted-but-not-GitHub ones such as `www.npmjs.com`.
+`*.github.io` counts as external too: GitHub Pages content is author-controlled, not GitHub-owned.
 
 With all eight cards and `responsiveAtlas: true`, the output
 contains 11 payload artifacts (eight SVGs, one Atlas companion, and two project catalogs) plus

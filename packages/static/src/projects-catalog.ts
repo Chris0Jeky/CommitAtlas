@@ -79,12 +79,16 @@ const ACTION_ORDER: readonly ProjectCatalogActionKind[] = [
 /**
  * Trust boundary for rendered destinations.
  *
- * A repository homepage (`websiteUrl`) is arbitrary owner-supplied text that GitHub echoes back, and
- * configured `links` may legitimately point at npm, PyPI, Read the Docs, or a project's own domain.
- * Constraining those hosts would break legitimate project websites, so CommitAtlas keeps the link and
- * instead makes the destination visible: any host outside this GitHub-owned set is emitted with
- * `external: true` and is labelled with its hostname in `projects.md`. `*.github.io` is deliberately
- * absent — GitHub Pages content is author-controlled, not GitHub-owned.
+ * The two link sources are bounded differently. Configured `links` are already *restricted*:
+ * `ProjectLinkSchema` in `@commit-atlas/core` rejects anything off `ALLOWED_LINK_HOSTS` at
+ * config-parse time, so `validatedConfiguredUrl` can only ever yield an allowlisted host. An
+ * observed repository homepage (`websiteUrl`) is arbitrary owner-supplied text that GitHub echoes
+ * back and may point anywhere; constraining it would break legitimate project websites.
+ *
+ * So this set is not an allowlist — it is the disclosure line. Any host outside it, allowlisted or
+ * not, is emitted with `external: true` and labelled with its hostname in `projects.md`, which keeps
+ * a non-GitHub destination from being presented as if it were GitHub-owned. `*.github.io` is
+ * deliberately absent — GitHub Pages content is author-controlled, not GitHub-owned.
  *
  * This is a *rendering* boundary and is distinct from the outbound-fetch invariant: CommitAtlas still
  * fetches data only from GitHub-owned hosts. It never requests any of these URLs.
