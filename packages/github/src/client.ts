@@ -150,9 +150,6 @@ export class GitHubClient {
       from: from.toISOString(),
       to: to.toISOString(),
     });
-    // GitHub resolves an unknown login to an explicit null user rather than an
-    // error. That is the same not-found contract the REST routes return.
-    if (isRecord(payload.data) && payload.data.user === null) throw notFoundError();
     const user = nestedRecord(payload, "data", "user");
     const collection = user && isRecord(user.contributionsCollection)
       ? user.contributionsCollection
@@ -425,10 +422,13 @@ export class GitHubClient {
       headers: this.headers(),
       body: JSON.stringify({ query, variables }),
     });
-    const payload = await this.readResponse(response, false);
+    // GraphQL classifies its own payload errors so a partial not-found answer
+    // is recognised before the generic error path collapses it into an outage.
+    const payload = await this.readResponse(response, false, true);
     if (!isRecord(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid GraphQL response");
     }
+    assertGraphqlPayload(payload);
     return payload;
   }
 
@@ -478,7 +478,11 @@ export class GitHubClient {
     return headers;
   }
 
-  private async readResponse(response: Response, allowMissing: boolean): Promise<Record<string, unknown> | unknown[] | null> {
+  private async readResponse(
+    response: Response,
+    allowMissing: boolean,
+    allowPayloadErrors = false,
+  ): Promise<Record<string, unknown> | unknown[] | null> {
     // Only 404 proves an optional resource is absent. A 403 or 429 is a refusal
     // or a rate limit, and reporting it as "no release" or "no workflow run"
     // would turn an unknown signal into an observed one.
@@ -499,7 +503,7 @@ export class GitHubClient {
     if (!isRecord(payload) && !Array.isArray(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
     }
-    if (isRecord(payload) && Array.isArray(payload.errors) && payload.errors.length > 0) {
+    if (!allowPayloadErrors && isRecord(payload) && Array.isArray(payload.errors) && payload.errors.length > 0) {
       throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
     }
     return payload;
@@ -649,6 +653,24 @@ function privateDataError(message: string): GitHubApiError {
  */
 function notFoundError(): GitHubApiError {
   return new GitHubApiError("github_not_found", "No public GitHub resource matched this request", 404);
+}
+
+/**
+ * GitHub reports an unknown login as a partial success rather than a transport
+ * error: HTTP 200 carrying `data.user: null` alongside a NOT_FOUND entry in
+ * `errors`. Recognise exactly that shape before the generic GraphQL error path
+ * so it yields the same not-found contract as every REST route. The upstream
+ * message quotes the login that was probed, so it is discarded in favour of the
+ * one shared not-found message. Any other error, or a mix, stays an outage.
+ */
+function assertGraphqlPayload(payload: Record<string, unknown>): void {
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const missingUser = isRecord(payload.data) && payload.data.user === null;
+  const onlyNotFound = errors.every((error) => isRecord(error) && error.type === "NOT_FOUND");
+  if (missingUser && onlyNotFound) throw notFoundError();
+  if (errors.length > 0) {
+    throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
+  }
 }
 
 function hasOnlyPublicClassicScopes(token: string, scopes: string | null): boolean {

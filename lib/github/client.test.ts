@@ -769,6 +769,13 @@ test("returns one non-disclosing not-found contract for every missing public res
       .fetchProjects("acme", ["private-repo"], new Map([["private-repo", "active" as const]])),
     () => new GitHubClient({ fetchImpl: async () => html("Not Found", 404), now: () => NOW })
       .fetchPublicProfileContributions("unknown-user", 7),
+    // The token-backed GraphQL path reports an unknown login as a partial
+    // HTTP 200 answer rather than a 404, and must land on the same contract.
+    () => new GitHubClient({
+      token: "ghp_public-only",
+      fetchImpl: graphqlFetch(graphqlNotFoundPayload("unknown-user")),
+      now: () => NOW,
+    }).fetchContributions("unknown-user", 7),
   ]) {
     await assert.rejects(lookup(), (error: unknown) => {
       assert.ok(error instanceof GitHubApiError);
@@ -776,7 +783,7 @@ test("returns one non-disclosing not-found contract for every missing public res
       return true;
     });
   }
-  assert.equal(contracts.length, 4);
+  assert.equal(contracts.length, 5);
   for (const contract of contracts) {
     assert.deepEqual(contract, {
       code: "github_not_found",
@@ -788,19 +795,42 @@ test("returns one non-disclosing not-found contract for every missing public res
   assert.equal(contracts.every((contract) => !/private|exists|unknown-repo|private-repo|unknown-user/i.test(contract.message)), true);
 });
 
-test("returns the same not-found contract for a GraphQL login GitHub resolves to null", async () => {
-  const fetchImpl: typeof fetch = async (input) => {
-    const url = new URL(input instanceof Request ? input.url : input.toString());
-    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
-    return json({ data: { user: null } });
-  };
-  await assert.rejects(
-    new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => NOW }).fetchContributions("unknown-user", 7),
-    (error: unknown) => error instanceof GitHubApiError
-      && error.code === "github_not_found"
-      && error.status === 404
-      && error.message === "No public GitHub resource matched this request",
+test("recognizes the partial GraphQL not-found answer before the generic error path", async () => {
+  const contributions = (payload: unknown) =>
+    new GitHubClient({ token: "ghp_public-only", fetchImpl: graphqlFetch(payload), now: () => NOW })
+      .fetchContributions("unknown-user", 7);
+
+  // The live API answers an unknown login with HTTP 200 carrying BOTH a null
+  // user and a NOT_FOUND error entry. A fixture with only the null user would
+  // never exercise the generic error path this has to run ahead of.
+  const contracts: string[] = [];
+  for (const payload of [graphqlNotFoundPayload("unknown-user"), { data: { user: null } }]) {
+    await assert.rejects(contributions(payload), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      contracts.push(JSON.stringify({ code: error.code, status: error.status, message: error.message, retryAfter: error.retryAfter }));
+      // The upstream message quotes the probed login; ours must not.
+      assert.doesNotMatch(error.message, /unknown-user|resolve|login/i);
+      return true;
+    });
+  }
+  assert.equal(new Set(contracts).size, 1);
+  assert.equal(
+    contracts[0],
+    JSON.stringify({ code: "github_not_found", status: 404, message: "No public GitHub resource matched this request", retryAfter: null }),
   );
+
+  for (const [label, payload] of [
+    ["non-not-found error", { data: { user: null }, errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded" }] }],
+    ["mixed errors", { data: { user: null }, errors: [{ type: "NOT_FOUND" }, { type: "SERVICE_UNAVAILABLE" }] }],
+    ["error with a resolved user", { data: { user: { contributionsCollection: null } }, errors: [{ type: "SERVICE_UNAVAILABLE" }] }],
+  ] as const) {
+    await assert.rejects(contributions(payload), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError, label);
+      assert.equal(error.code, "github_unavailable", label);
+      assert.equal(error.status, 502, label);
+      return true;
+    });
+  }
 });
 
 test("keeps rate-limit and upstream-outage semantics distinct from not found", async () => {
@@ -961,6 +991,27 @@ function datesInYear(year: number): string[] {
     date.setUTCDate(date.getUTCDate() + 1);
   }
   return dates;
+}
+
+/** The exact partial answer api.github.com/graphql returns for an unknown login. */
+function graphqlNotFoundPayload(login: string): Record<string, unknown> {
+  return {
+    data: { user: null },
+    errors: [{
+      type: "NOT_FOUND",
+      path: ["user"],
+      locations: [{ line: 3, column: 5 }],
+      message: `Could not resolve to a User with the login of '${login}'.`,
+    }],
+  };
+}
+
+function graphqlFetch(payload: unknown): typeof fetch {
+  return async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+    return json(payload);
+  };
 }
 
 function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {

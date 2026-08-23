@@ -335,6 +335,36 @@ test("keeps rate-limit and upstream-outage codes distinct from not found in the 
   }
 });
 
+test("returns the not-found contract for the partial GraphQL not-found answer in the built Worker", async () => {
+  const calls = [];
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url.pathname);
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    // The exact partial answer api.github.com/graphql returns for an unknown
+    // login: HTTP 200, a null user, and a NOT_FOUND entry in errors.
+    return githubJson({
+      data: { user: null },
+      errors: [{
+        type: "NOT_FOUND",
+        path: ["user"],
+        locations: [{ line: 3, column: 5 }],
+        message: "Could not resolve to a User with the login of 'unknown-user'.",
+      }],
+    });
+  }, () => request("/api/v1/contributions?user=unknown-user&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+
+  assert.deepEqual(calls, ["/rate_limit", "/graphql"]);
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("retry-after"), null);
+  const payload = await response.json();
+  assert.equal(payload.error.code, "github_not_found");
+  assert.equal(payload.error.message, "No public GitHub resource matched this request");
+  // The upstream message quotes the probed login; the served contract must not.
+  assert.doesNotMatch(JSON.stringify(payload), /unknown-user|resolve to a User/i);
+});
+
 test("treats only 404 as an absent optional lookup in the built Worker project route", async () => {
   const projectFetch = (optional) => async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
