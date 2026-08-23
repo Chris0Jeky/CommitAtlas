@@ -6,8 +6,8 @@ path and static generator.
 
 ## Open the public demonstration
 
-Open [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site). The Studio is
-at [commitatlas.jeky-tck.chatgpt.site/studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
+Open [commit-atlas.commit-atlas.workers.dev](https://commit-atlas.commit-atlas.workers.dev). The Studio is
+at [commit-atlas.commit-atlas.workers.dev/studio](https://commit-atlas.commit-atlas.workers.dev/studio).
 The public [Chris0Jeky profile](https://github.com/Chris0Jeky) shows dependable SVG snapshots and a
 responsive Atlas companion produced from one public GitHub snapshot, with links back to the Studio.
 
@@ -90,18 +90,18 @@ preview-only; the public Studio emits its real HTTPS origin.
 
 Open these public examples:
 
-- [Rich Atlas](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
-- [Profile SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember)
-- [Streak SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
-- [Breakdown SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle)
-- [Rhythm SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=365&motion=none)
-- [Activity SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
-- [Languages SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/cards/languages.svg?user=octocat&demo=true&theme=paper)
-- [Projects SVG](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=ember)
-- [Health JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/health)
-- [Profile JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/profile?user=octocat&demo=true)
-- [Project JSON](https://commitatlas.jeky-tck.chatgpt.site/api/v1/projects?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true)
-- [Social image](https://commitatlas.jeky-tck.chatgpt.site/og.png)
+- [Rich Atlas](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
+- [Profile SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember)
+- [Streak SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora)
+- [Breakdown SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle)
+- [Rhythm SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=365&motion=none)
+- [Activity SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/activity.svg?user=octocat&demo=true&theme=midnight&days=120)
+- [Languages SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/languages.svg?user=octocat&demo=true&theme=paper)
+- [Projects SVG](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=ember)
+- [Health JSON](https://commit-atlas.commit-atlas.workers.dev/api/v1/health)
+- [Profile JSON](https://commit-atlas.commit-atlas.workers.dev/api/v1/profile?user=octocat&demo=true)
+- [Project JSON](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true)
+- [Social image](https://commit-atlas.commit-atlas.workers.dev/og.png)
 
 Each SVG should identify itself accessibly and contain no buttons or scripts. Individual project
 actions belong in the HTML Studio dashboard.
