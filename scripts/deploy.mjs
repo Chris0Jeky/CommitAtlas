@@ -18,6 +18,8 @@
  */
 import { spawnSync } from "node:child_process";
 
+import { extractDeployedOrigin } from "./deployed-origin.mjs";
+
 const skipBuild = process.argv.includes("--skip-build");
 
 /**
@@ -50,30 +52,14 @@ function exitOnFailure(label, status) {
   }
 }
 
-/**
- * Pull the deployed origin out of Wrangler's report. It prints each bound route
- * on its own line, so prefer a custom domain over the workers.dev fallback when
- * both are present.
- */
-export function extractDeployedOrigin(output) {
-  const urls = [...output.matchAll(/https:\/\/[a-z0-9.-]+\.[a-z]{2,}(?:\/\S*)?/gi)]
-    .map((match) => match[0].replace(/[).,]+$/, ""))
-    .filter((url) => !/(developers|dash|blog|community)\.cloudflare\.com/i.test(url));
-  if (urls.length === 0) return null;
-  const custom = urls.find((url) => !url.includes(".workers.dev"));
-  try {
-    return new URL(custom ?? urls[0]).origin;
-  } catch {
-    return null;
-  }
-}
-
 if (!skipBuild) {
   console.log("> building the Worker and its assets\n");
   exitOnFailure("npm run build", runShell("npm run build", { stdio: "inherit" }).status);
 }
 
 console.log("\n> deploying to Cloudflare Workers\n");
+// Captured rather than inherited because the deployed origin has to be read
+// back out of it; echoed immediately so nothing is hidden from the operator.
 const deploy = runShell("npx wrangler deploy");
 process.stdout.write(deploy.stdout ?? "");
 process.stderr.write(deploy.stderr ?? "");

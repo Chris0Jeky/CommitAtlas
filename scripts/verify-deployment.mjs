@@ -99,6 +99,9 @@ const checks = [
       assertSafeSvgMarkup(svg);
       const csp = response.headers.get("content-security-policy");
       assert(csp !== null && /script-src\s+'none'/.test(csp), `expected a script-blocking CSP, got "${csp}"`);
+      // Both branches block script; only the no-motion branch also blocks
+      // inline style, so assert that or the probe cannot tell them apart.
+      assert(/style-src\s+'none'/.test(csp), `expected motion=none to block inline style, got "${csp}"`);
     },
   },
 ];

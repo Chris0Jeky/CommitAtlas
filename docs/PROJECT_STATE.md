@@ -12,15 +12,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
-- Exact deployed application implementation: the head of `main` at the time of the last successful
-  Deploy run. The workflow publishes only a commit whose `CI` push run on `main` concluded
-  successfully, and a manual dispatch runs the full gate itself before deploying, so the deployed
-  commit is always a proven one.
+- Exact deployed application implementation: **published by a local `npm run deploy` from the
+  `feat/cloudflare-workers-deploy` branch, not by the Deploy workflow.** The workflow exists and is
+  reviewed but has never published: the two Cloudflare secrets are not configured, so it emits a
+  notice and skips. Once they are added it will publish only a commit whose `CI` push run on `main`
+  concluded successfully, and a manual dispatch will run the full gate itself before deploying — but
+  that property is not yet demonstrated by a run.
 - The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
 - Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
   Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
-  passed; this follow-up changes only the generated project-catalog label and Action bundle, so Sites
-  remains correctly bound to the preceding application source.
+  passed. At the time, that follow-up changed only the generated project-catalog label and Action
+  bundle, so the then-current Sites deployment stayed correctly bound to the preceding application
+  source. This is a historical note; Sites is no longer the canonical host.
 - **Production: [commit-atlas.commit-atlas.workers.dev](https://commit-atlas.commit-atlas.workers.dev),
   including the [interactive Studio](https://commit-atlas.commit-atlas.workers.dev/studio).**
   Cloudflare Workers, free plan. Configuration is reproducible from
@@ -88,9 +91,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Two bounded review rounds closed the misleading public-percentage scope defects. A separate
   catalog security/truth review and exact-head profile consumer review found no remaining
   CRITICAL/HIGH blocker.
-- Production version 8 returned 200 for health and all eight deterministic synthetic SVG routes.
-  Every exercised SVG returned the intended cache policy and CSP; an unknown query returned bounded
-  400 with `Cache-Control: no-store`.
+- Sites version 8 returned 200 for health and all eight deterministic synthetic SVG routes. Every
+  exercised SVG returned the intended cache policy and CSP; an unknown query returned bounded 400
+  with `Cache-Control: no-store`. That evidence is dated 2026-08-20 against the retired mirror; the
+  Cloudflare Worker was re-proved independently on 2026-08-23 (see above).
 - The production landing page exposes all eight real SVG responses. The Studio exposes eight
   selected previews, all controls, project evidence, and eight-line Markdown. Breakdown/Rhythm,
   Atlas, and the Studio gallery were visually inspected on the deployed site with no clipping at the

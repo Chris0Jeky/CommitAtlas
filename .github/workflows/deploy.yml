@@ -42,8 +42,12 @@ jobs:
     steps:
       - name: Refuse a manual deployment from a non-default ref
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        # Ref names may contain shell metacharacters, so pass it through the
+        # environment rather than interpolating it into the script body.
+        env:
+          REQUESTED_REF: ${{ github.ref }}
         run: |
-          echo "::error title=Manual deployment refused::Deploy only from main; got ${{ github.ref }}."
+          echo "::error title=Manual deployment refused::Deploy only from main; got ${REQUESTED_REF}."
           exit 1
 
       - name: Resolve deployment credentials
