@@ -8,6 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { calculateContributionMetrics } from "@commit-atlas/core";
 import {
+  codeSpan,
   generateStaticFromSnapshot,
   loadStaticConfig,
   parseStaticConfig,
@@ -223,6 +224,215 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("wraps untrusted release tags and workflow names in delimiter-safe code spans", () => {
+  const hostileTags = [
+    "v1.0-`code`",
+    "v2 ``` x ` y",
+    "`leading",
+    "trailing`",
+    "``",
+    "a` [pwned](https://evil.example) `b",
+    "v3 | piped",
+  ];
+  for (const tag of hostileTags) {
+    const md = renderProjectCatalogArtifacts(withRelease(tag), config())["projects.md"];
+    const line = markdownLine(md, "- **Release:**");
+    assert.deepEqual(scanCodeSpans(line).map((span) => span.content), [tag], `tag ${JSON.stringify(tag)}`);
+    assert.doesNotMatch(outsideCodeSpans(line), /\]\(|`/, `tag ${JSON.stringify(tag)} escaped its code span`);
+  }
+
+  const hostileWorkflow = "ci`x`|`` evil.yml";
+  const workflowConfig = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], workflow: hostileWorkflow }],
+  });
+  const base = snapshot();
+  const md = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{ ...base.projects.projects[0], ci: { ...base.projects.projects[0].ci, workflow: hostileWorkflow } }],
+    },
+  }, workflowConfig)["projects.md"];
+  const ciLine = markdownLine(md, "- **CI:**");
+  assert.deepEqual(scanCodeSpans(ciLine).map((span) => span.content), [hostileWorkflow]);
+  assert.doesNotMatch(outsideCodeSpans(ciLine), /`/);
+
+  assert.equal(codeSpan("plain"), "`plain`");
+  assert.equal(codeSpan("has ` one"), "``has ` one``");
+  assert.equal(codeSpan("`edge`"), "`` `edge` ``");
+  assert.throws(() => codeSpan(""), /empty value as a Markdown code span/);
+});
+
+test("emits no Markdown table rows, so a pipe can never break a cell", () => {
+  const hostile = withRelease("v4 | x");
+  const md = renderProjectCatalogArtifacts({
+    ...hostile,
+    projects: {
+      ...hostile.projects,
+      projects: [{ ...hostile.projects.projects[0], description: "Ships | fast | always" }],
+    },
+  }, config())["projects.md"];
+  for (const line of md.split("\n")) {
+    assert.doesNotMatch(line, /^\s*\|/, `table row emitted: ${line}`);
+    assert.doesNotMatch(line, /^\s{0,3}\|?[\s:-]*-{3,}[\s:|-]*$/, `table delimiter row emitted: ${line}`);
+    assert.doesNotMatch(outsideCodeSpans(line).replaceAll("\\|", ""), /\|/, `unescaped pipe outside a code span: ${line}`);
+  }
+  assert.match(md, /Ships \\\| fast \\\| always/);
+});
+
+test("names every non-GitHub destination without dropping legitimate project websites", () => {
+  const linked = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{
+      ...rawConfig().projects[0],
+      links: {
+        docs: "https://docs.github.com/en/repositories",
+        install: "https://www.npmjs.com/package/atlas",
+      },
+    }],
+  });
+  const base = snapshot();
+  const rendered = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        websiteUrl: "https://atlas.example.com/docs",
+        ci: { ...base.projects.projects[0].ci, url: "https://github.com/octocat/atlas/actions/runs/42" },
+      }],
+    },
+  }, linked);
+  const actions = JSON.parse(rendered["projects.json"]).projects[0].actions;
+  assert.deepEqual(actions.map((action) => [action.kind, action.host, action.external]), [
+    ["source", "github.com", false],
+    ["website", "atlas.example.com", true],
+    ["ci", "github.com", false],
+    ["docs", "docs.github.com", false],
+    ["install", "www.npmjs.com", true],
+  ]);
+  const md = rendered["projects.md"];
+  assert.match(md, /- \[Website\]\(https:\/\/atlas\.example\.com\/docs\) — observed · external host `atlas\.example\.com`/);
+  assert.match(md, /- \[Install\]\(https:\/\/www\.npmjs\.com\/package\/atlas\) — configured · external host `www\.npmjs\.com`/);
+  assert.match(md, /- \[Source\]\(https:\/\/github\.com\/octocat\/atlas\) — observed\n/);
+  assert.doesNotMatch(md, /- \[CI\][^\n]*external host/);
+
+  const lookalike = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{ ...base.projects.projects[0], websiteUrl: "https://github.com.evil.example/octocat/atlas" }],
+    },
+  }, config());
+  const website = JSON.parse(lookalike["projects.json"]).projects[0].actions.find((action) => action.kind === "website");
+  assert.deepEqual([website.host, website.external], ["github.com.evil.example", true]);
+  assert.match(lookalike["projects.md"], /external host `github\.com\.evil\.example`/);
+});
+
+test("never removes a projects catalog file CommitAtlas did not write", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-owned-"));
+  try {
+    const output = path.join(root, "assets", "commitatlas");
+    await mkdir(output, { recursive: true });
+    const preExistingJson = '{"mine":true}\n';
+    const preExistingMarkdown = "# my own project notes\n";
+    await writeFile(path.join(output, "projects.json"), preExistingJson);
+    await writeFile(path.join(output, "projects.md"), preExistingMarkdown);
+
+    const withoutCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas"] });
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json", "projects.json", "projects.md"]);
+    assert.equal(await readFile(path.join(output, "projects.json"), "utf8"), preExistingJson);
+    assert.equal(await readFile(path.join(output, "projects.md"), "utf8"), preExistingMarkdown);
+
+    const withCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas", "projects"] });
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    assert.notEqual(await readFile(path.join(output, "projects.json"), "utf8"), preExistingJson);
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json"]);
+
+    await writeFile(path.join(output, "projects.md"), preExistingMarkdown);
+    await writeFile(path.join(output, "manifest.json"), "not json at all\n");
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.equal(await readFile(path.join(output, "projects.md"), "utf8"), preExistingMarkdown);
+
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    await writeFile(path.join(output, "manifest.json"), `${JSON.stringify({
+      version: 1,
+      generator: "SomethingElse",
+      artifacts: [{ path: "projects.md" }],
+    })}\n`);
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.ok((await readdir(output)).includes("projects.md"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+function withRelease(tag) {
+  const base = snapshot();
+  return {
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        release: {
+          tag,
+          name: "Atlas release",
+          url: "https://github.com/octocat/atlas/releases/tag/latest",
+          publishedAt: generatedAt,
+          download: null,
+        },
+      }],
+    },
+  };
+}
+
+function markdownLine(markdown, prefix) {
+  const line = markdown.split("\n").find((candidate) => candidate.startsWith(prefix));
+  assert.ok(line, `no line starting with ${prefix}`);
+  return line;
+}
+
+/**
+ * Independent CommonMark 0.31 §6.1 code-span scanner, written from the spec rather than from the
+ * renderer: an opening backtick run is closed by the next run of exactly the same length, and a
+ * single space is stripped from each end when the content begins and ends with one without being
+ * all spaces. An opener with no matching closer is literal text.
+ */
+function scanCodeSpans(line) {
+  const runs = [...line.matchAll(/`+/g)];
+  const spans = [];
+  let index = 0;
+  while (index < runs.length) {
+    const open = runs[index];
+    let closing = index + 1;
+    while (closing < runs.length && runs[closing][0].length !== open[0].length) closing += 1;
+    if (closing >= runs.length) {
+      index += 1;
+      continue;
+    }
+    const close = runs[closing];
+    let content = line.slice(open.index + open[0].length, close.index);
+    if (content.startsWith(" ") && content.endsWith(" ") && content.trim() !== "") content = content.slice(1, -1);
+    spans.push({ content, start: open.index, end: close.index + close[0].length });
+    index = closing + 1;
+  }
+  return spans;
+}
+
+function outsideCodeSpans(line) {
+  let remainder = "";
+  let cursor = 0;
+  for (const span of scanCodeSpans(line)) {
+    remainder += line.slice(cursor, span.start);
+    cursor = span.end;
+  }
+  return remainder + line.slice(cursor);
+}
 
 function rawConfig() {
   return {

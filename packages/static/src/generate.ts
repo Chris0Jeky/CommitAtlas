@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { GitHubClient, type PortfolioSnapshot, type ProjectLifecycle, type ProjectWorkflow } from "@commit-atlas/github";
 import {
@@ -13,6 +13,17 @@ import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
 const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
+const MANIFEST_NAME = "manifest.json";
+/**
+ * Filenames CommitAtlas may write inside `outputDir`. `projects.json` and `projects.md` are reserved
+ * CommitAtlas-managed names there (see the package README): a run that selects `projects` overwrites
+ * them.
+ *
+ * Reserving a name is not on its own a licence to delete it. Membership here only makes a file
+ * *eligible* for stale-artifact cleanup; a file is actually removed only when the previous
+ * `manifest.json` in the same directory records CommitAtlas as its writer (see `previouslyWritten`),
+ * so an unrelated pre-existing `projects.json` a caller had before ever running CommitAtlas survives.
+ */
 const MANAGED_ARTIFACT_NAMES = [
   ...STATIC_CARD_NAMES.map((card) => `${card}.svg`),
   "atlas-compact.svg",
@@ -156,9 +167,10 @@ async function writeArtifacts(
   manifest: StaticManifest,
 ): Promise<void> {
   await mkdir(outputDir, { recursive: true });
+  const owned = await previouslyWritten(outputDir);
   const staged: { temporary: string; destination: string }[] = [];
   try {
-    for (const payload of [...payloads, { name: "manifest.json", body: `${JSON.stringify(manifest, null, 2)}\n` }]) {
+    for (const payload of [...payloads, { name: MANIFEST_NAME, body: `${JSON.stringify(manifest, null, 2)}\n` }]) {
       const temporary = path.join(outputDir, `.${payload.name}.${randomUUID()}.tmp`);
       await writeFile(temporary, payload.body, { encoding: "utf8", flag: "wx" });
       staged.push({ temporary, destination: path.join(outputDir, payload.name) });
@@ -166,11 +178,37 @@ async function writeArtifacts(
     for (const file of staged) await rename(file.temporary, file.destination);
     const current = new Set(payloads.map(({ name }) => name));
     await Promise.all(MANAGED_ARTIFACT_NAMES
-      .filter((name) => !current.has(name))
+      .filter((name) => !current.has(name) && owned.has(name))
       .map((name) => rm(path.join(outputDir, name), { force: true })));
   } finally {
     await Promise.all(staged.map(({ temporary }) => rm(temporary, { force: true }).catch(() => undefined)));
   }
+}
+
+/**
+ * Names the previous CommitAtlas manifest in this directory claims to have written.
+ *
+ * Read before the new manifest replaces it. Anything unreadable, non-CommitAtlas, or malformed yields
+ * an empty set, so cleanup does nothing rather than guessing — deleting a caller's file is the worse
+ * failure than leaving a stale artifact behind. Callers intersect the result with
+ * `MANAGED_ARTIFACT_NAMES`, so a tampered manifest cannot direct a delete at an arbitrary path.
+ */
+async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(path.join(outputDir, MANIFEST_NAME), "utf8"));
+  } catch {
+    return new Set();
+  }
+  if (typeof parsed !== "object" || parsed === null) return new Set();
+  const record = parsed as Partial<StaticManifest>;
+  if (record.version !== 1 || record.generator !== "CommitAtlas" || !Array.isArray(record.artifacts)) return new Set();
+  const names = new Set<string>();
+  for (const artifact of record.artifacts) {
+    const artifactPath: unknown = (artifact as { path?: unknown } | null)?.path;
+    if (typeof artifactPath === "string") names.add(artifactPath);
+  }
+  return names;
 }
 
 function resolveAsOf(value: string | undefined): Date {
