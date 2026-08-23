@@ -241,7 +241,7 @@ test("uses only aligned configured workflows in the built Worker project route",
   }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml"));
   assert.equal(configured.status, 200);
   assert.deepEqual((await configured.json()).projects[0].ci, {
-    state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: "2026-08-18T23:00:00Z", headSha: null,
+    state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: RECENT_RUN_UPDATED_AT, headSha: null,
   });
   assert.equal(configuredCalls.some((path) => path.endsWith("/actions/runs")), false);
 
@@ -323,7 +323,7 @@ async function withMockedFetch(fetchImpl, operation) {
   }
 }
 
-function publicContributionPayload(restrictions = {}, endingDate = "2026-08-18", includeFuture = false) {
+function publicContributionPayload(restrictions = {}, endingDate = new Date().toISOString().slice(0, 10), includeFuture = false) {
   const dates = Array.from({ length: 8 }, (_, offset) => shiftUtcDate(endingDate, -7 + offset));
   if (includeFuture) dates.push(shiftUtcDate(endingDate, 1));
   return {
@@ -365,8 +365,12 @@ function publicProjectPayload() {
   };
 }
 
+// CI freshness is a 72-hour window, so a pinned observation silently decays into
+// `stale` once the fixture ages past it. Observe one hour ago instead.
+const RECENT_RUN_UPDATED_AT = new Date(Date.now() - 3_600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+
 function workflowRuns(conclusion) {
   return {
-    workflow_runs: [{ status: "completed", conclusion, updated_at: "2026-08-18T23:00:00Z" }],
+    workflow_runs: [{ status: "completed", conclusion, updated_at: RECENT_RUN_UPDATED_AT }],
   };
 }
