@@ -2,7 +2,15 @@ import { ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/cor
 import { safeHttpsUrl, type PortfolioSnapshot, type ProjectReleaseSignal, type ProjectSnapshot } from "@commit-atlas/github";
 import type { StaticConfig } from "./config.js";
 
-export const PROJECT_CATALOG_VERSION = 1 as const;
+/**
+ * Version 2 is the first catalog shape that is not wire-compatible with
+ * version 1. A consumer's only compatibility gate is this number, so an
+ * incompatible shape must never keep the old one: two mutually invalid schemas
+ * sharing a version is exactly what the field exists to prevent. Bumping makes
+ * a version-1 reader fail closed with a clear version error instead of
+ * silently reading `undefined` out of a renamed or unexpected key.
+ */
+export const PROJECT_CATALOG_VERSION = 2 as const;
 
 export type ProjectCatalogActionKind =
   | "source"

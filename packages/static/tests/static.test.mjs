@@ -151,7 +151,10 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   const second = renderProjectCatalogArtifacts(richSnapshot, catalogConfig);
   assert.deepEqual(first, second);
   const parsed = JSON.parse(first["projects.json"]);
-  assert.equal(parsed.version, 1);
+  // Version 2 carries the renamed combined issue/PR key. A version-1 consumer
+  // must be turned away by the version gate rather than shown a shape it
+  // cannot validate.
+  assert.equal(parsed.version, 2);
   assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
     ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
