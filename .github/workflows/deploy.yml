@@ -1,9 +1,18 @@
 name: Deploy
 
-# Deploys the exact commit that already passed the quality gate. A push never
-# deploys on its own: CI must conclude successfully on `main` first, and this
-# workflow then checks out that same head SHA rather than whatever `main`
-# points at by the time it runs.
+# Deploys only a commit that has actually been proven.
+#
+# The `workflow_run` path is privileged: it runs in the base repository with
+# secrets available. `CI` also runs on `pull_request`, and a fork PR can name
+# its head branch `main`, so the trigger's own `branches:` filter is not a
+# trust boundary. The job condition below is: the triggering run must have been
+# a *push*, from *this* repository, on *main*, that *succeeded*. Only then is
+# `workflow_run.head_sha` a commit this repository has proven, and only then is
+# it safe to check it out and execute its dependencies with a deploy token.
+#
+# The `workflow_dispatch` path carries no `workflow_run` evidence at all, so it
+# proves the commit itself by running the full gate before deploying, and is
+# refused from any ref other than `main`.
 on:
   workflow_run:
     workflows: [CI]
@@ -22,10 +31,21 @@ jobs:
   cloudflare:
     name: Cloudflare Workers
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 20
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.conclusion == 'success')
 
     steps:
+      - name: Refuse a manual deployment from a non-default ref
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error title=Manual deployment refused::Deploy only from main; got ${{ github.ref }}."
+          exit 1
+
       - name: Resolve deployment credentials
         id: credentials
         env:
@@ -43,11 +63,12 @@ jobs:
         if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - name: Set up Node.js
         if: steps.credentials.outputs.configured == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
           cache: npm
@@ -56,19 +77,19 @@ jobs:
         if: steps.credentials.outputs.configured == 'true'
         run: npm ci
 
+      # A manual dispatch arrives with no CI evidence, so it earns its own.
+      - name: Prove this commit before a manual deployment
+        if: steps.credentials.outputs.configured == 'true' && github.event_name == 'workflow_dispatch'
+        run: npm run check
+
       - name: Build the Worker and its assets
         if: steps.credentials.outputs.configured == 'true'
         run: npm run build
 
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy to Cloudflare Workers and verify the result
         if: steps.credentials.outputs.configured == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler deploy
-
-      - name: Verify the deployed surface
-        if: steps.credentials.outputs.configured == 'true'
-        env:
-          BASE_URL: ${{ vars.DEPLOY_BASE_URL || 'https://commit-atlas.commit-atlas.workers.dev' }}
-        run: node scripts/verify-deployment.mjs "$BASE_URL"
+          DEPLOY_BASE_URL: ${{ vars.DEPLOY_BASE_URL }}
+        run: node scripts/deploy.mjs --skip-build

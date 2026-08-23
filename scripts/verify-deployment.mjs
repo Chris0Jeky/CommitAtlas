@@ -54,12 +54,14 @@ const checks = [
     },
   },
   {
-    name: "Studio server-renders",
+    name: "Studio server-renders its own page, not the landing page",
     async run(get) {
       const response = await get("/studio");
       assert(response.status === 200, `expected 200, got ${response.status}`);
       const html = await response.text();
-      assert(/Studio/.test(html), "Studio page is missing its own name");
+      // The landing page also contains the word "Studio", so match the title
+      // the Studio route alone sets (app/studio/page.tsx).
+      assert(/<title>Studio\s*—\s*CommitAtlas/.test(html), "the /studio response is not the Studio page");
     },
   },
   ...SVG_CARDS.map((path) => ({
@@ -70,25 +72,56 @@ const checks = [
       assert(response.status === 200, `expected 200, got ${response.status}`);
       const contentType = response.headers.get("content-type") ?? "";
       assert(/image\/svg\+xml/.test(contentType), `expected an SVG content type, got "${contentType}"`);
-      const svg = await response.text();
-      assert(svg.trimStart().startsWith("<svg") || svg.trimStart().startsWith("<?xml"), "response is not SVG markup");
-      for (const forbidden of ["<script", "<foreignObject", "<iframe", 'href="http://']) {
-        assert(!svg.includes(forbidden), `rendered SVG contains forbidden markup: ${forbidden}`);
-      }
+      assertSafeSvgMarkup(await response.text());
     },
   })),
   {
-    name: "an unknown query is rejected as bounded, uncached JSON",
+    name: "an out-of-range parameter value is rejected as bounded, uncached JSON",
     async run(get) {
-      const response = await get("/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=not-a-theme");
-      assert(response.status === 400, `expected 400, got ${response.status}`);
-      assert(
-        response.headers.get("cache-control") === "no-store",
-        `expected no-store, got "${response.headers.get("cache-control")}"`,
-      );
+      await assertBoundedRejection(get, "/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=not-a-theme");
+    },
+  },
+  {
+    name: "an unknown parameter is rejected as bounded, uncached JSON",
+    async run(get) {
+      await assertBoundedRejection(get, "/api/v1/cards/atlas.svg?user=octocat&demo=true&nonsense=1");
+    },
+  },
+  {
+    name: "motion=none still renders a safe SVG with its own security headers",
+    async run(get) {
+      // Every other probe uses motion=subtle, which takes the inline-style CSP
+      // branch. This exercises the other one.
+      const response = await get("/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=none&layout=wide");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const svg = await response.text();
+      assert(!/@keyframes/.test(svg), "motion=none must not emit animation keyframes");
+      assertSafeSvgMarkup(svg);
+      const csp = response.headers.get("content-security-policy");
+      assert(csp !== null && /script-src\s+'none'/.test(csp), `expected a script-blocking CSP, got "${csp}"`);
     },
   },
 ];
+
+async function assertBoundedRejection(get, path) {
+  const response = await get(path);
+  assert(response.status === 400, `expected 400, got ${response.status}`);
+  assert(
+    response.headers.get("cache-control") === "no-store",
+    `expected no-store, got "${response.headers.get("cache-control")}"`,
+  );
+  const contentType = response.headers.get("content-type") ?? "";
+  assert(/application\/json/.test(contentType), `expected JSON, got "${contentType}"`);
+  const body = await response.json();
+  assert(body?.status === "error", `expected an error envelope, got ${JSON.stringify(body).slice(0, 120)}`);
+}
+
+function assertSafeSvgMarkup(svg) {
+  assert(svg.trimStart().startsWith("<svg") || svg.trimStart().startsWith("<?xml"), "response is not SVG markup");
+  for (const forbidden of ["<script", "<foreignObject", "<iframe", 'href="http://', " onload=", " onclick="]) {
+    assert(!svg.toLowerCase().includes(forbidden.toLowerCase()), `rendered SVG contains forbidden markup: ${forbidden}`);
+  }
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

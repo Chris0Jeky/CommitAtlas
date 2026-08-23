@@ -92,11 +92,12 @@ npx wrangler login
 npm run deploy
 ```
 
-`npm run deploy` builds, publishes, and then runs twelve deterministic probes against the live
-origin — health, the landing page, the Studio, all eight synthetic cards asserted to be
-script-free SVG, and one invalid query proving it is rejected as a bounded `400`. Push-to-deploy
-from GitHub Actions and the optional public-scope `GITHUB_TOKEN` are covered in
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+`npm run deploy` builds, publishes, reads the deployed origin out of Wrangler's own output, and
+runs fourteen deterministic probes against it — health, the landing page, the Studio, all eight
+synthetic cards asserted to be script-free SVG, the `motion=none` CSP path, and two invalid queries
+proving each is rejected as a bounded `400` with `no-store`. The origin is never hard-coded, so this
+verifies *your* deployment. Push-to-deploy from GitHub Actions and the optional public-scope
+`GITHUB_TOKEN` are covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Generate dependable profile assets
 

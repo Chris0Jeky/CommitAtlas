@@ -3,6 +3,13 @@
   // Canonical Cloudflare Worker configuration. The Vite plugin reads this at
   // build time and emits a deploy-ready copy at dist/server/wrangler.json with
   // `main` and `assets.directory` rewritten to the built output.
+  //
+  // Deploy with `npm run deploy`, never a bare `wrangler deploy` on an unbuilt
+  // checkout. After a build, Wrangler follows .wrangler/deploy/config.json to
+  // the generated dist/server/wrangler.json, which carries the built entry and
+  // the static assets. Without that build it would deploy THIS file as-is —
+  // same Worker name, no assets — replacing a working deployment with one that
+  // serves no client bundle.
   "name": "commit-atlas",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-08-15",

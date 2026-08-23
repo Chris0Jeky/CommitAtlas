@@ -1,9 +1,9 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-21 00:33 BST
+Last verified: 2026-08-23 02:20 BST
 
-This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Sites deployment
-state, and the live profile outrank this file after any ref or deployment moves.
+This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
+deployment state, and the live profile outrank this file after any ref or deployment moves.
 
 The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), the walkthrough is in
@@ -12,18 +12,25 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
-- Exact deployed application implementation: `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
+- Exact deployed application implementation: the head of `main` at the time of the last successful
+  Deploy run. The workflow publishes only a commit whose `CI` push run on `main` concluded
+  successfully, and a manual dispatch runs the full gate itself before deploying, so the deployed
+  commit is always a proven one.
+- The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
 - Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
   Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
   passed; this follow-up changes only the generated project-catalog label and Action bundle, so Sites
   remains correctly bound to the preceding application source.
-- Production: [commitatlas.jeky-tck.chatgpt.site](https://commitatlas.jeky-tck.chatgpt.site),
-  including the [interactive Studio](https://commitatlas.jeky-tck.chatgpt.site/studio).
-- Sites project `appgprj_6a872d3f98c481919ed37186cb4d0c30`, saved version 8
-  `appgprj_6a872d3f98c481919ed37186cb4d0c30~appgver_ce7ba7650f4081918e20eb11349e7563`,
-  successful deployment `appgdep_6a878b5c6cf081918fa41544eec87638`.
-- The deployed archive is bound to `1cdabfa` with content hash
-  `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`.
+- **Production: [commit-atlas.commit-atlas.workers.dev](https://commit-atlas.commit-atlas.workers.dev),
+  including the [interactive Studio](https://commit-atlas.commit-atlas.workers.dev/studio).**
+  Cloudflare Workers, free plan. Configuration is reproducible from
+  [`wrangler.jsonc`](../wrangler.jsonc); the path is documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
+- The retired OpenAI Sites mirror `commitatlas.jeky-tck.chatgpt.site` (project
+  `appgprj_6a872d3f98c481919ed37186cb4d0c30`, version 8, deployment
+  `appgdep_6a878b5c6cf081918fa41544eec87638`, archive bound to `1cdabfa` with content hash
+  `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
+  **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
+  because that is the origin those observations were actually made against.
 - Public profile repository head: `4651009639e23aad79e106cbdb6ec3bcd2749491`.
 - Exact profile [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
   passed every generation, validation, catalog, commit, and push step and produced that bot snapshot.
@@ -66,6 +73,15 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Verified
 
+- 2026-08-23: `main` was red because a test fixture pinned a workflow observation at
+  `2026-08-18T23:00:00Z` while `calculateCiState` applies a 72-hour freshness window, so the fixture
+  correctly decayed into `stale`. The rule was right and the fixture was wrong; PR #51 made the
+  fixture relative and `main` is green again. No product behavior changed.
+- 2026-08-23: the Cloudflare Workers deployment answers on every probed surface —
+  `node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev` passes 14/14,
+  covering health, the landing page, the Studio (matched on its own title), all eight synthetic
+  cards asserted script-free, the `motion=none` CSP branch, and two distinct bounded-`400` rejection
+  paths.
 - Final `npm.cmd run check` passed at `1cdabfa`: core 20, GitHub/API 79, Studio 34, SVG 25,
   static generator 9, Action 2, packaging 3, rendered product/API 28, plus TypeScript, ESLint, four
   package builds/packs, Action bundle parity, and the production Vinext build.
@@ -122,7 +138,7 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 ## Clean resume commands
 
 ```powershell
-Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtlas'
+Set-Location 'C:\Users\Cristian3\OneDrive - Middlesex University\Desktop\repos\CommitAtlas'
 git fetch --all --prune
 git status --short --branch
 git rev-parse HEAD
@@ -132,7 +148,7 @@ npm.cmd ci
 npm.cmd run check
 ```
 
-Open the [public Studio](https://commitatlas.jeky-tck.chatgpt.site/studio), then the
+Open the [public Studio](https://commit-atlas.commit-atlas.workers.dev/studio), then the
 [published GitHub profile](https://github.com/Chris0Jeky). Follow
 [DEMO_GUIDE.md](./DEMO_GUIDE.md), beginning with synthetic `octocat` for deterministic visual QA
 and using `Chris0Jeky` to inspect the honest live-public success, partial, rate-limited, or
