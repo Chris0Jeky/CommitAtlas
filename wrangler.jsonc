@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Canonical Cloudflare Worker configuration. The Vite plugin reads this at
+  // build time and emits a deploy-ready copy at dist/server/wrangler.json with
+  // `main` and `assets.directory` rewritten to the built output.
+  "name": "commit-atlas",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // CommitAtlas renders public GitHub data and needs no secrets to serve every
+  // documented surface. GITHUB_TOKEN is optional and, when used, is installed
+  // out of band with `wrangler secret put GITHUB_TOKEN` — never committed.
+  "vars": {}
+}

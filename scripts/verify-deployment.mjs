@@ -1,0 +1,128 @@
+#!/usr/bin/env node
+/**
+ * Post-deployment smoke check for a hosted CommitAtlas surface.
+ *
+ * Every probe uses the deterministic synthetic mode, so this proves the
+ * deployment itself rather than GitHub's anonymous availability. A failure
+ * here means the deployed Worker is wrong, not that GitHub rate-limited us.
+ */
+const baseUrl = process.argv[2];
+if (!baseUrl) {
+  console.error("usage: node scripts/verify-deployment.mjs <base-url>");
+  process.exit(2);
+}
+
+const base = new URL(baseUrl);
+if (base.protocol !== "https:") {
+  console.error(`refusing to verify a non-HTTPS origin: ${base.origin}`);
+  process.exit(2);
+}
+
+// Each route declares its own allowed parameters (lib/svg-routes.ts), so a
+// single shared query string would be rejected as an unknown parameter. Probe
+// every card with a query its own contract actually accepts.
+const BASE = "demo=true&theme=ember&motion=subtle";
+const SVG_CARDS = [
+  `/api/v1/cards/atlas.svg?user=octocat&days=365&layout=wide&${BASE}`,
+  `/api/v1/cards/profile.svg?user=octocat&${BASE}`,
+  `/api/v1/cards/streak.svg?user=octocat&${BASE}`,
+  `/api/v1/cards/breakdown.svg?user=octocat&days=365&${BASE}`,
+  `/api/v1/cards/rhythm.svg?user=octocat&days=365&${BASE}`,
+  `/api/v1/cards/activity.svg?user=octocat&days=90&${BASE}`,
+  `/api/v1/cards/languages.svg?user=octocat&${BASE}`,
+  `/api/v1/projects.svg?owner=octocat&repos=commitatlas,hello-world&states=commitatlas:active,hello-world:maintenance&${BASE}`,
+];
+
+/** @type {{name: string, run: (fetchPath: (p: string) => Promise<Response>) => Promise<void>}[]} */
+const checks = [
+  {
+    name: "health endpoint reports ok",
+    async run(get) {
+      const response = await get("/api/v1/health");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const body = await response.json();
+      assert(body.status === "ok", `expected status "ok", got ${JSON.stringify(body.status)}`);
+    },
+  },
+  {
+    name: "landing page server-renders the product surface",
+    async run(get) {
+      const response = await get("/");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const html = await response.text();
+      assert(/<title>CommitAtlas/.test(html), "landing page is missing its CommitAtlas title");
+    },
+  },
+  {
+    name: "Studio server-renders",
+    async run(get) {
+      const response = await get("/studio");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const html = await response.text();
+      assert(/Studio/.test(html), "Studio page is missing its own name");
+    },
+  },
+  ...SVG_CARDS.map((path) => ({
+    name: `synthetic ${path.split("?")[0]} renders a safe SVG`,
+    /** @param {(p: string) => Promise<Response>} get */
+    async run(get) {
+      const response = await get(path);
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      assert(/image\/svg\+xml/.test(contentType), `expected an SVG content type, got "${contentType}"`);
+      const svg = await response.text();
+      assert(svg.trimStart().startsWith("<svg") || svg.trimStart().startsWith("<?xml"), "response is not SVG markup");
+      for (const forbidden of ["<script", "<foreignObject", "<iframe", 'href="http://']) {
+        assert(!svg.includes(forbidden), `rendered SVG contains forbidden markup: ${forbidden}`);
+      }
+    },
+  })),
+  {
+    name: "an unknown query is rejected as bounded, uncached JSON",
+    async run(get) {
+      const response = await get("/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=not-a-theme");
+      assert(response.status === 400, `expected 400, got ${response.status}`);
+      assert(
+        response.headers.get("cache-control") === "no-store",
+        `expected no-store, got "${response.headers.get("cache-control")}"`,
+      );
+    },
+  },
+];
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+const TRANSPORT_RETRIES = 5;
+
+async function get(path) {
+  const target = new URL(path, base);
+  for (let attempt = 1; attempt <= TRANSPORT_RETRIES; attempt += 1) {
+    try {
+      return await fetch(target, { headers: { "user-agent": "CommitAtlas-deployment-check" } });
+    } catch (cause) {
+      // A newly created workers.dev hostname can take up to a minute to resolve
+      // everywhere, so back off generously. Only a transport failure is retried:
+      // any response we actually received is the answer, including an error.
+      if (attempt === TRANSPORT_RETRIES) throw new Error(`could not reach ${target.href}: ${cause}`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 5_000));
+    }
+  }
+  throw new Error("unreachable");
+}
+
+let failed = 0;
+console.log(`Verifying ${base.origin}\n`);
+for (const check of checks) {
+  try {
+    await check.run(get);
+    console.log(`  PASS  ${check.name}`);
+  } catch (error) {
+    failed += 1;
+    console.log(`  FAIL  ${check.name}\n        ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+console.log(`\n${checks.length - failed}/${checks.length} checks passed.`);
+process.exit(failed === 0 ? 0 : 1);
