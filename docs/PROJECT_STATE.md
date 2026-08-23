@@ -57,6 +57,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
   provenance, errors, and copyable README Markdown.
+- Studio live evidence is confirmed per preview run, not per configuration. While a retry of an
+  unchanged live configuration is in flight, and after that retry fails, the prior preview stays
+  visible and labelled retained, but contribution- and language-backed cards are withheld from the
+  card picker and from copyable README Markdown until a run confirms them. Synthetic mode is
+  unaffected.
 - Versioned JSON/SVG endpoints with bounded validation, canonical queries, cache separation, stable
   ETags, accessible XML-safe SVG metadata, and strict script/object/frame blocking headers.
 - Curated lifecycle and named-workflow CI signals. Source, Website, CI, Release, Release download,
@@ -132,11 +137,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   rate limits.
 - GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
   Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
-- Open nonblocking work is tracked in #33, #34, #48, and #50. #50 covers stricter generated
+- Open nonblocking work is tracked in #33, #34, and #50. #50 covers stricter generated
   catalog boundaries. #49 closed the direct package-renderer bounds: breakdown window labels and
   rhythm level/basis now truncate at the `@commit-atlas/svg` boundary, and valid adapter inputs
-  render byte-identically. Do not reopen the completed demonstration review loop unless
-  release-impact evidence promotes an item.
+  render byte-identically. #48 closed the same-key Studio refresh evidence window. Do not reopen
+  the completed demonstration review loop unless release-impact evidence promotes an item.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.

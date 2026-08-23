@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import {
-  hasCurrentLiveContributions,
-  hasCurrentLiveLanguages,
   isStudioCardAvailable,
+  resolveStudioLiveEvidence,
 } from "./studio-card-availability";
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
-import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
+import {
+  configurationChangedNotice,
+  contributionUnavailableNotice,
+  retainedPreviewNotice,
+  unconfirmedEvidenceNotice,
+} from "./studio-messages";
 import {
   buildStudioGalleryCards,
   findProjectDraft,
@@ -147,6 +151,10 @@ export default function StudioClient() {
   const [notice, setNotice] = useState("Synthetic starter data — run Preview to refresh it through the API.");
   const [previewCanvas, setPreviewCanvas] = useState<"auto" | "dark" | "light">("auto");
   const [validatedPreview, setValidatedPreview] = useState<{ key: string; origin: string } | null>(null);
+  // Configuration key of the newest preview request that has not produced a
+  // validated result. Set when a run starts, cleared only on success, so it
+  // survives a failed refresh of an unchanged configuration.
+  const [unresolvedRefreshKey, setUnresolvedRefreshKey] = useState<string | null>(null);
   const [previewConfiguration, setPreviewConfiguration] = useState<PreviewConfiguration>({
     owner: "octocat",
     projects: starterProjects,
@@ -187,23 +195,22 @@ export default function StudioClient() {
     layout: previewConfiguration.layout,
   }), [previewConfiguration]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
-  const previewIsRetained = configurationKey !== previewConfigurationKey;
   const visibleBoard = configurationIsValidated ? board : null;
   const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
     ? configurationChangedNotice()
     : notice;
-  const hasCurrentContributions = hasCurrentLiveContributions({
+  const { refreshUnresolved, hasCurrentContributions, hasCurrentLanguages } = resolveStudioLiveEvidence({
     demo,
     currentConfigurationKey: configurationKey,
     validatedConfigurationKey: validatedPreview?.key ?? null,
+    unresolvedRefreshKey,
     contributionsPresent: contributions !== null,
-  });
-  const hasCurrentLanguages = hasCurrentLiveLanguages({
-    demo,
-    currentConfigurationKey: configurationKey,
-    validatedConfigurationKey: validatedPreview?.key ?? null,
     repositoriesTruncated: profile.repositoriesTruncated,
   });
+  // The gallery keeps rendering the last validated payload, so it is labelled
+  // retained whenever the configuration moved on *or* the newest run for this
+  // configuration has not confirmed it yet.
+  const previewIsRetained = configurationKey !== previewConfigurationKey || refreshUnresolved;
   const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
   const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
     ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
@@ -265,6 +272,7 @@ export default function StudioClient() {
     });
 
     setPhase("loading");
+    setUnresolvedRefreshKey(requestedConfigurationKey);
     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
     try {
       const common = `user=${encodeURIComponent(login)}&demo=${demo}`;
@@ -309,6 +317,7 @@ export default function StudioClient() {
         }));
       }
       setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
+      setUnresolvedRefreshKey(null);
       setPhase("ready");
       setNotice(
         contributionResult.error
@@ -407,10 +416,13 @@ export default function StudioClient() {
                 </label>
               );
             })}
-            {!demo && !hasCurrentContributions && (
+            {!demo && refreshUnresolved && (
+              <p className="card-availability-note">{unconfirmedEvidenceNotice()}</p>
+            )}
+            {!demo && !refreshUnresolved && !hasCurrentContributions && (
               <p className="card-availability-note">Atlas, Streak, Breakdown, Rhythm, and Activity are omitted until this live preview has contribution history.</p>
             )}
-            {!demo && !hasCurrentLanguages && (
+            {!demo && !refreshUnresolved && !hasCurrentLanguages && (
               <p className="card-availability-note">Languages stays selected but is omitted until this live preview has a complete public repository list.</p>
             )}
           </fieldset>

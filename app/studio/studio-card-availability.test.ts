@@ -4,6 +4,8 @@ import {
   hasCurrentLiveContributions,
   hasCurrentLiveLanguages,
   isStudioCardAvailable,
+  isStudioRefreshUnresolved,
+  resolveStudioLiveEvidence,
 } from "./studio-card-availability";
 import type { StudioCardKind } from "./studio-urls";
 
@@ -67,18 +69,21 @@ test("never reuses contribution evidence after the live configuration changes", 
     demo: false,
     currentConfigurationKey: "current",
     validatedConfigurationKey: "current",
+    unresolvedRefreshKey: null,
     contributionsPresent: true,
   }), true);
   assert.equal(hasCurrentLiveContributions({
     demo: false,
     currentConfigurationKey: "changed",
     validatedConfigurationKey: "previous",
+    unresolvedRefreshKey: null,
     contributionsPresent: true,
   }), false);
   assert.equal(hasCurrentLiveContributions({
     demo: true,
     currentConfigurationKey: "current",
     validatedConfigurationKey: "current",
+    unresolvedRefreshKey: null,
     contributionsPresent: true,
   }), false);
 });
@@ -88,24 +93,78 @@ test("uses language data only from a complete current live profile", () => {
     demo: false,
     currentConfigurationKey: "current",
     validatedConfigurationKey: "current",
+    unresolvedRefreshKey: null,
     repositoriesTruncated: false,
   }), true);
   assert.equal(hasCurrentLiveLanguages({
     demo: false,
     currentConfigurationKey: "current",
     validatedConfigurationKey: "current",
+    unresolvedRefreshKey: null,
     repositoriesTruncated: true,
   }), false);
   assert.equal(hasCurrentLiveLanguages({
     demo: false,
     currentConfigurationKey: "changed",
     validatedConfigurationKey: "previous",
+    unresolvedRefreshKey: null,
     repositoriesTruncated: false,
   }), false);
   assert.equal(hasCurrentLiveLanguages({
     demo: true,
     currentConfigurationKey: "current",
     validatedConfigurationKey: "current",
+    unresolvedRefreshKey: null,
     repositoriesTruncated: false,
   }), false);
+});
+
+test("treats an unresolved refresh of the current configuration as unconfirmed", () => {
+  assert.equal(isStudioRefreshUnresolved({
+    currentConfigurationKey: "current",
+    unresolvedRefreshKey: "current",
+  }), true);
+  assert.equal(isStudioRefreshUnresolved({
+    currentConfigurationKey: "current",
+    unresolvedRefreshKey: null,
+  }), false);
+  // An unresolved run for a configuration the user has since edited away from
+  // is already covered by the validated-key mismatch, not by this flag.
+  assert.equal(isStudioRefreshUnresolved({
+    currentConfigurationKey: "current",
+    unresolvedRefreshKey: "previous",
+  }), false);
+});
+
+test("withholds live evidence while a same-key refresh is unresolved", () => {
+  assert.equal(hasCurrentLiveContributions({
+    demo: false,
+    currentConfigurationKey: "current",
+    validatedConfigurationKey: "current",
+    unresolvedRefreshKey: "current",
+    contributionsPresent: true,
+  }), false);
+  assert.equal(hasCurrentLiveLanguages({
+    demo: false,
+    currentConfigurationKey: "current",
+    validatedConfigurationKey: "current",
+    unresolvedRefreshKey: "current",
+    repositoriesTruncated: false,
+  }), false);
+});
+
+test("keeps synthetic availability independent of an unresolved refresh", () => {
+  const evidence = resolveStudioLiveEvidence({
+    demo: true,
+    currentConfigurationKey: "current",
+    validatedConfigurationKey: "current",
+    unresolvedRefreshKey: "current",
+    contributionsPresent: true,
+    repositoriesTruncated: false,
+  });
+  assert.equal(evidence.refreshUnresolved, true);
+  assert.deepEqual(
+    kinds.filter((kind) => isStudioCardAvailable(kind, { demo: true, ...evidence })),
+    kinds,
+  );
 });
