@@ -34,9 +34,15 @@ Renderer inputs are bounded for portable README use: dimensions clamp to rendere
 accessible title and description labels are length-limited, and activity cards accept up to a
 full 366-day window while remaining below the 30KB SVG output budget. Caller-supplied prose on
 the insight cards is bounded the same way: breakdown `window.from` and `window.to` truncate to 24
-characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 characters. Every
-truncation appends a visible `…` rather than dropping text silently, and valid GitHub/core adapter
-values are far below these limits, so bounded inputs render unchanged. Language cards use one
+characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 characters. The
+atlas card bounds `window.from`, `window.to`, and `rhythm.level` to 24 characters too, and keeps
+at most the 26 most recent `trend.buckets` in its momentum strip. Every truncation appends a
+visible `…` rather than dropping text silently and never splits a surrogate pair. Non-finite
+numerics never reach visible atlas text: a non-finite `window.days` clamps like every other count,
+a non-finite `trend.changePercent` renders `trend change unavailable`, and a `projects` tally with
+any non-finite count renders `Project health unavailable` rather than a fabricated zero. Valid
+GitHub/core adapter values are far below these limits, so bounded inputs render unchanged.
+Language cards use one
 source basis per item: standalone inputs may use `name` plus bytes or percentages, while the
 canonical `@commit-atlas/core` `aggregateLanguages()` result uses `language`, `bytes`, and the
 derived `percentage` together and can be passed directly to `renderLanguagesCard`. Profile cards

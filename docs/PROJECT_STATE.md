@@ -135,8 +135,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Open nonblocking work is tracked in #33, #34, #48, and #50. #50 covers stricter generated
   catalog boundaries. #49 closed the direct package-renderer bounds: breakdown window labels and
   rhythm level/basis now truncate at the `@commit-atlas/svg` boundary, and valid adapter inputs
-  render byte-identically. Do not reopen the completed demonstration review loop unless
-  release-impact evidence promotes an item.
+  render byte-identically. #55 closed the same class on `renderAtlasCard`: window labels and
+  rhythm level truncate at the same boundary, the momentum strip is bucket-bounded, and non-finite
+  `window.days`, `trend.changePercent`, and `projects.*` counts can no longer reach visible text.
+  Do not reopen the completed demonstration review loop unless release-impact evidence promotes
+  an item.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.

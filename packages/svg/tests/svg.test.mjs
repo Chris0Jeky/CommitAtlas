@@ -573,6 +573,15 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assertSafeSvg(compact);
 });
 
+/** A lone surrogate is not a legal XML character; truncation must never split an astral pair. */
+function assertNoLoneSurrogate(output) {
+  assert.doesNotMatch(
+    output,
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    "truncation split a surrogate pair",
+  );
+}
+
 /** Derive window labels from the clock so a pinned date can never decay into a stale fixture. */
 function isoDaysAgo(days) {
   return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -603,6 +612,31 @@ function rhythmFixture(overrides = {}) {
       score: 44, level: "steady",
       basis: "70% active-day density (capped at 80%) + 30% current streak (capped at 30 days)",
     },
+    ...overrides,
+  };
+}
+
+function atlasFixture(overrides = {}) {
+  const activity = Array.from({ length: 365 }, (_, index) => ({
+    date: isoDaysAgo(364 - index),
+    count: index % 6,
+    level: Math.min(4, index % 5),
+  }));
+  return {
+    profile: { name: "Ada Lovelace", login: "octocat", repositories: 24, followers: 312, stars: 487 },
+    window: { from: activity[0].date, to: activity.at(-1).date, days: 365 },
+    total: 912, activeDays: 286, density: 78.4, averagePerDay: 2.5,
+    currentStreak: 30, longestStreak: 53, streakBasis: "returned-window",
+    streakBoundary: { current: "open", longest: "open" },
+    peakDay: { date: activity[11].date, count: 8 },
+    breakdown: { commits: 740, issues: 18, pullRequests: 64, reviews: 90 },
+    trend: { buckets: [30, 44, 39, 52, 61, 48, 73, 66, 82, 70, 88, 95], recent28Days: 335, previous28Days: 280, changePercent: 19.6, direction: "up" },
+    rhythm: { score: 84, level: "relentless" },
+    activity,
+    languages: [{ name: "TypeScript", percentage: 55 }, { name: "Python", percentage: 30 }],
+    projects: { total: 6, passing: 4, attention: 1, unavailable: 1 },
+    generatedAt: `${isoDaysAgo(0)}T18:00:00.000Z`,
+    source: "public-github",
     ...overrides,
   };
 }
@@ -678,4 +712,113 @@ test("insight cards keep non-finite direct-caller numerics out of the rendered S
   assertWellFormedXml(coerced);
   assert.match(coerced, />42</);
   assert.doesNotMatch(coerced, /undefined/);
+});
+
+test("atlas card bounds hostile direct-caller text at the package boundary", () => {
+  // Control characters, a lone surrogate, an astral emoji, then unbounded filler. Apostrophes
+  // are the worst escape expansion (`&apos;`, 6 bytes per code point), so they prove the byte
+  // budget holds even though `truncateText` bounds code points rather than escaped length.
+  const hostile = `${injection}\u{1F600}\u202eRTL\u200bZWSP${"'".repeat(50_000)}`;
+  const data = atlasFixture({
+    profile: { name: hostile, login: hostile, repositories: 24, followers: 312, stars: 487 },
+    window: { from: hostile, to: hostile, days: 365 },
+    peakDay: { date: hostile, count: 8 },
+    rhythm: { score: 84, level: hostile },
+    languages: Array.from({ length: 5_000 }, () => ({ name: hostile, percentage: 12 })),
+    generatedAt: hostile,
+  });
+  for (const width of [420, 860, 1_200]) {
+    const output = renderAtlasCard(data, { width, title: hostile, description: hostile, motion: "none" });
+    assertSafeSvg(output);
+    assertWellFormedXml(output);
+    assertFiniteGeometry(output);
+    assertNoLoneSurrogate(output);
+    assert.doesNotMatch(output, /NaN|Infinity/);
+    assert.doesNotMatch(output, /<foreignObject/i);
+    // 180 is the longest bound any single field carries (`MAX_DESCRIPTION_LENGTH`), so a longer
+    // unbroken run means some field escaped its bound.
+    assert.doesNotMatch(output, /(?:&apos;){181}/, "unbounded caller text reached the rendered card");
+    // Far below the 30KB budget: a 50,000-character window label rendered over 100KB before this bound.
+    const bytes = Buffer.byteLength(output, "utf8");
+    assert.ok(bytes < 24_000, `bounded atlas card grew to ${bytes} bytes at width ${width}`);
+  }
+  // Truncation stays visible instead of dropping text silently.
+  assert.match(renderAtlasCard(data, { motion: "none" }), /…/);
+  // An astral code point survives truncation whole rather than being split.
+  const astral = renderAtlasCard(atlasFixture({
+    window: { from: "\u{1F600}".repeat(400), to: "\u{1F600}".repeat(400), days: 365 },
+    rhythm: { score: 84, level: "\u{1F600}".repeat(400) },
+  }), { motion: "none" });
+  assertSafeSvg(astral);
+  assertWellFormedXml(astral);
+  assertNoLoneSurrogate(astral);
+  // Valid adapter-shaped values stay verbatim, so bounding never rewrites a truthful label.
+  const valid = renderAtlasCard(atlasFixture(), { motion: "none" });
+  assert.match(valid, /RELENTLESS · PERSONAL CONSISTENCY/);
+  assert.match(valid, new RegExp(`365D · ${isoDaysAgo(0)}`));
+  assert.doesNotMatch(valid, /…/);
+});
+
+test("atlas card keeps non-finite direct-caller numerics out of the rendered SVG", () => {
+  for (const value of [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NaN]) {
+    const outputs = [
+      renderAtlasCard(atlasFixture({ window: { from: isoDaysAgo(364), to: isoDaysAgo(0), days: value } }), { motion: "none" }),
+      renderAtlasCard(atlasFixture({ projects: { total: value, passing: value, attention: value, unavailable: value } }), { motion: "none" }),
+      renderAtlasCard(atlasFixture({ projects: { total: 6, passing: 4, attention: value, unavailable: 1 } }), { motion: "none" }),
+      renderAtlasCard(atlasFixture({
+        trend: { buckets: [value, 1, value], recent28Days: value, previous28Days: value, changePercent: value, direction: "up" },
+      }), { motion: "none" }),
+      renderAtlasCard(atlasFixture({
+        total: value, activeDays: value, density: value, averagePerDay: value,
+        currentStreak: value, longestStreak: value,
+        peakDay: { date: isoDaysAgo(30), count: value },
+        breakdown: { commits: value, issues: value, pullRequests: value, reviews: value },
+        rhythm: { score: value, level: "steady" },
+        profile: { name: "Ada", login: "ada", repositories: value, followers: value, stars: value },
+        languages: [{ name: "TypeScript", percentage: value }],
+      }), { width: 420, motion: "subtle" }),
+    ];
+    for (const output of outputs) {
+      assertSafeSvg(output, { allowStyle: true });
+      assertWellFormedXml(output);
+      assertFiniteGeometry(output);
+      assert.doesNotMatch(output, /NaN|Infinity/, `non-finite ${String(value)} leaked into the atlas card`);
+    }
+  }
+  // An unknown project tally is reported as unknown, never as a zeroed-out healthy one.
+  const unknownProjects = renderAtlasCard(atlasFixture({ projects: { total: 6, passing: Number.NaN, attention: 1, unavailable: 1 } }), { motion: "none" });
+  assert.match(unknownProjects, /Project health unavailable/);
+  assert.doesNotMatch(unknownProjects, /CI passing/);
+  // An unknown trend change is reported as unknown too.
+  const unknownTrend = renderAtlasCard(atlasFixture({
+    trend: { buckets: [1, 2, 3], recent28Days: 12, previous28Days: 9, changePercent: Number.POSITIVE_INFINITY, direction: "up" },
+  }), { motion: "none" });
+  assert.match(unknownTrend, /trend change unavailable/);
+  // A non-enum rhythm level must not crash the renderer.
+  const coerced = renderAtlasCard(atlasFixture({ rhythm: { score: 44, level: 42 } }), { motion: "none" });
+  assertSafeSvg(coerced);
+  assertWellFormedXml(coerced);
+  assert.match(coerced, /42 · PERSONAL CONSISTENCY/);
+  assert.doesNotMatch(coerced, /undefined/);
+});
+
+test("atlas card bounds the momentum strip like the rhythm card does", () => {
+  const bars = (output) => (output.match(/<rect class="atlas-bar"/g) ?? []).length;
+  // Four breakdown bars plus one bar per rendered trend bucket.
+  assert.equal(bars(renderAtlasCard(atlasFixture(), { motion: "none" })), 16);
+  // `@commit-atlas/core` caps `trendWeeks` at 16, so 16 buckets still render one bar each.
+  assert.equal(bars(renderAtlasCard(atlasFixture({
+    trend: { buckets: Array.from({ length: 16 }, (_, index) => index + 1), recent28Days: 335, previous28Days: 280, changePercent: 19.6, direction: "up" },
+  }), { motion: "none" })), 20);
+  const flooded = renderAtlasCard(atlasFixture({
+    trend: { buckets: Array.from({ length: 50_000 }, (_, index) => (index % 9) + 1), recent28Days: 335, previous28Days: 280, changePercent: 19.6, direction: "up" },
+  }), { motion: "none" });
+  assert.equal(bars(flooded), 30, "the momentum strip must stay bounded");
+  assertSafeSvg(flooded);
+  assertWellFormedXml(flooded);
+  assertFiniteGeometry(flooded);
+  // An empty bucket array still renders the four breakdown bars and nothing else.
+  assert.equal(bars(renderAtlasCard(atlasFixture({
+    trend: { buckets: [], recent28Days: 0, previous28Days: null, changePercent: null, direction: "unavailable" },
+  }), { motion: "none" })), 4);
 });

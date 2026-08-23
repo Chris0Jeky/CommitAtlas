@@ -231,13 +231,22 @@ const MAX_ACTIVITY_DAYS = 366;
 /**
  * Window boundary labels are ISO calendar dates (`YYYY-MM-DD`, 10 characters). The cap leaves
  * headroom for other bounded date spellings while stopping a direct caller from pushing an
- * unbounded string into the breakdown scope line and accessible description.
+ * unbounded string into the breakdown scope line, the atlas header, or an accessible
+ * description. `truncateText` bounds code points, not escaped bytes, so the escaped worst case
+ * is 24 apostrophes at `&apos;` each: 144 bytes per label.
  */
 const MAX_WINDOW_LABEL_LENGTH = 24;
 /** Rhythm levels are a five-value enum whose longest member (`relentless`) is 10 characters. */
 const MAX_RHYTHM_LEVEL_LENGTH = 24;
 /** The canonical rhythm basis sentence is 79 characters; the cap leaves room without unbounded growth. */
 const MAX_RHYTHM_BASIS_LENGTH = 120;
+/**
+ * `@commit-atlas/core` emits `ceil(min(days, trendWeeks * 7) / 7)` weekly buckets and caps
+ * `trendWeeks` at 16, so a real momentum strip never exceeds 16 bars. The cap keeps headroom for
+ * direct callers while staying inside the layout box — past roughly 48 bars the minimum bar width
+ * makes the strip overflow its region — and keeps the card far below the 30KB output budget.
+ */
+const MAX_ATLAS_TREND_BUCKETS = 26;
 
 /** Escape text and attribute values before they enter an SVG document. */
 export function escapeXml(value: unknown): string {
@@ -754,6 +763,8 @@ function atlasTrendLabel(data: AtlasCardData): string {
   if (data.trend.direction === "new") return `${formatNumber(data.trend.recent28Days)} · new activity`;
   const change = data.trend.changePercent;
   if (change === null) return `${formatNumber(data.trend.recent28Days)} in latest 28 days`;
+  // A non-finite change is an unknown signal, not a zero one: say so instead of printing NaN.
+  if (!Number.isFinite(change)) return `${formatNumber(data.trend.recent28Days)} · trend change unavailable`;
   const sign = change > 0 ? "+" : "";
   return `${formatNumber(data.trend.recent28Days)} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28d`;
 }
@@ -790,7 +801,13 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ? "Public profile activity percentage mix from calendar-year views, not scoped to this contribution window"
     : "Breakdown";
   const currentStreakOpen = data.streakBoundary?.current === "open";
-  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${data.window.days} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  // Window boundaries, the rhythm level, and the window length come from the caller, so bound and
+  // clamp them here rather than trusting the adapter that normally supplies them.
+  const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
+  const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
+  const windowDays = formatNumber(data.window.days, false);
+  const rhythmLevel = truncateText(data.rhythm.level, MAX_RHYTHM_LEVEL_LENGTH);
+  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${windowDays} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
   out += atlasMotionStyle(options?.motion);
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
@@ -798,7 +815,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
   out += text(56, 29, name, 18, t.text, 760) + text(56, 47, `@${login}`, 10, t.muted, 550);
   out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : t.positive, 700, "end");
-  out += text(width - 22, 45, `${data.window.days}D · ${data.window.to}`, 9, t.muted, 550, "end");
+  out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 
   const metricValues = [
@@ -846,8 +863,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   });
   out += [...heatmapPaths.entries()].map(([fill, paths]) => `<path class="atlas-cell" fill="${fill}" d="${paths.join("")}"/>`).join("");
   const heatmapBottom = heatmapTop + 7 * (cell + 2);
-  out += text(heatmapLeft, heatmapBottom + 13, data.window.from, 8, t.muted, 500);
-  out += text(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, data.window.to, 8, t.muted, 500, "end");
+  out += text(heatmapLeft, heatmapBottom + 13, windowFrom, 8, t.muted, 500);
+  out += text(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, windowTo, 8, t.muted, 500, "end");
 
   const breakdownX = narrow ? 24 : Math.floor(width * .64);
   const breakdownY = narrow ? 290 : 144;
@@ -875,12 +892,14 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const trendX = 24;
   const trendWidth = narrow ? Math.floor((width - 60) * .58) : Math.floor(width * .34);
   const trendBaseline = footerTop + 48;
-  const trendMax = Math.max(1, ...data.trend.buckets.map(finite));
+  // Bound the strip the way renderRhythmCard does: keep the most recent buckets, drop the rest.
+  const trendBuckets = data.trend.buckets.slice(-MAX_ATLAS_TREND_BUCKETS);
+  const trendMax = Math.max(1, ...trendBuckets.map((value) => finite(value)));
   out += text(trendX, footerTop + 2, "RECENT MOMENTUM", 10, t.muted, 700);
   out += text(trendX, footerTop + 18, atlasTrendLabel(data), 9, t.text, 550);
   const trendGap = 3;
-  const trendBarWidth = Math.max(3, (trendWidth - Math.max(0, data.trend.buckets.length - 1) * trendGap) / Math.max(1, data.trend.buckets.length));
-  data.trend.buckets.forEach((value, index) => {
+  const trendBarWidth = Math.max(3, (trendWidth - Math.max(0, trendBuckets.length - 1) * trendGap) / Math.max(1, trendBuckets.length));
+  trendBuckets.forEach((value, index) => {
     const barHeight = Math.max(2, 22 * finite(value) / trendMax);
     out += `<rect class="atlas-bar" x="${(trendX + index * (trendBarWidth + trendGap)).toFixed(2)}" y="${(trendBaseline - barHeight).toFixed(2)}" width="${trendBarWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" fill="${t.accent}"/>`;
   });
@@ -888,7 +907,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const rhythmX = narrow ? trendX + trendWidth + 22 : Math.floor(width * .40);
   out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
   out += text(rhythmX, footerTop + 27, `${Math.round(finite(data.rhythm.score))}/100`, 23, t.text, 780);
-  out += text(rhythmX, footerTop + 43, `${data.rhythm.level.toUpperCase()} · PERSONAL CONSISTENCY`, 8, t.muted, 650);
+  out += text(rhythmX, footerTop + 43, `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY`, 8, t.muted, 650);
 
   const detailX = narrow ? 24 : Math.floor(width * .60);
   const detailY = narrow ? footerTop + 78 : footerTop;
@@ -899,9 +918,18 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     : text(detailX, detailY + 21, "Languages unavailable", 9, t.muted, 550);
   const profileSignal = `${formatNumber(data.profile.repositories, false)} repos · ${formatNumber(data.profile.followers)} followers${Number.isFinite(data.profile.stars) ? ` · ${formatNumber(data.profile.stars)} stars` : " · stars unavailable"}`;
   out += text(detailX, detailY + 37, profileSignal, 9, t.text, 550);
-  out += data.projects
-    ? text(detailX, detailY + 53, `${data.projects.passing}/${data.projects.total} CI passing · ${data.projects.attention} attention · ${data.projects.unavailable} unavailable`, 9, data.projects.attention > 0 ? t.warning : t.muted, 550)
-    : text(detailX, detailY + 53, "Project health not configured", 9, t.muted, 550);
+  const projectCounts = data.projects;
+  // A non-finite count is an unknown project signal. Never render it as a real tally, and never
+  // let `NaN`/`Infinity` reach visible text.
+  const projectCountsKnown = projectCounts
+    ? [projectCounts.total, projectCounts.passing, projectCounts.attention, projectCounts.unavailable]
+      .every((count) => Number.isFinite(count))
+    : false;
+  out += !projectCounts
+    ? text(detailX, detailY + 53, "Project health not configured", 9, t.muted, 550)
+    : projectCountsKnown
+      ? text(detailX, detailY + 53, `${finite(projectCounts.passing)}/${finite(projectCounts.total)} CI passing · ${finite(projectCounts.attention)} attention · ${finite(projectCounts.unavailable)} unavailable`, 9, finite(projectCounts.attention) > 0 ? t.warning : t.muted, 550)
+      : text(detailX, detailY + 53, "Project health unavailable", 9, t.muted, 550);
   out += text(width - 22, height - 10, `Generated ${truncateText(data.generatedAt, 25)} · longest streak is window-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
   return out + svgEnd();
 }
