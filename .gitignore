@@ -43,3 +43,6 @@ yarn-error.log*
 /work/
 *.tsbuildinfo
 /.idea
+
+# agent worktrees and local agent state
+/.claude/
