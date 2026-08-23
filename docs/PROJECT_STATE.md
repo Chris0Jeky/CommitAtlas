@@ -59,6 +59,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Buildable `@commit-atlas/core`, `@commit-atlas/github`, `@commit-atlas/svg`, and
   `@commit-atlas/static` packages with canonical GPL-3.0-only package metadata and clean-consumer
   pack/import proof.
+- Four separated upstream failure meanings. A missing public resource returns `github_not_found`
+  with HTTP 404 and one message that never says whether the resource is absent or private; a rate
+  limit stays `github_rate_limited` with HTTP 429 and retry guidance; every other upstream failure
+  stays `github_unavailable` with HTTP 502. Optional release and workflow lookups treat only 404 as
+  absence, so a throttled optional lookup can no longer read as "no release" or a clean CI signal.
 - The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
   Breakdown and Rhythm visibly, retains the Project radar and four optional focused widgets, and
   renders a marker-bounded six-project catalog with observed/configured action links. Its daily
@@ -112,9 +117,17 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   rate limits.
 - GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
   Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
-- Open nonblocking work is tracked in #33, #34, #48, #49, and #50. #50 covers stricter generated
+- Open nonblocking work is tracked in #48, #49, and #50. #50 covers stricter generated
   catalog boundaries; #49 covers direct package-renderer bounds. Do not reopen the completed
   demonstration review loop unless release-impact evidence promotes an item.
+- #33 and #34 closed the reviewed response-contract gaps. Two of those five items were already
+  satisfied on `main` and are now regression-covered rather than reimplemented: the contribution
+  window was already inclusive and exactly the requested UTC day count, and synthetic category
+  totals were already bounded by the requested window in `8cb53ab`.
+- That slice renames one public JSON field. `ProjectSnapshot.openIssues` and the generated
+  `projects.json` entry key are now `openIssuesAndPullRequests`, because GitHub REST
+  `open_issues_count` counts pull requests too. Any catalog consumer reading the old key must be
+  updated; `projects.md` already said `open issues/PRs` and is unchanged.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.
