@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 18:05 BST
+Last verified: 2026-08-24 19:05 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,29 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Post-release fix `e17e866` (PR #77) is merged, deployed, and proven on the profile.** The
+  v0.3.0 atlas motion faded in from `opacity:0` / `scaleY(.08)` with fill-mode `both`; Chromium
+  never runs CSS animations inside an SVG delivered through `<img>` and pins such a card to its
+  `from` state, so on GitHub the redesigned atlas rendered with an invisible header, density grid,
+  and momentum row. This was measured empirically (a three-rect probe embedded via `<img>`: no
+  delay froze off-position, `both` froze off-position, only fill-mode none plus a delay showed
+  final geometry), and subtle motion is now delayed fill-none translation with tests rejecting
+  `both`/`backwards` and any opacity or scale keyframe. The same PR drops `★ 0` from the projects
+  card and `0 stars · 0 forks` from the Markdown catalog while keeping both keys in
+  `projects.json` at any value. One Codex finding was fixed in `cedded1` (frozen bars misaligned
+  against static tracks); a second, post-merge suggestion to remove the delay was declined with
+  the probe evidence — the delay is what keeps GitHub correct. Deploy published `e17e866` and
+  [issue #78](https://github.com/Chris0Jeky/CommitAtlas/issues/78) tracks rendering a theme pair
+  from one snapshot fetch.
+- **The public profile now serves every card as a dark/light pair from the fixed renderer.**
+  [Chris0Jeky/Chris0Jeky#4](https://github.com/Chris0Jeky/Chris0Jeky/pull/4) pinned the refresh
+  workflow to `e17e866`, added a paper-theme pass into `assets/commitatlas/light/` with its own
+  manifest validation, wrapped all eight README cards in `<picture>` with `prefers-color-scheme`
+  sources, retired the last `chatgpt.site` links, and omitted zero-valued star/fork counts from
+  the generated table. The dispatched refresh run
+  ([32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)) generated and
+  validated both bundles and committed them, and the rendered profile was inspected in Chrome
+  afterwards: density grid, momentum bars, and header all present.
 - **Released: [v0.3.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.3.0)**, tagged at
   `4ec77d7724dd22637a85cc3c89b8dc417091778a` on `main` — the merge of PR #75, marked latest, not a
   draft and not a prerelease. Hosted CI concluded success at that commit, the Deploy workflow
@@ -67,8 +90,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   request, so the four-clause `if` that checks `head_repository.full_name` has never been exercised
   by a real fork event. It is reviewed, not demonstrated.
 - The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
-- Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
-  Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
+- Latest executable/static-producer checkpoint: `e17e8664588f50418ac99b09b74ba13c52bd98c4` (PR #77,
+  first bullet above), which changed `packages/svg` and `packages/static` and was proven by hosted
+  CI, Deploy, and the profile refresh run it feeds. The earlier checkpoint here was
+  `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`, whose exact-head hosted
+  [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
   passed. At the time, that follow-up changed only the generated project-catalog label and Action
   bundle, so the then-current Sites deployment stayed correctly bound to the preceding application
   source. This is a historical note; Sites is no longer the canonical host.
@@ -82,9 +108,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `4651009639e23aad79e106cbdb6ec3bcd2749491`.
-- Exact profile [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
-  passed every generation, validation, catalog, commit, and push step and produced that bot snapshot.
+- Public profile repository head: `d9f03f106865ac7a1ce76e2bea31d0156e06114d` — the bot commit
+  produced by the paired-theme refresh above.
+- Exact profile [refresh run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)
+  passed both generation passes, both bundle validations, the catalog, commit, and push steps and
+  produced that bot snapshot. The prior checkpoint was `4651009` from
+  [run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680).
 - Repository description, GPL-3.0-only licence, and 20 focused topics are published. The homepage
   now points at the Workers origin; it previously still named the retired Sites mirror.
 - The public surface is discoverable and self-describing: `/robots.txt`, `/sitemap.xml`, schema.org
