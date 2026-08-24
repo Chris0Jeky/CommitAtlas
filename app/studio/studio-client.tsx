@@ -377,7 +377,7 @@ export default function StudioClient() {
         <p>Configure only what you can support with evidence. Preview the result, inspect provenance, and copy portable README Markdown.</p>
       </header>
 
-      <form className="studio-workspace shell" onSubmit={preview} id="configure">
+      <form className="studio-workspace shell" onSubmit={preview} id="configure" tabIndex={-1}>
         <aside className="config-panel" aria-labelledby="config-title">
           <div className="panel-heading"><span>01</span><div><p>Configuration</p><h2 id="config-title">Your atlas</h2></div></div>
 
@@ -386,8 +386,8 @@ export default function StudioClient() {
 
           <fieldset className="segmented-field">
             <legend>Data source</legend>
-            <label><input aria-label="Use synthetic preview data" type="radio" name="mode" checked={demo} onChange={() => setDemo(true)} /><span><strong>Synthetic</strong><small>Safe preview</small></span></label>
-            <label><input aria-label="Use live public GitHub data" type="radio" name="mode" checked={!demo} onChange={() => setDemo(false)} /><span><strong>Live public</strong><small>GitHub API</small></span></label>
+            <label><input type="radio" name="mode" checked={demo} onChange={() => setDemo(true)} /><span><strong>Synthetic</strong><small>Safe preview</small></span></label>
+            <label><input type="radio" name="mode" checked={!demo} onChange={() => setDemo(false)} /><span><strong>Live public</strong><small>GitHub API</small></span></label>
           </fieldset>
 
           <label className="field-label" htmlFor="theme">Card theme</label>
@@ -397,14 +397,14 @@ export default function StudioClient() {
 
           <fieldset className="segmented-field">
             <legend>Atlas layout</legend>
-            <label><input aria-label="Use wide atlas layout" type="radio" name="layout" checked={layout === "wide"} onChange={() => setLayout("wide")} /><span><strong>Wide</strong><small>README hero</small></span></label>
-            <label><input aria-label="Use compact atlas layout" type="radio" name="layout" checked={layout === "compact"} onChange={() => setLayout("compact")} /><span><strong>Compact</strong><small>Mobile friendly</small></span></label>
+            <label><input type="radio" name="layout" checked={layout === "wide"} onChange={() => setLayout("wide")} /><span><strong>Wide</strong><small>README hero</small></span></label>
+            <label><input type="radio" name="layout" checked={layout === "compact"} onChange={() => setLayout("compact")} /><span><strong>Compact</strong><small>Mobile friendly</small></span></label>
           </fieldset>
 
           <fieldset className="segmented-field">
             <legend>Load motion</legend>
-            <label><input aria-label="Use subtle card motion" type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
-            <label><input aria-label="Disable card motion" type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
+            <label><input type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
+            <label><input type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
           </fieldset>
 
           <fieldset className="card-picker">

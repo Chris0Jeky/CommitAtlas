@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { CiState } from "@commit-atlas/core";
 import { CI_STATE_PRESENTATION } from "@/lib/health";
 import { Ev } from "./evidence-ui";
@@ -42,8 +42,8 @@ function BayRead({
   evidenceId,
   meter,
 }: {
-  value: React.ReactNode;
-  caption: string;
+  value: ReactNode;
+  caption: ReactNode;
   evidenceId: string;
   /** Optional four-square shape encoding of the same reading. Redundant, and deliberately so. */
   meter?: number;
@@ -76,7 +76,7 @@ export function MomentumPlotter({
 }: {
   counts: readonly number[];
   total: number;
-  change: string;
+  change: ReactNode;
   label: string;
 }) {
   const trace = momentumTrace(counts);
@@ -101,12 +101,12 @@ export function MomentumPlotter({
           {trace.flat ? null : <circle className="m1-dot" r="3.5" fill="var(--chrome)" style={penPath} />}
         </svg>
       </div>
-      <BayRead value={total} caption={`${change} vs prior 28d`} evidenceId="momentum" />
+      <BayRead value={total} caption={<>{change} vs prior 28d</>} evidenceId="momentum" />
     </>
   );
 }
 
-export function RhythmGauge({ score, caption }: { score: number; caption: string }) {
+export function RhythmGauge({ score, caption }: { score: number; caption: ReactNode }) {
   const gauge = gaugeReading(score);
   const needle = { transformOrigin: "110px 110px", "--needle": `${gauge.angle}deg` } as CSSProperties;
 
@@ -153,7 +153,7 @@ export function DensitySurvey({
 }: {
   days: readonly { date: string; count: number; level?: number }[];
   density: number;
-  caption: string;
+  caption: ReactNode;
   label: string;
 }) {
   const grid = densityGrid(days);
@@ -205,7 +205,7 @@ export function PortfolioReticle({
 }: {
   states: readonly CiState[];
   passing: number;
-  caption: string;
+  caption: ReactNode;
 }) {
   const ring = reticle(states.length);
   const iris = { transformOrigin: `${ring.centre.x}px ${ring.centre.y}px` } as CSSProperties;

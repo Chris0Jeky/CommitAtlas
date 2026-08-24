@@ -23,7 +23,9 @@ export function HealthRack({ reading }: { reading: CiReading }) {
           A dark gauge is a finding, <em>not a failure of the page.</em>
         </h2>
         <p className="section-aside">
-          Live synthetic reading: <b><Ev id="ci-passing">{reading.headline}</Ev></b>
+          {/* The trigger wraps the ratio alone, so the drawer's title echoes what was pressed
+              rather than a prefix of a longer line. */}
+          Live synthetic reading: <b><Ev id="ci-passing">{reading.passing}/{reading.total}</Ev> CI passing · {reading.attention} attention{reading.unknown > 0 ? ` · ${reading.unknown} unknown` : ""}</b>
           <br />
           72h freshness window · calculateCiState()
         </p>

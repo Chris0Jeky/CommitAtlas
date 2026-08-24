@@ -54,11 +54,18 @@ export function momentumTrace(counts: readonly number[]): MomentumTrace {
     y: peak === 0 ? bottom : Number((bottom - ((bottom - top) * count) / peak).toFixed(2)),
   }));
 
+  // A single observation is a level, not a trend. Drawn as a full-width rule at its own height it
+  // reads as one steady value; drawn as a bare moveto — which is what a one-point polyline is — it
+  // reads as nothing at all, while the pen dot still rides a zero-length path.
+  const path = points.length === 1
+    ? `M${left},${points[0]!.y} L${right},${points[0]!.y}`
+    : points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ");
+
   return {
     viewBox,
     width,
     height,
-    path: points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" "),
+    path,
     points,
     peak,
     flat: peak === 0,
@@ -145,8 +152,11 @@ export function densityGrid(
 ): DensityGrid {
   const { cell, gap, rows } = DENSITY;
   const pitch = cell + gap;
+  // `UtcDateSchema` already rejects anything else upstream, so this is defence in depth — but the
+  // failure it prevents is total. An unparseable day makes `getUTCDay()` NaN, which propagates into
+  // every coordinate and into the `viewBox`, and the entire survey renders as nothing.
   const first = days[0];
-  const firstWeekday = first ? new Date(`${first.date}T00:00:00.000Z`).getUTCDay() : 0;
+  const firstWeekday = first ? utcWeekday(first.date) : 0;
 
   const cells = days.map((day, index) => {
     const slot = firstWeekday + index;
@@ -171,6 +181,12 @@ export function densityGrid(
   };
 }
 
+/** Weekday index for a UTC day, or `0` when the value is not one CommitAtlas can place. */
+function utcWeekday(date: string): number {
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`).getUTCDay() : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 /**
  * Opacity for an *active* contribution level, 1 through 4, applied over the warm fill.
  *
@@ -179,7 +195,13 @@ export function densityGrid(
  * It is drawn as a neutral socket instead; see `isEmptyDensityCell`.
  */
 export function densityLevelOpacity(level: number): number {
-  return [0.34, 0.55, 0.78, 1][Math.min(3, Math.max(0, Math.trunc(level) - 1))]!;
+  const ramp = [0.34, 0.55, 0.78, 1] as const;
+  // Without the finite guard, a NaN level indexes the ramp with NaN, yields `undefined`, and React
+  // omits the attribute — so the cell paints at opacity 1, the *strongest* reading on the scale.
+  // An unreadable signal rendered as the maximum is the exact inversion this product forbids, so it
+  // falls to the faintest active step instead.
+  if (!Number.isFinite(level)) return ramp[0];
+  return ramp[Math.min(3, Math.max(0, Math.trunc(level) - 1))];
 }
 
 /** True when a day carried nothing observable and must render as a socket rather than a fill. */

@@ -44,7 +44,7 @@ export default async function Home() {
       <ConsoleHeader section="Observatory" reference="ATL/CH-REV-B" links={LANDING_LINKS} />
 
       <EvidenceProvider evidence={evidence}>
-        <main id="main">
+        <main id="main" tabIndex={-1}>
           <section className="hero shell" aria-labelledby="hero-title">
             <span className="watermark" aria-hidden="true">01//</span>
             <div className="hero-copy">
@@ -84,7 +84,7 @@ export default async function Home() {
                   <MomentumPlotter
                     counts={recentCounts}
                     total={metrics.trend.recent28Days}
-                    change={change}
+                    change={<Ev id="momentum-change">{change}</Ev>}
                     label={`28-day momentum trace: ${metrics.trend.recent28Days} contributions, ${change} against the prior 28 days.`}
                   />
                 </div>
@@ -105,7 +105,7 @@ export default async function Home() {
                   <DensitySurvey
                     days={snapshot.contributions.days}
                     density={metrics.density}
-                    caption={`${metrics.activeDays} active days · ${metrics.averagePerDay}/day`}
+                    caption={<><Ev id="active-days">{metrics.activeDays}</Ev> active days · <Ev id="average-per-day">{metrics.averagePerDay}</Ev>/day</>}
                     label={`${metrics.window.days}-day contribution calendar: ${metrics.activeDays} active days out of ${metrics.window.days}.`}
                   />
                 </div>
@@ -165,8 +165,11 @@ export default async function Home() {
                   </div>
                 </div>
                 <p className="station-foot">
-                  <span className="signal-mark" data-state="unconfigured" aria-hidden="true" />
-                  <span className="signal-mark" data-state="unconfigured" aria-hidden="true" />
+                  {states.map((state, index) => (
+                    // Derived from the same board the headline beside them is derived from. As
+                    // literals they were a shape-encoded claim that could outlive the reading.
+                    <span key={`${state}-${index}`} className="signal-mark" data-state={state} aria-hidden="true" />
+                  ))}
                   {reading.headline} — shown dark, never green
                 </p>
               </section>
@@ -176,9 +179,9 @@ export default async function Home() {
                   <span>STN B // Distribution surfaces</span>
                   <span>Four ways out · R12</span>
                 </div>
-                <h3 id="station-b-title">
+                <h2 id="station-b-title">
                   The same evidence, <em>wherever it has to live.</em>
-                </h3>
+                </h2>
                 <div className="station-stats">
                   <div>
                     <b>8</b>

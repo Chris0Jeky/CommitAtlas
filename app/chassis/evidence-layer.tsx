@@ -1,4 +1,5 @@
 import { EVIDENCE_TIER_PRESENTATION, evidenceLadder, type EvidenceSet } from "@/lib/evidence";
+import { LANDING_EVIDENCE_IDS } from "@/lib/landing";
 import { Ev } from "./evidence-ui";
 
 /**
@@ -23,13 +24,15 @@ export function EvidenceLayer({ evidence }: { evidence: EvidenceSet }) {
           Facts become rates. <em>Rates become guesses.</em>
         </h2>
         <p className="section-aside">
-          {evidence.records.length} explained readings
+          {/* One interpolation, not a number beside a text node: React separates adjacent text
+              nodes with a comment during SSR, which splits the sentence in the served HTML. */}
+          {`${LANDING_EVIDENCE_IDS.length} readings explained on this page`}
           <br />
-          Every number on this page is a button
+          Every dotted number opens the drawer
         </p>
       </div>
       <p className="section-lede">
-        Every reading sits on one of three rungs, and every number on screen answers
+        Every reading sits on one of three rungs, and every dotted number on screen answers
         &ldquo;how do you know that&rdquo;. CommitAtlas already refuses to paint an unknown signal
         green; this is the same rule one level up, applied to the difference between a number that
         was counted and a number that was inferred.

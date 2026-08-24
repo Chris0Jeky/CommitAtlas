@@ -129,10 +129,12 @@ function sourceSentenceFor(snapshot: PortfolioSnapshot): string {
 /**
  * Build the evidence set for a rendered portfolio snapshot.
  *
- * Every record here corresponds to a number that is actually printed somewhere on the page. A
- * record with no visible number is dead weight, and a printed number with no record is exactly the
- * unexplained assertion this layer exists to prevent — `evidence.test.ts` asserts the first
- * direction, and the rendered-page test asserts the second.
+ * Every record describes a reading this product shows *somewhere* — on the page, or inside one of
+ * the cards, which are SVG and cannot host a button. `LANDING_EVIDENCE_IDS` in `lib/landing.ts` is
+ * the subset the landing page wires to a trigger, and `rendered-html.test.mjs` holds the served
+ * HTML to exactly that set. An earlier version of this comment claimed the tests enforced a
+ * two-way correspondence between records and printed numbers; they did not, and the page was
+ * printing a count of 17 while wiring 10.
  */
 export function buildEvidence(snapshot: PortfolioSnapshot): EvidenceSet {
   const { metrics, profile, contributions, projects } = snapshot;
@@ -207,8 +209,12 @@ export function buildEvidence(snapshot: PortfolioSnapshot): EvidenceSet {
       basis: metrics.trend.previous28Days === null
         ? "The window is shorter than 56 days, so there is no prior 28-day period to compare against. CommitAtlas reports no change rather than assuming one."
         : `${metrics.trend.recent28Days} contributions in the recent 28 days against ${metrics.trend.previous28Days} in the 28 before them.`,
+      // Never `null`. A derived reading with no working shown would put a DERIVED pill reading
+      // "this follows from the data" over a value of `—` with nothing behind it, which is the one
+      // combination this layer exists to prevent. When there is no prior period, the formula states
+      // the requirement that was not met.
       formula: metrics.trend.previous28Days === null
-        ? null
+        ? `(recent − previous) / previous × 100 — needs a 56-day window; this one is ${metrics.window.days} days, so there is no prior period`
         : `(recent − previous) / previous × 100 — (${metrics.trend.recent28Days} − ${metrics.trend.previous28Days}) / ${metrics.trend.previous28Days} × 100 = ${signedPercent(metrics.trend.changePercent)}`,
       caveat:
         "Two adjacent four-week counts. One holiday, one release week, or one week of private work moves this number more than any change in habit would.",

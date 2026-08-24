@@ -102,6 +102,34 @@ test("every printed reading can answer how it is known", async () => {
   assert.ok(triggers.length >= 10, `only ${triggers.length} readings are explainable`);
   assert.match(html, /aria-haspopup="dialog"/);
   assert.match(html, /how is .* known\?/);
+
+  // The page states a count of explained readings. An earlier version printed the size of the whole
+  // evidence set (17) while wiring 10 of them, and claimed "every number on this page is a button".
+  //
+  // Two assertions, because they fail for different reasons. The first is the invariant that cannot
+  // drift: the count the page prints has to equal the number of readings it actually wires. The
+  // second pins the identities, so removing a trigger is caught even if the count is updated to
+  // match. The list is stated literally rather than imported from `LANDING_EVIDENCE_IDS` — this
+  // suite runs under plain Node against the built Worker, and a test that re-derives its
+  // expectation from the source it is testing proves only that the source equals itself.
+  const wired = [...new Set([...html.matchAll(/data-ev="([^"]+)"/g)].map((match) => match[1]))];
+  assert.ok(
+    html.includes(`${wired.length} readings explained on this page`),
+    `the page wires ${wired.length} readings but does not print that count`,
+  );
+  assert.deepEqual(wired.sort(), [
+    "active-days",
+    "average-per-day",
+    "ci-passing",
+    "contributions",
+    "density",
+    "mix",
+    "momentum",
+    "momentum-change",
+    "rhythm",
+    "rhythm-level",
+  ], "keep this in step with LANDING_EVIDENCE_IDS in lib/landing.ts");
+  assert.doesNotMatch(html, /Every number on this page is a button/);
   // The three rungs, each shown with a real reading from this page's own snapshot.
   for (const rung of ["OBSERVED", "DERIVED", "HYPOTHESIS"]) {
     assert.ok(html.includes(rung), `the ladder never names ${rung}`);

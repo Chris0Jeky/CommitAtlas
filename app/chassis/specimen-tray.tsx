@@ -50,10 +50,10 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
         </div>
         <div className="flagship-meta">
           <div>
-            <div className="flagship-head">
-              <span>CARD 00 // ATLAS · FLAGSHIP</span>
+            <h3 className="flagship-head">
+              <span>CARD 00 {"//"} ATLAS · FLAGSHIP</span>
               <span className="ref">M6</span>
-            </div>
+            </h3>
             <p className="spec-rows">
               ROUTE &nbsp;<b>/api/v1/cards/atlas.svg</b>
               <br />
@@ -81,10 +81,10 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
               key={card.number}
               id={card.kind === "projects" ? "projects" : undefined}
             >
-              <div className="specimen-head">
+              <h3 className="specimen-head">
                 <span>{card.number} {"//"} {card.name}</span>
                 <span>{card.size}</span>
-              </div>
+              </h3>
               <a className="specimen-media" href={url} aria-label={`Open the synthetic ${card.title} SVG`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -98,7 +98,10 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
               <p className="specimen-purpose">{card.purpose}</p>
               <div className="specimen-foot">
                 <span>{card.note}</span>
-                <a href={url}>Open SVG <span aria-hidden="true">↗</span></a>
+                {/* Eight of these otherwise resolve to the identical name "Open SVG". Same name and
+                    same destination as the plate's image link, which is what keeps them distinct
+                    from each other rather than from their sibling. */}
+                <a href={url} aria-label={`Open the synthetic ${card.title} SVG`}>Open SVG <span aria-hidden="true">↗</span></a>
               </div>
             </article>
           );

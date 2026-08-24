@@ -65,6 +65,28 @@ export function landingSnapshot(): Promise<PortfolioSnapshot> {
   });
 }
 
+/**
+ * The evidence records the landing page actually wires to a button.
+ *
+ * `buildEvidence` describes more readings than this page prints — the rest belong to values the
+ * *cards* show, inside an SVG that cannot host a button. Keeping the list explicit is what lets the
+ * page state a number it can keep: `rendered-html.test.mjs` asserts that the set of `data-ev`
+ * attributes in the served HTML is exactly this list, so the count and the claim cannot drift apart
+ * the way "every number on this page is a button" did.
+ */
+export const LANDING_EVIDENCE_IDS: readonly string[] = [
+  "contributions",
+  "active-days",
+  "density",
+  "average-per-day",
+  "momentum",
+  "momentum-change",
+  "rhythm",
+  "rhythm-level",
+  "mix",
+  "ci-passing",
+];
+
 export interface SpecimenCard {
   kind: StudioCardKind;
   /** `CARD 02 // PROFILE` — the specimen number is stable, so a reader can cite one. */

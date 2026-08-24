@@ -48,6 +48,16 @@ test("an all-zero window draws a flat baseline rather than a full-height trace",
   assert.doesNotMatch(trace.path, /NaN|Infinity/);
 });
 
+test("a single observation draws as a level, not as a bare moveto", () => {
+  // A one-point polyline is `M4,14` — a path that renders nothing, while `flat` stays false so the
+  // pen dot still rides it. A 1-day window is legal upstream, so this is reachable.
+  const trace = momentumTrace([5]);
+  assert.equal(trace.points.length, 1);
+  assert.equal(trace.path, "M4,14 L330,14");
+  assert.equal(trace.peak, 5);
+  assert.equal(trace.flat, false);
+});
+
 test("the momentum trace survives an empty or non-finite series", () => {
   const empty = momentumTrace([]);
   assert.equal(empty.points.length, 0);
@@ -116,6 +126,28 @@ test("the active-level ramp rises monotonically and is bounded at both ends", ()
   assert.equal(opacities.at(-1), 1);
   assert.equal(densityLevelOpacity(9), densityLevelOpacity(4));
   assert.equal(densityLevelOpacity(-3), densityLevelOpacity(1));
+});
+
+test("an unparseable day cannot make the whole survey disappear", () => {
+  // `UtcDateSchema` rejects these upstream, but the failure mode is total: a NaN weekday propagates
+  // into every coordinate and into the viewBox, and nothing renders at all.
+  for (const date of ["2026-13-99", "2026-08-24T00:00:00Z", "not-a-date", ""]) {
+    const grid = densityGrid([{ date, count: 1, level: 2 }]);
+    assert.doesNotMatch(grid.viewBox, /NaN/, date);
+    assert.equal(Number.isFinite(grid.columns), true, date);
+    for (const cell of grid.cells) {
+      assert.equal(Number.isFinite(cell.x) && Number.isFinite(cell.y), true, date);
+    }
+  }
+});
+
+test("a non-finite level falls to the faintest step, never the strongest", () => {
+  // Indexing the ramp with NaN returns `undefined`; React then omits the attribute and the cell
+  // paints at opacity 1 — the level-4 maximum. An unreadable signal shown as the strongest reading
+  // is the inversion this product forbids.
+  assert.equal(densityLevelOpacity(Number.NaN), densityLevelOpacity(1));
+  assert.equal(densityLevelOpacity(Number.POSITIVE_INFINITY), densityLevelOpacity(1));
+  assert.notEqual(densityLevelOpacity(Number.NaN), 1);
 });
 
 test("an empty calendar produces a drawable, non-degenerate grid", () => {

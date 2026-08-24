@@ -52,6 +52,26 @@ test("a derived or hypothesis value always shows its working; an observed one ha
   }
 });
 
+test("a derived reading shows its working even when there is nothing to compare against", () => {
+  // A 30-day window has no prior 28-day period. The reading is still derived — the rule that
+  // produced the absence is a derivation — so the drawer must show what the rule required, rather
+  // than a DERIVED pill over `—` with nothing behind it.
+  const short: PortfolioSnapshot = {
+    ...snapshot,
+    metrics: {
+      ...snapshot.metrics,
+      window: { ...snapshot.metrics.window, days: 30 },
+      trend: { ...snapshot.metrics.trend, previous28Days: null, changePercent: null, direction: "unavailable" },
+    },
+  };
+  const record = buildEvidence(short).byId["momentum-change"]!;
+  assert.equal(record.tier, "derived");
+  assert.equal(record.value, "—");
+  assert.notEqual(record.formula, null);
+  assert.match(record.formula ?? "", /needs a 56-day window; this one is 30 days/);
+  assert.match(record.basis, /no prior 28-day period/);
+});
+
 test("every caveat says what the number cannot see, in a full sentence", () => {
   for (const record of evidence.records) {
     assert.ok(record.caveat.length > 40, `${record.id} has a caveat too short to say anything: "${record.caveat}"`);

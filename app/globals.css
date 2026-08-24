@@ -644,6 +644,8 @@ button, input, select, textarea { font: inherit; }
 .flagship-media { position: relative; flex: 0 1 auto; min-width: 0; max-width: 860px; }
 .flagship-media img { display: block; width: 100%; height: auto; background: #0d1117; }
 .flagship-meta { flex: 1 1 260px; min-width: 220px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 6px 4px; }
+/* Both plate headers are headings now, so they must not carry heading margins or sizing. */
+.flagship-head, .specimen-head { margin: 0; font-size: inherit; font-weight: 500; }
 .flagship-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .flagship-head > span:first-child { color: var(--warm-ink); font: 500 10px/1 var(--font-geist-mono), monospace; letter-spacing: 0.13em; }
 .spec-rows { margin: 14px 0 0; color: var(--muted); font: 500 10px/2.1 var(--font-geist-mono), monospace; letter-spacing: 0.08em; }
@@ -819,20 +821,28 @@ button, input, select, textarea { font: inherit; }
 .ev:focus-visible { outline: 2px solid var(--cool-ink); outline-offset: 2px; }
 .ev[aria-expanded="true"] { border-bottom-style: solid; }
 
-.evidence-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.24); }
+/*
+ * A real `<dialog>` in the top layer, so the browser supplies the focus trap and the inert
+ * background that `aria-modal` was previously only claiming. The UA sets `color` and `background`
+ * on this element rather than letting them inherit, so both have to be restated or the drawer
+ * paints in system colours on a themed page.
+ */
 .evidence-drawer {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 61;
+  inset: auto 24px 24px auto;
+  margin: 0;
+  padding: 0;
   width: min(560px, calc(100vw - 48px));
+  max-width: none;
   max-height: min(560px, calc(100vh - 48px));
   overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--violet-ink) 35%, transparent);
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--violet-ink) 40%, transparent);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--violet-ink) 4%, var(--plate));
+  background: color-mix(in srgb, var(--violet-ink) 5%, var(--plate));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
 }
+.evidence-drawer::backdrop { background: rgba(0, 0, 0, 0.24); }
 .drawer-head {
   position: sticky;
   top: 0;

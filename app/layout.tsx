@@ -58,7 +58,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    // The bootstrap below writes `data-chassis` onto this element before hydration, which the
+    // server did not render. That is the whole point, and it is exactly what this attribute is for.
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/*
           Applies a stored chassis theme before first paint.
