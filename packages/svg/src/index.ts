@@ -223,6 +223,25 @@ export interface ProjectBoardData extends SourceLabelledCardData {
   readonly projects: readonly ProjectSignal[];
 }
 
+export interface CadenceCardData extends SourceLabelledCardData {
+  /** Contribution days for the window; entries with invalid dates or non-finite counts are dropped. */
+  readonly days: readonly ActivityDay[];
+}
+
+export interface ReleaseSignal {
+  /** Display name of the project the release belongs to. */
+  readonly project: string;
+  readonly tag: string;
+  /** ISO 8601 timestamp; entries without a parseable date are dropped. */
+  readonly publishedAt: string;
+}
+
+export interface ReleasesCardData extends SourceLabelledCardData {
+  readonly releases: readonly ReleaseSignal[];
+  /** How many curated projects were observed, so absence can be stated rather than implied. */
+  readonly projectsObserved?: number;
+}
+
 export interface AtlasCardData {
   readonly profile: {
     readonly name: string;
@@ -921,6 +940,87 @@ function atlasBreakdownValue(value: number, basis: AtlasCardData["breakdownBasis
     return `${finite(value).toFixed(1).replace(/\.0$/, "")}%`;
   }
   return formatNumber(value);
+}
+
+const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
+const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+
+export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions): string {
+  const days = data.days
+    .filter((day) => isValidIsoDate(day.date) && Number.isFinite(day.count) && day.count >= 0)
+    .slice(-MAX_ACTIVITY_DAYS);
+  // getUTCDay puts Sunday first; the chassis reads weeks Monday-first.
+  const totals = Array.from({ length: 7 }, () => 0);
+  for (const day of days) totals[(new Date(`${day.date}T00:00:00Z`).getUTCDay() + 6) % 7] += day.count;
+  const total = totals.reduce((sum, value) => sum + value, 0);
+  const o = optionsFor(options, 224, "Weekly cadence", "Contribution share by day of week for the returned window, on UTC day boundaries.", 190, 300); const t = o.theme; const width = o.width;
+  const shares = totals.map((value) => (total > 0 ? (value / total) * 100 : 0));
+  const busiest = shares.indexOf(Math.max(...shares));
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const accessibleDescription = total > 0
+    ? `${metadata.description} ${WEEKDAY_NAMES.map((name, index) => `${name} ${shares[index]!.toFixed(1)}%`).join(", ")}.`
+    : `${metadata.description} No contributions observed in this window.`;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
+  out += panel(16, 16, width - 32, o.height - 32, t);
+  out += numeral(34, 48, 1, "WEEKLY CADENCE", t);
+  out += sourceMarker(data.source, width - 34, 31, t);
+  if (total === 0) {
+    out += text(34, o.height / 2 + 6, "No contributions observed in this window", 13, t.muted, 550);
+    return out + `</g>` + svgEnd();
+  }
+  out += text(width - 34, 50, `${WEEKDAY_NAMES[busiest]} carries ${shares[busiest]!.toFixed(1).replace(/\.0$/, "")}%`, 12, t.text, 600, "end");
+  const baseline = o.height - 62; const chartTop = 78;
+  const gap = 14; const barWidth = (width - 68 - gap * 6) / 7;
+  const maxShare = Math.max(1, ...shares);
+  shares.forEach((share, index) => {
+    const x = 34 + index * (barWidth + gap);
+    const barHeight = Math.max(2, (share / maxShare) * (baseline - chartTop));
+    out += `<rect x="${x.toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="3" fill="${index === busiest ? t.accent : t.track}"/>`;
+    out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 8.5, index === busiest ? t.text : t.muted, 550, "middle", 0.04);
+    out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 8.5, t.muted, 550, "middle");
+  });
+  out += mono(34, o.height - 26, `SHARE OF ${formatNumber(total)} CONTRIBUTIONS · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 7.5, t.muted, 550, "start", 0.08);
+  return out + `</g>` + svgEnd();
+}
+
+const RELEASE_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+
+export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptions): string {
+  const releases = data.releases
+    .filter((release) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
+      && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? "")) && isValidIsoDate(String(release.publishedAt).slice(0, 10)))
+    .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt))
+    .slice(0, 6);
+  const observed = Number.isFinite(data.projectsObserved)
+    ? Math.max(releases.length, Math.min(50, Math.round(data.projectsObserved as number)))
+    : null;
+  const rows = Math.max(1, releases.length);
+  const o = optionsFor(options, 92 + rows * 34 + 30, "Latest releases", "The most recent published release per curated project, newest first.", 150, 420); const t = o.theme; const width = o.width;
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const accessibleDescription = releases.length
+    ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.`
+    : `${metadata.description} No published releases observed for the curated projects.`;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
+  out += panel(16, 16, width - 32, o.height - 32, t);
+  out += numeral(34, 48, 1, "LATEST RELEASES", t);
+  out += sourceMarker(data.source, width - 34, 31, t);
+  if (!releases.length) {
+    out += text(34, 92, "No published releases observed for the curated projects", 13, t.muted, 550);
+    return out + `</g>` + svgEnd();
+  }
+  releases.forEach((release, index) => {
+    const y = 88 + index * 34;
+    if (index > 0) out += `<line x1="34" y1="${y - 22}" x2="${width - 34}" y2="${y - 22}" stroke="${t.border}"/>`;
+    out += mono(34, y, release.publishedAt.slice(0, 10), 9.5, t.muted, 500, "start", 0.04);
+    out += text(128, y, truncateText(release.project, 30), 13.5, t.text, 700);
+    out += mono(width - 34, y, truncateText(release.tag, 18), 10.5, t.accent, 600, "end", 0.04);
+  });
+  if (observed !== null && observed > releases.length) {
+    out += mono(34, o.height - 28, `${observed - releases.length} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
+  }
+  return out + `</g>` + svgEnd();
 }
 
 /** Render the compact, source-labelled CommitAtlas overview card. */

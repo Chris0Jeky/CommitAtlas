@@ -6,9 +6,11 @@ import {
   renderContributionBreakdownCard,
   renderAtlasCard,
   renderActivityCard,
+  renderCadenceCard,
   renderLanguagesCard,
   renderProfileCard,
   renderProjectBoard,
+  renderReleasesCard,
   renderRhythmCard,
   renderStreakCard,
   themes,
@@ -135,6 +137,8 @@ test("every standalone card supports subtle motion with a reduced-motion fallbac
     (motion) => renderRhythmCard(rhythm, { motion }),
     (motion) => renderLanguagesCard({ languages: [{ name: "TypeScript", percentage: 100 }] }, { motion }),
     (motion) => renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing" }] }, { motion }),
+    (motion) => renderCadenceCard({ days: [{ date: "2026-02-25", count: 2 }] }, { motion }),
+    (motion) => renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.0.0", publishedAt: "2026-02-25T12:00:00Z" }] }, { motion }),
   ];
   for (const render of renderers) {
     const animated = render("subtle");
@@ -931,4 +935,76 @@ test("a non-finite contribution level renders as the empty socket, never the str
   assertSafeSvg(withBadLevels);
   assert.doesNotMatch(withBadLevels, /fill="undefined"|fill="NaN"/);
   assert.match(withBadLevels, new RegExp(`fill="${themes.ember.socket}"`));
+});
+
+test("cadence card computes Monday-first weekday shares and names the busiest day", () => {
+  // 2026-02-23 is a Monday, 2026-02-25 a Wednesday, 2026-03-01 a Sunday.
+  const output = renderCadenceCard({
+    days: [
+      { date: "2026-02-23", count: 2 },
+      { date: "2026-02-25", count: 6 },
+      { date: "2026-03-01", count: 2 },
+      { date: "not-a-date", count: 50 },
+      { date: "2026-02-24", count: Number.NaN },
+      { date: "2026-02-26", count: -3 },
+    ],
+  });
+  assertSafeSvg(output);
+  assert.match(output, /Wednesday carries 60%/);
+  for (const label of ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]) assert.match(output, new RegExp(`>${label}<`));
+  assert.match(output, />60%</);
+  assert.match(output, /SHARE OF 10 CONTRIBUTIONS · UTC DAY BOUNDARIES · WINDOW-SCOPED/);
+  // Exactly one bar carries the accent ink: the busiest weekday.
+  const accents = output.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? [];
+  assert.equal(accents.length, 1);
+});
+
+test("cadence card states an empty window honestly and survives hostile and huge input", () => {
+  const empty = renderCadenceCard({ days: [] });
+  assertSafeSvg(empty);
+  assert.match(empty, /No contributions observed in this window/);
+  assert.doesNotMatch(empty, />MON</);
+  const zero = renderCadenceCard({ days: [{ date: "2026-02-25", count: 0 }] });
+  assert.match(zero, /No contributions observed in this window/);
+  const fullYear = Array.from({ length: 400 }, (_, index) => {
+    const date = new Date(Date.UTC(2025, 7, 1 + index)).toISOString().slice(0, 10);
+    return { date, count: (index * 37) % 90 };
+  });
+  const large = renderCadenceCard({ days: fullYear }, { theme: "paper", motion: "subtle" });
+  assertSafeSvg(large, { allowStyle: true });
+  const bytes = Buffer.byteLength(large, "utf8");
+  assert.ok(bytes < 30_000, `cadence SVG exceeded budget (${bytes} UTF-8 bytes)`);
+});
+
+test("releases card sorts newest first, caps at six, drops malformed entries, and states absence", () => {
+  const output = renderReleasesCard({
+    releases: [
+      { project: "Older", tag: "v0.1.0", publishedAt: "2026-01-05T09:00:00Z" },
+      { project: "Newest", tag: "v2.0.0", publishedAt: "2026-08-01T09:00:00Z" },
+      { project: "Middle", tag: "v1.0.0", publishedAt: "2026-04-20T09:00:00.123Z" },
+      { project: "", tag: "v9.9.9", publishedAt: "2026-08-02T09:00:00Z" },
+      { project: "BadDate", tag: "v9.9.9", publishedAt: "yesterday" },
+      { project: "BadDay", tag: "v9.9.9", publishedAt: "2026-02-30T09:00:00Z" },
+    ],
+    projectsObserved: 6,
+  });
+  assertSafeSvg(output);
+  const dates = output.match(/>\d{4}-\d{2}-\d{2}</g) ?? [];
+  assert.deepEqual(dates, [">2026-08-01<", ">2026-04-20<", ">2026-01-05<"]);
+  assert.match(output, />Newest</);
+  assert.doesNotMatch(output, /BadDate|BadDay|v9\.9\.9/);
+  assert.match(output, /3 OF 6 CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED/);
+  const capped = renderReleasesCard({
+    releases: Array.from({ length: 9 }, (_, index) => ({
+      project: `Project ${index}`, tag: `v0.${index}.0`, publishedAt: `2026-03-0${index + 1}T09:00:00Z`,
+    })),
+  });
+  assert.equal((capped.match(/>\d{4}-\d{2}-\d{2}</g) ?? []).length, 6);
+  const empty = renderReleasesCard({ releases: [], projectsObserved: 4 });
+  assertSafeSvg(empty);
+  assert.match(empty, /No published releases observed for the curated projects/);
+  const hostile = renderReleasesCard({
+    releases: [{ project: injection, tag: injection, publishedAt: "2026-08-01T09:00:00Z" }],
+  });
+  assertSafeSvg(hostile);
 });

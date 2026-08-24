@@ -24,7 +24,7 @@ const NON_BREAKING_SPACE = "\u00a0";
 test("validates one contained config and rejects ambiguous projects or card selections", () => {
   const parsed = config();
   assert.equal(parsed.user, "octocat");
-  assert.equal(parsed.cards.length, 8);
+  assert.equal(parsed.cards.length, 10);
   assert.equal(parsed.responsiveAtlas, false);
   assert.equal(parsed.projects[0].repo, "octocat/atlas");
   assert.throws(() => parseStaticConfig({ ...rawConfig(), unknown: true }), /unrecognized_keys/i);
@@ -71,8 +71,10 @@ test("renders all rich widgets deterministically from one snapshot", () => {
   const second = renderStaticArtifacts(snapshot(), config());
   assert.deepEqual(first, second);
   assert.deepEqual(Object.keys(first).sort(), [
-    "activity.svg", "atlas.svg", "breakdown.svg", "languages.svg", "profile.svg", "projects.svg", "rhythm.svg", "streak.svg",
+    "activity.svg", "atlas.svg", "breakdown.svg", "cadence.svg", "languages.svg", "profile.svg", "projects.svg", "releases.svg", "rhythm.svg", "streak.svg",
   ]);
+  assert.match(first["cadence.svg"], /WEEKLY CADENCE/);
+  assert.match(first["releases.svg"], /LATEST RELEASES/);
   assert.match(first["atlas.svg"], /PUBLIC PROFILE VIEW/);
   assert.match(first["atlas.svg"], /02 \/\/ PROFILE MIX · NOT WINDOW-SCOPED/);
   assert.match(first["atlas.svg"], /CONTRIBUTION DENSITY/);
@@ -99,7 +101,7 @@ test("propagates synthetic source truth to every standalone static card", () => 
     projects: { ...base.projects, freshness: demoFreshness },
     freshness: demoFreshness,
   }, config());
-  for (const name of ["profile.svg", "streak.svg", "activity.svg", "breakdown.svg", "rhythm.svg", "languages.svg", "projects.svg"]) {
+  for (const name of ["profile.svg", "streak.svg", "activity.svg", "breakdown.svg", "rhythm.svg", "languages.svg", "projects.svg", "cadence.svg", "releases.svg"]) {
     const svg = rendered[name];
     assert.match(svg, />SYNTHETIC DEMO<\/text>/, name);
     assert.match(svg, /<title>Synthetic demo:/, name);

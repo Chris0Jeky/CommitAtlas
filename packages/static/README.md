@@ -2,8 +2,8 @@
 
 Generate a compact CommitAtlas dashboard and its individual SVG widgets from one public GitHub
 snapshot. The CLI reads a tracked `.commitatlas.json`, fetches only logged-out public profile data,
-and writes selected cards plus a hash manifest. The eight selectable cards are `atlas`, `profile`,
-`streak`, `breakdown`, `rhythm`, `activity`, `languages`, and `projects`.
+and writes selected cards plus a hash manifest. The ten selectable cards are `atlas`, `profile`,
+`streak`, `breakdown`, `rhythm`, `activity`, `languages`, `projects`, `cadence`, and `releases`.
 
 ```powershell
 commitatlas generate --config .commitatlas.json
@@ -14,7 +14,7 @@ commitatlas generate --config .commitatlas.json --output-dir assets/commitatlas 
 The generator sends no GitHub credential. GitHub's public profile view is the contribution source;
 its activity mix comes from calendar-year profile views and is labelled as public-profile percentages
 that are not window-scoped unless an explicitly exact source is available. A malformed, incomplete,
-or unavailable upstream response fails generation before output is staged. The tracked v1 config selects any subset of the eight cards for one public owner and up to
+or unavailable upstream response fails generation before output is staged. The tracked v1 config selects any subset of the ten cards for one public owner and up to
 six curated projects. `manifest.json` records the exact window, provenance, byte size, and SHA-256
 hash of every generated artifact.
 
@@ -68,9 +68,9 @@ what is behind it: `github.com/<owner>/<repo>`, a gist, and a release asset on
 catalog is expected to link to the owner's own repository. The label reports only the thing a reader
 would not otherwise assume — that a destination is not on GitHub at all.
 
-With all eight cards and `responsiveAtlas: true`, the output
-contains 11 payload artifacts (eight SVGs, one Atlas companion, and two project catalogs) plus
-`manifest.json`, for 12 files total. A narrower card selection produces a correspondingly smaller
+With all ten cards and `responsiveAtlas: true`, the output
+contains 13 payload artifacts (ten SVGs, one Atlas companion, and two project catalogs) plus
+`manifest.json`, for 14 files total. A narrower card selection produces a correspondingly smaller
 manifest.
 
 Config and output paths must remain inside the repository and may not traverse symlinks. Every input,

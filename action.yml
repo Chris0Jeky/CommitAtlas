@@ -45,6 +45,10 @@ outputs:
     description: Repository-relative path to languages.svg when selected.
   projects:
     description: Repository-relative path to projects.svg when selected.
+  cadence:
+    description: Repository-relative path to cadence.svg when selected.
+  releases:
+    description: Repository-relative path to releases.svg when selected.
   projects-json:
     description: Repository-relative path to projects.json when projects is selected.
   projects-markdown:
