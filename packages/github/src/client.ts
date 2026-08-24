@@ -51,7 +51,7 @@ const GITHUB_TEXT_LIMITS = {
 
 export class GitHubApiError extends Error {
   constructor(
-    readonly code: "github_unavailable" | "github_rate_limited" | "token_required" | "invalid_response" | "private_data",
+    readonly code: "github_unavailable" | "github_rate_limited" | "github_not_found" | "token_required" | "invalid_response" | "private_data",
     message: string,
     readonly status = 502,
     readonly retryAfter: string | null = null,
@@ -347,7 +347,7 @@ export class GitHubClient {
       primaryLanguage: textField(repo, "language", GITHUB_TEXT_LIMITS.language),
       stars: requiredMetric(repo, "stargazers_count"),
       forks: requiredMetric(repo, "forks_count"),
-      openIssues: requiredMetric(repo, "open_issues_count"),
+      openIssuesAndPullRequests: requiredMetric(repo, "open_issues_count"),
       pushedAt: textField(repo, "pushed_at", GITHUB_TEXT_LIMITS.timestamp),
       license: license === "NOASSERTION" ? null : license,
       ci,
@@ -394,7 +394,14 @@ export class GitHubClient {
     if (result === null || !isRecord(result)) {
       return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
-    const runs = Array.isArray(result.workflow_runs) ? result.workflow_runs.filter(isRecord) : [];
+    // A 200 whose workflow_runs is missing or not an array is an unreadable
+    // observation, not an observed absence of runs. Report it as unavailable so
+    // a malformed payload can never present as configured-and-clean or as
+    // "Not configured".
+    if (!Array.isArray(result.workflow_runs)) {
+      return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
+    }
+    const runs = result.workflow_runs.filter(isRecord);
     const run = runs[0];
     if (!run) {
       return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: true }, this.now()), workflow, null, null);
@@ -415,10 +422,13 @@ export class GitHubClient {
       headers: this.headers(),
       body: JSON.stringify({ query, variables }),
     });
-    const payload = await this.readResponse(response, false);
+    // GraphQL classifies its own payload errors so a partial not-found answer
+    // is recognised before the generic error path collapses it into an outage.
+    const payload = await this.readResponse(response, false, true);
     if (!isRecord(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid GraphQL response");
     }
+    assertGraphqlPayload(payload);
     return payload;
   }
 
@@ -468,20 +478,21 @@ export class GitHubClient {
     return headers;
   }
 
-  private async readResponse(response: Response, allowMissing: boolean): Promise<Record<string, unknown> | unknown[] | null> {
-    if (allowMissing && (response.status === 403 || response.status === 404)) {
+  private async readResponse(
+    response: Response,
+    allowMissing: boolean,
+    allowPayloadErrors = false,
+  ): Promise<Record<string, unknown> | unknown[] | null> {
+    // Only 404 proves an optional resource is absent. A 403 or 429 is a refusal
+    // or a rate limit, and reporting it as "no release" or "no workflow run"
+    // would turn an unknown signal into an observed one.
+    if (allowMissing && response.status === 404) {
       await response.body?.cancel();
       return null;
     }
     if (!response.ok) {
       await response.body?.cancel();
-      const limited = response.status === 403 || response.status === 429;
-      throw new GitHubApiError(
-        limited ? "github_rate_limited" : "github_unavailable",
-        limited ? "GitHub rate limit reached; retry after the reset window" : "GitHub data is currently unavailable",
-        limited ? 429 : 502,
-        retryAfterValue(response.headers, this.now()),
-      );
+      throw this.transportError(response, "GitHub data is currently unavailable");
     }
     const declaredLength = response.headers.get("content-length");
     if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > MAX_RESPONSE_BYTES) {
@@ -492,7 +503,7 @@ export class GitHubClient {
     if (!isRecord(payload) && !Array.isArray(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned invalid JSON data");
     }
-    if (isRecord(payload) && Array.isArray(payload.errors) && payload.errors.length > 0) {
+    if (!allowPayloadErrors && isRecord(payload) && Array.isArray(payload.errors) && payload.errors.length > 0) {
       throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
     }
     return payload;
@@ -501,13 +512,7 @@ export class GitHubClient {
   private async readHtmlResponse(response: Response): Promise<string> {
     if (!response.ok) {
       await response.body?.cancel();
-      const limited = response.status === 403 || response.status === 429;
-      throw new GitHubApiError(
-        limited ? "github_rate_limited" : "github_unavailable",
-        limited ? "GitHub rate limit reached; retry after the reset window" : "GitHub public profile is currently unavailable",
-        limited ? 429 : 502,
-        retryAfterValue(response.headers, this.now()),
-      );
+      throw this.transportError(response, "GitHub public profile is currently unavailable");
     }
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     if (contentType && !contentType.startsWith("text/html")) {
@@ -520,6 +525,29 @@ export class GitHubClient {
       throw new GitHubApiError("invalid_response", "GitHub response exceeded the allowed size");
     }
     return this.readBoundedText(response);
+  }
+
+  /**
+   * Keep the three upstream failure meanings separate: a rate limit carries
+   * retry guidance, a 404 is the non-disclosing not-found contract, and every
+   * other failure stays an upstream outage.
+   */
+  private transportError(response: Response, unavailableMessage: string): GitHubApiError {
+    if (response.status === 403 || response.status === 429) {
+      return new GitHubApiError(
+        "github_rate_limited",
+        "GitHub rate limit reached; retry after the reset window",
+        429,
+        retryAfterValue(response.headers, this.now()),
+      );
+    }
+    if (response.status === 404) return notFoundError();
+    return new GitHubApiError(
+      "github_unavailable",
+      unavailableMessage,
+      502,
+      retryAfterValue(response.headers, this.now()),
+    );
   }
 
   private async fetchWithDeadline(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
@@ -614,6 +642,35 @@ function toLanguageSignals(counts: ReadonlyMap<string, number>): LanguageSignal[
 
 function privateDataError(message: string): GitHubApiError {
   return new GitHubApiError("private_data", message, 403);
+}
+
+/**
+ * GitHub answers 404 identically for a resource that does not exist and one
+ * that exists but is not visible to the caller. This contract therefore states
+ * only that no public resource matched, never which of the two happened, and
+ * carries no resource identity. Every not-found path shares this one message so
+ * a caller cannot probe for private repositories by comparing responses.
+ */
+function notFoundError(): GitHubApiError {
+  return new GitHubApiError("github_not_found", "No public GitHub resource matched this request", 404);
+}
+
+/**
+ * GitHub reports an unknown login as a partial success rather than a transport
+ * error: HTTP 200 carrying `data.user: null` alongside a NOT_FOUND entry in
+ * `errors`. Recognise exactly that shape before the generic GraphQL error path
+ * so it yields the same not-found contract as every REST route. The upstream
+ * message quotes the login that was probed, so it is discarded in favour of the
+ * one shared not-found message. Any other error, or a mix, stays an outage.
+ */
+function assertGraphqlPayload(payload: Record<string, unknown>): void {
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const missingUser = isRecord(payload.data) && payload.data.user === null;
+  const onlyNotFound = errors.every((error) => isRecord(error) && error.type === "NOT_FOUND");
+  if (missingUser && onlyNotFound) throw notFoundError();
+  if (errors.length > 0) {
+    throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
+  }
 }
 
 function hasOnlyPublicClassicScopes(token: string, scopes: string | null): boolean {
@@ -867,6 +924,12 @@ function assertRequestedContributionWindow(
     if (!available.has(expected.toISOString().slice(0, 10))) {
       throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
     }
+  }
+  // The window starts on `to - (requestedDays - 1)` inclusive, so a complete
+  // window holds exactly the requested UTC day count. Anything longer means a
+  // duplicated or out-of-window day survived filtering.
+  if (calendarDays.length !== requestedDays) {
+    throw new GitHubApiError("invalid_response", "GitHub returned more contribution days than the requested window");
   }
 }
 

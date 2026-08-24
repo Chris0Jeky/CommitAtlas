@@ -134,7 +134,7 @@ export function demoProjects(
         primaryLanguage: ["TypeScript", "Python", "Rust"][index % 3],
         stars: 42 - index * 3,
         forks: 8 + index,
-        openIssues: index * 2,
+        openIssuesAndPullRequests: index * 2,
         pushedAt: stableTimestamp,
         license: "GPL-3.0-only",
         ci: {

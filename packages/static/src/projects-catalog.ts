@@ -2,7 +2,15 @@ import { ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/cor
 import { safeHttpsUrl, type PortfolioSnapshot, type ProjectReleaseSignal, type ProjectSnapshot } from "@commit-atlas/github";
 import type { StaticConfig } from "./config.js";
 
-export const PROJECT_CATALOG_VERSION = 1 as const;
+/**
+ * Version 2 is the first catalog shape that is not wire-compatible with
+ * version 1. A consumer's only compatibility gate is this number, so an
+ * incompatible shape must never keep the old one: two mutually invalid schemas
+ * sharing a version is exactly what the field exists to prevent. Bumping makes
+ * a version-1 reader fail closed with a clear version error instead of
+ * silently reading `undefined` out of a renamed or unexpected key.
+ */
+export const PROJECT_CATALOG_VERSION = 2 as const;
 
 export type ProjectCatalogActionKind =
   | "source"
@@ -48,7 +56,7 @@ export interface ProjectCatalogEntry {
   readonly primaryLanguage?: string;
   readonly stars: number;
   readonly forks: number;
-  readonly openIssues: number;
+  readonly openIssuesAndPullRequests: number;
   readonly pushedAt?: string;
   readonly ci: ProjectCatalogCi;
   readonly release?: ProjectCatalogRelease;
@@ -188,7 +196,7 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
     ...(project.primaryLanguage ? { primaryLanguage: boundedText(project.primaryLanguage, "language", MAX_LABEL) } : {}),
     stars: boundedCount(project.stars, "stars"),
     forks: boundedCount(project.forks, "forks"),
-    openIssues: boundedCount(project.openIssues, "open issues"),
+    openIssuesAndPullRequests: boundedCount(project.openIssuesAndPullRequests, "open issues and pull requests"),
     ...(project.pushedAt ? { pushedAt: boundedText(project.pushedAt, "pushedAt", 80) } : {}),
     ci: {
       state: project.ci.state,
@@ -293,7 +301,7 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
   for (const project of catalog.projects) {
     lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** ${codeSpan(project.repo)}`, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (${codeSpan(project.ci.workflow)})` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
-    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues/PRs`);
+    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssuesAndPullRequests} open issues/PRs`);
     // `boundedText` trims, so a tag of nothing but non-ASCII whitespace (a single U+00A0 is a legal
     // git ref name) reaches here empty. Drop the parenthetical the way an absent `ci.workflow` is
     // dropped, rather than throwing and failing every artifact over one cosmetic field.

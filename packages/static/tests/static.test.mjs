@@ -154,13 +154,20 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   const second = renderProjectCatalogArtifacts(richSnapshot, catalogConfig);
   assert.deepEqual(first, second);
   const parsed = JSON.parse(first["projects.json"]);
-  assert.equal(parsed.version, 1);
+  // Version 2 carries the renamed combined issue/PR key. A version-1 consumer
+  // must be turned away by the version gate rather than shown a shape it
+  // cannot validate.
+  assert.equal(parsed.version, 2);
   assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
     ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
   ]);
   assert.match(first["projects.md"], /\[Docs\]\(https:\/\/docs.github.com\/en\/repositories\)/);
   assert.match(first["projects.md"], /2 open issues\/PRs/);
+  // GitHub's open_issues_count is issues plus pull requests, so the catalog key
+  // must name the combined metric rather than claim an issue-only total.
+  assert.equal(parsed.projects[0].openIssuesAndPullRequests, 2);
+  assert.equal("openIssues" in parsed.projects[0], false);
   assert.doesNotMatch(first["projects.md"], /#readme|\/docs\/|releases\/latest/);
 });
 
@@ -605,7 +612,7 @@ function snapshot() {
         primaryLanguage: "TypeScript",
         stars: 42,
         forks: 8,
-        openIssues: 2,
+        openIssuesAndPullRequests: 2,
         pushedAt: generatedAt,
         license: "GPL-3.0-only",
         ci: { state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: generatedAt, headSha: null },

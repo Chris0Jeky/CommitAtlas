@@ -756,6 +756,264 @@ test("bounds concurrent project lookups below the Worker connection limit", asyn
   assert.equal(peakRepositoryLookups, 2);
 });
 
+test("returns one non-disclosing not-found contract for every missing public resource", async () => {
+  const notFound: typeof fetch = async () => json({ message: "Not Found" }, 404);
+  const contracts: { code: string; status: number; message: string; retryAfter: string | null }[] = [];
+  for (const lookup of [
+    () => new GitHubClient({ fetchImpl: notFound, now: () => NOW }).fetchProfile("unknown-user"),
+    () => new GitHubClient({ fetchImpl: notFound, now: () => NOW })
+      .fetchProjects("acme", ["unknown-repo"], new Map([["unknown-repo", "active" as const]])),
+    // A repository that exists privately answers with the same upstream 404 as
+    // one that does not exist, so both must produce the identical contract.
+    () => new GitHubClient({ fetchImpl: notFound, now: () => NOW })
+      .fetchProjects("acme", ["private-repo"], new Map([["private-repo", "active" as const]])),
+    () => new GitHubClient({ fetchImpl: async () => html("Not Found", 404), now: () => NOW })
+      .fetchPublicProfileContributions("unknown-user", 7),
+    // The token-backed GraphQL path reports an unknown login as a partial
+    // HTTP 200 answer rather than a 404, and must land on the same contract.
+    () => new GitHubClient({
+      token: "ghp_public-only",
+      fetchImpl: graphqlFetch(graphqlNotFoundPayload("unknown-user")),
+      now: () => NOW,
+    }).fetchContributions("unknown-user", 7),
+  ]) {
+    await assert.rejects(lookup(), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      contracts.push({ code: error.code, status: error.status, message: error.message, retryAfter: error.retryAfter });
+      return true;
+    });
+  }
+  assert.equal(contracts.length, 5);
+  for (const contract of contracts) {
+    assert.deepEqual(contract, {
+      code: "github_not_found",
+      status: 404,
+      message: "No public GitHub resource matched this request",
+      retryAfter: null,
+    });
+  }
+  assert.equal(contracts.every((contract) => !/private|exists|unknown-repo|private-repo|unknown-user/i.test(contract.message)), true);
+});
+
+test("recognizes the partial GraphQL not-found answer before the generic error path", async () => {
+  const contributions = (payload: unknown) =>
+    new GitHubClient({ token: "ghp_public-only", fetchImpl: graphqlFetch(payload), now: () => NOW })
+      .fetchContributions("unknown-user", 7);
+
+  // The live API answers an unknown login with HTTP 200 carrying BOTH a null
+  // user and a NOT_FOUND error entry. A fixture with only the null user would
+  // never exercise the generic error path this has to run ahead of.
+  const contracts: string[] = [];
+  for (const payload of [graphqlNotFoundPayload("unknown-user"), { data: { user: null } }]) {
+    await assert.rejects(contributions(payload), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      contracts.push(JSON.stringify({ code: error.code, status: error.status, message: error.message, retryAfter: error.retryAfter }));
+      // The upstream message quotes the probed login; ours must not.
+      assert.doesNotMatch(error.message, /unknown-user|resolve|login/i);
+      return true;
+    });
+  }
+  assert.equal(new Set(contracts).size, 1);
+  assert.equal(
+    contracts[0],
+    JSON.stringify({ code: "github_not_found", status: 404, message: "No public GitHub resource matched this request", retryAfter: null }),
+  );
+
+  for (const [label, payload] of [
+    ["non-not-found error", { data: { user: null }, errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded" }] }],
+    ["mixed errors", { data: { user: null }, errors: [{ type: "NOT_FOUND" }, { type: "SERVICE_UNAVAILABLE" }] }],
+    ["error with a resolved user", { data: { user: { contributionsCollection: null } }, errors: [{ type: "SERVICE_UNAVAILABLE" }] }],
+  ] as const) {
+    await assert.rejects(contributions(payload), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError, label);
+      assert.equal(error.code, "github_unavailable", label);
+      assert.equal(error.status, 502, label);
+      return true;
+    });
+  }
+});
+
+test("keeps rate-limit and upstream-outage semantics distinct from not found", async () => {
+  const reset = String(NOW.getTime() / 1000 + 30);
+  for (const [status, code, errorStatus, retryAfter] of [
+    [404, "github_not_found", 404, null],
+    [500, "github_unavailable", 502, "30"],
+    [502, "github_unavailable", 502, "30"],
+    [403, "github_rate_limited", 429, "30"],
+    [429, "github_rate_limited", 429, "30"],
+  ] as const) {
+    const fetchImpl: typeof fetch = async () => new Response(null, { status, headers: { "x-ratelimit-reset": reset } });
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError, `status ${status}`);
+        assert.equal(error.code, code, `status ${status}`);
+        assert.equal(error.status, errorStatus, `status ${status}`);
+        assert.equal(error.retryAfter, retryAfter, `status ${status}`);
+        return true;
+      },
+    );
+  }
+});
+
+test("treats only 404 as an absent optional release or workflow run", async () => {
+  const optionalPath = (pathname: string): boolean =>
+    pathname.endsWith("/releases/latest") || pathname.endsWith("/actions/workflows/ci.yml/runs");
+  const optionalFetch = (optional: () => Response): typeof fetch => async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (optionalPath(url.pathname)) return optional();
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  const board = await new GitHubClient({ fetchImpl: optionalFetch(() => json({ message: "Not Found" }, 404)), now: () => NOW })
+    .fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]]));
+  assert.equal(board.projects[0].release, null);
+  assert.equal(board.projects[0].ci.state, "unavailable");
+  assert.equal(board.projects[0].ci.label, "CI unavailable");
+
+  for (const [status, retryAfterHeader, expectedRetryAfter] of [
+    [403, { "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30) }, "30"],
+    [429, { "retry-after": "31" }, "31"],
+  ] as const) {
+    await assert.rejects(
+      new GitHubClient({
+        fetchImpl: optionalFetch(() => new Response(null, { status, headers: retryAfterHeader })),
+        now: () => NOW,
+      }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]])),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError, `status ${status}`);
+        assert.equal(error.code, "github_rate_limited", `status ${status}`);
+        assert.equal(error.status, 429, `status ${status}`);
+        assert.equal(error.retryAfter, expectedRetryAfter, `status ${status}`);
+        return true;
+      },
+    );
+  }
+});
+
+test("reports missing or non-array workflow_runs as unavailable rather than unconfigured", async () => {
+  for (const body of [
+    {},
+    { workflow_runs: null },
+    { workflow_runs: "boom" },
+    { workflow_runs: { 0: { status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" } } },
+    { workflow_runs: [] },
+    { workflow_runs: ["not-a-run"] },
+  ]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json(body);
+      assert.fail(`unexpected lookup: ${url.pathname}`);
+    };
+    const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+      "acme",
+      ["atlas"],
+      new Map([["atlas", "active"]]),
+      new Map([["atlas", "ci.yml"]]),
+    );
+    const label = JSON.stringify(body);
+    assert.equal(board.projects[0].ci.state, "unavailable", label);
+    assert.equal(board.projects[0].ci.label, "CI unavailable", label);
+    assert.notEqual(board.projects[0].ci.state, "unconfigured", label);
+    assert.equal(board.projects[0].ci.checkedAt, null, label);
+    assert.equal(board.freshness.mode, "partial", label);
+  }
+});
+
+test("returns exactly the requested inclusive UTC contribution window", async () => {
+  for (const requestedDays of [1, 7, 30]) {
+    // GitHub may answer with a wider calendar than the request; the window is
+    // defined by the request, not by whatever the upstream page happens to hold.
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+      const { variables } = JSON.parse(String(init?.body)) as { variables: { from: string } };
+      const start = new Date(variables.from);
+      start.setUTCDate(start.getUTCDate() - 4);
+      const contributionDays = Array.from({ length: requestedDays + 4 }, (_, offset) => {
+        const date = new Date(start);
+        date.setUTCDate(date.getUTCDate() + offset);
+        return { date: date.toISOString().slice(0, 10), contributionCount: 1 };
+      });
+      return json({ data: { user: { contributionsCollection: {
+        totalCommitContributions: 1,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays }] },
+      } } } });
+    };
+    const snapshot = await new GitHubClient({ token: "ghp_public-only", fetchImpl, now: () => NOW })
+      .fetchContributions("octocat", requestedDays);
+    assert.equal(snapshot.days.length, requestedDays, `graphql days=${requestedDays}`);
+    assert.equal(snapshot.days.at(-1)?.date, "2026-08-19", `graphql days=${requestedDays}`);
+    assert.equal(snapshot.days[0]?.date, inclusiveWindowStart(NOW, requestedDays), `graphql days=${requestedDays}`);
+    assert.equal(snapshot.totalContributions, requestedDays, `graphql days=${requestedDays}`);
+  }
+
+  for (const requestedDays of [1, 7, 30]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      const year = Number(url.searchParams.get("from")?.slice(0, 4));
+      return html(fullYearContributionHtml(year));
+    };
+    const snapshot = await new GitHubClient({ fetchImpl, now: () => NOW })
+      .fetchPublicProfileContributions("octocat", requestedDays);
+    assert.equal(snapshot.days.length, requestedDays, `html days=${requestedDays}`);
+    assert.equal(snapshot.days.at(-1)?.date, "2026-08-19", `html days=${requestedDays}`);
+    assert.equal(snapshot.days[0]?.date, inclusiveWindowStart(NOW, requestedDays), `html days=${requestedDays}`);
+  }
+});
+
+function inclusiveWindowStart(to: Date, requestedDays: number): string {
+  const start = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+  start.setUTCDate(start.getUTCDate() - (requestedDays - 1));
+  return start.toISOString().slice(0, 10);
+}
+
+function fullYearContributionHtml(year: number): string {
+  return publicContributionHtml(
+    year,
+    Object.fromEntries(datesInYear(year).map((date) => [date, 1])),
+    { Commits: 100, "Pull requests": 0, Issues: 0, "Code review": 0 },
+  );
+}
+
+function datesInYear(year: number): string[] {
+  const dates: string[] = [];
+  const date = new Date(Date.UTC(year, 0, 1));
+  while (date.getUTCFullYear() === year) {
+    dates.push(date.toISOString().slice(0, 10));
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+/** The exact partial answer api.github.com/graphql returns for an unknown login. */
+function graphqlNotFoundPayload(login: string): Record<string, unknown> {
+  return {
+    data: { user: null },
+    errors: [{
+      type: "NOT_FOUND",
+      path: ["user"],
+      locations: [{ line: 3, column: 5 }],
+      message: `Could not resolve to a User with the login of '${login}'.`,
+    }],
+  };
+}
+
+function graphqlFetch(payload: unknown): typeof fetch {
+  return async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "" });
+    return json(payload);
+  };
+}
+
 function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
