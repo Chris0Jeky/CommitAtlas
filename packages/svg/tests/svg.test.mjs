@@ -789,6 +789,21 @@ test("atlas card keeps non-finite direct-caller numerics out of the rendered SVG
   const unknownProjects = renderAtlasCard(atlasFixture({ projects: { total: 6, passing: Number.NaN, attention: 1, unavailable: 1 } }), { motion: "none" });
   assert.match(unknownProjects, /Project health unavailable/);
   assert.doesNotMatch(unknownProjects, /CI passing/);
+  // A negative count is impossible, so it is an unknown signal too — and a more dangerous one than
+  // NaN, because `finite()` clamps it to a plausible zero. Without this bound,
+  // `{ total: 6, passing: 6, attention: -1, unavailable: 0 }` rendered as
+  // `6/6 CI passing · 0 attention · 0 unavailable` in the muted healthy style.
+  for (const key of ["total", "passing", "attention", "unavailable"]) {
+    const negative = renderAtlasCard(
+      atlasFixture({ projects: { total: 6, passing: 6, attention: 0, unavailable: 0, [key]: -1 } }),
+      { motion: "none" },
+    );
+    assert.match(negative, /Project health unavailable/, `negative ${key} was not reported as unknown`);
+    assert.doesNotMatch(negative, /CI passing/, `negative ${key} still rendered a confident tally`);
+    assertSafeSvg(negative, { allowStyle: true });
+    assertWellFormedXml(negative);
+    assertFiniteGeometry(negative);
+  }
   // An unknown trend change is reported as unknown too.
   const unknownTrend = renderAtlasCard(atlasFixture({
     trend: { buckets: [1, 2, 3], recent28Days: 12, previous28Days: 9, changePercent: Number.POSITIVE_INFINITY, direction: "up" },

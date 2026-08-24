@@ -919,11 +919,14 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const profileSignal = `${formatNumber(data.profile.repositories, false)} repos · ${formatNumber(data.profile.followers)} followers${Number.isFinite(data.profile.stars) ? ` · ${formatNumber(data.profile.stars)} stars` : " · stars unavailable"}`;
   out += text(detailX, detailY + 37, profileSignal, 9, t.text, 550);
   const projectCounts = data.projects;
-  // A non-finite count is an unknown project signal. Never render it as a real tally, and never
-  // let `NaN`/`Infinity` reach visible text.
+  // A non-finite or negative count is an unknown project signal. Never render it as a real tally,
+  // and never let `NaN`/`Infinity` reach visible text. Negative has to be rejected here rather than
+  // left to `finite()`: that clamps to zero, so `attention: -1` would otherwise print a confident
+  // `0 attention` in the muted healthy style — corrupt input presented as a clean signal, which is
+  // exactly what the never-show-an-unknown-as-healthy rule forbids.
   const projectCountsKnown = projectCounts
     ? [projectCounts.total, projectCounts.passing, projectCounts.attention, projectCounts.unavailable]
-      .every((count) => Number.isFinite(count))
+      .every((count) => Number.isFinite(count) && (count as number) >= 0)
     : false;
   out += !projectCounts
     ? text(detailX, detailY + 53, "Project health not configured", 9, t.muted, 550)
