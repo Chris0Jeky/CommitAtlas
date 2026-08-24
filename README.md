@@ -16,10 +16,16 @@ live portfolio Studio.
 
 </div>
 
-> **v0.1.0 is released.** The hosted API and Studio, the eight-card static generator with optional
-> same-snapshot responsive Atlas and project-catalog companions, and the bundled Node 24 Action are
-> implemented, deployed, and tagged. Every push to `main` that passes CI deploys to Cloudflare
-> Workers and is verified by seventeen probes against the origin it just published to.
+> **v0.2.0 rebuilds the web surface on the shared chassis.** The landing page is now the product
+> measuring itself: every number in the instrument fascia, the six-state health rack, and the new
+> evidence drawer comes from the same `fetchPortfolioSnapshot` call the SVG routes use, so nothing
+> on the front page is typed in and none of it costs a GitHub request. Four chassis themes, a
+> complete reduced-motion page, and an evidence layer that lets every printed number answer
+> "how do you know that". The contract is in [docs/DESIGN_CHASSIS.md](docs/DESIGN_CHASSIS.md).
+>
+> The hosted API, the eight-card static generator, and the bundled Node 24 Action are unchanged.
+> Every push to `main` that passes CI deploys to Cloudflare Workers and is verified by probes
+> against the origin it just published to.
 >
 > **npm publication is still not claimed.** The packages are built and pack-verified but are not on
 > the registry, and the README will not say otherwise until a registry lookup succeeds.
@@ -50,7 +56,7 @@ not presented as a universal GitHub ranking or a comparison with other developer
 | Breakdown | Window-scoped categorized counts when exact; otherwise calendar-year profile percentages labelled as not window-scoped | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
 | Rhythm | Personal consistency from within-window density, streak, and momentum — not a GitHub rank | `/api/v1/cards/rhythm.svg` / `rhythm.svg` |
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
-| Languages | Repository-language byte share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
+| Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
 | Projects | Up to six curated projects with declared lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` (static: `projects.json`, `projects.md`) |
 
 The [Studio](https://commit-atlas.commit-atlas.workers.dev/studio) configures, previews, and copies

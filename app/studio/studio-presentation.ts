@@ -100,15 +100,24 @@ export function studioSourceLabel(source: string): string {
 
 export interface StarterCiPresentation {
   label: "Not configured" | "Preview required";
-  tone: "muted";
+  tone: "unknown";
+  /**
+   * The six-state vocabulary word for a row nobody has previewed yet.
+   *
+   * A project with no named workflow is `unconfigured` — that is exactly what the API would say
+   * about it. A project that names one but has not been observed is `unavailable`: something could
+   * be watched and nothing has been, which is a different claim from "there is nothing to watch".
+   * Neither is tinted, and the printed label says which it is.
+   */
+  state: "unconfigured" | "unavailable";
   workflowLabel: string;
 }
 
 export function starterCiPresentation(workflow: string): StarterCiPresentation {
   const configuredWorkflow = workflow.trim();
   return configuredWorkflow
-    ? { label: "Preview required", tone: "muted", workflowLabel: configuredWorkflow }
-    : { label: "Not configured", tone: "muted", workflowLabel: "Not configured" };
+    ? { label: "Preview required", tone: "unknown", state: "unavailable", workflowLabel: configuredWorkflow }
+    : { label: "Not configured", tone: "unknown", state: "unconfigured", workflowLabel: "Not configured" };
 }
 
 export function activityBarPercent(count: number, maximum: number): number {

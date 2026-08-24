@@ -14,14 +14,18 @@ import {
 } from "./studio-presentation";
 
 test("starter CI never invents a healthy state", () => {
+  // Both rows are unknown, but they are not the *same* unknown: nothing to watch, versus something
+  // to watch that has not been watched. The rack vocabulary has a distinct word for each.
   assert.deepEqual(starterCiPresentation("  "), {
     label: "Not configured",
-    tone: "muted",
+    tone: "unknown",
+    state: "unconfigured",
     workflowLabel: "Not configured",
   });
   assert.deepEqual(starterCiPresentation(" ci.yml "), {
     label: "Preview required",
-    tone: "muted",
+    tone: "unknown",
+    state: "unavailable",
     workflowLabel: "ci.yml",
   });
 });
@@ -135,10 +139,14 @@ test("gallery source labels do not overstate unknown provenance", () => {
 });
 
 test("Studio text inputs retain an explicit keyboard focus treatment", () => {
+  // Asserted as a property rather than as a byte string: the previous version pinned one exact
+  // declaration, which made it fail the moment the ring changed colour and pass for a selector
+  // whose element no longer existed. What has to stay true is that a text field shows focus, and
+  // shows it *inside* its wrapper where it cannot be mistaken for a thicker border.
   const css = readFileSync(new URL("../globals.css", import.meta.url), "utf8");
-  assert.match(
-    css,
-    /\.handle-form input:focus-visible, \.text-field input:focus-visible \{ outline: 2px solid var\(--gold\); outline-offset: -4px; \}/,
-  );
-  assert.match(css, /\.handle-form > div:focus-within, \.text-field:focus-within \{ border-color:/);
+  const rule = /\.text-field input:focus-visible[^{]*\{([^}]*)\}/.exec(css);
+  assert.ok(rule, "text inputs have no focus-visible rule of their own");
+  assert.match(rule[1], /outline:\s*2px solid/);
+  assert.match(rule[1], /outline-offset:\s*-\d/);
+  assert.match(css, /\.text-field:focus-within \{ border-color:/);
 });

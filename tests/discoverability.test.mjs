@@ -86,7 +86,9 @@ test("the landing page carries a canonical URL and honest structured data", asyn
   const html = await response.text();
 
   assert.match(html, new RegExp(`<link[^>]+rel="canonical"[^>]+href="${literal(ORIGIN)}/?"`));
-  assert.match(html, /<meta[^>]+name="theme-color"[^>]+content="#11110f"/);
+  // The default chassis ground. A visitor on another chassis theme gets it applied by the inline
+  // bootstrap, but `theme-color` is read before any script runs, so it describes the first paint.
+  assert.match(html, /<meta[^>]+name="theme-color"[^>]+content="#0e0f0d"/);
   assert.match(html, /<link[^>]+rel="(?:shortcut )?icon"[^>]+href="\/favicon\.svg"/);
   assert.match(html, /<meta[^>]+name="twitter:card"[^>]+content="summary_large_image"/);
   // The preview directives are the only thing the robots block buys, since index/follow is already

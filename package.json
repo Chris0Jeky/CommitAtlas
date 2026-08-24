@@ -1,6 +1,6 @@
 {
   "name": "commit-atlas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Accessible GitHub portfolio SVG cards, a truthful project-health dashboard, and a credential-free static generator.",
   "keywords": [
     "github",
@@ -44,6 +44,7 @@
     "typecheck": "tsc --noEmit",
     "test:core": "vitest run --config packages/core/vitest.config.ts",
     "test:github": "tsx --test app/api/v1/health/route.test.ts lib/http.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
+    "test:chassis": "tsx --test lib/chassis.test.ts lib/health.test.ts lib/instruments.test.ts lib/evidence.test.ts",
     "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-refresh-lifecycle.test.ts app/studio/studio-urls.test.ts",
     "test:svg": "npm --prefix packages/svg test",
     "test:static": "npm --prefix packages/static test",
@@ -62,7 +63,7 @@
     "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test:deploy-tooling && npm run test:core && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
+    "check": "npm run typecheck && npm run lint && npm run test:deploy-tooling && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
   },
   "dependencies": {
     "react": "^19.2.8",

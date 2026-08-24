@@ -1,12 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="CommitAtlas">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="CommitAtlas">
   <title>CommitAtlas</title>
   <!--
-    Deliberately built from four shapes. A favicon is read at 16px, where hairlines disappear and
-    anything busier than this collapses into a smudge, so the survey grid is a single low-contrast
-    cross rather than a real grid and the trace is one thick polyline.
+    The map-quadrant mark, built as a 16px construction rather than scaled down from a larger one.
+    Three shapes and one stroke weight: at tab size anything busier collapses into a smudge, and a
+    hairline disappears outright.
+
+    The frame is drawn in ink so it holds on a dark tab, and flips to the Limestone ink on a light
+    one. The ember quadrant and the gold survey cell are the temperature scale, and they read on
+    both grounds, so only the frame needs the media query.
   -->
-  <rect width="32" height="32" rx="7" fill="#11110f"/>
-  <path d="M16 6.5v19M6.5 16h19" stroke="#ffc857" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M6.5 22.5 12 17l4.5 4 9-11.5" fill="none" stroke="#ff7a45" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="25.5" cy="9.5" r="3" fill="#ffc857"/>
+  <style>
+    .frame { stroke: #eee9e1; }
+    @media (prefers-color-scheme: light) { .frame { stroke: #23261c; } }
+  </style>
+  <rect class="frame" x="2" y="2" width="12" height="12" fill="none" stroke-width="1.6"/>
+  <rect x="8.8" y="2.8" width="4.4" height="4.4" fill="#ff7a45"/>
+  <rect x="4" y="9" width="2" height="2" fill="#ffd166"/>
 </svg>

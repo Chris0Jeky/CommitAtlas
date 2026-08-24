@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
+import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import {
   isStudioCardAvailable,
   resolveStudioLiveEvidence,
@@ -365,24 +365,19 @@ export default function StudioClient() {
   }
 
   return (
-    <main className="studio-page">
-      <nav className="nav studio-nav" aria-label="Primary navigation">
-        <Link className="brand" href="/" aria-label="CommitAtlas home">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-          <span>CommitAtlas</span>
-        </Link>
-        <div className="nav-links"><Link href="/">Overview</Link><a href="#configure">Configure</a><a href="#preview">Preview</a><a href="https://github.com/Chris0Jeky/CommitAtlas">GitHub <span aria-hidden="true">↗</span></a></div>
-      </nav>
+    <>
+      <a className="skip-link" href="#configure">Skip to the configuration</a>
+      <div className="survey" aria-hidden="true" />
+      <ConsoleHeader section="Studio" reference="ATL/CH-REV-B" links={STUDIO_LINKS} />
 
-      <header className="studio-hero">
-        <div>
-          <p className="eyebrow"><span /> Interactive Studio</p>
-          <h1>Build the signal layer<br /><em>your work deserves.</em></h1>
-        </div>
+      <main className="studio-page">
+      <header className="studio-hero shell">
+        <p className="eyebrow"><span aria-hidden="true" /> 00 // Interactive Studio</p>
+        <h1>Build the signal layer<br /><em>your work deserves.</em></h1>
         <p>Configure only what you can support with evidence. Preview the result, inspect provenance, and copy portable README Markdown.</p>
       </header>
 
-      <form className="studio-workspace" onSubmit={preview} id="configure">
+      <form className="studio-workspace shell" onSubmit={preview} id="configure" tabIndex={-1}>
         <aside className="config-panel" aria-labelledby="config-title">
           <div className="panel-heading"><span>01</span><div><p>Configuration</p><h2 id="config-title">Your atlas</h2></div></div>
 
@@ -391,8 +386,8 @@ export default function StudioClient() {
 
           <fieldset className="segmented-field">
             <legend>Data source</legend>
-            <label><input aria-label="Use synthetic preview data" type="radio" name="mode" checked={demo} onChange={() => setDemo(true)} /><span><strong>Synthetic</strong><small>Safe preview</small></span></label>
-            <label><input aria-label="Use live public GitHub data" type="radio" name="mode" checked={!demo} onChange={() => setDemo(false)} /><span><strong>Live public</strong><small>GitHub API</small></span></label>
+            <label><input type="radio" name="mode" checked={demo} onChange={() => setDemo(true)} /><span><strong>Synthetic</strong><small>Safe preview</small></span></label>
+            <label><input type="radio" name="mode" checked={!demo} onChange={() => setDemo(false)} /><span><strong>Live public</strong><small>GitHub API</small></span></label>
           </fieldset>
 
           <label className="field-label" htmlFor="theme">Card theme</label>
@@ -402,14 +397,14 @@ export default function StudioClient() {
 
           <fieldset className="segmented-field">
             <legend>Atlas layout</legend>
-            <label><input aria-label="Use wide atlas layout" type="radio" name="layout" checked={layout === "wide"} onChange={() => setLayout("wide")} /><span><strong>Wide</strong><small>README hero</small></span></label>
-            <label><input aria-label="Use compact atlas layout" type="radio" name="layout" checked={layout === "compact"} onChange={() => setLayout("compact")} /><span><strong>Compact</strong><small>Mobile friendly</small></span></label>
+            <label><input type="radio" name="layout" checked={layout === "wide"} onChange={() => setLayout("wide")} /><span><strong>Wide</strong><small>README hero</small></span></label>
+            <label><input type="radio" name="layout" checked={layout === "compact"} onChange={() => setLayout("compact")} /><span><strong>Compact</strong><small>Mobile friendly</small></span></label>
           </fieldset>
 
           <fieldset className="segmented-field">
             <legend>Load motion</legend>
-            <label><input aria-label="Use subtle card motion" type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
-            <label><input aria-label="Disable card motion" type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
+            <label><input type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
+            <label><input type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
           </fieldset>
 
           <fieldset className="card-picker">
@@ -531,8 +526,9 @@ export default function StudioClient() {
         </section>
       </form>
 
-      <footer className="site-footer studio-footer"><Link className="brand" href="/"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>CommitAtlas</Link><p>Unknown stays unknown. Stale stays stale. Your work stays yours.</p><a href="https://github.com/Chris0Jeky/CommitAtlas">Source <span aria-hidden="true">↗</span></a></footer>
-    </main>
+      </main>
+      <ChassisFooter note="Unknown stays unknown · Stale stays stale · Your work stays yours" />
+    </>
   );
 }
 
@@ -588,7 +584,7 @@ function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: Proj
   ].filter((item): item is [string, string] => Boolean(item[1]));
   return (
     <article className="dashboard-project">
-      <div className="project-title"><span className={`signal-dot ${ciTone(project.ci.state)}`} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
+      <div className="project-title"><span className="signal-mark" data-state={project.ci.state} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
       <dl><div><dt>CI</dt><dd className={ciTone(project.ci.state)}>{project.ci.label}</dd></div><div><dt>Release</dt><dd>{project.release?.tag || "Unavailable"}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
       {actions.length > 0 && <div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div>}
     </article>
@@ -598,7 +594,7 @@ function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: Proj
 function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: string }) {
   const ci = starterCiPresentation(project.workflow);
   const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", safeProjectActionUrl(project.docs)], ["Install", safeProjectActionUrl(project.install)], ["Download", safeProjectActionUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
-  return <article className="dashboard-project synthetic"><div className="project-title"><span className={`signal-dot ${ci.tone}`} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
+  return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -614,11 +610,18 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * Tone for the CI value text.
+ *
+ * `stale` is warn rather than muted: it is a real observation that has aged out of the freshness
+ * window, which is a finding, not an absence. The two genuine absences stay untinted so they can
+ * never be mistaken for a reading.
+ */
 function ciTone(state: string): string {
   if (state === "passing") return "good";
-  if (state === "pending") return "warn";
+  if (state === "pending" || state === "stale") return "warn";
   if (state === "failing") return "bad";
-  return "muted";
+  return "unknown";
 }
 
 function formatNumber(value: number | null | undefined): string {

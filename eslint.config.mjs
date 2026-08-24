@@ -35,6 +35,15 @@ const eslintConfig = defineConfig([
         version: "detect",
       },
     },
+    rules: {
+      // The chassis renders a control's label as `<span><strong>Name</strong><small>hint</small></span>`,
+      // which puts the text three levels below the `<label>`. The rule walks two by default and
+      // reports a false positive; the accessible name is computed from the whole subtree at any
+      // depth. Raising the depth is the option the rule provides for exactly this shape — the
+      // alternative was an `aria-label` that replaced the visible text outright, which is a real
+      // WCAG 2.5.3 failure traded for a clean lint run.
+      "jsx-a11y/label-has-associated-control": ["error", { depth: 3 }],
+    },
   },
 ]);
 
