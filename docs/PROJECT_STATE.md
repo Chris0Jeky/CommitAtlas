@@ -66,6 +66,17 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create the
   eight canonical SVGs, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
   manifest while removing only known stale CommitAtlas artifacts.
+- Generated catalog boundaries are pinned by adversarial fixtures: untrusted release tags and
+  workflow names use delimiter-safe CommonMark code spans (fence grown past the longest backtick
+  run, padded at backtick edges) and `projects.md` emits no Markdown table, so no upstream value can
+  open a link, a cell, or a row. `projects.json`/`projects.md` are reserved managed names, and
+  cleanup deletes a known filename only when the previous `manifest.json` recorded CommitAtlas as its
+  writer, so a pre-existing unowned file survives. Cleanup runs before the new manifest is installed,
+  so an interrupted run leaves the ownership record intact and the next run finishes the collection.
+  Observed repository homepages are disclosed rather than restricted, while configured `links` stay
+  on the core `ALLOWED_LINK_HOSTS` allowlist: every action carries `host` and `external`, and
+  `projects.md` labels any non GitHub-owned host, which keeps legitimate project websites working
+  without presenting them as GitHub-owned.
 - Buildable `@commit-atlas/core`, `@commit-atlas/github`, `@commit-atlas/svg`, and
   `@commit-atlas/static` packages with canonical GPL-3.0-only package metadata and clean-consumer
   pack/import proof.
