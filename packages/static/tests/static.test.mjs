@@ -8,6 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { calculateContributionMetrics } from "@commit-atlas/core";
 import {
+  codeSpan,
   generateStaticFromSnapshot,
   loadStaticConfig,
   parseStaticConfig,
@@ -17,6 +18,8 @@ import {
 } from "../dist/index.js";
 
 const generatedAt = "2026-08-20T12:00:00.000Z";
+/** A legal git ref name that `boundedText` trims away to nothing, unlike an ASCII space. */
+const NON_BREAKING_SPACE = "\u00a0";
 
 test("validates one contained config and rejects ambiguous projects or card selections", () => {
   const parsed = config();
@@ -151,13 +154,20 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   const second = renderProjectCatalogArtifacts(richSnapshot, catalogConfig);
   assert.deepEqual(first, second);
   const parsed = JSON.parse(first["projects.json"]);
-  assert.equal(parsed.version, 1);
+  // Version 2 carries the renamed combined issue/PR key. A version-1 consumer
+  // must be turned away by the version gate rather than shown a shape it
+  // cannot validate.
+  assert.equal(parsed.version, 2);
   assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
     ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
   ]);
   assert.match(first["projects.md"], /\[Docs\]\(https:\/\/docs.github.com\/en\/repositories\)/);
   assert.match(first["projects.md"], /2 open issues\/PRs/);
+  // GitHub's open_issues_count is issues plus pull requests, so the catalog key
+  // must name the combined metric rather than claim an issue-only total.
+  assert.equal(parsed.projects[0].openIssuesAndPullRequests, 2);
+  assert.equal("openIssues" in parsed.projects[0], false);
   assert.doesNotMatch(first["projects.md"], /#readme|\/docs\/|releases\/latest/);
 });
 
@@ -223,6 +233,299 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("wraps untrusted release tags and workflow names in delimiter-safe code spans", () => {
+  const hostileTags = [
+    "v1.0-`code`",
+    "v2 ``` x ` y",
+    "`leading",
+    "trailing`",
+    "``",
+    "a` [pwned](https://evil.example) `b",
+    "v3 | piped",
+  ];
+  for (const tag of hostileTags) {
+    const md = renderProjectCatalogArtifacts(withRelease(tag), config())["projects.md"];
+    const line = markdownLine(md, "- **Release:**");
+    assert.deepEqual(scanCodeSpans(line).map((span) => span.content), [tag], `tag ${JSON.stringify(tag)}`);
+    assert.doesNotMatch(outsideCodeSpans(line), /\]\(|`/, `tag ${JSON.stringify(tag)} escaped its code span`);
+  }
+
+  const hostileWorkflow = "ci`x`|`` evil.yml";
+  const workflowConfig = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], workflow: hostileWorkflow }],
+  });
+  const base = snapshot();
+  const md = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{ ...base.projects.projects[0], ci: { ...base.projects.projects[0].ci, workflow: hostileWorkflow } }],
+    },
+  }, workflowConfig)["projects.md"];
+  const ciLine = markdownLine(md, "- **CI:**");
+  assert.deepEqual(scanCodeSpans(ciLine).map((span) => span.content), [hostileWorkflow]);
+  assert.doesNotMatch(outsideCodeSpans(ciLine), /`/);
+
+  assert.equal(codeSpan("plain"), "`plain`");
+  assert.equal(codeSpan("has ` one"), "``has ` one``");
+  assert.equal(codeSpan("`edge`"), "`` `edge` ``");
+  assert.throws(() => codeSpan(""), /empty value as a Markdown code span/);
+
+  // The spec's "entirely spaces" exemption is U+0020 only. trim() also strips tab and NBSP, which
+  // would skip the padding here and lose a space at each end when the reader applies the rule.
+  assert.equal(codeSpan(" \t "), "`  \t  `");
+  assert.deepEqual(scanCodeSpans(codeSpan(" \t ")).map((span) => span.content), [" \t "]);
+  assert.equal(codeSpan(" "), "` `");
+  assert.equal(codeSpan(NON_BREAKING_SPACE), "`\u00a0`");
+  assert.equal(codeSpan("   "), "`   `");
+
+  // A tag of nothing but non-ASCII whitespace trims to empty: drop the parenthetical, do not throw.
+  const blank = renderProjectCatalogArtifacts(withRelease(NON_BREAKING_SPACE), config())["projects.md"];
+  assert.equal(markdownLine(blank, "- **Release:**"), "- **Release:** Atlas release");
+  assert.equal(JSON.parse(renderProjectCatalogArtifacts(withRelease(NON_BREAKING_SPACE), config())["projects.json"]).projects[0].release.tag, "");
+});
+
+test("emits no Markdown table rows, so a pipe can never break a cell", () => {
+  const hostile = withRelease("v4 | x");
+  const md = renderProjectCatalogArtifacts({
+    ...hostile,
+    projects: {
+      ...hostile.projects,
+      projects: [{ ...hostile.projects.projects[0], description: "Ships | fast | always" }],
+    },
+  }, config())["projects.md"];
+  for (const line of md.split("\n")) {
+    assert.doesNotMatch(line, /^\s*\|/, `table row emitted: ${line}`);
+    assert.doesNotMatch(line, /^\s{0,3}\|?[\s:-]*-{3,}[\s:|-]*$/, `table delimiter row emitted: ${line}`);
+    assert.doesNotMatch(outsideCodeSpans(line).replaceAll("\\|", ""), /\|/, `unescaped pipe outside a code span: ${line}`);
+  }
+  assert.match(md, /Ships \\\| fast \\\| always/);
+});
+
+test("names every non-GitHub destination without dropping legitimate project websites", () => {
+  const linked = parseStaticConfig({
+    ...rawConfig(),
+    projects: [{
+      ...rawConfig().projects[0],
+      links: {
+        docs: "https://docs.github.com/en/repositories",
+        install: "https://www.npmjs.com/package/atlas",
+      },
+    }],
+  });
+  const base = snapshot();
+  const rendered = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        websiteUrl: "https://atlas.example.com/docs",
+        ci: { ...base.projects.projects[0].ci, url: "https://github.com/octocat/atlas/actions/runs/42" },
+      }],
+    },
+  }, linked);
+  const actions = JSON.parse(rendered["projects.json"]).projects[0].actions;
+  assert.deepEqual(actions.map((action) => [action.kind, action.host, action.external]), [
+    ["source", "github.com", false],
+    ["website", "atlas.example.com", true],
+    ["ci", "github.com", false],
+    ["docs", "docs.github.com", false],
+    ["install", "www.npmjs.com", true],
+  ]);
+  const md = rendered["projects.md"];
+  assert.match(md, /- \[Website\]\(https:\/\/atlas\.example\.com\/docs\) — observed · external host `atlas\.example\.com`/);
+  assert.match(md, /- \[Install\]\(https:\/\/www\.npmjs\.com\/package\/atlas\) — configured · external host `www\.npmjs\.com`/);
+  assert.match(md, /- \[Source\]\(https:\/\/github\.com\/octocat\/atlas\) — observed\n/);
+  assert.doesNotMatch(md, /- \[CI\][^\n]*external host/);
+
+  // Configured links are restricted, not merely disclosed: a project's own domain never parses.
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    projects: [{ ...rawConfig().projects[0], links: { docs: "https://atlas.example.com/docs" } }],
+  }), /allowed host/);
+
+  const lookalike = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{ ...base.projects.projects[0], websiteUrl: "https://github.com.evil.example/octocat/atlas" }],
+    },
+  }, config());
+  const website = JSON.parse(lookalike["projects.json"]).projects[0].actions.find((action) => action.kind === "website");
+  assert.deepEqual([website.host, website.external], ["github.com.evil.example", true]);
+  assert.match(lookalike["projects.md"], /external host `github\.com\.evil\.example`/);
+
+  // The rule is about the hostname, not who authored what it serves. A Pages hostname is chosen by
+  // its owner, so it is disclosed; a release asset on a fixed GitHub hostname is not, even though
+  // the binary behind it is entirely owner-supplied.
+  const pages = renderProjectCatalogArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        websiteUrl: "https://octocat.github.io/atlas",
+        release: {
+          tag: "v1",
+          name: "Atlas 1",
+          url: "https://github.com/octocat/atlas/releases/tag/v1",
+          publishedAt: generatedAt,
+          download: { name: "atlas.zip", url: "https://objects.githubusercontent.com/octocat/atlas.zip" },
+        },
+      }],
+    },
+  }, config());
+  const classified = JSON.parse(pages["projects.json"]).projects[0].actions
+    .map((action) => [action.kind, action.host, action.external]);
+  assert.deepEqual(classified, [
+    ["source", "github.com", false],
+    ["website", "octocat.github.io", true],
+    ["release", "github.com", false],
+    ["release-download", "objects.githubusercontent.com", false],
+    ["docs", "github.com", false],
+  ]);
+  assert.match(pages["projects.md"], /- \[Website\][^\n]*external host `octocat\.github\.io`/);
+  assert.doesNotMatch(pages["projects.md"], /- \[Release download\][^\n]*external host/);
+});
+
+test("never removes a projects catalog file CommitAtlas did not write", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-owned-"));
+  try {
+    const output = path.join(root, "assets", "commitatlas");
+    await mkdir(output, { recursive: true });
+    const preExistingJson = '{"mine":true}\n';
+    const preExistingMarkdown = "# my own project notes\n";
+    await writeFile(path.join(output, "projects.json"), preExistingJson);
+    await writeFile(path.join(output, "projects.md"), preExistingMarkdown);
+
+    const withoutCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas"] });
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json", "projects.json", "projects.md"]);
+    assert.equal(await readFile(path.join(output, "projects.json"), "utf8"), preExistingJson);
+    assert.equal(await readFile(path.join(output, "projects.md"), "utf8"), preExistingMarkdown);
+
+    const withCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas", "projects"] });
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    assert.notEqual(await readFile(path.join(output, "projects.json"), "utf8"), preExistingJson);
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json"]);
+
+    await writeFile(path.join(output, "projects.md"), preExistingMarkdown);
+    await writeFile(path.join(output, "manifest.json"), "not json at all\n");
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.equal(await readFile(path.join(output, "projects.md"), "utf8"), preExistingMarkdown);
+
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    await writeFile(path.join(output, "manifest.json"), `${JSON.stringify({
+      version: 1,
+      generator: "SomethingElse",
+      artifacts: [{ path: "projects.md" }],
+    })}\n`);
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.ok((await readdir(output)).includes("projects.md"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("keeps the ownership record recoverable when cleanup is interrupted", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-resume-"));
+  try {
+    const output = path.join(root, "assets", "commitatlas");
+    await mkdir(output, { recursive: true });
+    const withCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas", "projects"] });
+    const withoutCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas"] });
+    await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
+    const ownedManifest = await readFile(path.join(output, "manifest.json"), "utf8");
+
+    // Interrupt cleanup for real: a non-recursive rm over a directory throws, so the run aborts
+    // partway through stale collection. The manifest must still be the one that records ownership.
+    await rm(path.join(output, "projects.md"), { force: true });
+    await mkdir(path.join(output, "projects.md"));
+    await writeFile(path.join(output, "projects.md", "blocker.txt"), "makes rm throw\n");
+    await assert.rejects(generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() }));
+    assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);
+
+    // A crash anywhere in that window leaves the same state, so the next good run finishes the job.
+    await rm(path.join(output, "projects.md"), { recursive: true, force: true });
+    await writeFile(path.join(output, "projects.md"), "stale catalog CommitAtlas wrote\n");
+    await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+function withRelease(tag) {
+  const base = snapshot();
+  return {
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        release: {
+          tag,
+          name: "Atlas release",
+          url: "https://github.com/octocat/atlas/releases/tag/latest",
+          publishedAt: generatedAt,
+          download: null,
+        },
+      }],
+    },
+  };
+}
+
+function markdownLine(markdown, prefix) {
+  const line = markdown.split("\n").find((candidate) => candidate.startsWith(prefix));
+  assert.ok(line, `no line starting with ${prefix}`);
+  return line;
+}
+
+/**
+ * Independent CommonMark 0.31 §6.1 code-span scanner, written from the spec rather than from the
+ * renderer: an opening backtick run is closed by the next run of exactly the same length, and a
+ * single U+0020 is stripped from each end when the content begins and ends with one without
+ * consisting entirely of them. An opener with no matching closer is literal text.
+ *
+ * Limitation: this scans one raw line for backticks only. A real parser resolves link destinations
+ * before code spans, so a backtick smuggled into a URL as `%60` looks line-destroying here while
+ * rendering correctly in practice. That direction is a false positive, never a false negative, so
+ * the scanner stays sound for what these tests assert.
+ */
+function scanCodeSpans(line) {
+  const runs = [...line.matchAll(/`+/g)];
+  const spans = [];
+  let index = 0;
+  while (index < runs.length) {
+    const open = runs[index];
+    let closing = index + 1;
+    while (closing < runs.length && runs[closing][0].length !== open[0].length) closing += 1;
+    if (closing >= runs.length) {
+      index += 1;
+      continue;
+    }
+    const close = runs[closing];
+    let content = line.slice(open.index + open[0].length, close.index);
+    if (content.startsWith(" ") && content.endsWith(" ") && !/^ *$/.test(content)) content = content.slice(1, -1);
+    spans.push({ content, start: open.index, end: close.index + close[0].length });
+    index = closing + 1;
+  }
+  return spans;
+}
+
+function outsideCodeSpans(line) {
+  let remainder = "";
+  let cursor = 0;
+  for (const span of scanCodeSpans(line)) {
+    remainder += line.slice(cursor, span.start);
+    cursor = span.end;
+  }
+  return remainder + line.slice(cursor);
+}
 
 function rawConfig() {
   return {
@@ -309,7 +612,7 @@ function snapshot() {
         primaryLanguage: "TypeScript",
         stars: 42,
         forks: 8,
-        openIssues: 2,
+        openIssuesAndPullRequests: 2,
         pushedAt: generatedAt,
         license: "GPL-3.0-only",
         ci: { state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: generatedAt, headSha: null },

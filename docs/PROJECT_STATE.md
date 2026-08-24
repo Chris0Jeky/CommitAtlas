@@ -71,9 +71,25 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create the
   eight canonical SVGs, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
   manifest while removing only known stale CommitAtlas artifacts.
+- Generated catalog boundaries are pinned by adversarial fixtures: untrusted release tags and
+  workflow names use delimiter-safe CommonMark code spans (fence grown past the longest backtick
+  run, padded at backtick edges) and `projects.md` emits no Markdown table, so no upstream value can
+  open a link, a cell, or a row. `projects.json`/`projects.md` are reserved managed names, and
+  cleanup deletes a known filename only when the previous `manifest.json` recorded CommitAtlas as its
+  writer, so a pre-existing unowned file survives. Cleanup runs before the new manifest is installed,
+  so an interrupted run leaves the ownership record intact and the next run finishes the collection.
+  Observed repository homepages are disclosed rather than restricted, while configured `links` stay
+  on the core `ALLOWED_LINK_HOSTS` allowlist: every action carries `host` and `external`, and
+  `projects.md` labels any non GitHub-owned host, which keeps legitimate project websites working
+  without presenting them as GitHub-owned.
 - Buildable `@commit-atlas/core`, `@commit-atlas/github`, `@commit-atlas/svg`, and
   `@commit-atlas/static` packages with canonical GPL-3.0-only package metadata and clean-consumer
   pack/import proof.
+- Four separated upstream failure meanings. A missing public resource returns `github_not_found`
+  with HTTP 404 and one message that never says whether the resource is absent or private; a rate
+  limit stays `github_rate_limited` with HTTP 429 and retry guidance; every other upstream failure
+  stays `github_unavailable` with HTTP 502. Optional release and workflow lookups treat only 404 as
+  absence, so a throttled optional lookup can no longer read as "no release" or a clean CI signal.
 - The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
   Breakdown and Rhythm visibly, retains the Project radar and four optional focused widgets, and
   renders a marker-bounded six-project catalog with observed/configured action links. Its daily
@@ -137,11 +153,31 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   rate limits.
 - GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
   Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
-- Open nonblocking work is tracked in #33, #34, and #50. #50 covers stricter generated
-  catalog boundaries. #49 closed the direct package-renderer bounds: breakdown window labels and
-  rhythm level/basis now truncate at the `@commit-atlas/svg` boundary, and valid adapter inputs
-  render byte-identically. #48 closed the same-key Studio refresh evidence window. Do not reopen
-  the completed demonstration review loop unless release-impact evidence promotes an item.
+- The reviewed hardening slice is closed. #49 closed the direct package-renderer bounds, #50 the
+  generated catalog boundaries, #33/#34 the response-contract gaps, and #48 the same-key Studio
+  refresh evidence window: breakdown window labels and rhythm level/basis truncate at the
+  `@commit-atlas/svg` boundary, valid adapter inputs render byte-identically, and a preview run
+  now confirms live card evidence per configuration rather than only for the newest one. #55
+  (atlas renderer bounds) is the one item still in flight. Do not reopen the completed
+  demonstration review loop unless release-impact evidence promotes an item.
+- #33 and #34 close the reviewed response-contract gaps. Two of those five items were already
+  satisfied on `main` and are now regression-covered rather than reimplemented: the contribution
+  window was already inclusive and exactly the requested UTC day count, and synthetic category
+  totals were already bounded by the requested window in `8cb53ab`.
+- The token-backed GraphQL path needed its own not-found handling. GitHub answers an unknown login
+  with HTTP 200 carrying both `data.user: null` and a `NOT_FOUND` entry in `errors`, so the generic
+  payload-error path claimed it as an outage first. GraphQL now classifies its own payload and
+  emits the shared not-found contract, proven with a fixture matching that live shape.
+- One reviewed 403 conflation is deliberately left alone and tracked separately: a genuine
+  non-rate-limit 403, such as a blocked repository or an organisation restriction, is still
+  reported as `github_rate_limited`. That predates this slice on every required lookup.
+- That slice renames one public JSON field. `ProjectSnapshot.openIssues` and the generated
+  `projects.json` entry key are now `openIssuesAndPullRequests`, because GitHub REST
+  `open_issues_count` counts pull requests too; `projects.md` already said `open issues/PRs` and is
+  unchanged. `PROJECT_CATALOG_VERSION` is therefore `2`. The consumer's only compatibility gate is
+  that number, so leaving it at `1` would let a version-1 reader accept a shape it cannot validate.
+  Version 2 is meant to cover the combined shape change including #53's added action keys, so #53
+  must land under version 2 rather than bump again.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.

@@ -2,7 +2,15 @@ import { ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/cor
 import { safeHttpsUrl, type PortfolioSnapshot, type ProjectReleaseSignal, type ProjectSnapshot } from "@commit-atlas/github";
 import type { StaticConfig } from "./config.js";
 
-export const PROJECT_CATALOG_VERSION = 1 as const;
+/**
+ * Version 2 is the first catalog shape that is not wire-compatible with
+ * version 1. A consumer's only compatibility gate is this number, so an
+ * incompatible shape must never keep the old one: two mutually invalid schemas
+ * sharing a version is exactly what the field exists to prevent. Bumping makes
+ * a version-1 reader fail closed with a clear version error instead of
+ * silently reading `undefined` out of a renamed or unexpected key.
+ */
+export const PROJECT_CATALOG_VERSION = 2 as const;
 
 export type ProjectCatalogActionKind =
   | "source"
@@ -19,6 +27,10 @@ export interface ProjectCatalogAction {
   readonly label: string;
   readonly url: string;
   readonly origin: "snapshot" | "config";
+  /** Lowercase (punycode) hostname of `url`, so a destination is never presented without its host. */
+  readonly host: string;
+  /** True when `host` is not a GitHub-owned host; such links are labelled in the Markdown catalog. */
+  readonly external: boolean;
 }
 
 export interface ProjectCatalogCi {
@@ -44,7 +56,7 @@ export interface ProjectCatalogEntry {
   readonly primaryLanguage?: string;
   readonly stars: number;
   readonly forks: number;
-  readonly openIssues: number;
+  readonly openIssuesAndPullRequests: number;
   readonly pushedAt?: string;
   readonly ci: ProjectCatalogCi;
   readonly release?: ProjectCatalogRelease;
@@ -70,6 +82,44 @@ const MAX_LABEL = 80;
 const MAX_TEXT = 500;
 const ACTION_ORDER: readonly ProjectCatalogActionKind[] = [
   "source", "website", "ci", "release", "release-download", "docs", "install", "download",
+];
+
+/**
+ * Trust boundary for rendered destinations.
+ *
+ * The two link sources are bounded differently. Configured `links` are already *restricted*:
+ * `ProjectLinkSchema` in `@commit-atlas/core` rejects anything off `ALLOWED_LINK_HOSTS` at
+ * config-parse time, so `validatedConfiguredUrl` can only ever yield an allowlisted host. An
+ * observed repository homepage (`websiteUrl`) is arbitrary owner-supplied text that GitHub echoes
+ * back and may point anywhere; constraining it would break legitimate project websites.
+ *
+ * So this set is not an allowlist — it is the disclosure line. Any host outside it, allowlisted or
+ * not, is emitted with `external: true` and labelled with its hostname in `projects.md`.
+ *
+ * The rule is about the **hostname**, not about who authored what the hostname serves: these are
+ * fixed hostnames GitHub operates, none of which a repository owner can choose. `*.github.io` is
+ * absent because the label on a Pages hostname *is* author-chosen — `<anything>.github.io` is picked
+ * by its owner — not because Pages content is author-controlled.
+ *
+ * Content authorship is deliberately not the test, and the absence of a label is NOT a safety claim
+ * about the payload. Plenty of author-controlled content lives on these hostnames: every
+ * `github.com/<owner>/<repo>` page, every gist, and — the sharpest case — the `release-download`
+ * action, which points at an arbitrary binary the owner uploaded to
+ * `objects.githubusercontent.com`. All of those go unlabelled, because a reader of a repository
+ * catalog already expects the owner's own repository content. What the label adds is the one thing
+ * that is not expected: this destination is not on GitHub at all.
+ *
+ * This is a *rendering* boundary and is distinct from the outbound-fetch invariant: CommitAtlas still
+ * fetches data only from GitHub-owned hosts. It never requests any of these URLs.
+ */
+const GITHUB_OWNED_HOSTS: readonly string[] = [
+  "api.github.com",
+  "docs.github.com",
+  "gist.github.com",
+  "github.com",
+  "objects.githubusercontent.com",
+  "raw.githubusercontent.com",
+  "www.github.com",
 ];
 
 /** Render the JSON and Markdown project catalog from the same validated snapshot. */
@@ -146,7 +196,7 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
     ...(project.primaryLanguage ? { primaryLanguage: boundedText(project.primaryLanguage, "language", MAX_LABEL) } : {}),
     stars: boundedCount(project.stars, "stars"),
     forks: boundedCount(project.forks, "forks"),
-    openIssues: boundedCount(project.openIssues, "open issues"),
+    openIssuesAndPullRequests: boundedCount(project.openIssuesAndPullRequests, "open issues and pull requests"),
     ...(project.pushedAt ? { pushedAt: boundedText(project.pushedAt, "pushedAt", 80) } : {}),
     ci: {
       state: project.ci.state,
@@ -174,7 +224,19 @@ function buildRelease(release: ProjectReleaseSignal): ProjectCatalogRelease {
 }
 
 function addAction(actions: ProjectCatalogAction[], kind: ProjectCatalogActionKind, label: string, url: string, origin: ProjectCatalogAction["origin"]): void {
-  actions.push({ kind, label, url: origin === "snapshot" ? validatedObservedUrl(url, label) : validatedConfiguredUrl(url, label), origin });
+  const validated = origin === "snapshot" ? validatedObservedUrl(url, label) : validatedConfiguredUrl(url, label);
+  const host = urlHost(validated, label);
+  actions.push({ kind, label, url: validated, origin, host, external: !GITHUB_OWNED_HOSTS.includes(host) });
+}
+
+function urlHost(value: string, label: string): string {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    if (!host) throw new Error("empty host");
+    return host;
+  } catch {
+    throw new Error(`${label} URL has no resolvable host`);
+  }
 }
 
 function validatedObservedUrl(value: string, label: string): string {
@@ -218,23 +280,41 @@ function containsControl(value: string): boolean {
   });
 }
 
+/**
+ * `projects.md` is a heading-and-list document and deliberately emits no GFM table. A `|` only has
+ * structural meaning inside a table row, and `codeSpan` output is *not* table-cell safe: GFM requires
+ * `\|` for a pipe inside a table cell, while the same escape would render literally in a list item.
+ * Prose goes through `escapeMarkdown`, which already escapes `|`. If a table is ever added here, its
+ * cells need a table-aware escaper; `renders no Markdown table rows` in the test suite pins that.
+ */
 function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
   const lines = [
     "# Project catalog",
     "",
-    `Generated for **${escapeMarkdown(catalog.user)}** from public GitHub data at \`${escapeCode(catalog.generatedAt)}\`.`,
-    `Window: \`${escapeCode(catalog.window.from)}\` → \`${escapeCode(catalog.window.to)}\` (${catalog.window.days} days).`,
+    `Generated for **${escapeMarkdown(catalog.user)}** from public GitHub data at ${codeSpan(catalog.generatedAt)}.`,
+    `Window: ${codeSpan(catalog.window.from)} → ${codeSpan(catalog.window.to)} (${catalog.window.days} days).`,
     "",
     "> Source: `github-public-rest`. Links are emitted only when observed in the public snapshot or explicitly configured.",
+    "> A destination outside GitHub's own hosts is labelled with its hostname; CommitAtlas does not vouch for it.",
     "",
   ];
   for (const project of catalog.projects) {
-    lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** \`${escapeCode(project.repo)}\``, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (\`${escapeCode(project.ci.workflow)}\`)` : ""}`);
+    lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** ${codeSpan(project.repo)}`, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (${codeSpan(project.ci.workflow)})` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
-    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssues} open issues/PRs`);
-    if (project.release) lines.push(`- **Release:** ${escapeMarkdown(project.release.name)} (\`${escapeCode(project.release.tag)}\`)`);
+    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssuesAndPullRequests} open issues/PRs`);
+    // `boundedText` trims, so a tag of nothing but non-ASCII whitespace (a single U+00A0 is a legal
+    // git ref name) reaches here empty. Drop the parenthetical the way an absent `ci.workflow` is
+    // dropped, rather than throwing and failing every artifact over one cosmetic field.
+    if (project.release) {
+      const tag = project.release.tag ? ` (${codeSpan(project.release.tag)})` : "";
+      lines.push(`- **Release:** ${escapeMarkdown(project.release.name)}${tag}`);
+    }
     lines.push("", "### Actions", "");
-    for (const action of project.actions) lines.push(`- [${escapeMarkdown(action.label)}](${markdownUrl(action.url)}) — ${action.origin === "snapshot" ? "observed" : "configured"}`);
+    for (const action of project.actions) {
+      const provenance = action.origin === "snapshot" ? "observed" : "configured";
+      const destination = action.external ? ` · external host ${codeSpan(action.host)}` : "";
+      lines.push(`- [${escapeMarkdown(action.label)}](${markdownUrl(action.url)}) — ${provenance}${destination}`);
+    }
     lines.push("");
   }
   return lines.join("\n");
@@ -248,8 +328,29 @@ function escapeMarkdown(value: string): string {
   return value.replace(/[\\`*_{}[\]()#+.!|<>-]/g, "\\$&");
 }
 
-function escapeCode(value: string): string {
-  return value.replace(/[\\`]/g, "\\$&");
+/**
+ * Wrap untrusted text in a delimiter-safe CommonMark code span.
+ *
+ * Backslash escapes are inert inside a code span (CommonMark 0.31 §6.1), so escaping a backtick
+ * cannot contain it — the span simply closes early and the remainder becomes live Markdown. The only
+ * correct construction is a backtick fence longer than the longest backtick run in the content, plus
+ * a single space of padding when the content starts or ends with a backtick (it would otherwise merge
+ * into the fence) or when it both starts and ends with a space (the reader strips one from each end).
+ *
+ * The "consists entirely of spaces" exemption is U+0020 only, per the spec, so it is tested with
+ * `/^ *$/` rather than `String.prototype.trim()` — trim also strips tab, NBSP, U+2000-200A and
+ * U+3000, which would skip the padding for content like `" \t "` and silently lose a space at each
+ * end. Callers must not pass an empty string; every current call site is either structurally
+ * non-empty or guarded, and the throw is a programming-error guard, not a data path.
+ */
+export function codeSpan(value: string): string {
+  if (value.length === 0) throw new Error("Cannot render an empty value as a Markdown code span");
+  const longestRun = (value.match(/`+/g) ?? []).reduce((longest, run) => Math.max(longest, run.length), 0);
+  const fence = "`".repeat(longestRun + 1);
+  const padded = value.startsWith("`") || value.endsWith("`")
+    || (value.startsWith(" ") && value.endsWith(" ") && !/^ *$/.test(value));
+  const pad = padded ? " " : "";
+  return `${fence}${pad}${value}${pad}${fence}`;
 }
 
 function markdownUrl(value: string): string {

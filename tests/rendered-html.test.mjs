@@ -295,6 +295,167 @@ test("rejects oversized GitHub text before the built Worker emits a snapshot", a
   assert.equal((await response.json()).error.code, "invalid_response");
 });
 
+test("returns one non-disclosing 404 for unknown public users and repositories in the built Worker", async () => {
+  const upstreamNotFound = async () => githubJson({ message: "Not Found" }, 404);
+  const bodies = [];
+  for (const path of [
+    "/api/v1/profile?user=unknown-user",
+    "/api/v1/projects?owner=acme&repos=unknown-repo&states=unknown-repo:active",
+    // A private repository answers with the same upstream 404 as a repository
+    // that does not exist, so the rendered contract must be byte-identical.
+    "/api/v1/projects?owner=acme&repos=private-repo&states=private-repo:active",
+    "/api/v1/contributions?user=unknown-user&days=7",
+  ]) {
+    const response = await withMockedFetch(upstreamNotFound, () => request(path));
+    assert.equal(response.status, 404, path);
+    assert.equal(response.headers.get("cache-control"), "no-store", path);
+    assert.equal(response.headers.get("retry-after"), null, path);
+    const payload = await response.json();
+    assert.equal(payload.status, "error", path);
+    assert.equal(payload.error.code, "github_not_found", path);
+    assert.equal(payload.error.message, "No public GitHub resource matched this request", path);
+    bodies.push(JSON.stringify(payload.error));
+  }
+  assert.equal(new Set(bodies).size, 1);
+});
+
+test("keeps rate-limit and upstream-outage codes distinct from not found in the built Worker", async () => {
+  for (const [status, expectedStatus, expectedCode] of [
+    [404, 404, "github_not_found"],
+    [500, 502, "github_unavailable"],
+    [403, 429, "github_rate_limited"],
+    [429, 429, "github_rate_limited"],
+  ]) {
+    const response = await withMockedFetch(
+      async () => new Response(null, { status, headers: { "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 30) } }),
+      () => request("/api/v1/profile?user=octocat"),
+    );
+    assert.equal(response.status, expectedStatus, `upstream ${status}`);
+    assert.equal((await response.json()).error.code, expectedCode, `upstream ${status}`);
+  }
+});
+
+test("returns the not-found contract for the partial GraphQL not-found answer in the built Worker", async () => {
+  const calls = [];
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url.pathname);
+    if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+    // The exact partial answer api.github.com/graphql returns for an unknown
+    // login: HTTP 200, a null user, and a NOT_FOUND entry in errors.
+    return githubJson({
+      data: { user: null },
+      errors: [{
+        type: "NOT_FOUND",
+        path: ["user"],
+        locations: [{ line: 3, column: 5 }],
+        message: "Could not resolve to a User with the login of 'unknown-user'.",
+      }],
+    });
+  }, () => request("/api/v1/contributions?user=unknown-user&days=7", { GITHUB_TOKEN: "ghp_public-only" }));
+
+  assert.deepEqual(calls, ["/rate_limit", "/graphql"]);
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("retry-after"), null);
+  const payload = await response.json();
+  assert.equal(payload.error.code, "github_not_found");
+  assert.equal(payload.error.message, "No public GitHub resource matched this request");
+  // The upstream message quotes the probed login; the served contract must not.
+  assert.doesNotMatch(JSON.stringify(payload), /unknown-user|resolve to a User/i);
+});
+
+test("treats only 404 as an absent optional lookup in the built Worker project route", async () => {
+  const projectFetch = (optional) => async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/releases/latest") || url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return optional();
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  };
+  const path = "/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml";
+
+  const absent = await withMockedFetch(projectFetch(() => githubJson({ message: "Not Found" }, 404)), () => request(path));
+  assert.equal(absent.status, 200);
+  const absentPayload = await absent.json();
+  assert.equal(absentPayload.projects[0].release, null);
+  assert.equal(absentPayload.projects[0].ci.state, "unavailable");
+  assert.equal(absentPayload.projects[0].ci.label, "CI unavailable");
+
+  const limited = await withMockedFetch(
+    projectFetch(() => new Response(null, { status: 403, headers: { "retry-after": "31" } })),
+    () => request(path),
+  );
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("cache-control"), "no-store");
+  assert.equal(limited.headers.get("retry-after"), "31");
+  assert.equal((await limited.json()).error.code, "github_rate_limited");
+});
+
+test("never reports a malformed workflow_runs payload as configured or clean in the built Worker", async () => {
+  for (const body of [{}, { workflow_runs: null }, { workflow_runs: "boom" }, { workflow_runs: [] }]) {
+    const response = await withMockedFetch(async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+      if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return githubJson(body);
+      assert.fail(`unexpected GitHub route: ${url.pathname}`);
+    }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml"));
+    assert.equal(response.status, 200, JSON.stringify(body));
+    const payload = await response.json();
+    assert.deepEqual(payload.projects[0].ci, {
+      state: "unavailable", label: "CI unavailable", workflow: "ci.yml", url: null, checkedAt: null, headSha: null,
+    }, JSON.stringify(body));
+    assert.equal(payload.freshness.mode, "partial", JSON.stringify(body));
+  }
+});
+
+test("names the combined GitHub issue and pull-request total honestly in the built Worker", async () => {
+  const response = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return githubJson({ ...publicProjectPayload(), open_issues_count: 5 });
+    if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active"));
+  assert.equal(response.status, 200);
+  const project = (await response.json()).projects[0];
+  assert.equal(project.openIssuesAndPullRequests, 5);
+  assert.equal("openIssues" in project, false);
+});
+
+test("returns exactly the requested inclusive UTC contribution window from the built Worker", async () => {
+  for (const requestedDays of [7, 30]) {
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return new Response("{}", { headers: { "x-oauth-scopes": "" } });
+      const { variables } = JSON.parse(String(init?.body));
+      // Answer with a wider calendar than requested: the served window must
+      // still be defined by the request, inclusive of its first UTC day.
+      const start = shiftUtcDate(variables.from.slice(0, 10), -4);
+      const contributionDays = Array.from({ length: requestedDays + 4 }, (_, offset) => ({
+        date: shiftUtcDate(start, offset),
+        contributionCount: 1,
+      }));
+      return githubJson({ data: { user: { contributionsCollection: {
+        totalCommitContributions: 1,
+        totalIssueContributions: 0,
+        totalPullRequestContributions: 0,
+        totalPullRequestReviewContributions: 0,
+        hasAnyRestrictedContributions: false,
+        restrictedContributionsCount: 0,
+        contributionCalendar: { weeks: [{ contributionDays }] },
+      } } } });
+    }, () => request(`/api/v1/contributions?user=octocat&days=${requestedDays}`, { GITHUB_TOKEN: "ghp_public-only" }));
+
+    assert.equal(response.status, 200, `days=${requestedDays}`);
+    const payload = await response.json();
+    assert.equal(payload.days.length, requestedDays, `days=${requestedDays}`);
+    const today = payload.freshness.generatedAt.slice(0, 10);
+    assert.equal(payload.days.at(-1).date, today, `days=${requestedDays}`);
+    assert.equal(payload.days[0].date, shiftUtcDate(today, -(requestedDays - 1)), `days=${requestedDays}`);
+    assert.equal(payload.totalContributions, requestedDays, `days=${requestedDays}`);
+  }
+});
+
 test("returns a validated rate-limit retry hint without caching the error", async () => {
   const response = await withMockedFetch(async () => new Response(null, {
     status: 429,

@@ -90,7 +90,7 @@ export interface ProjectSnapshot {
   primaryLanguage: string | null;
   stars: number;
   forks: number;
-  openIssues: number;
+  openIssuesAndPullRequests: number;
   pushedAt: string | null;
   license: string | null;
   ci: ProjectCiSignal;

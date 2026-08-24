@@ -80,7 +80,7 @@ interface ProjectSnapshot {
   primaryLanguage: string | null;
   stars: number;
   forks: number;
-  openIssues: number;
+  openIssuesAndPullRequests: number;
   ci: { state: string; label: string; url: string | null; checkedAt: string | null };
   release: { tag: string; url: string; download: { name: string; url: string } | null } | null;
 }
