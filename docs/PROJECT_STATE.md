@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 18:05 BST
+Last verified: 2026-08-24 19:05 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,29 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Post-release fix `e17e866` (PR #77) is merged, deployed, and proven on the profile.** The
+  v0.3.0 atlas motion faded in from `opacity:0` / `scaleY(.08)` with fill-mode `both`; Chromium
+  never runs CSS animations inside an SVG delivered through `<img>` and pins such a card to its
+  `from` state, so on GitHub the redesigned atlas rendered with an invisible header, density grid,
+  and momentum row. This was measured empirically (a three-rect probe embedded via `<img>`: no
+  delay froze off-position, `both` froze off-position, only fill-mode none plus a delay showed
+  final geometry), and subtle motion is now delayed fill-none translation with tests rejecting
+  `both`/`backwards` and any opacity or scale keyframe. The same PR drops `★ 0` from the projects
+  card and `0 stars · 0 forks` from the Markdown catalog while keeping both keys in
+  `projects.json` at any value. One Codex finding was fixed in `cedded1` (frozen bars misaligned
+  against static tracks); a second, post-merge suggestion to remove the delay was declined with
+  the probe evidence — the delay is what keeps GitHub correct. Deploy published `e17e866` and
+  [issue #78](https://github.com/Chris0Jeky/CommitAtlas/issues/78) tracks rendering a theme pair
+  from one snapshot fetch.
+- **The public profile now serves every card as a dark/light pair from the fixed renderer.**
+  [Chris0Jeky/Chris0Jeky#4](https://github.com/Chris0Jeky/Chris0Jeky/pull/4) pinned the refresh
+  workflow to `e17e866`, added a paper-theme pass into `assets/commitatlas/light/` with its own
+  manifest validation, wrapped all eight README cards in `<picture>` with `prefers-color-scheme`
+  sources, retired the last `chatgpt.site` links, and omitted zero-valued star/fork counts from
+  the generated table. The dispatched refresh run
+  ([32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)) generated and
+  validated both bundles and committed them, and the rendered profile was inspected in Chrome
+  afterwards: density grid, momentum bars, and header all present.
 - **Released: [v0.3.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.3.0)**, tagged at
   `4ec77d7724dd22637a85cc3c89b8dc417091778a` on `main` — the merge of PR #75, marked latest, not a
   draft and not a prerelease. Hosted CI concluded success at that commit, the Deploy workflow
