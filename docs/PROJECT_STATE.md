@@ -12,6 +12,16 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Released: [v0.1.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.1.0)**, tagged at
+  `ee24f80c19642232e6914efe163dbeb230ec2f99` on `main` — 235 commits with the merge history intact,
+  nothing squashed. Hosted CI concluded success at that exact commit, the Deploy workflow published
+  it, and the post-deploy probe set reported 17/17 against the live origin.
+- The release is not a draft and is not a prerelease. **No package tarballs are attached and npm
+  publication is not claimed**; the packages are built and pack-verified but are not on the registry.
+- Not yet done, and it is the one thing an agent cannot do: listing the Action on the GitHub
+  Marketplace. `action.yml` satisfies every requirement — name, description, and `branding` icon and
+  colour — and the repository is public with a README, but publication requires accepting the
+  Marketplace Developer Agreement and ticking a checkbox on the release page. No API exposes either.
 - **Push-to-deploy is live and demonstrated by real runs, not just reviewed.** `CLOUDFLARE_API_TOKEN`
   and `CLOUDFLARE_ACCOUNT_ID` are configured as repository secrets, and the Deploy workflow has
   published from `main` several times: it checks out the exact commit whose `CI` push run concluded
