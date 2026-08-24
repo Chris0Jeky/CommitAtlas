@@ -126,9 +126,17 @@ The **rhythm score** is `derived` — a stated formula over observed values. The
 ("steady", "strong") is `hypothesis`, because nothing in GitHub's data says where one band ends and
 the next begins. The word is a label on a threshold CommitAtlas invented, not a finding.
 
-Every printed metric on the landing page is a button that opens the drawer. One shared drawer rather
-than a popover per number: there is only ever one question being asked, and a single dialog is the
-only version of this that stays navigable by keyboard.
+One shared drawer rather than a popover per number: there is only ever one question being asked, and
+a single dialog is the only version of this that stays navigable by keyboard. It is a native
+`<dialog>` opened with `showModal()`, so the browser supplies the focus trap, the backdrop, and
+Escape — an earlier hand-rolled version declared `aria-modal="true"` without any of them, which
+confined a screen-reader user while letting a keyboard user Tab straight out underneath the scrim.
+
+`buildEvidence` describes more readings than the landing page prints, because some of them belong to
+values the *cards* show and an SVG cannot host a button. `LANDING_EVIDENCE_IDS` in `lib/landing.ts`
+declares the subset the page wires, the page prints that count, and `rendered-html.test.mjs` holds
+the served `data-ev` attributes to exactly that list — so the count and the claim cannot drift apart
+the way "every number on this page is a button" did.
 
 ## Motion
 

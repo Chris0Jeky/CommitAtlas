@@ -169,6 +169,17 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   element extending past the viewport, so there is no document-level horizontal overflow.
 - 2026-08-24: all four chassis themes were inspected on the running surface, including the light
   theme, which is what exposed the ink-role problem below.
+- 2026-08-24: two fresh-context reviews ran independently against the chassis branch — one
+  adversarial correctness pass, one accessibility pass. Neither found a CRITICAL. Both found the
+  same defect: the evidence drawer declared `role="dialog" aria-modal="true"` with no focus trap
+  and nothing inert behind it, so a screen-reader user was confined while a keyboard user could Tab
+  straight out under the scrim. It is now a native `<dialog>` opened with `showModal()`, verified in
+  a browser: `:modal` matches and focusing an element outside it is refused.
+- 2026-08-24: the drawer's three exit paths were each exercised in a browser after that change —
+  Escape, the close button, and pressing the open trigger a second time. All three close the dialog
+  and return focus to the trigger. The first attempt did not: focus was restored while the document
+  was still inert and was silently dropped to `<body>`, which is why restoration now runs after
+  `dialog.close()`.
 
 - 2026-08-23: `main` was red because a test fixture pinned a workflow observation at
   `2026-08-18T23:00:00Z` while `calculateCiState` applies a 72-hour freshness window, so the fixture
@@ -219,6 +230,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Residual risk and next slice
 
+- Two review findings were triaged as non-blocking and left as they are, on purpose. The portfolio
+  reticle SVG stays `aria-hidden`: its per-project breakdown is printed in full in the health-rack
+  headline, so nothing is lost page-wide and announcing it twice would be noise. And three readings
+  render two triggers each — the same reading shown in the fascia and again on the evidence ladder —
+  so opening one visibly marks both. That is what they are: one reading, shown twice.
 - **The Languages surface never computed byte share.** The README, `ARCHITECTURE.md`, and the design
   handoff all described it as a repository-language *byte* share. `toLanguagesCard` is fed by the
   profile snapshot, whose `share` is `repositories / total` — a distribution over repositories. The
@@ -227,10 +243,6 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   already renders byte share when given `bytes`, and `@commit-atlas/core` already computes it in
   `aggregateLanguages`; nothing currently supplies either. The dated QA record from 2026-08-20 still
   says "byte-share" and is deliberately left alone, because it records what was observed then.
-- The evidence drawer declares `aria-modal="true"` without a focus trap. Focus moves into the drawer
-  on open and returns to the trigger on close, and ESC and click-outside both close it, but Tab can
-  still reach content behind the scrim. That is a smaller lie than most modals tell and is tracked
-  rather than fixed here.
 - The survey-grid parallax uses a scroll-driven CSS timeline, so it is inert in engines without
   `animation-timeline: scroll()`. That degrades to a static grid, which is the reduced-motion state
   anyway, so there is nothing to fall back to.
