@@ -879,17 +879,20 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
     out += text(x + 14, y + 43, `${lifecycleLabel(project.lifecycle)} · CI ${statusLabel(project.ci)}`, 11, t.muted, 550);
     out += `<circle cx="${x + cardWidth - 19}" cy="${y + 20}" r="5" fill="${ciColor}"/>`;
     if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 10, t.muted);
-    if (Number.isFinite(project.stars) && (project.stars as number) >= 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
+    // A zero-star chip is noise, not signal — the corner stays empty until there is a count worth showing.
+    if (Number.isFinite(project.stars) && (project.stars as number) > 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
   });
   return out + `</g>` + svgEnd();
 }
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
   if (motion !== "subtle") return "";
+  // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
+  // pipeline — and `both` holds the `from` state there forever. Every `from` state must therefore
+  // read as a finished card: translation only, never opacity or scale.
   return `<style>
-@keyframes atlas-rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@keyframes atlas-grow{from{opacity:.2;transform:scaleY(.08)}to{opacity:1;transform:scaleY(1)}}
-.atlas-enter{animation:atlas-rise .42s ease-out both}.atlas-delay{animation-delay:.1s}.atlas-bar{transform-box:fill-box;transform-origin:center bottom;animation:atlas-grow .55s ease-out both}.atlas-cell{animation:atlas-rise .32s ease-out both}
+@keyframes atlas-rise{from{transform:translateY(5px)}to{transform:translateY(0)}}
+.atlas-enter{animation:atlas-rise .42s ease-out both}.atlas-delay{animation-delay:.1s}.atlas-bar{transform-box:fill-box;transform-origin:center bottom;animation:atlas-rise .55s ease-out both}.atlas-cell{animation:atlas-rise .32s ease-out both}
 @media (prefers-reduced-motion:reduce){.atlas-enter,.atlas-bar,.atlas-cell{animation:none!important}}
 </style>`;
 }

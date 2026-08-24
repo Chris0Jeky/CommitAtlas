@@ -308,6 +308,10 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.match(staticAtlas, /at least 30 day current streak/);
   assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
+  // Chromium freezes CSS animations at their `from` state when the SVG arrives through <img>
+  // (GitHub's README pipeline), so a `from` that fades or collapses renders as a blank card there.
+  assert.doesNotMatch(animatedAtlas, /from\{[^}]*opacity/);
+  assert.doesNotMatch(animatedAtlas, /from\{[^}]*scale/);
   assert.match(narrowAtlas, /viewBox="0 0 420 570"/);
 
   const publicProfileAtlas = renderAtlasCard({
@@ -375,6 +379,8 @@ test("profile stars are source-backed and absent stars stay unavailable", () => 
   assert.match(present, />1.3k<\/text><text[^>]*>Stars<\/text>/);
   assert.doesNotMatch(renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4, stars: Number.NaN }), /Stars/);
   assert.doesNotMatch(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: Number.NaN }] }), /★/);
+  assert.doesNotMatch(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: 0 }] }), /★/);
+  assert.match(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: 3 }] }), /★ 3/);
 });
 
 test("activity dates are valid, bounded, and full supported windows stay below 30KB", () => {
