@@ -301,7 +301,14 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
   for (const project of catalog.projects) {
     lines.push(`## ${escapeMarkdown(project.label)}`, "", `- **Repository:** ${codeSpan(project.repo)}`, `- **Lifecycle:** ${escapeMarkdown(lifecycleLabel(project.lifecycle))}`, `- **CI:** ${escapeMarkdown(project.ci.label)}${project.ci.workflow ? ` (${codeSpan(project.ci.workflow)})` : ""}`);
     if (project.description) lines.push(`- **Description:** ${escapeMarkdown(project.description)}`);
-    lines.push(`- **Stats:** ${project.stars} stars · ${project.forks} forks · ${project.openIssuesAndPullRequests} open issues/PRs`);
+    // Zero-valued vanity counts stay in the JSON contract but out of the prose: "0 stars · 0 forks"
+    // reads as an apology, not a stat. Open work is always stated — hiding it would dress the project up.
+    const stats = [
+      project.stars > 0 ? `${project.stars} stars` : null,
+      project.forks > 0 ? `${project.forks} forks` : null,
+      `${project.openIssuesAndPullRequests} open issues/PRs`,
+    ].filter((part): part is string => part !== null);
+    lines.push(`- **Stats:** ${stats.join(" · ")}`);
     // `boundedText` trims, so a tag of nothing but non-ASCII whitespace (a single U+00A0 is a legal
     // git ref name) reaches here empty. Drop the parenthetical the way an absent `ci.workflow` is
     // dropped, rather than throwing and failing every artifact over one cosmetic field.

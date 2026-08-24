@@ -140,6 +140,8 @@ test("every standalone card supports subtle motion with a reduced-motion fallbac
     const animated = render("subtle");
     assert.match(animated, /@keyframes card-enter/);
     assert.match(animated, /prefers-reduced-motion:reduce/);
+    // Renderers that never run CSS animations (SVG through <img>) must still show a finished card.
+    assert.doesNotMatch(animated, /\bboth\b|backwards|from\{[^}]*opacity|from\{[^}]*scale/);
     assert.match(animated, /<g class="card-enter">/);
     assertSafeSvg(animated, { allowStyle: true });
     const still = render("none");
@@ -308,6 +310,13 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.match(staticAtlas, /at least 30 day current streak/);
   assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
+  // Chromium never runs CSS animations when the SVG arrives through <img> (GitHub's README
+  // pipeline). Fill-mode "both"/"backwards" would pin such a renderer to the `from` state, so
+  // motion must use fill-mode none (a delay keeps animating renderers from flashing), and no
+  // keyframe may fade or collapse — a frozen `from` must still read as a finished card.
+  assert.doesNotMatch(animatedAtlas, /from\{[^}]*opacity/);
+  assert.doesNotMatch(animatedAtlas, /from\{[^}]*scale/);
+  assert.doesNotMatch(animatedAtlas, /\bboth\b|backwards/);
   assert.match(narrowAtlas, /viewBox="0 0 420 570"/);
 
   const publicProfileAtlas = renderAtlasCard({
@@ -375,6 +384,8 @@ test("profile stars are source-backed and absent stars stay unavailable", () => 
   assert.match(present, />1.3k<\/text><text[^>]*>Stars<\/text>/);
   assert.doesNotMatch(renderProfileCard({ name: "Ada", login: "ada", repositories: 2, followers: 3, following: 4, stars: Number.NaN }), /Stars/);
   assert.doesNotMatch(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: Number.NaN }] }), /★/);
+  assert.doesNotMatch(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: 0 }] }), /★/);
+  assert.match(renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", stars: 3 }] }), /★ 3/);
 });
 
 test("activity dates are valid, bounded, and full supported windows stay below 30KB", () => {

@@ -164,6 +164,15 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   ]);
   assert.match(first["projects.md"], /\[Docs\]\(https:\/\/docs.github.com\/en\/repositories\)/);
   assert.match(first["projects.md"], /2 open issues\/PRs/);
+  assert.match(first["projects.md"], /42 stars · 8 forks · 2 open issues\/PRs/);
+  // Zero-valued vanity counts stay in the JSON but out of the prose; open work is always stated.
+  const humbleSnapshot = structuredClone(richSnapshot);
+  humbleSnapshot.projects.projects[0].stars = 0;
+  humbleSnapshot.projects.projects[0].forks = 0;
+  const humble = renderProjectCatalogArtifacts(humbleSnapshot, catalogConfig);
+  assert.match(humble["projects.md"], /- \*\*Stats:\*\* 2 open issues\/PRs/);
+  assert.doesNotMatch(humble["projects.md"], /0 stars|0 forks/);
+  assert.equal(JSON.parse(humble["projects.json"]).projects[0].stars, 0);
   // GitHub's open_issues_count is issues plus pull requests, so the catalog key
   // must name the combined metric rather than claim an issue-only total.
   assert.equal(parsed.projects[0].openIssuesAndPullRequests, 2);
