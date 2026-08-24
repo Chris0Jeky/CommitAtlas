@@ -10,3 +10,7 @@ export function contributionUnavailableNotice(): string {
 export function configurationChangedNotice(): string {
   return "Configuration changed. Run Preview to refresh the evidence and generated URLs.";
 }
+
+export function unconfirmedEvidenceNotice(): string {
+  return "Evidence-backed cards are held back from README Markdown until a preview run confirms this configuration. The previous preview stays visible.";
+}
