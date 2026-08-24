@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 19:05 BST
+Last verified: 2026-08-24 19:40 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,20 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Two new card types shipped and are live on the profile: `cadence` and `releases`**
+  ([PR #80](https://github.com/Chris0Jeky/CommitAtlas/pull/80), merged as `4a6b1c4`, hosted CI green
+  at every head). Weekly cadence shows contribution share by day of week (Monday-first, UTC
+  boundaries, window-scoped, busiest day named, empty windows stated); Latest releases lists the
+  most recent published release per curated project, newest first, with unreleased projects counted
+  rather than hidden. Both are static-only — no hosted route — drawn from data the snapshot already
+  fetches, and covered by the frozen-motion, well-formedness, and 30 KiB gates. Review: one
+  fresh-context adversarial pass plus eight Codex P2s triaged (six fixed across `a6e5551`/`7e44801`,
+  two declined on-thread with reasons). Profile wiring landed via
+  [Chris0Jeky/Chris0Jeky#5](https://github.com/Chris0Jeky/Chris0Jeky/pull/5): pin moved to
+  `4a6b1c4`, both configs select ten cards, both validations expect 13 artifacts, and dispatched
+  [run 32762878305](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32762878305) passed every
+  step and committed the bot snapshot `3a914a9`. Both cards were then verified rendering on the
+  live profile in Chrome.
 - **Post-release fix `e17e866` (PR #77) is merged, deployed, and proven on the profile.** The
   v0.3.0 atlas motion faded in from `opacity:0` / `scaleY(.08)` with fill-mode `both`; Chromium
   never runs CSS animations inside an SVG delivered through `<img>` and pins such a card to its
@@ -204,9 +218,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   stays `github_unavailable` with HTTP 502. Optional release and workflow lookups treat only 404 as
   absence, so a throttled optional lookup can no longer read as "no release" or a clean CI signal.
 - The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
-  Breakdown and Rhythm visibly, retains the Project radar and four optional focused widgets, and
-  renders a marker-bounded six-project catalog with observed/configured action links. Its daily
-  workflow validates 11 payload artifacts and every manifest hash before updating README/assets.
+  Breakdown, Rhythm, and the Weekly cadence card visibly, retains the Project radar with the
+  Latest-releases card beneath it and four optional focused widgets, and renders a marker-bounded
+  six-project catalog with observed/configured action links. Its daily workflow runs one generation
+  pass per colour scheme and validates 13 payload artifacts and every manifest hash in each bundle
+  before updating README/assets.
 
 ## Verified
 
