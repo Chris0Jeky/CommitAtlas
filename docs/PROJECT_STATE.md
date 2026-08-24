@@ -49,9 +49,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   JSON-LD on the landing page, per-page canonical URLs, a favicon, and a theme colour. The
   canonical origin is a Wrangler `vars` entry rather than a constant, so a fork advertises itself
   rather than this deployment.
-- Cloudflare's edge prepends its managed Content Signals Policy block to a 200 `robots.txt`, so the
-  body a crawler receives is the Worker's directives **plus** that block. `lib/site.ts` is
-  authoritative for CommitAtlas's own directives and not for the complete served response.
+- `/robots.txt` is served by the Worker alone. Before the route existed, Cloudflare's edge answered
+  that path itself with a 1248-byte managed Content Signals Policy block, and the documented
+  behaviour for a 200 from the origin is that the managed block is prepended to it. Measured after
+  the first deploy, it is not: the body is 253 bytes and is exactly the Worker's output. The
+  synthesised block appears only when the origin serves no robots.txt of its own.
 - There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
 ## What now exists
