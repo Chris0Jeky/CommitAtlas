@@ -182,6 +182,34 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   element extending past the viewport, so there is no document-level horizontal overflow.
 - 2026-08-24: all four chassis themes were inspected on the running surface, including the light
   theme, which is what exposed the ink-role problem below.
+- **2026-08-24: keyboard QA is closed on both pages, against production.** Landing page: 51
+  reachable controls, Studio: 60. On both, every reachable control resolves a non-empty accessible
+  name, no element carries a positive `tabindex` (so DOM order *is* tab order), and there are zero
+  non-native widgets — 32 links, 15 buttons and 4 radios on the landing page; links, buttons,
+  radios, text and url inputs, selects, a textarea, and disclosure summaries on the Studio. That
+  last point is the one that matters: because every control is a native element, Enter and Space
+  are handled by the browser rather than by a handler that could implement only one of them.
+- 2026-08-24: focus order follows reading order. Six DOM-order against geometry inversions were
+  measured and every one falls inside a multi-column grid — the three-column specimen tray, whose
+  compact plate spans two rows, and the two-column evidence grid. That is column-major order, not
+  a fault.
+- 2026-08-24: both skip links move focus, not just scroll position. `#main` on the landing page and
+  `#configure` on the Studio each report as `document.activeElement` after activation, which is
+  what the added `tabindex="-1"` buys.
+- 2026-08-24: every reachable control resolves a visible focus indicator. The first Studio
+  measurement reported 58 controls without one; that was the measurement, not the page. Chrome
+  matches `:focus-visible` on programmatic focus only when the last interaction was a keypress, and
+  after one real Tab the same probe reported 53 of 60. The remaining seven are inside a *collapsed*
+  disclosure and the browser refused to focus them at all — correctly unreachable until it opens.
+- 2026-08-24: Enter inside a Studio text field submits the intended action. All five in-form
+  buttons declare an explicit `type`, and the first submit in DOM order is Preview atlas — not
+  Remove, which is what an implicit type on a destructive button would have caused.
+- **2026-08-24: the 1440x900 pair is captured, on production.** This machine's display is 1440x810
+  with 762 usable, so a native 1440x900 viewport cannot exist here — which is why this stayed
+  unverified rather than being quietly claimed. Measured in a true 1440x900 same-origin frame
+  against the live origin: scrollWidth equals clientWidth, nothing overflowing, and every desktop
+  breakpoint resolving (fascia four-up at 390/312/312/312, stations two-up at 652.5, tray three-up
+  at 429.7, rack six-up at 209.8).
 - 2026-08-24: two fresh-context reviews ran independently against the chassis branch — one
   adversarial correctness pass, one accessibility pass. Neither found a CRITICAL. Both found the
   same defect: the evidence drawer declared `role="dialog" aria-modal="true"` with no focus trap
@@ -230,18 +258,31 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## NOT verified or released
 
-- Complete sequential keyboard-only traversal. Landmarks, names, controls, focus styling,
-  accessible SVG text, reduced motion, and mouse interaction were exercised, but the available
-  controller did not prove every Tab/Space transition.
-- A fresh exact-head 1440x900 and 390x844 production screenshot pair. Those widths passed on the
-  preceding responsive baseline; the final insight suite was visually exercised at the available
-  798-pixel browser width and through its 720/480 SVG layouts and rendered tests.
+- Every individual Tab keypress, observed as a keypress. The extension's synthetic Tab does not
+  produce native focus traversal in this browser, so the sequence itself is unobserved. What was
+  proved instead is the set of properties that *make* traversal correct — see Verified below. That
+  is a stronger check than watching twenty-five presses, but it is a different one, and it is
+  recorded as what it is.
 - Token-backed private contribution history. The service and profile intentionally use public
   evidence and never request private repository details.
 - npm registry publication or a GitHub `v0.1.0` release. Packages and the Action are built and used
   from immutable commits, but registry/release availability is not claimed.
 
 ## Residual risk and next slice
+
+- **The atlas heatmap uses hue as an ordinal scale, and collides with the panel beside it.** Levels
+  2, 3, and 4 render as `accent`, `positive`, and `warning` — the same three theme colours the
+  contribution mix uses for Commits, Pull requests, and Reviews, one panel to the right. So an
+  orange square reads as a commit rather than as a medium day, and nothing about orange to green to
+  yellow communicates *more*. GitHub's own calendar uses a single hue at four lightnesses for
+  exactly this reason. Being fixed in the card redesign.
+- **The generated README Markdown pins one card theme for every reader.** `buildStudioMarkdown`
+  emits a plain image link, and each card carries its own opaque background — `ember` is `#0d1117`,
+  which is GitHub's dark canvas exactly, so it blends on dark and reads as a dark slab with light
+  corner notches on light. The Studio's LIGHT preview canvas is therefore accurate rather than
+  misleading. GitHub READMEs support a `picture` element keyed on `prefers-color-scheme`, which
+  would serve a dark and a light card from one snippet; today whichever theme is chosen is wrong
+  for half of the readers. Being fixed in the card redesign.
 
 - Two review findings were triaged as non-blocking and left as they are, on purpose. The portfolio
   reticle SVG stays `aria-hidden`: its per-project breakdown is printed in full in the health-rack
