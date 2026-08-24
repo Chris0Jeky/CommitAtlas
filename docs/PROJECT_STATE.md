@@ -153,13 +153,17 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   rate limits.
 - GitHub Actions emits a non-failing warning that pinned Node 20 JavaScript actions are forced onto
   Node 24. The exact hosted gates pass; update those immutable pins only in a reviewed slice.
-- The reviewed hardening slice is closed. #49 closed the direct package-renderer bounds, #50 the
-  generated catalog boundaries, #33/#34 the response-contract gaps, and #48 the same-key Studio
-  refresh evidence window: breakdown window labels and rhythm level/basis truncate at the
-  `@commit-atlas/svg` boundary, valid adapter inputs render byte-identically, and a preview run
-  now confirms live card evidence per configuration rather than only for the newest one. #55
-  (atlas renderer bounds) is the one item still in flight. Do not reopen the completed
-  demonstration review loop unless release-impact evidence promotes an item.
+- The reviewed hardening slice is closed in full. #49 closed the direct package-renderer bounds,
+  #50 the generated catalog boundaries, #33/#34 the response-contract gaps, #48 the same-key
+  Studio refresh evidence window, and #55 the same bounds class on `renderAtlasCard`: breakdown
+  window labels and rhythm level/basis truncate at the `@commit-atlas/svg` boundary, valid
+  adapter inputs render byte-identically, a preview run confirms live card evidence per
+  configuration rather than only for the newest one, and on the atlas card the momentum strip is
+  bucket-bounded while non-finite `window.days`, `trend.changePercent`, and `projects.*` values
+  can no longer reach visible text. A negative `projects.*` count is bounded there too, because
+  `finite()` clamps it to a plausible zero and would otherwise render corrupt input as a clean
+  tally. Do not reopen the completed demonstration review loop unless release-impact evidence
+  promotes an item.
 - #33 and #34 close the reviewed response-contract gaps. Two of those five items were already
   satisfied on `main` and are now regression-covered rather than reimplemented: the contribution
   window was already inclusive and exactly the requested UTC day count, and synthetic category
