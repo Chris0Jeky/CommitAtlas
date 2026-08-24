@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 17:30 BST
+Last verified: 2026-08-24 18:05 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,19 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Released: [v0.3.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.3.0)**, tagged at
+  `4ec77d7724dd22637a85cc3c89b8dc417091778a` on `main` — the merge of PR #75, marked latest, not a
+  draft and not a prerelease. Hosted CI concluded success at that commit, the Deploy workflow
+  published it, and its post-deploy probes reported 17/17 against the origin Wrangler returned. The
+  probes were re-run independently from this checkout afterwards: 17/17 again.
+- **v0.3.0 is verified on the live origin, not just deployed.** The served atlas card was fetched
+  from production and checked directly: all four single-hue ramp steps present, the neutral socket
+  present, exactly four mix bars in one ink, both section numerals, the density key, no `Inter` in
+  any font stack, and every `font-family` value free of the double quote that produced malformed
+  XML on the first attempt. Tag structure is balanced at 54 open / 54 close / 72 self-closing.
+- All eight cards measured against the 30 KiB budget on the live origin: atlas 19,987, activity
+  24,321, rhythm 5,527, breakdown 5,273, languages 4,164, profile 3,764, projects 3,371, streak
+  3,332. The largest has 6.2 KiB of headroom.
 - **Released: [v0.2.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.2.0)**, tagged at
   `5fea6e625616a0df9ecd8e14a75f9eae74ea8500` on `main` — the merge of PR #72, with the branch's five
   commits intact and nothing squashed. Not a draft, not a prerelease, and marked latest. No package
