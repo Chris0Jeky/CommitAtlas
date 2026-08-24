@@ -987,13 +987,15 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
 const RELEASE_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptions): string {
-  const releases = data.releases
+  const valid = data.releases
     .filter((release) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
       && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? "")) && isValidIsoDate(String(release.publishedAt).slice(0, 10)))
-    .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt))
-    .slice(0, 6);
+    .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  const releases = valid.slice(0, 6);
+  // The absence footer is computed from the pre-cap count: a release cut by the six-row display
+  // cap still exists, and counting it as "no published release" would state a falsehood.
   const observed = Number.isFinite(data.projectsObserved)
-    ? Math.max(releases.length, Math.min(50, Math.round(data.projectsObserved as number)))
+    ? Math.max(valid.length, Math.min(50, Math.round(data.projectsObserved as number)))
     : null;
   const rows = Math.max(1, releases.length);
   const o = optionsFor(options, 92 + rows * 34 + 30, "Latest releases", "The most recent published release per curated project, newest first.", 150, 420); const t = o.theme; const width = o.width;
@@ -1010,6 +1012,7 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     out += text(34, 92, "No published releases observed for the curated projects", 13, t.muted, 550);
     return out + `</g>` + svgEnd();
   }
+  if (releases.length < valid.length) out += text(width - 34, 50, `${releases.length} of ${valid.length} shown`, 11, t.muted, 500, "end");
   releases.forEach((release, index) => {
     const y = 88 + index * 34;
     if (index > 0) out += `<line x1="34" y1="${y - 22}" x2="${width - 34}" y2="${y - 22}" stroke="${t.border}"/>`;
@@ -1017,8 +1020,8 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     out += text(128, y, truncateText(release.project, 30), 13.5, t.text, 700);
     out += mono(width - 34, y, truncateText(release.tag, 18), 10.5, t.accent, 600, "end", 0.04);
   });
-  if (observed !== null && observed > releases.length) {
-    out += mono(34, o.height - 28, `${observed - releases.length} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
+  if (observed !== null && observed > valid.length) {
+    out += mono(34, o.height - 28, `${observed - valid.length} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
   }
   return out + `</g>` + svgEnd();
 }

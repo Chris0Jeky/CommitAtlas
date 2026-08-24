@@ -972,6 +972,7 @@ test("cadence card states an empty window honestly and survives hostile and huge
   });
   const large = renderCadenceCard({ days: fullYear }, { theme: "paper", motion: "subtle" });
   assertSafeSvg(large, { allowStyle: true });
+  assertWellFormedXml(large);
   const bytes = Buffer.byteLength(large, "utf8");
   assert.ok(bytes < 30_000, `cadence SVG exceeded budget (${bytes} UTF-8 bytes)`);
 });
@@ -998,8 +999,12 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
     releases: Array.from({ length: 9 }, (_, index) => ({
       project: `Project ${index}`, tag: `v0.${index}.0`, publishedAt: `2026-03-0${index + 1}T09:00:00Z`,
     })),
+    projectsObserved: 9,
   });
   assert.equal((capped.match(/>\d{4}-\d{2}-\d{2}</g) ?? []).length, 6);
+  // A release cut by the display cap still exists: the card says "shown", never "no release".
+  assert.match(capped, />6 of 9 shown</);
+  assert.doesNotMatch(capped, /NO PUBLISHED RELEASE/);
   const empty = renderReleasesCard({ releases: [], projectsObserved: 4 });
   assertSafeSvg(empty);
   assert.match(empty, /No published releases observed for the curated projects/);
@@ -1007,4 +1012,6 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
     releases: [{ project: injection, tag: injection, publishedAt: "2026-08-01T09:00:00Z" }],
   });
   assertSafeSvg(hostile);
+  assertWellFormedXml(hostile);
+  assertWellFormedXml(renderCadenceCard({ days: [{ date: "2026-02-25", count: 3 }] }, { title: injection, description: injection }));
 });
