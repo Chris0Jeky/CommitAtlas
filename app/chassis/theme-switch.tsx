@@ -36,11 +36,17 @@ import {
 const listeners = new Set<() => void>();
 
 /**
- * The choice for this page view when storage refuses to keep it.
+ * The choice for this page view, held only while storage has refused to keep it.
  *
  * Without this, a visitor with blocked site data could not change the theme at all: the write would
  * throw, the read would return the default, and every click would revert. The preference still does
  * not survive a reload — that part is honest and unavoidable — but it works for the session.
+ *
+ * It is set only when the write actually failed, and cleared the moment one succeeds. That ordering
+ * matters: a quota-exceeded write over an *existing* valid value leaves storage holding a stale
+ * theme, and preferring it would snap the control back. While this is set, storage is known to be
+ * lying about this key, so it is not consulted — which also means this tab stops following other
+ * tabs, correctly, since it can no longer observe them.
  */
 let sessionTheme: ChassisThemeId | null = null;
 
@@ -54,18 +60,19 @@ function subscribe(onChange: () => void): () => void {
 }
 
 /** Module-scoped so the write is not a reassignment from inside the component's own scope. */
-function rememberTheme(next: ChassisThemeId): void {
+function rememberTheme(next: ChassisThemeId | null): void {
   sessionTheme = next;
 }
 
 function readTheme(): ChassisThemeId {
+  if (sessionTheme) return sessionTheme;
   try {
     const stored = window.localStorage.getItem(CHASSIS_THEME_STORAGE_KEY);
     if (isChassisThemeId(stored)) return stored;
   } catch {
     // Private mode, blocked site data, or a partitioned storage bucket.
   }
-  return sessionTheme ?? DEFAULT_CHASSIS_THEME;
+  return DEFAULT_CHASSIS_THEME;
 }
 
 function serverTheme(): ChassisThemeId {
@@ -82,11 +89,13 @@ export default function ThemeSwitch() {
   }, [theme]);
 
   function choose(next: ChassisThemeId): void {
-    rememberTheme(next);
     try {
       window.localStorage.setItem(CHASSIS_THEME_STORAGE_KEY, next);
+      // Storage is authoritative again, including for other tabs.
+      rememberTheme(null);
     } catch {
       // The theme still applies for this page view; it just will not survive a reload.
+      rememberTheme(next);
     }
     for (const listener of [...listeners]) listener();
   }

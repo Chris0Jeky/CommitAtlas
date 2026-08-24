@@ -129,7 +129,10 @@ export default async function Home() {
                 <span>Instrument scale</span>
                 <div className="scale-bar" aria-hidden="true"><i /></div>
                 <span className="scale-hinge">Hinge #FFD166 · lives in the cards</span>
-                <span className="scale-chrome console-hide-sm">Chrome · fieldline</span>
+                {/* Named the default theme on every theme, which was false on three of the four.
+                    The rail's job is to show the scale; the label is rendered *in* the current
+                    chrome, so it demonstrates the fact instead of asserting the wrong one. */}
+                <span className="scale-chrome console-hide-sm">Chrome · per theme</span>
               </div>
             </div>
 

@@ -131,13 +131,17 @@ test("the active-level ramp rises monotonically and is bounded at both ends", ()
 test("an unparseable day cannot make the whole survey disappear", () => {
   // `UtcDateSchema` rejects these upstream, but the failure mode is total: a NaN weekday propagates
   // into every coordinate and into the viewBox, and nothing renders at all.
-  for (const date of ["2026-13-99", "2026-08-24T00:00:00Z", "not-a-date", ""]) {
+  // `2026-02-30` is the one that a pattern test alone lets through: `Date` rolls it forward to
+  // 2 March and reports that weekday, so the cell would be placed silently on the wrong row.
+  for (const date of ["2026-13-99", "2026-08-24T00:00:00Z", "not-a-date", "", "2026-02-30", "2026-04-31"]) {
     const grid = densityGrid([{ date, count: 1, level: 2 }]);
     assert.doesNotMatch(grid.viewBox, /NaN/, date);
     assert.equal(Number.isFinite(grid.columns), true, date);
     for (const cell of grid.cells) {
       assert.equal(Number.isFinite(cell.x) && Number.isFinite(cell.y), true, date);
     }
+    // And it falls back rather than guessing: an unplaceable day opens the grid at the first row.
+    assert.equal(grid.cells[0]?.y, 0, date);
   }
 });
 

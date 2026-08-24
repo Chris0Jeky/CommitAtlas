@@ -54,12 +54,11 @@ export function EvidenceProvider({ evidence, children }: { evidence: EvidenceSet
   }, []);
 
   const open = useCallback((id: string, trigger: HTMLElement | null) => {
-    // Pressing the open trigger again is a close. Clearing the ref is left to `restoreFocus`, so
-    // the trigger is released on every path rather than only on the button and Escape ones.
-    setOpenId((current) => {
-      if (current !== id) triggerRef.current = trigger;
-      return current === id ? null : id;
-    });
+    // The ref is written here, not inside the updater: a state updater has to be pure, StrictMode
+    // double-invokes it, and concurrent rendering may re-base it. Clearing is left to
+    // `restoreFocus`, so the trigger is released on every close path.
+    triggerRef.current = trigger;
+    setOpenId((current) => (current === id ? null : id));
   }, []);
 
   const value = useMemo<EvidenceContextValue>(
@@ -107,6 +106,7 @@ export function Ev({ id, children }: { id: string; children: ReactNode }) {
 function EvidenceDrawer() {
   const context = useContext(EvidenceContext);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const pressedBackdrop = useRef(false);
   const titleId = useId();
   const openId = context?.openId ?? null;
   const restoreFocus = context?.restoreFocus;
@@ -145,13 +145,24 @@ function EvidenceDrawer() {
         event.preventDefault();
         context?.close();
       }}
+      // Unreachable while `onCancel` intercepts Escape and no `<form method="dialog">` exists, but
+      // it goes live the moment any of that changes — and by the time this fires the element is
+      // already closed, so the effect's close branch cannot restore focus for it.
       onClose={() => {
         if (context?.openId) context.close();
+        context?.restoreFocus();
       }}
       // A modal dialog's backdrop dispatches its click on the dialog itself, so this is the
-      // click-outside path. Children swallow their own clicks.
+      // click-outside path — but a press that *starts* on a child and releases past the edge
+      // reports the same target, and so does the drawer's own scrollbar. Requiring the press to
+      // have begun on the backdrop too is what stops drag-selecting the FORMULA row from closing
+      // the drawer and losing the selection.
+      onPointerDown={(event) => {
+        pressedBackdrop.current = event.target === event.currentTarget;
+      }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) context?.close();
+        if (event.target === event.currentTarget && pressedBackdrop.current) context?.close();
+        pressedBackdrop.current = false;
       }}
     >
       {record && tier && context ? (

@@ -129,7 +129,9 @@ test("every printed reading can answer how it is known", async () => {
     "rhythm",
     "rhythm-level",
   ], "keep this in step with LANDING_EVIDENCE_IDS in lib/landing.ts");
-  assert.doesNotMatch(html, /Every number on this page is a button/);
+  // Deliberately loose. The exact-phrase version of this guard reported green while the page still
+  // carried "Closed — every number is a button:" one line above the copy it was written to protect.
+  assert.doesNotMatch(html, /every number (on this page )?is a button/i);
   // The three rungs, each shown with a real reading from this page's own snapshot.
   for (const rung of ["OBSERVED", "DERIVED", "HYPOTHESIS"]) {
     assert.ok(html.includes(rung), `the ladder never names ${rung}`);

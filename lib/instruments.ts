@@ -181,10 +181,17 @@ export function densityGrid(
   };
 }
 
-/** Weekday index for a UTC day, or `0` when the value is not one CommitAtlas can place. */
+/**
+ * Weekday index for a UTC day, or `0` when the value is not a day CommitAtlas can place.
+ *
+ * The round-trip is the whole guard. A pattern test alone accepts `2026-02-30`, which `Date` does
+ * not refuse — it rolls it forward to 2 March and reports that weekday, so an impossible day would
+ * be placed silently at the wrong one rather than falling back.
+ */
 function utcWeekday(date: string): number {
-  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`).getUTCDay() : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : 0;
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  const roundTrip = Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  return roundTrip === date ? parsed.getUTCDay() : 0;
 }
 
 /**

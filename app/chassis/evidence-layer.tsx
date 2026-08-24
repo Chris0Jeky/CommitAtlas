@@ -6,8 +6,10 @@ import { Ev } from "./evidence-ui";
  * The evidence layer.
  *
  * The ladder on the left is the legend: three rungs, each shown with a real reading from this
- * page's own snapshot. The panel on the right is the instruction — every number on this page is a
- * button, and pressing one opens the drawer that answers how it is known.
+ * page's own snapshot. The panel on the right is the instruction — every *dotted* number is a
+ * button, and pressing one opens the drawer that answers how it is known. The dotted underline is
+ * the affordance and the qualifier at once: `buildEvidence` describes more readings than this page
+ * prints, so "every number" was a claim the page could not keep.
  *
  * The rung is encoded three ways: the word, the dot fill, and the border style. It survives
  * greyscale for the same reason the CI rack does, and for the same reason.
@@ -66,7 +68,7 @@ export function EvidenceLayer({ evidence }: { evidence: EvidenceSet }) {
 
         <div className="evidence-demo">
           <p className="evidence-demo-head">
-            <span>Closed — every number is a button:</span>
+            <span>Closed — every dotted number is a button:</span>
             {demo ? <span className="rung-claim" style={{ margin: 0 }}><Ev id="rhythm">{demo.value}</Ev> {demo.label}</span> : null}
             <span className="cue">Press any dotted number: &ldquo;how do you know that?&rdquo;</span>
           </p>
