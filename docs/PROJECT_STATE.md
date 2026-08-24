@@ -122,11 +122,13 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `d9f03f106865ac7a1ce76e2bea31d0156e06114d` — the bot commit
-  produced by the paired-theme refresh above.
-- Exact profile [refresh run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)
-  passed both generation passes, both bundle validations, the catalog, commit, and push steps and
-  produced that bot snapshot. The prior checkpoint was `4651009` from
+- Public profile repository head: `3a914a9` — the bot commit produced by the ten-card refresh
+  [run 32762878305](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32762878305) recorded in
+  the first bullet above.
+- The preceding checkpoints, both superseded the same day: paired-theme bot head `d9f03f1` from
+  [run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123) (both
+  generation passes, both bundle validations, catalog, commit, and push all passing), and before
+  that `4651009` from
   [run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680).
 - Repository description, GPL-3.0-only licence, and 20 focused topics are published. The homepage
   now points at the Workers origin; it previously still named the retired Sites mirror.
