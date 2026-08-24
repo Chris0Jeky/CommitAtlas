@@ -93,9 +93,10 @@ npm run deploy
 ```
 
 `npm run deploy` builds, publishes, reads the deployed origin out of Wrangler's own output, and
-runs fourteen deterministic probes against it — health, the landing page, the Studio, all eight
+runs seventeen deterministic probes against it — health, the landing page, the Studio, all eight
 synthetic cards asserted to be script-free SVG, the `motion=none` CSP path, and two invalid queries
-proving each is rejected as a bounded `400` with `no-store`. The origin is never hard-coded, so this
+proving each is rejected as a bounded `400` with `no-store`, plus `robots.txt`, `sitemap.xml`, and the
+landing page's structured data. The origin is never hard-coded, so this
 verifies *your* deployment. Push-to-deploy from GitHub Actions and the optional public-scope
 `GITHUB_TOKEN` are covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
