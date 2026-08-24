@@ -315,7 +315,7 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
     breakdownBasis: "public-profile-percentages",
     breakdown: { commits: 77.8, issues: 6.7, pullRequests: 12.6, reviews: 2.9 },
   });
-  assert.match(publicProfileAtlas, /PUBLIC PROFILE MIX · NOT WINDOW-SCOPED/);
+  assert.match(publicProfileAtlas, /02 \/\/ PROFILE MIX · NOT WINDOW-SCOPED/);
   assert.match(publicProfileAtlas, />77\.8%<\/text>/);
   assert.match(publicProfileAtlas, /Public profile activity percentage mix from calendar-year views, not scoped to this contribution window: 77\.8% commits/);
 });
@@ -404,7 +404,8 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
   assert.match(escapedOutputs[2][1], /<desc>[^<]*2025-01-01 100,000/);
   assert.match(escapedOutputs[0][1], /2025-01-01 100,000/);
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
-  assert.match(activity364, />P{31}…<\/text>/);
+  // Still bounded — the label just follows the section numeral now.
+  assert.match(activity364, />01 \/\/ P{31}…<\/text>/);
 });
 
 test("activity accessibility summary belongs to the outer SVG description", () => {
@@ -478,8 +479,8 @@ test("rendering is a stable snapshot for identical presentation data", () => {
   const first = renderStreakCard(data, { theme: "paper", width: 640 });
   const second = renderStreakCard(data, { theme: "paper", width: 640 });
   assert.equal(first, second);
-  assert.match(first, /fill="#f8fafc"/);
-  assert.match(first, /fill="#0f766e"/);
+  assert.match(first, /fill="#dfe4c9"/);
+  assert.match(first, /fill="#9c3d0d"/);
 });
 
 test("multiple inline cards compose without duplicate accessibility identifiers", () => {
@@ -542,7 +543,7 @@ test("breakdown card keeps exact counts and public percentages truthful", () => 
   assert.doesNotMatch(percentages, /broken down by type for the selected window/);
   assert.doesNotMatch(percentages, /2026-01-01 → 2026-12-31/);
   assert.doesNotMatch(percentages, /Total 100|100 contributions/);
-  assert.match(percentages, /width="275\.75" height="10" rx="5" fill="#79f2c0"/);
+  assert.match(percentages, /width="275\.75" height="8" fill="#6cc6ff"/);
   assertSafeSvg(percentages);
 });
 
@@ -563,7 +564,7 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(wide, /at least 4 days · OPEN/);
   assert.match(wide, /\+100% vs prior 28 days/);
   assert.match(wide, /70% active-day density \(capped at 80%\) \+ 30% current streak \(capped at 30 days\)/);
-  assert.match(wide, /CommitAtlas personal consistency · not a GitHub rank/);
+  assert.match(wide, /COMMITATLAS CONSISTENCY · NOT A GITHUB RANK/);
   assert.match(wide, /<desc>[^<]*this is not a GitHub rank/);
   assertSafeSvg(wide);
   const compact = renderRhythmCard({ ...data, currentStreakBoundary: "closed", trend: { ...data.trend, direction: "unavailable", changePercent: null, previous28Days: null } }, { width: 480 });
@@ -836,4 +837,87 @@ test("atlas card bounds the momentum strip like the rhythm card does", () => {
   assert.equal(bars(renderAtlasCard(atlasFixture({
     trend: { buckets: [], recent28Days: 0, previous28Days: null, changePercent: null, direction: "unavailable" },
   }), { motion: "none" })), 4);
+});
+
+test("the density ramp is one hue, ordered, and never borrows a mix colour", () => {
+  // The defect this redesign exists to fix: levels 2-4 were `accent`, `positive` and `warning`,
+  // the same three colours the contribution mix printed one panel to the right, so a square's
+  // colour named a category it did not mean. Underneath that, hue carries no order at all.
+  const channel = (v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const luminance = (hex) => {
+    const v = Number.parseInt(hex.slice(1), 16);
+    return 0.2126 * channel((v >> 16) & 255) + 0.7152 * channel((v >> 8) & 255) + 0.0722 * channel(v & 255);
+  };
+
+  for (const [name, theme] of Object.entries(themes)) {
+    assert.equal(theme.density.length, 4, `${name} ramp must have four steps`);
+
+    // Monotonic, in whichever direction the ground demands: brighter on dark, darker on light.
+    const steps = [theme.socket, ...theme.density].map(luminance);
+    const direction = steps.at(-1) > steps[0] ? 1 : -1;
+    assert.equal(
+      direction === 1 ? theme.scheme === "dark" : theme.scheme === "light",
+      true,
+      `${name}: a ${theme.scheme} card must read "more" as ${theme.scheme === "dark" ? "brighter" : "darker"}`,
+    );
+    for (let i = 1; i < steps.length; i += 1) {
+      assert.ok((steps[i] - steps[i - 1]) * direction > 0, `${name} ramp reverses at step ${i}`);
+      const ratio = Math.max(steps[i], steps[i - 1]) / Math.max(Math.min(steps[i], steps[i - 1]), 0.0008);
+      // The separation floor is what makes the scale survive greyscale and colour blindness.
+      assert.ok(ratio >= 1.25, `${name} step ${i} separates by only ${ratio.toFixed(2)}x`);
+    }
+
+    // And no step may collide with the ink the mix is drawn in, or with a status colour.
+    for (const step of theme.density) {
+      assert.notEqual(step, theme.mixInk, `${name}: a density step is the mix ink`);
+      assert.notEqual(step, theme.positive, `${name}: a density step is the passing colour`);
+      assert.notEqual(step, theme.warning, `${name}: a density step is the warning colour`);
+      assert.notEqual(step, theme.negative, `${name}: a density step is the failing colour`);
+    }
+    assert.notEqual(theme.socket, theme.density[0], `${name}: the empty socket is the faintest active step`);
+  }
+});
+
+test("every theme declares a partner in the opposite colour scheme", () => {
+  // What makes the <picture> pair possible. A theme whose partner shares its scheme would serve
+  // the same card to both readers and quietly reintroduce the defect.
+  for (const [name, theme] of Object.entries(themes)) {
+    const partner = themes[theme.pair];
+    assert.ok(partner, `${name} names an unknown partner: ${theme.pair}`);
+    assert.notEqual(partner.scheme, theme.scheme, `${name} and ${theme.pair} are both ${theme.scheme}`);
+  }
+});
+
+test("the mix is one ink, so it cannot compete with the density grid", () => {
+  const breakdown = renderContributionBreakdownCard({
+    breakdown: { commits: 80, issues: 20, pullRequests: 40, reviews: 60 },
+    basis: "exact-counts",
+    window: { from: "2026-01-01", to: "2026-12-31", days: 365 },
+  }, { theme: "ember", width: 640 });
+
+  // Four filled bars, every one of them the same colour.
+  // `x` is a computed float, not an integer — the first version of this pattern required
+  // \d+ and matched nothing, which reported a defect that was not there.
+  const fills = [...breakdown.matchAll(/<rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="8" fill="(#[0-9a-f]{6})"\/>/g)]
+    .map((match) => match[1])
+    .filter((fill) => fill !== themes.ember.track);
+  assert.ok(fills.length >= 4, `expected four filled mix bars, saw ${fills.length}`);
+  assert.equal(new Set(fills).size, 1, `the mix uses ${new Set(fills).size} inks; it must use one`);
+  assert.equal(fills[0], themes.ember.mixInk);
+});
+
+test("a non-finite contribution level renders as the empty socket, never the strongest step", () => {
+  // The same inversion the web surface had: indexing a ramp with NaN must not fall through to
+  // the maximum. An unreadable signal shown as the busiest day is the one thing this forbids.
+  const withBadLevels = renderActivityCard({
+    days: [
+      { date: "2026-01-01", count: 0 },
+      { date: "2026-01-02", count: 5 },
+      { date: "2026-01-03", count: Number.NaN },
+    ],
+    periodLabel: "ACTIVITY",
+  }, { theme: "ember" });
+  assertSafeSvg(withBadLevels);
+  assert.doesNotMatch(withBadLevels, /fill="undefined"|fill="NaN"/);
+  assert.match(withBadLevels, new RegExp(`fill="${themes.ember.socket}"`));
 });
