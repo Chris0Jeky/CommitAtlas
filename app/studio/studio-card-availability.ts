@@ -16,24 +16,80 @@ export function isStudioCardAvailable(
   return availability.hasCurrentContributions;
 }
 
+/**
+ * True while a preview request for the *current* configuration has not produced a
+ * validated result — it is still in flight, or it failed.
+ *
+ * A retry of an unchanged configuration keeps the previously validated payload on
+ * screen, so the configuration key alone cannot distinguish "confirmed by the last
+ * response" from "superseded by a response nobody has seen". This makes that window
+ * explicit: the payload still describes the current configuration, but the evidence
+ * backing it is no longer the latest word.
+ *
+ * The unresolved keys are a *set*, not a single key. A scalar would be overwritten
+ * by a run for some other configuration, permanently forgetting that an earlier
+ * configuration was left unconfirmed — so editing away from a failed refresh,
+ * failing again elsewhere, and editing back would silently re-confirm evidence
+ * nothing ever verified.
+ */
+export function isStudioRefreshUnresolved(options: {
+  currentConfigurationKey: string;
+  unresolvedRefreshKeys: ReadonlySet<string>;
+}): boolean {
+  return options.unresolvedRefreshKeys.has(options.currentConfigurationKey);
+}
+
 export function hasCurrentLiveContributions(options: {
   demo: boolean;
   currentConfigurationKey: string;
   validatedConfigurationKey: string | null;
+  unresolvedRefreshKeys: ReadonlySet<string>;
   contributionsPresent: boolean;
 }): boolean {
   return !options.demo
     && options.contributionsPresent
-    && options.validatedConfigurationKey === options.currentConfigurationKey;
+    && options.validatedConfigurationKey === options.currentConfigurationKey
+    && !isStudioRefreshUnresolved(options);
 }
 
 export function hasCurrentLiveLanguages(options: {
   demo: boolean;
   currentConfigurationKey: string;
   validatedConfigurationKey: string | null;
+  unresolvedRefreshKeys: ReadonlySet<string>;
   repositoriesTruncated: boolean;
 }): boolean {
   return !options.demo
     && !options.repositoriesTruncated
-    && options.validatedConfigurationKey === options.currentConfigurationKey;
+    && options.validatedConfigurationKey === options.currentConfigurationKey
+    && !isStudioRefreshUnresolved(options);
+}
+
+export interface StudioLiveEvidenceInput {
+  demo: boolean;
+  currentConfigurationKey: string;
+  validatedConfigurationKey: string | null;
+  unresolvedRefreshKeys: ReadonlySet<string>;
+  contributionsPresent: boolean;
+  repositoriesTruncated: boolean;
+}
+
+export interface StudioLiveEvidence {
+  /** The displayed payload is older than the newest request for this configuration. */
+  refreshUnresolved: boolean;
+  hasCurrentContributions: boolean;
+  hasCurrentLanguages: boolean;
+}
+
+/**
+ * Single derivation of what the *current* evidence supports. Card toggles, the
+ * gallery's retained-preview label, and copyable README Markdown all read from
+ * this so they cannot drift apart.
+ */
+export function resolveStudioLiveEvidence(input: StudioLiveEvidenceInput): StudioLiveEvidence {
+  return {
+    refreshUnresolved: isStudioRefreshUnresolved(input),
+    hasCurrentContributions: hasCurrentLiveContributions(input),
+    hasCurrentLanguages: hasCurrentLiveLanguages(input),
+  };
 }

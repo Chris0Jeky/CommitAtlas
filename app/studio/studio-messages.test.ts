@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configurationChangedNotice, contributionUnavailableNotice, retainedPreviewNotice } from "./studio-messages";
+import {
+  configurationChangedNotice,
+  contributionUnavailableNotice,
+  retainedPreviewNotice,
+  unconfirmedEvidenceNotice,
+} from "./studio-messages";
 
 test("labels retained preview data after an upstream failure", () => {
   assert.equal(
@@ -28,4 +33,12 @@ test("asks for a refresh when route-affecting configuration changes", () => {
     configurationChangedNotice(),
     "Configuration changed. Run Preview to refresh the evidence and generated URLs.",
   );
+});
+
+test("explains withheld cards without claiming the retained preview was lost", () => {
+  const notice = unconfirmedEvidenceNotice();
+  assert.match(notice, /held back from README Markdown/);
+  assert.match(notice, /previous preview stays visible/);
+  // Covers both the in-flight and failed-refresh states, so it must not assert either.
+  assert.doesNotMatch(notice, /failed|loading|error|retry/i);
 });
