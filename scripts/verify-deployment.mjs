@@ -54,6 +54,60 @@ const checks = [
     },
   },
   {
+    name: "robots.txt is served and keeps crawlers off the render endpoints",
+    async run(get) {
+      const response = await get("/robots.txt");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      assert(/^text\/plain\b/i.test(contentType), `expected text/plain, got "${contentType}"`);
+      const body = await response.text();
+      assert(/^Disallow: \/api\/$/m.test(body), "robots.txt does not disallow the render endpoints");
+      assert(!/^Disallow: \/$/m.test(body), "robots.txt deindexes the whole site");
+      assert(
+        body.includes(`Sitemap: ${new URL("/sitemap.xml", base).href}`),
+        "robots.txt does not point at this deployment's own sitemap",
+      );
+    },
+  },
+  {
+    name: "sitemap.xml lists the canonical pages and nothing dynamic",
+    async run(get) {
+      const response = await get("/sitemap.xml");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      assert(/^application\/xml\b/i.test(contentType), `expected application/xml, got "${contentType}"`);
+      const body = await response.text();
+      const locations = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+      assert(locations.length === 2, `expected 2 sitemap entries, got ${locations.length}`);
+      assert(!/\/api\//.test(body), "sitemap advertises a dynamic render endpoint as a document");
+      // Every entry must be absolute and on one origin, or a crawler reads the set as duplicates.
+      for (const location of locations) {
+        assert(
+          location.startsWith(new URL(locations[0]).origin),
+          `sitemap mixes origins: ${location}`,
+        );
+      }
+    },
+  },
+  {
+    name: "the landing page carries structured data with no invented rating",
+    async run(get) {
+      const response = await get("/");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const html = await response.text();
+      const block = /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html);
+      assert(block, "no JSON-LD block was rendered");
+      const graph = JSON.parse(block[1].replace(/\\u003c/gi, "<"));
+      assert(graph["@context"] === "https://schema.org", "JSON-LD is not schema.org");
+      const software = graph["@graph"].find((node) => node["@type"] === "SoftwareApplication");
+      assert(software, "JSON-LD has no SoftwareApplication node");
+      assert(
+        software.aggregateRating === undefined && software.review === undefined,
+        "JSON-LD claims a rating or review the project cannot evidence",
+      );
+    },
+  },
+  {
     name: "Studio server-renders its own page, not the landing page",
     async run(get) {
       const response = await get("/studio");

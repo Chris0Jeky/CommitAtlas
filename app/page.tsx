@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LandingCardShowcase, LandingHeroCard } from "./card-showcase";
+import { StructuredData } from "./structured-data";
 
 const capabilities = [
   {
@@ -22,6 +23,7 @@ const capabilities = [
 export default function Home() {
   return (
     <main>
+      <StructuredData />
       <nav className="nav" aria-label="Primary navigation">
         <a className="brand" href="#top" aria-label="CommitAtlas home">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
