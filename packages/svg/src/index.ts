@@ -948,6 +948,7 @@ const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "
 export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions): string {
   const days = data.days
     .filter((day) => isValidIsoDate(day.date) && Number.isFinite(day.count) && day.count >= 0)
+    .sort((left, right) => left.date.localeCompare(right.date))
     .slice(-MAX_ACTIVITY_DAYS);
   // getUTCDay puts Sunday first; the chassis reads weeks Monday-first.
   const totals = Array.from({ length: 7 }, () => 0);
@@ -990,7 +991,8 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   const valid = data.releases
     .filter((release) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
       && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? "")) && isValidIsoDate(String(release.publishedAt).slice(0, 10)))
-    .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+    // Parse rather than compare strings: ".5Z" would sort before "Z" lexically despite being later.
+    .sort((left, right) => Date.parse(right.publishedAt) - Date.parse(left.publishedAt));
   const releases = valid.slice(0, 6);
   // The absence footer is computed from the pre-cap count: a release cut by the six-row display
   // cap still exists, and counting it as "no published release" would state a falsehood.
@@ -998,10 +1000,16 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     ? Math.max(valid.length, Math.min(50, Math.round(data.projectsObserved as number)))
     : null;
   const rows = Math.max(1, releases.length);
-  const o = optionsFor(options, 92 + rows * 34 + 30, "Latest releases", "The most recent published release per curated project, newest first.", 150, 420); const t = o.theme; const width = o.width;
+  // The minimum height scales with the rows actually drawn, so a caller-supplied height can
+  // shrink margins but never clip a release row out of the panel.
+  const rowsHeight = 92 + rows * 34 + 30;
+  const o = optionsFor(options, rowsHeight, "Latest releases", "The most recent published release per curated project, newest first.", rowsHeight, 420); const t = o.theme; const width = o.width;
   const metadata = sourceMetadata(data.source, o.title, o.description);
+  const absenceSentence = observed !== null && observed > valid.length
+    ? ` ${observed - valid.length} of ${observed} curated projects have no published release observed.`
+    : "";
   const accessibleDescription = releases.length
-    ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.`
+    ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.${absenceSentence}`
     : `${metadata.description} No published releases observed for the curated projects.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
@@ -1017,8 +1025,8 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     const y = 88 + index * 34;
     if (index > 0) out += `<line x1="34" y1="${y - 22}" x2="${width - 34}" y2="${y - 22}" stroke="${t.border}"/>`;
     out += mono(34, y, release.publishedAt.slice(0, 10), 9.5, t.muted, 500, "start", 0.04);
-    out += text(128, y, truncateText(release.project, 30), 13.5, t.text, 700);
-    out += mono(width - 34, y, truncateText(release.tag, 18), 10.5, t.accent, 600, "end", 0.04);
+    out += text(128, y, truncateText(release.project, width < 560 ? 16 : 30), 13.5, t.text, 700);
+    out += mono(width - 34, y, truncateText(release.tag, width < 560 ? 12 : 18), 10.5, t.accent, 600, "end", 0.04);
   });
   if (observed !== null && observed > valid.length) {
     out += mono(34, o.height - 28, `${observed - valid.length} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);

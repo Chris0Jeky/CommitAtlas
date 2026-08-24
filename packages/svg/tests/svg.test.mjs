@@ -1005,6 +1005,22 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   // A release cut by the display cap still exists: the card says "shown", never "no release".
   assert.match(capped, />6 of 9 shown</);
   assert.doesNotMatch(capped, /NO PUBLISHED RELEASE/);
+  // A caller-supplied height can never clip rows: the minimum scales with the rows drawn.
+  const squeezed = renderReleasesCard({
+    releases: Array.from({ length: 6 }, (_, index) => ({
+      project: `Project ${index}`, tag: `v0.${index}.0`, publishedAt: `2026-03-0${index + 1}T09:00:00Z`,
+    })),
+  }, { height: 150, width: 420 });
+  assert.match(squeezed, /viewBox="0 0 420 326"/);
+  assertSafeSvg(squeezed);
+  // Fractional seconds order chronologically, not lexically: ".5Z" is later than the same second.
+  const fractional = renderReleasesCard({
+    releases: [
+      { project: "Whole", tag: "v1.0.0", publishedAt: "2026-05-01T00:00:00Z" },
+      { project: "Fraction", tag: "v1.0.1", publishedAt: "2026-05-01T00:00:00.500Z" },
+    ],
+  });
+  assert.ok(fractional.indexOf(">Fraction<") < fractional.indexOf(">Whole<"));
   const empty = renderReleasesCard({ releases: [], projectsObserved: 4 });
   assertSafeSvg(empty);
   assert.match(empty, /No published releases observed for the curated projects/);
