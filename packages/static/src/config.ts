@@ -11,6 +11,7 @@ import { z } from "zod";
 
 export const STATIC_CARD_NAMES = [
   "atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects",
+  "cadence", "releases",
 ] as const;
 export type StaticCardName = (typeof STATIC_CARD_NAMES)[number];
 

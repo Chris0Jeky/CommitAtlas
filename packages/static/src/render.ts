@@ -10,10 +10,12 @@ import type {
 import {
   renderActivityCard,
   renderAtlasCard,
+  renderCadenceCard,
   renderContributionBreakdownCard,
   renderLanguagesCard,
   renderProfileCard,
   renderProjectBoard,
+  renderReleasesCard,
   renderRhythmCard,
   renderStreakCard,
   type AtlasCardData,
@@ -153,6 +155,22 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       source: toCardSource(projects?.freshness ?? snapshot.freshness),
       projects: (projects?.projects ?? []).map(toProjectSignal),
     }, { ...common, width: dashboardWidth });
+  }
+  if (selected.has("cadence")) {
+    artifacts["cadence.svg"] = renderCadenceCard({
+      source: toCardSource(contributions.freshness),
+      days: contributions.days,
+    }, { ...common, width });
+  }
+  if (selected.has("releases")) {
+    const observed = projects?.projects ?? [];
+    artifacts["releases.svg"] = renderReleasesCard({
+      source: toCardSource(projects?.freshness ?? snapshot.freshness),
+      releases: observed.flatMap((project) => project.release
+        ? [{ project: project.name, tag: project.release.tag, publishedAt: project.release.publishedAt }]
+        : []),
+      projectsObserved: observed.length,
+    }, { ...common, width });
   }
   return artifacts;
 }

@@ -58,6 +58,8 @@ not presented as a universal GitHub ranking or a comparison with other developer
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
 | Projects | Up to six curated projects with declared lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` (static: `projects.json`, `projects.md`) |
+| Cadence | Contribution share by day of week on UTC boundaries, window-scoped | static-only: `cadence.svg` |
+| Releases | The most recent published release per curated project, newest first; absence stated | static-only: `releases.svg` |
 
 The cards are drawn in one hue per scale, never four: a density square's colour says *how much*,
 and never *what kind*. The Studio emits each card as a `<picture>` pair keyed on
