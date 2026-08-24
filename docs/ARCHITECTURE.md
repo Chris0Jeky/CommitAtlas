@@ -28,7 +28,7 @@ GitHub public evidence ──┼─ interactive HTML Studio
 | Breakdown | Exact categorized counts when available; otherwise non-window-scoped profile-view percentages | SVG + Studio |
 | Rhythm | Transparent within-window personal consistency, never a GitHub rank | SVG + Studio |
 | Activity | Bounded daily contribution graph and exact date window | SVG + JSON |
-| Languages | Complete repository-language byte share, not proficiency | SVG + JSON |
+| Languages | Complete repository-language share, not proficiency | SVG + JSON |
 | Projects | Explicit lifecycle, named-workflow CI, release, freshness, and configured actions | SVG summary + HTML actions + JSON |
 | Studio | Configure, preview, copy Markdown, and inspect source/freshness | HTML |
 

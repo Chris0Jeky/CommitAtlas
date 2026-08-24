@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 12:45 BST
+Last verified: 2026-08-24 16:10 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **The web surface is rebuilt on the shared chassis (v0.2.0).** The design handoff in
+  `design_handoff_shared_chassis/` is implemented on the landing page and the Studio: four chassis
+  themes with a persisted switch, an instrument fascia whose four readings come from the same
+  `fetchPortfolioSnapshot` call the SVG routes use, a six-bay CI state rack, and a new evidence
+  layer. The contract is recorded in [DESIGN_CHASSIS.md](./DESIGN_CHASSIS.md). No SVG card, route,
+  package, or response contract changed; the only public JSON/SVG surface touched is none.
 - **Released: [v0.1.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.1.0)**, tagged at
   `ee24f80c19642232e6914efe163dbeb230ec2f99` on `main` — 235 commits with the merge history intact,
   nothing squashed. Hosted CI concluded success at that exact commit, the Deploy workflow published
@@ -68,6 +74,32 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## What now exists
 
+- A chassis theme is a user-facing setting on the web surface: Fieldline (default), Observatory,
+  Midline, and Limestone. It persists in `localStorage` and is applied before first paint by an
+  inline bootstrap that only ever writes a value from a bounded allowlist. It is deliberately not a
+  cookie, so the served HTML stays identical for every visitor and therefore cacheable. The SVG card
+  `theme=` query parameter is a separate setting and is unchanged.
+- The landing page renders no typed-in numbers. `landingSnapshot()` calls the same
+  `fetchPortfolioSnapshot` the SVG routes use, in demo mode, so the front page costs no GitHub
+  request and cannot drift from what the routes render. `lib/evidence.test.ts` pins the readings the
+  design was measured against: 1,142 contributions, 284 active days, 77.8% density, rhythm 72, 88
+  over the recent 28 days, −1.1% against the prior 28.
+- The hero's fourth instrument reports the portfolio honestly. Both declared demo projects have no
+  named workflow, so both lamps are empty sockets and the tile reads `0/2 CI PASSING · 0 ATTENTION ·
+  2 UNCONFIGURED — shown dark, never green`. Configuring a workflow would have lit two lamps green;
+  the front page is where that shortcut most needed refusing.
+- An evidence layer. Every printed metric is a button that opens one shared drawer carrying the
+  reading's tier, basis, formula, and caveat. Three rungs — observed, derived, hypothesis — and a
+  tier is not fixed per metric: the activity mix is observed when GitHub returns exact categorised
+  counts and a hypothesis when the only source is the annual public-profile percentages, and the
+  star total demotes from derived to hypothesis when the repository list came back truncated. The
+  rhythm *score* is derived; the rhythm *level* is a hypothesis, because CommitAtlas chose the
+  thresholds and nothing in GitHub's data draws them.
+- Contrast is now a tested property rather than a taste. `lib/chassis.test.ts` measures every ink
+  role against every theme's own ground and plate, at 4.5:1 where the role prints small text and
+  3:1 where it only strokes or fills, and asserts that a per-theme override exists only where the
+  shared value genuinely failed.
+
 - Eight selectable SVG surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
   and Projects. The landing page and Studio expose the complete suite instead of hiding the richer
   contribution views behind one overview.
@@ -123,6 +155,21 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Verified
 
+- 2026-08-24: `npm.cmd run check` passes at the chassis head — TypeScript, ESLint, deploy tooling 5,
+  core 20, chassis 46, GitHub/API 93, Studio 49, SVG 30, static 14, Action 2, packaging 3, and
+  rendered product/API 47, plus four package builds and Action bundle parity.
+- 2026-08-24: the reduced-motion path was verified by reading computed styles with animations
+  disabled, not by inspection. Every instrument rests in its final state: the plotter trace at
+  `stroke-dashoffset: 0`, the pen dot at `offset-distance: 100%`, the rhythm needle at its settled
+  39.6°, every density column at opacity 1, the pending lamp at full opacity, the survey grid
+  untransformed, the beam removed, and the acquisition gauge at its −90° rest stop with the plate
+  still reading NO SIGNAL.
+- 2026-08-24: the 390-wide layout was measured in a same-origin frame, because the available browser
+  window would not shrink below 1440. `scrollWidth` equals `clientWidth` at 371 CSS pixels with no
+  element extending past the viewport, so there is no document-level horizontal overflow.
+- 2026-08-24: all four chassis themes were inspected on the running surface, including the light
+  theme, which is what exposed the ink-role problem below.
+
 - 2026-08-23: `main` was red because a test fixture pinned a workflow observation at
   `2026-08-18T23:00:00Z` while `calculateCiState` applies a 72-hour freshness window, so the fixture
   correctly decayed into `stale`. The rule was right and the fixture was wrong; PR #51 made the
@@ -171,6 +218,22 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   from immutable commits, but registry/release availability is not claimed.
 
 ## Residual risk and next slice
+
+- **The Languages surface never computed byte share.** The README, `ARCHITECTURE.md`, and the design
+  handoff all described it as a repository-language *byte* share. `toLanguagesCard` is fed by the
+  profile snapshot, whose `share` is `repositories / total` — a distribution over repositories. The
+  labels are corrected rather than the code, because moving to byte share needs a per-repository
+  `/languages` call and that is a rate-limit cost belonging to its own slice. `@commit-atlas/svg`
+  already renders byte share when given `bytes`, and `@commit-atlas/core` already computes it in
+  `aggregateLanguages`; nothing currently supplies either. The dated QA record from 2026-08-20 still
+  says "byte-share" and is deliberately left alone, because it records what was observed then.
+- The evidence drawer declares `aria-modal="true"` without a focus trap. Focus moves into the drawer
+  on open and returns to the trigger on close, and ESC and click-outside both close it, but Tab can
+  still reach content behind the scrim. That is a smaller lie than most modals tell and is tracked
+  rather than fixed here.
+- The survey-grid parallax uses a scroll-driven CSS timeline, so it is inert in engines without
+  `animation-timeline: scroll()`. That degrades to a static grid, which is the reduced-motion state
+  anyway, so there is nothing to fall back to.
 
 - Anonymous request-time GitHub availability remains bounded but intermittent. During final QA,
   live Profile returned 429 and live Breakdown returned 502 twice, while live Languages and every
