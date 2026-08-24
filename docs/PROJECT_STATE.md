@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 19:05 BST
+Last verified: 2026-08-24 19:40 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,20 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Two new card types shipped and are live on the profile: `cadence` and `releases`**
+  ([PR #80](https://github.com/Chris0Jeky/CommitAtlas/pull/80), merged as `4a6b1c4`, hosted CI green
+  at every head). Weekly cadence shows contribution share by day of week (Monday-first, UTC
+  boundaries, window-scoped, busiest day named, empty windows stated); Latest releases lists the
+  most recent published release per curated project, newest first, with unreleased projects counted
+  rather than hidden. Both are static-only — no hosted route — drawn from data the snapshot already
+  fetches, and covered by the frozen-motion, well-formedness, and 30 KiB gates. Review: one
+  fresh-context adversarial pass plus eight Codex P2s triaged (six fixed across `a6e5551`/`7e44801`,
+  two declined on-thread with reasons). Profile wiring landed via
+  [Chris0Jeky/Chris0Jeky#5](https://github.com/Chris0Jeky/Chris0Jeky/pull/5): pin moved to
+  `4a6b1c4`, both configs select ten cards, both validations expect 13 artifacts, and dispatched
+  [run 32762878305](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32762878305) passed every
+  step and committed the bot snapshot `3a914a9`. Both cards were then verified rendering on the
+  live profile in Chrome.
 - **Post-release fix `e17e866` (PR #77) is merged, deployed, and proven on the profile.** The
   v0.3.0 atlas motion faded in from `opacity:0` / `scaleY(.08)` with fill-mode `both`; Chromium
   never runs CSS animations inside an SVG delivered through `<img>` and pins such a card to its
@@ -108,11 +122,13 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `d9f03f106865ac7a1ce76e2bea31d0156e06114d` — the bot commit
-  produced by the paired-theme refresh above.
-- Exact profile [refresh run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)
-  passed both generation passes, both bundle validations, the catalog, commit, and push steps and
-  produced that bot snapshot. The prior checkpoint was `4651009` from
+- Public profile repository head: `3a914a9` — the bot commit produced by the ten-card refresh
+  [run 32762878305](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32762878305) recorded in
+  the first bullet above.
+- The preceding checkpoints, both superseded the same day: paired-theme bot head `d9f03f1` from
+  [run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123) (both
+  generation passes, both bundle validations, catalog, commit, and push all passing), and before
+  that `4651009` from
   [run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680).
 - Repository description, GPL-3.0-only licence, and 20 focused topics are published. The homepage
   now points at the Workers origin; it previously still named the retired Sites mirror.
@@ -204,9 +220,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   stays `github_unavailable` with HTTP 502. Optional release and workflow lookups treat only 404 as
   absence, so a throttled optional lookup can no longer read as "no release" or a clean CI signal.
 - The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
-  Breakdown and Rhythm visibly, retains the Project radar and four optional focused widgets, and
-  renders a marker-bounded six-project catalog with observed/configured action links. Its daily
-  workflow validates 11 payload artifacts and every manifest hash before updating README/assets.
+  Breakdown, Rhythm, and the Weekly cadence card visibly, retains the Project radar with the
+  Latest-releases card beneath it and four optional focused widgets, and renders a marker-bounded
+  six-project catalog with observed/configured action links. Its daily workflow runs one generation
+  pass per colour scheme and validates 13 payload artifacts and every manifest hash in each bundle
+  before updating README/assets.
 
 ## Verified
 
