@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 16:10 BST
+Last verified: 2026-08-24 16:40 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,12 +12,25 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
-- **The web surface is rebuilt on the shared chassis (v0.2.0).** The design handoff in
+- **Released: [v0.2.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.2.0)**, tagged at
+  `5fea6e625616a0df9ecd8e14a75f9eae74ea8500` on `main` — the merge of PR #72, with the branch's five
+  commits intact and nothing squashed. Not a draft, not a prerelease, and marked latest. No package
+  tarballs are attached and npm publication is still not claimed.
+- **The web surface is rebuilt on the shared chassis.** The design handoff in
   `design_handoff_shared_chassis/` is implemented on the landing page and the Studio: four chassis
   themes with a persisted switch, an instrument fascia whose four readings come from the same
   `fetchPortfolioSnapshot` call the SVG routes use, a six-bay CI state rack, and a new evidence
   layer. The contract is recorded in [DESIGN_CHASSIS.md](./DESIGN_CHASSIS.md). No SVG card, route,
-  package, or response contract changed; the only public JSON/SVG surface touched is none.
+  package, or response contract changed; the four workspace packages stay at `0.1.0` because none of
+  their public APIs moved.
+- **v0.2.0 is deployed and self-proved.** Hosted CI concluded success at `5fea6e6`, the Deploy
+  workflow published from that exact commit, and its post-deploy probes reported 17/17 against the
+  origin Wrangler returned. Re-run independently afterwards from this checkout against
+  `https://commit-atlas.commit-atlas.workers.dev`: 17/17 again. The live landing page was then
+  probed directly and serves the chassis it was built to serve — ten wired evidence readings and a
+  printed count that matches, the four-theme switch and its pre-paint bootstrap, all six state
+  words, the real synthetic readings (88, 77.8%, 1.1k, 284, 731), the honest
+  `0/2 CI PASSING · 0 ATTENTION · 2 UNCONFIGURED` line, and the drawer as a real `<dialog>`.
 - **Released: [v0.1.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.1.0)**, tagged at
   `ee24f80c19642232e6914efe163dbeb230ec2f99` on `main` — 235 commits with the merge history intact,
   nothing squashed. Hosted CI concluded success at that exact commit, the Deploy workflow published
