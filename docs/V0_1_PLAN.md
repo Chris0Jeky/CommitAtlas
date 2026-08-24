@@ -207,18 +207,27 @@ behavior exercised at the demonstration head, including:
 - architecture diagrams/text that match actual data flow; no guessed remote manifest fetches;
 - keep the inspected `public/og.png` social image metadata bound to the real Sites origin.
 
-Remaining release work:
+Release work — all six items are discharged:
 
-1. Reconcile Dependabot PRs #5 and #6 against current `main` without weakening checks.
-2. Decide #28, #30, #32–#34, #38, and #40 from actual release impact; close only proven work and name
-   every retained item in release notes.
-3. Run the final local full gate from a clean exact head and obtain hosted CI plus independent review.
-4. Re-prove Sites only if application source changes after `8372d65`; version 7 is already deployed
-   and browser/API-verified for this candidate.
-5. Repeat the final production/profile smoke after any release-impact code change.
-6. Create GitHub release `v0.1.0` from the verified commit, preserving the incremental commit history.
-   Attach package tarballs only if their contents were freshly proved. Do not claim npm publication
-   without a successful registry lookup.
+1. **Done.** Dependabot #5 and #6 landed with fresh greens, not stale ones. #63 could not be carried
+   by Dependabot past a lockfile conflict and was reapplied directly as #68, with exact pins rather
+   than the caret ranges `npm install` writes.
+2. **Done.** #28, #30, #32–#34, #38 and #40 are all closed, as are #48, #49, #50 and #55. The four
+   items deliberately left open are named in the release notes rather than quietly dropped: #62
+   (403 conflated with rate-limited), #58 (bar geometry at absurd magnitudes), #54 (a Windows
+   path-length environment failure), and #60 (the cross-repo catalog ordering).
+3. **Done.** Full `npm run check` exits 0 from a clean `npm ci` at the release head, hosted Quality
+   gate is green on `main`, and #66 took two independent reviews — one connector, one fresh-context
+   adversarial — which between them found a false licence claim and four vacuous tests.
+4. **Superseded.** Sites is retired and is no longer the canonical host. Cloudflare Workers is, and
+   it re-proves itself on every push: CI green on `main` triggers a build, a deploy, and seventeen
+   probes against the origin Wrangler reported for that deployment.
+5. **Done, and now automatic.** The production smoke is the post-deploy probe set, which runs on
+   every deployment rather than being repeated by hand after a release-impact change.
+6. **Done.** Release `v0.1.0` is cut from the verified commit with the incremental history intact —
+   merge commits throughout, no squashing. **No package tarballs are attached and npm publication is
+   not claimed**: the packages are built and pack-verified but are not on the registry, and nothing
+   will say otherwise until a registry lookup succeeds.
 
 ## Clean resume command set
 
