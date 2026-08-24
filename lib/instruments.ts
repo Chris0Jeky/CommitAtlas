@@ -233,6 +233,22 @@ export function reticle(projectCount: number): Reticle {
 }
 
 /**
+ * Bin a 0–100 reading into the chassis's four-square meter: `■ ■ ■ □`.
+ *
+ * This is a second, *shape-based* encoding of a value the page already prints as a number and draws
+ * as a needle. It exists for the same reason every CI state has a lamp shape: a reader who cannot
+ * separate the lime arc from its track still gets the reading, and the count is legible at a glance
+ * in a way a two-digit number beside a gauge is not.
+ *
+ * Quarters, rounded up, so any non-zero reading fills at least one square — a score of 1 is not
+ * nothing, and an empty meter is reserved for a score of nothing.
+ */
+export function quarterMeter(score: number): number {
+  if (!Number.isFinite(score) || score <= 0) return 0;
+  return Math.min(4, Math.ceil(Math.min(100, score) / 25));
+}
+
+/**
  * Compact a count the way the chassis prints it: `1.1k`, never `1.1K` and never `1,142` in a stat
  * slot. Exact values remain available in the evidence drawer, so this abbreviation is a display
  * choice rather than a loss of the number.

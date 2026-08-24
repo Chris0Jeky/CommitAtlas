@@ -7,6 +7,7 @@ import {
   gaugeReading,
   isEmptyDensityCell,
   momentumTrace,
+  quarterMeter,
   reticle,
   signedPercent,
 } from "./instruments";
@@ -152,4 +153,19 @@ test("a percentage change prints its sign, and an absent comparison prints nothi
   assert.equal(signedPercent(4.25), "+4.3%");
   // U+2212, not a hyphen: at 10px mono a hyphen reads as a range dash.
   assert.equal(signedPercent(-1.1), "−1.1%");
+});
+
+test("the four-square meter bins a reading without rounding nothing up to something", () => {
+  // 72 is the synthetic window's rhythm score, and three filled squares is what the design canvas
+  // shows against it. The two agree because this is the binning that produced it.
+  assert.equal(quarterMeter(72), 3);
+  assert.equal(quarterMeter(0), 0, "an empty meter is reserved for a score of nothing");
+  assert.equal(quarterMeter(1), 1, "a score of 1 is not nothing");
+  assert.equal(quarterMeter(25), 1);
+  assert.equal(quarterMeter(26), 2);
+  assert.equal(quarterMeter(100), 4);
+  // Out of range in either direction still produces a drawable meter.
+  assert.equal(quarterMeter(140), 4);
+  assert.equal(quarterMeter(-5), 0);
+  assert.equal(quarterMeter(Number.NaN), 0);
 });

@@ -8,6 +8,7 @@ import {
   gaugeReading,
   isEmptyDensityCell,
   momentumTrace,
+  quarterMeter,
   reticle,
   type DensityCell,
 } from "@/lib/instruments";
@@ -35,11 +36,34 @@ import {
  * came from — a headline number with no drawer behind it is exactly the unexplained assertion this
  * layer exists to prevent.
  */
-function BayRead({ value, caption, evidenceId }: { value: React.ReactNode; caption: string; evidenceId: string }) {
+function BayRead({
+  value,
+  caption,
+  evidenceId,
+  meter,
+}: {
+  value: React.ReactNode;
+  caption: string;
+  evidenceId: string;
+  /** Optional four-square shape encoding of the same reading. Redundant, and deliberately so. */
+  meter?: number;
+}) {
   return (
     <div className="bay-read">
       <span className="bay-value"><Ev id={evidenceId}>{value}</Ev></span>
-      <span className="bay-caption">{caption}</span>
+      <span className="bay-caption">
+        {meter === undefined ? null : (
+          // The number beside it is the accessible reading; this is a visual aid for a reader who
+          // cannot separate the arc from its track, so it is not announced twice.
+          <>
+            <span className="index-squares" aria-hidden="true">
+              {"■ ".repeat(meter).trim()}{meter > 0 && meter < 4 ? " " : ""}{"□ ".repeat(4 - meter).trim()}
+            </span>
+            <br />
+          </>
+        )}
+        {caption}
+      </span>
     </div>
   );
 }
@@ -116,7 +140,7 @@ export function RhythmGauge({ score, caption }: { score: number; caption: string
           <circle cx={gauge.centre.x} cy={gauge.centre.y} r="5" fill="var(--ground)" stroke="var(--ink)" strokeWidth="1.5" />
         </svg>
       </div>
-      <BayRead value={<>{score}<small>/100</small></>} caption={caption} evidenceId="rhythm" />
+      <BayRead value={<>{score}<small>/100</small></>} caption={caption} evidenceId="rhythm" meter={quarterMeter(score)} />
     </>
   );
 }
