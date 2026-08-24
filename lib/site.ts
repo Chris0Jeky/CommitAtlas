@@ -25,17 +25,34 @@ export const SITE_DESCRIPTION =
 export const SOURCE_REPOSITORY = "https://github.com/Chris0Jeky/CommitAtlas";
 
 /**
- * Every indexable HTML page. The SVG and JSON endpoints under `/api/` are deliberately absent:
- * they are dynamic renders of a caller-supplied query, not pages, and each one is a fresh render
- * rather than a cache hit. Listing them would invite a crawler to walk a combinatorial parameter
- * space on a free-plan Worker.
+ * Every indexable HTML page.
+ *
+ * The SVG and JSON endpoints under `/api/` are deliberately absent: they are dynamic renders of a
+ * caller-supplied query, not pages, and each one is a fresh render rather than a cache hit. Listing
+ * them would invite a crawler to walk a combinatorial parameter space on a free-plan Worker.
+ *
+ * Paths only. `<changefreq>` and `<priority>` are omitted for the same reason `<lastmod>` is: an
+ * update cadence this route cannot observe is an unevidenced claim stated as fact, and the honesty
+ * rule that governs the product's CI freshness governs its sitemap too. Google ignores both fields
+ * outright, so keeping them would be pure assertion for no benefit.
  */
-export const INDEXABLE_PAGES: readonly { readonly path: string; readonly changeFrequency: string; readonly priority: string }[] = [
-  { path: "/", changeFrequency: "weekly", priority: "1.0" },
-  { path: "/studio", changeFrequency: "weekly", priority: "0.8" },
-];
+export const INDEXABLE_PAGES: readonly string[] = ["/", "/studio"];
 
 /** Absolute URL for a site-relative path, with no chance of a double slash. */
 export function absoluteUrl(path: string): string {
   return new URL(path, SITE_ORIGIN).href;
 }
+
+/**
+ * Indexing directives for the two real pages.
+ *
+ * Deliberately per-page rather than site-wide. The framework marks its own not-found page
+ * `noindex`; a layout-wide `index, follow` would land on that page too and contradict it. Since
+ * `index, follow` is already the default, the only thing this actually buys is the preview sizing,
+ * and that is worth having only where there is a page to preview.
+ */
+export const PAGE_ROBOTS = {
+  index: true,
+  follow: true,
+  googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+} as const;

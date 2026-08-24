@@ -34,6 +34,13 @@ const SVG_CARDS = [
 ];
 
 /** @type {{name: string, run: (fetchPath: (p: string) => Promise<Response>) => Promise<void>}[]} */
+/**
+ * The sitemap URL robots.txt advertised, captured by the robots probe and cross-checked by the
+ * sitemap probe. Deliberately not compared against the origin under test: the served files name
+ * the canonical origin, which differs from a fork's own subdomain or a custom domain.
+ */
+let advertisedSitemap = null;
+
 const checks = [
   {
     name: "health endpoint reports ok",
@@ -63,10 +70,16 @@ const checks = [
       const body = await response.text();
       assert(/^Disallow: \/api\/$/m.test(body), "robots.txt does not disallow the render endpoints");
       assert(!/^Disallow: \/$/m.test(body), "robots.txt deindexes the whole site");
-      assert(
-        body.includes(`Sitemap: ${new URL("/sitemap.xml", base).href}`),
-        "robots.txt does not point at this deployment's own sitemap",
-      );
+      // Deliberately NOT `new URL("/sitemap.xml", base)`. The served robots.txt names the
+      // canonical SITE_ORIGIN by design, so on a fork's own workers.dev subdomain, or behind a
+      // custom domain reached via DEPLOY_BASE_URL, `base` and the canonical origin differ and an
+      // equality check would fail a perfectly healthy deployment. That is the exact inverse of
+      // the false pass this script exists to prevent. Assert the shape, then cross-check that
+      // robots.txt and the sitemap agree with each other, which is origin-independent and is the
+      // property that actually matters.
+      const sitemapLine = /^Sitemap: (https:[^\s]+\/sitemap\.xml)$/m.exec(body);
+      assert(sitemapLine, "robots.txt names no https sitemap");
+      advertisedSitemap = sitemapLine[1];
     },
   },
   {
@@ -87,6 +100,14 @@ const checks = [
           `sitemap mixes origins: ${location}`,
         );
       }
+      // And that origin must be the one robots.txt advertised. This is the real invariant: the
+      // two files must describe the same site as each other, whatever origin that is.
+      if (advertisedSitemap) {
+        assert(
+          locations[0].startsWith(new URL(advertisedSitemap).origin),
+          `robots.txt advertises ${advertisedSitemap} but the sitemap lists ${locations[0]}`,
+        );
+      }
     },
   },
   {
@@ -97,7 +118,7 @@ const checks = [
       const html = await response.text();
       const block = /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html);
       assert(block, "no JSON-LD block was rendered");
-      const graph = JSON.parse(block[1].replace(/\\u003c/gi, "<"));
+      const graph = JSON.parse(block[1]);
       assert(graph["@context"] === "https://schema.org", "JSON-LD is not schema.org");
       const software = graph["@graph"].find((node) => node["@type"] === "SoftwareApplication");
       assert(software, "JSON-LD has no SoftwareApplication node");
