@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 const ORIGIN = "https://commit-atlas.commit-atlas.workers.dev";
 const literal = (value) => value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -172,4 +173,48 @@ test("the not-found page is told not to index, with nothing contradicting it", a
   // contradict the framework's own noindex.
   assert.doesNotMatch(html, /<meta[^>]+name="robots"[^>]+content="index/);
   assert.doesNotMatch(html, /<meta[^>]+name="googlebot"[^>]+content="index/);
+});
+
+test("a fork's configured origin reaches every canonical surface in the built Worker", async () => {
+  // The point of making SITE_ORIGIN deployment configuration is that a fork stops advertising this
+  // project's deployment. Asserting only on the resolver would prove the parsing and none of the
+  // plumbing, so this drives the *built* Worker with the override set. The guarded failure mode is
+  // a bundler inlining the default and silently discarding the configured value.
+  //
+  // It has to run in a child process. `SITE_ORIGIN` is read once at module load, and while a query
+  // string gives the entry module a fresh instance, its static imports resolve to chunk URLs that
+  // are already in this process's module cache — so an in-process override reads back the default
+  // and the test would pass for the wrong reason.
+  const forked = "https://commit-atlas.someone-else.workers.dev";
+  const probe = `
+    const { default: worker } = await import(process.argv[1]);
+    const env = { ASSETS: { fetch: async () => new Response('', { status: 404 }) } };
+    const ctx = { waitUntil() {}, passThroughOnException() {} };
+    const read = async (path) => (await worker.fetch(new Request('http://localhost' + path), env, ctx)).text();
+    process.stdout.write(JSON.stringify({
+      robots: await read('/robots.txt'),
+      sitemap: await read('/sitemap.xml'),
+      html: await read('/'),
+    }));
+  `;
+  // Pass a file:// URL, not a Windows path: the ESM loader refuses a bare `C:...` argument.
+  const worker = new URL("../dist/server/index.js", import.meta.url).href;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe, worker], {
+    encoding: "utf8",
+    env: { ...process.env, SITE_ORIGIN: forked },
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  assert.equal(result.status, 0, `probe failed: ${result.stderr}`);
+  const { robots, sitemap, html } = JSON.parse(result.stdout);
+
+  assert.match(robots, new RegExp(`^Sitemap: ${literal(forked)}/sitemap\\.xml$`, "m"));
+  assert.doesNotMatch(robots, new RegExp(literal(ORIGIN)));
+
+  for (const path of ["/", "/studio"]) {
+    assert.ok(sitemap.includes(`<loc>${new URL(path, forked).href}</loc>`), `fork sitemap is missing ${path}`);
+  }
+  assert.doesNotMatch(sitemap, new RegExp(literal(ORIGIN)));
+
+  assert.match(html, new RegExp(`<link[^>]+rel="canonical"[^>]+href="${literal(forked)}/?"`));
+  assert.equal(JSON.parse(structuredDataBlock(html).body)["@graph"][0].url, forked);
 });

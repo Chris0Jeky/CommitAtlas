@@ -6,14 +6,49 @@
  * `app/sitemap.xml/route.ts`, and the JSON-LD block on the landing page. Duplicating any of them
  * lets a crawler be told two different things about the same page — a canonical URL that disagrees
  * with the sitemap is worse for discoverability than having no sitemap at all.
- *
- * `SITE_ORIGIN` is deliberately a constant rather than something read from the request. A canonical
- * URL derived from the incoming Host header would name whatever hostname the visitor arrived on,
- * including a preview alias, which is exactly the duplicate-content problem `rel=canonical` exists
- * to solve.
  */
 
-export const SITE_ORIGIN = "https://commit-atlas.commit-atlas.workers.dev";
+/** The origin this project's own deployment answers on, and the default for every other. */
+export const DEFAULT_SITE_ORIGIN = "https://commit-atlas.commit-atlas.workers.dev";
+
+/**
+ * The canonical origin, overridable per deployment.
+ *
+ * Two things had to be true at once. A canonical URL must be **stable** — deriving it from the
+ * incoming Host header would name whatever alias the visitor arrived on, including a preview
+ * hostname, which is the duplicate-content problem `rel=canonical` exists to solve. But it must
+ * also not be **this** deployment's origin baked into every fork: a `workers.dev` hostname is
+ * `<worker>.<account-subdomain>.workers.dev` and differs per account, so a hard-coded constant
+ * makes a fork's canonical links, sitemap entries, and JSON-LD all advertise someone else's site
+ * and quietly deindex its own. That is the same reasoning `scripts/deploy.mjs` already applies to
+ * the deployed origin it verifies.
+ *
+ * `SITE_ORIGIN` is therefore **deployment configuration, not request data**: a Wrangler `vars`
+ * entry, read once at module load. It is fixed for the lifetime of a deployment and cannot be
+ * influenced by a caller, so it keeps the stability a canonical URL needs while letting a fork be
+ * honest about being a fork. Set it in `wrangler.jsonc` under `vars`, or leave it unset and get the
+ * default.
+ *
+ * Anything unparseable, non-https, or carrying a path, query, or fragment falls back to the
+ * default rather than emitting a broken canonical URL — a malformed origin here would corrupt every
+ * link on the site at once.
+ */
+export const SITE_ORIGIN = resolveSiteOrigin(process.env.SITE_ORIGIN);
+
+export function resolveSiteOrigin(configured: string | undefined): string {
+  const candidate = configured?.trim();
+  if (!candidate) return DEFAULT_SITE_ORIGIN;
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "https:") return DEFAULT_SITE_ORIGIN;
+    // `new URL("https://x/y").origin` silently discards the path, so a configured value carrying
+    // one is a mistake worth refusing rather than half-honouring.
+    if (url.pathname !== "/" || url.search !== "" || url.hash !== "") return DEFAULT_SITE_ORIGIN;
+    return url.origin;
+  } catch {
+    return DEFAULT_SITE_ORIGIN;
+  }
+}
 
 export const SITE_NAME = "CommitAtlas";
 
