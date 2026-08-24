@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="CommitAtlas mark: map quadrant">
+  <title>CommitAtlas</title>
+  <desc>A 12px square frame with a filled ember quadrant and a gold survey cell — the map-quadrant mark.</desc>
+  <rect x="2" y="2" width="12" height="12" fill="none" stroke="#eee9e1" stroke-width="1.6"></rect>
+  <rect x="8.8" y="2.8" width="4.4" height="4.4" fill="#ff7a45"></rect>
+  <rect x="4" y="9" width="2" height="2" fill="#ffd166"></rect>
+</svg>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CHASSIS_THEMES, CHASSIS_THEME_BOOTSTRAP, DEFAULT_CHASSIS_THEME } from "@/lib/chassis";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN, SITE_TAGLINE } from "@/lib/site";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -41,21 +42,36 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_GB",
     url: "/",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "CommitAtlas GitHub portfolio dashboard" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "CommitAtlas — your GitHub work, mapped clearly" }],
   },
   twitter: { card: "summary_large_image", title, description: social, images: ["/og.png"] },
 };
 
 export const viewport: Viewport = {
-  // Matches `--canvas` in globals.css, so the browser chrome does not flash a light band above a
-  // near-black page on mobile.
-  themeColor: "#11110f",
+  // The default chassis ground. A visitor who has chosen a different chassis theme gets that
+  // theme applied by the bootstrap below, but `theme-color` is read from the served document
+  // before any script runs, so it can only ever describe the default — and describing the default
+  // is right, because that is what the first paint shows.
+  themeColor: CHASSIS_THEMES[DEFAULT_CHASSIS_THEME].ground,
   colorScheme: "dark light",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        {/*
+          Applies a stored chassis theme before first paint.
+
+          Without it, a Limestone reader gets a full-page flash of the Fieldline ground on every
+          navigation, because the served HTML is cacheable and therefore always carries the
+          default. The script is a bounded allowlist check over one `localStorage` key and is
+          total: any storage failure falls through to the default rather than throwing before
+          hydration. `chassis.test.ts` holds it to that shape and to being unable to close its own
+          script element.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: CHASSIS_THEME_BOOTSTRAP }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
     </html>
   );

@@ -54,6 +54,73 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.doesNotMatch(html, /Updated 8m ago|\+18%/);
   assert.doesNotMatch(html, /northstar-api|signal-canvas|archive-kit|Illustrative 90-day activity|Portfolio status/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
+  // developer-lens is the other station on the shared chassis and lives in another repository.
+  // None of its vocabulary may leak onto this surface.
+  assert.doesNotMatch(html, /Force Multiplier|effective repositories|Method Trial|orchestration-hypothesis/);
+});
+
+test("prints every instrument reading as text, so the page is readable at frame zero", async () => {
+  // The whole reduced-motion contract rests on this: if the number is only in the SVG, removing the
+  // animation removes the information. Values are the deterministic synthetic octocat window, and
+  // `lib/evidence.test.ts` pins them against the metrics pipeline that produces them.
+  const html = await (await render()).text();
+  for (const reading of [
+    ">88<",          // 28-day momentum, M1
+    ">72<",          // rhythm score, M2
+    "77.8%",         // active-day density, M3
+    "1.1k",          // contributions
+    ">284<",         // active days
+    "731",           // commits
+    "\u22121.1%",     // momentum change, with a real minus sign
+  ]) assert.ok(html.includes(reading), `the page never prints ${reading}`);
+
+  // The fourth bay reports the portfolio honestly rather than reporting nothing.
+  assert.match(html, /0\/2 CI PASSING · 0 ATTENTION · 2 UNCONFIGURED/);
+  assert.match(html, /shown dark, never green/i);
+});
+
+test("teaches all six health states, with the unknowns leading", async () => {
+  const html = await (await render()).text();
+  for (const word of ["UNAVAILABLE", "UNCONFIGURED", "STALE", "PASSING", "FAILING", "PENDING"]) {
+    assert.ok(html.includes(word), `the rack never names ${word}`);
+  }
+  // Order matters: the three "we do not know" bays come first, or they read as leftovers.
+  const positions = ["UNAVAILABLE", "UNCONFIGURED", "STALE", "PASSING", "FAILING", "PENDING"]
+    .map((word) => html.indexOf(`>${word}<`));
+  assert.ok(positions.every((position) => position > -1), "a state word is missing from the rack");
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions, "the rack bays are out of order");
+  // Every bay prints its explanation rather than hiding it in a tooltip.
+  assert.match(html, /NOT ZERO — UNOBSERVED/);
+  assert.match(html, /NO NAMED WORKFLOW TO WATCH/);
+  assert.match(html, /ACQUIRING — THE ONLY STATE/);
+});
+
+test("every printed reading can answer how it is known", async () => {
+  const html = await (await render()).text();
+  // The evidence triggers are real buttons, not decorated spans.
+  const triggers = html.match(/class="ev"/g) ?? [];
+  assert.ok(triggers.length >= 10, `only ${triggers.length} readings are explainable`);
+  assert.match(html, /aria-haspopup="dialog"/);
+  assert.match(html, /how is .* known\?/);
+  // The three rungs, each shown with a real reading from this page's own snapshot.
+  for (const rung of ["OBSERVED", "DERIVED", "HYPOTHESIS"]) {
+    assert.ok(html.includes(rung), `the ladder never names ${rung}`);
+  }
+  assert.match(html, /rhythm-band-hypothesis/, "the rhythm band must be labelled a guess");
+  assert.match(html, /contribution-total-observed/);
+});
+
+test("applies a stored chassis theme before first paint, from a bounded allowlist", async () => {
+  const html = await (await render()).text();
+  // Without this the page flashes the default ground on every navigation for anyone who chose
+  // another theme, because the served HTML is cacheable and always carries the default.
+  assert.match(html, /commitatlas:chassis-theme/);
+  assert.match(html, /\["fieldline","observatory","midline","limestone"\]/);
+  // The switch itself, and the default it renders on the server.
+  assert.match(html, /name="chassis-theme"[^>]*checked=""[^>]*value="fieldline"/);
+  for (const theme of ["observatory", "midline", "limestone"]) {
+    assert.ok(html.includes(`value="${theme}"`), `the switch is missing ${theme}`);
+  }
 });
 
 test("server-renders an honest interactive Studio shell", async () => {

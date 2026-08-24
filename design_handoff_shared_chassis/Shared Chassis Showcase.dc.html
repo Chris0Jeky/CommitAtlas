@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;620;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#08080a; }
+a { color:#ffd166; } a:hover { color:#ffe199; }
+@keyframes penDraw { 0% { stroke-dashoffset:100; } 61% { stroke-dashoffset:0; } 100% { stroke-dashoffset:0; } }
+@keyframes penMove { 0% { offset-distance:0%; } 61% { offset-distance:100%; } 100% { offset-distance:100%; } }
+@keyframes needleSettle { 0% { transform:rotate(-90deg); } 62% { transform:rotate(47deg); } 80% { transform:rotate(36deg); } 100% { transform:rotate(39.6deg); } }
+@keyframes cellIn { from { opacity:.14; } }
+@keyframes sigPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+@keyframes irisBreathe { 0%,100% { transform:scale(1); } 50% { transform:scale(1.045); } }
+@keyframes scanSweep { 0% { transform:translateX(-90px); } 100% { transform:translateX(950px); } }
+@keyframes needleHunt { 0%,100% { transform:rotate(-90deg); } 22% { transform:rotate(-34deg); } 32% { transform:rotate(-44deg); } 42% { transform:rotate(-28deg); } 54% { transform:rotate(-50deg); } 74% { transform:rotate(-88deg); } }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; offset-distance:100% !important; } }
+</style>
+</helmet>
+<section style="display:flex; flex-direction:column; align-items:flex-start; gap:72px; padding:60px; font-family:Geist,sans-serif;">
+  <!-- ================= 4A · METHOD TRIAL AS A FINDING ================= -->
+  <div id="4a" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4A</span>&nbsp; METHOD TRIAL · A REJECTION, PUBLISHED AS A FINDING</div>
+    <div style="width:1440px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:radial-gradient(circle at 90% 8%, rgba(184,155,255,.06), transparent 24rem), linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px), #0e0f0d; background-size:auto, 42px 42px, 42px 42px, auto; padding:36px 48px 40px 48px; color:#edf0e2;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div style="max-width:840px;">
+          <div style="display:flex; align-items:center; gap:12px; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#b89bff; margin-bottom:16px;">05 // METHOD TRIAL · WB-C1 <span style="border:1px solid rgba(237,240,226,.45); color:rgba(237,240,226,.8); padding:2px 8px; letter-spacing:.18em;">INVENTED C0 · OFFLINE</span></div>
+          <div style="font-size:44px; font-weight:620; letter-spacing:-.055em; line-height:1.02;">Why the simple baseline won — <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">a negative result, kept.</span></div>
+          <p style="margin:18px 0 0 0; font-size:15px; line-height:1.6; color:#9aa08c; max-width:660px;">Question: can the BOCPD candidate reduce false alerts per year versus the rolling median and MAD baseline, without worsening detection or calibration? Invented weekly system series only — this establishes nothing about real repositories, and says so.</p>
+        </div>
+        <div style="border:2px solid #ff7b7b; color:#ff7b7b; font-family:'Geist Mono',monospace; font-size:22px; letter-spacing:.3em; padding:12px 22px 12px 26px; transform:rotate(-4deg); margin-top:18px;">REJECTED</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1.3fr 1fr; gap:24px; margin-top:30px; align-items:stretch;">
+        <!-- paired scorecard -->
+        <div style="border:1px solid rgba(237,240,226,.13); background:rgba(20,22,16,.6); padding:24px 28px;">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:18px;">PAIRED SCORECARD — SAME 54 SYNTHETIC SYSTEMS, SAME WINDOWS</div>
+          <div style="display:grid; grid-template-columns:150px 1fr 90px; gap:10px 16px; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c;">
+            <span>DETECTION</span>
+            <div><div style="height:8px; background:rgba(237,240,226,.1);"><div style="width:75%; height:100%; background:#8fd8d2;"></div></div><div style="height:8px; background:rgba(237,240,226,.1); margin-top:4px;"><div style="width:75%; height:100%; background:#b89bff;"></div></div></div>
+            <span style="color:#edf0e2;">75.0% = 75.0%<br><span style="color:#9aa08c;">TIE</span></span>
+            <span>FALSE ALERTS / YR</span>
+            <div><div style="height:8px; background:rgba(237,240,226,.1);"><div style="width:42%; height:100%; background:#8fd8d2;"></div></div><div style="height:8px; background:rgba(237,240,226,.1); margin-top:4px;"><div style="width:59.5%; height:100%; background:#ff7b7b;"></div></div></div>
+            <span style="color:#edf0e2;">2.9667 vs 4.2<br><span style="color:#ff7b7b;">+41.6% ✕</span></span>
+          </div>
+          <div style="display:flex; gap:22px; margin-top:22px; padding-top:16px; border-top:1px solid rgba(237,240,226,.11);">
+            <div><div style="font-size:19px; font-weight:620;">54</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">SYSTEMS</div></div>
+            <div><div style="font-size:19px; font-weight:620;">5,616</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">WEEKLY OPPORTUNITIES</div></div>
+            <div><div style="font-size:19px; font-weight:620;">5,346</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">OBSERVED</div></div>
+            <div><div style="font-size:19px; font-weight:620;">270</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">EXPLICITLY ABSENT</div></div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:20px;">
+            <div style="border:1px solid rgba(143,216,210,.35); padding:12px 14px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#8fd8d2;">BASELINE · KEPT</div><div style="font-size:13.5px; font-weight:620; margin-top:6px;">Rolling median + MAD</div><div style="font-size:11px; color:#9aa08c; margin-top:4px; line-height:1.5;">12-week history, min 8 observations, fixed cooldown.</div></div>
+            <div style="border:1px solid rgba(184,155,255,.35); padding:12px 14px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#b89bff;">CANDIDATE · REJECTED</div><div style="font-size:13.5px; font-weight:620; margin-top:6px;">Gaussian BOCPD</div><div style="font-size:11px; color:#9aa08c; margin-top:4px; line-height:1.5;">Fixed Normal-Inverse-Gamma prior, hashed parameters.</div></div>
+            <div style="border:1px dashed rgba(237,240,226,.3); padding:12px 14px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#ffd166;">PELT · DESCRIPTIVE ONLY</div><div style="font-size:13.5px; font-weight:620; margin-top:6px;">Offline marker</div><div style="font-size:11px; color:#9aa08c; margin-top:4px; line-height:1.5;">Offline RBF segmentation, fixed penalty — never online promotion.</div></div>
+          </div>
+        </div>
+        <!-- acceptance ladder -->
+        <div style="border:1px solid rgba(237,240,226,.13); background:rgba(20,22,16,.6); padding:24px 28px; display:flex; flex-direction:column;">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:18px;">ACCEPTANCE LADDER — ALL RUNGS MUST HOLD</div>
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid rgba(237,240,226,.09);"><span style="width:18px; height:18px; border-radius:50%; background:#75d69b; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#0e0f0d; font-size:11px; font-weight:700;">✓</span><span style="font-size:13.5px;">Equal detection <span style="color:#9aa08c;">— held, 75.0% both</span></span></div>
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid rgba(237,240,226,.09);"><span style="width:18px; height:18px; border-radius:50%; background:#75d69b; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#0e0f0d; font-size:11px; font-weight:700;">✓</span><span style="font-size:13.5px;">No worse calibration <span style="color:#9aa08c;">— held</span></span></div>
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid rgba(237,240,226,.09);"><span style="width:18px; height:18px; background:#ff7b7b; transform:rotate(45deg); flex:0 0 auto;"></span><span style="font-size:13.5px;">Fewer false alerts <span style="color:#ff7b7b;">— failed, +41.6%/yr</span></span></div>
+          <div style="margin-top:auto; padding-top:16px; border-top:1px solid rgba(237,240,226,.11); font-size:13px; line-height:1.6; color:#9aa08c;">One failed rung rejects the candidate. The record stays published: <span style="color:#edf0e2;">a kept negative result is the strongest honesty signal either project has.</span></div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#7e879e; margin-top:14px;">REPRODUCE: npm run trial:wb-c1 · THREE DETERMINISTIC TIMELINES · SEED PINNED</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 4B + 4C · WRAPPED VERDICT + TOKEN BOARD ================= -->
+  <div style="display:flex; gap:36px; align-items:flex-start;">
+    <div id="4b" style="position:relative;">
+      <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4B</span>&nbsp; WRAPPED · VERDICT: ABSORB</div>
+      <div style="width:700px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:#0e0f0d; padding:32px 36px; color:#edf0e2;">
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:14px;">06 // WRAPPED — PRIOR ART RULING</div>
+        <div style="font-size:30px; font-weight:620; letter-spacing:-.045em; line-height:1.05;">Keep the nine chapters. <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">Absorb them into the chassis.</span></div>
+        <p style="margin:16px 0 0 0; font-size:14px; line-height:1.65; color:#9aa08c;">The Wrapped is the only narrative surface either project has — nine chapters walking from observed events to a bounded hypothesis is exactly the evidence ladder, told as a story. Don't replace it and don't run it alongside as a second brand. Absorb it: chapters become instrument plates, the per-chapter gradient pairs survive as each plate's accent, and the blur-blob backgrounds retire in favour of the survey grid.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:22px;">
+          <div style="border:1px solid rgba(155,108,255,.4); background:rgba(15,13,24,.8); padding:14px 16px; min-height:120px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9b6cff;">01 · OPENING FRAME</div><div style="font-size:15px; font-weight:620; letter-spacing:-.02em; margin-top:8px; line-height:1.2;">A trail came into focus.</div><div style="height:4px; margin-top:12px; background:linear-gradient(90deg, #9b6cff, #45ddbd);"></div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#7e879e; margin-top:8px;">OBSERVED</div></div>
+          <div style="border:1px solid rgba(255,209,102,.4); background:rgba(20,18,10,.8); padding:14px 16px; min-height:120px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#ffd166;">03 · THE SIGNATURE</div><div style="font-size:15px; font-weight:620; letter-spacing:-.02em; margin-top:8px; line-height:1.2;">The Force Multiplier</div><div style="height:4px; margin-top:12px; background:linear-gradient(90deg, #ff746b, #f6c55a);"></div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#7e879e; margin-top:8px;">HYPOTHESIS · DASHED TRIM</div></div>
+          <div style="border:1px solid rgba(134,94,232,.4); background:rgba(15,13,24,.8); padding:14px 16px; min-height:120px;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#b89bff;">09 · CLOSING</div><div style="font-size:15px; font-weight:620; letter-spacing:-.02em; margin-top:8px; line-height:1.2;">What the lens could not see.</div><div style="height:4px; margin-top:12px; background:linear-gradient(90deg, #865ee8, #3fd2ac);"></div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#7e879e; margin-top:8px;">COVERAGE · MISSING ≠ ZERO</div></div>
+        </div>
+        <div style="margin-top:20px; padding:16px 18px; border:1px solid rgba(217,255,74,.25); font-size:12.5px; line-height:1.7; color:#9aa08c;"><span style="color:#d9ff4a; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em;">M9 — CHAPTER HANDOFF</span><br>On advance: the survey grid slides exactly one 42px cell left (320ms, cubic-bezier(.2,.9,.3,1)); the outgoing plate's needle parks at rest; the incoming chapter's trace draws over its own faint pre-drawn path (600ms). No crossfade, nothing enters from invisible. Scroll-snap stays. Reduced motion: instant cut between complete plates.</div>
+      </div>
+    </div>
+    <div id="4c" style="position:relative;">
+      <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4C</span>&nbsp; UNIFIED TOKEN SET</div>
+      <div style="width:704px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:#0e0f0d; padding:32px 36px; color:#edf0e2;">
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:18px;">07 // ONE SCALE, NOT TWO BRANDS</div>
+        <div style="position:relative; height:14px; background:linear-gradient(90deg, #ff7a45, #ffc857 30%, #ffd166 50%, #58e6be 70%, #b89bff);">
+          <span style="position:absolute; left:0; top:-6px; width:2px; height:26px; background:#ff7a45;"></span>
+          <span style="position:absolute; left:50%; top:-6px; width:2px; height:26px; background:#ffd166; box-shadow:0 0 10px #ffd166;"></span>
+          <span style="position:absolute; right:0; top:-6px; width:2px; height:26px; background:#b89bff;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span style="color:#ff9f68;">EMBER #FF7A45 · STN A</span><span style="color:#ffc857;">GOLD #FFC857</span><span style="color:#ffd166;">HINGE #FFD166</span><span style="color:#58e6be;">AQUA #58E6BE</span><span style="color:#b89bff;">VIOLET #B89BFF · STN B</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:24px;">
+          <div>
+            <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.13em; color:#9aa08c; margin-bottom:10px;">CHASSIS NEUTRALS</div>
+            <div style="display:flex; flex-direction:column; gap:6px; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#9aa08c;">
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; background:#0e0f0d; border:1px solid rgba(237,240,226,.2);"></span>GROUND #0E0F0D</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; background:#121310; border:1px solid rgba(237,240,226,.2);"></span>PLATE #121310</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; background:#edf0e2;"></span>INK #EDF0E2</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; background:#9aa08c;"></span>MUTED #9AA08C</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; background:transparent; border:1px solid rgba(237,240,226,.13);"></span>HAIRLINE INK @ 11%</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.13em; color:#9aa08c; margin-bottom:10px;">STATUS · SHARED BY BOTH STATIONS</div>
+            <div style="display:flex; flex-direction:column; gap:6px; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#9aa08c;">
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; border-radius:50%; background:#75d69b;"></span>GOOD #75D69B · DISC</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:13px; height:13px; background:#ff7b7b; transform:rotate(45deg); margin:1px 2px;"></span>NEGATIVE #FF7B7B · DIAMOND</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; border-radius:50%; border:1px solid #ffd166; background:linear-gradient(90deg, #ffd166 50%, transparent 50%); box-sizing:border-box;"></span>PENDING #FFD166 · HALF-DISC</span>
+              <span style="display:flex; align-items:center; gap:10px;"><span style="width:16px; height:16px; border:1.5px dashed rgba(237,240,226,.5); box-sizing:border-box;"></span>UNKNOWN · SHAPE, NEVER GREEN</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:22px; padding-top:16px; border-top:1px solid rgba(237,240,226,.11); display:grid; grid-template-columns:1fr 1fr; gap:22px; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#9aa08c; line-height:2;">
+          <span>RADIUS &nbsp;<span style="color:#ff9f68;">STN A: R0</span> · <span style="color:#b89bff;">STN B: R12/20/30</span><br>DEPTH &nbsp;&nbsp;<span style="color:#ff9f68;">FLAT HAIRLINE</span> · <span style="color:#b89bff;">BLUR-80 SHADOW</span><br>GRID &nbsp;&nbsp;&nbsp;42PX SURVEY @ 1.8% — EVERYWHERE</span>
+          <span>TYPE &nbsp;&nbsp;&nbsp;GEIST 620 / −.062EM DISPLAY<br>LABELS &nbsp;GEIST MONO 11 / .13EM / UPPER<br>ACCENT &nbsp;GEORGIA ITALIC · TEMPERATURE INK</span>
+        </div>
+        <div style="margin-top:16px; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#7e879e; line-height:1.9;">CHROME PER THEME: FIELDLINE #D9FF4A · OBSERVATORY #FFD166 · MIDLINE #E6FF70 · LIMESTONE #55651A<br>SVG CARD THEMES UNCHANGED · GOLD #FFD166 STAYS BYTE-IDENTICAL IN BOTH CODEBASES</div>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 4D · MOBILE 390×844 ================= -->
+  <div id="4d" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4D</span>&nbsp; MOBILE · 390×844 · HERO + GALLERY</div>
+    <div style="display:flex; gap:36px; align-items:flex-start;">
+      <div style="width:390px; height:844px; box-sizing:border-box; border:1px solid rgba(237,240,226,.25); border-radius:34px; overflow:hidden; background:linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px), #0e0f0d; background-size:42px 42px, 42px 42px, auto; color:#edf0e2; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px 12px 20px; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c;"><span style="color:#d9ff4a;">▼ OBSERVATORY</span><span>■ ■ □ □ · 02/06</span></div>
+        <div style="padding:26px 20px 0 20px;">
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:12px;">00 // TWO INSTRUMENTS · ONE BODY OF WORK</div>
+          <div style="font-size:42px; font-weight:620; letter-spacing:-.055em; line-height:1;">Map the work,<br><span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#d9ff4a;">then ask what it became.</span></div>
+          <p style="margin:14px 0 0 0; font-size:14px; line-height:1.55; color:#9aa08c;">Embeddable evidence from CommitAtlas. Honest analysis from developer-lens. One chassis.</p>
+        </div>
+        <div style="margin:20px 20px 0 20px; border:1px solid rgba(237,240,226,.13); background:rgba(20,22,16,.6);">
+          <div style="padding:14px 16px; border-bottom:1px solid rgba(237,240,226,.11);">
+            <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#ff9f68; margin-bottom:8px;">01 // MOMENTUM · 28D</div>
+            <svg viewBox="0 0 336 66" width="100%" height="56"><path d="M4,52 L28,46 L52,49 L76,38 L100,42 L124,31 L148,36 L172,25 L196,31 L220,20 L244,27 L268,17 L292,24 L316,20 L330,24" fill="none" stroke="#ff7a45" stroke-opacity=".25" stroke-width="2"></path><path pathLength="100" style="stroke-dasharray:100; stroke-dashoffset:0; animation:penDraw 9s cubic-bezier(.4,0,.2,1) infinite;" d="M4,52 L28,46 L52,49 L76,38 L100,42 L124,31 L148,36 L172,25 L196,31 L220,20 L244,27 L268,17 L292,24 L316,20 L330,24" fill="none" stroke="#ff7a45" stroke-width="2"></path></svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline;"><span style="font-size:19px; font-weight:620;">88</span><span style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c;">−1.1% VS PRIOR 28D</span></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px;">
+            <div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#d9ff4a;">02 // RHYTHM 0–100</div><div style="font-size:19px; font-weight:620; margin-top:6px;">72<span style="font-size:12px; color:#9aa08c;">/100</span></div><div style="font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.09em; color:#9aa08c; margin-top:2px;">EVENNESS · NOT A RANK</div></div>
+            <svg viewBox="0 0 220 122" width="120" height="66"><path d="M24,110 A86,86 0 0 1 196,110" fill="none" stroke="rgba(237,240,226,.14)" stroke-width="4"></path><path d="M24,110 A86,86 0 0 1 196,110" pathLength="100" stroke-dasharray="72 28" fill="none" stroke="#d9ff4a" stroke-opacity=".85" stroke-width="4"></path><g style="transform-origin:110px 110px; transform:rotate(39.6deg);"><line x1="110" y1="110" x2="110" y2="34" stroke="#edf0e2" stroke-width="3"></line></g></svg>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin:16px 20px 0 20px;">
+          <div style="flex:1; border:1px solid rgba(255,122,69,.35); background:#16170f; padding:12px 14px;"><div style="font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#ff9f68;">STN A // ATLAS</div><div style="font-size:13px; font-weight:620; margin-top:4px;">Mapped clearly.</div></div>
+          <div style="flex:1; border:1px solid rgba(184,155,255,.35); background:rgba(18,20,34,.78); border-radius:10px; padding:12px 14px;"><div style="font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#b89bff;">STN B // LENS</div><div style="font-size:13px; font-weight:620; margin-top:4px; color:#f4f3fa;">Into focus.</div></div>
+        </div>
+        <div style="margin-top:auto; padding:14px 20px 18px 20px; font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.11em; color:#9aa08c; border-top:1px solid rgba(237,240,226,.11);">✓ PUBLIC BY DEFAULT · ✓ HONEST FRESHNESS · ✓ LIVE OR STATIC</div>
+      </div>
+      <div style="width:390px; height:844px; box-sizing:border-box; border:1px solid rgba(237,240,226,.25); border-radius:34px; overflow:hidden; background:#0e0f0d; color:#edf0e2; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px 12px 20px; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c;"><span style="color:#d9ff4a;">▼ SPECIMEN TRAY</span><span>8 ROUTES</span></div>
+        <div style="padding:14px 20px 0 20px;">
+          <div style="font-size:28px; font-weight:620; letter-spacing:-.045em;">See the whole toolkit.</div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:8px;">COMPACT 480×570 IS THE MOBILE-FIRST CARD</div>
+        </div>
+        <div style="margin:16px 20px 0 20px; border:1px solid rgba(237,240,226,.16); background:#121310; padding:10px; position:relative;">
+          <span style="position:absolute; top:5px; left:5px; width:10px; height:10px; border-top:1.5px solid #d9ff4a; border-left:1.5px solid #d9ff4a;"></span>
+          <span style="position:absolute; bottom:5px; right:5px; width:10px; height:10px; border-bottom:1.5px solid #d9ff4a; border-right:1.5px solid #d9ff4a;"></span>
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.11em; color:#9aa08c; margin-bottom:8px;"><span style="color:#ff9f68;">CARD 01 // ATLAS COMPACT</span><span>480×570</span></div>
+          <img src="uploads/atlas-ember-compact.svg" alt="Atlas compact card at mobile width" style="display:block; width:100%; height:auto; background:#0d1117;">
+        </div>
+        <div style="margin:12px 20px 0 20px; border:1px solid rgba(237,240,226,.13); background:#121310; padding:10px;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.11em; color:#9aa08c; margin-bottom:8px;"><span style="color:#ff9f68;">CARD 02 // PROFILE</span><span>RESPONSIVE</span></div>
+          <img src="uploads/profile-ember.svg" alt="Profile card at mobile width" style="display:block; width:100%; height:auto; background:#0d1117;">
+        </div>
+        <div style="margin-top:auto; display:flex; justify-content:space-between; padding:14px 20px 18px 20px; font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:.11em; color:#9aa08c; border-top:1px solid rgba(237,240,226,.11);"><span>PLATES STACK · NO CAROUSEL</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+      </div>
+      <div style="width:330px; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#9aa08c; line-height:2; padding-top:8px;">MOBILE RULES<br>— HIT TARGETS ≥44PX<br>— DISPLAY CLAMPS 42PX, TRACKING HOLDS −.055EM<br>— FASCIA STACKS: PLOTTER, THEN GAUGE ROW<br>— SURVEY BEAM OFF; PLOTTER + NEEDLE KEPT<br>— GRID PARALLAX OFF BELOW 768PX (SCROLL COST)<br>— COMPACT CARD LEADS THE TRAY; WIDE ATLAS SCROLLS HORIZONTALLY INSIDE ITS PLATE IF EMBEDDED</div>
+    </div>
+  </div>
+  <!-- ================= 4E + 4F · OG CARDS + FAVICON ================= -->
+  <div style="display:flex; gap:36px; align-items:flex-start;">
+    <div id="4e" style="position:relative;">
+      <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4E</span>&nbsp; OG CARDS · 1200×630 · SHOWN AT 50%</div>
+      <div style="display:flex; flex-direction:column; gap:24px;">
+        <div id="og-atlas" style="zoom:.5; width:1200px; height:630px; box-sizing:border-box; border:1px solid rgba(238,233,225,.2); background:radial-gradient(circle at 85% 12%, rgba(255,122,69,.1), transparent 26rem), linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px), #0e0f0d; background-size:auto, 42px 42px, 42px 42px, auto; color:#eee9e1; position:relative; display:flex; flex-direction:column; font-family:Geist,sans-serif;">
+          <span style="position:absolute; left:0; top:0; bottom:0; width:10px; background:#ff7a45;"></span>
+          <div style="display:flex; justify-content:space-between; padding:36px 56px 0 66px; font-family:'Geist Mono',monospace; font-size:17px; letter-spacing:.14em; color:#a9a198;"><span style="color:#ff9f68;">STN A // DISTRIBUTION</span><span>COMMIT-ATLAS.WORKERS.DEV</span></div>
+          <div style="display:flex; align-items:center; flex:1; padding:0 56px 0 66px; gap:60px;">
+            <div style="flex:1;">
+              <div style="font-size:40px; font-weight:620; letter-spacing:-.03em; margin-bottom:20px;">CommitAtlas</div>
+              <div style="font-size:76px; font-weight:620; letter-spacing:-.06em; line-height:1;">Your GitHub work,<br><span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#ff7a45;">mapped clearly.</span></div>
+            </div>
+            <div style="flex:0 0 auto;">{{ heatGridOg }}</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0 56px 36px 66px; font-family:'Geist Mono',monospace; font-size:16px; letter-spacing:.13em; color:#a9a198;"><span>8 SVG CARDS · CREDENTIAL-FREE · SYNTHETIC OR LIVE</span><span style="color:#ffd166;">✓ UNKNOWN NEVER LOOKS FINE</span></div>
+        </div>
+        <div id="og-lens" style="zoom:.5; width:1200px; height:630px; box-sizing:border-box; border:1px solid rgba(198,207,233,.25); background:radial-gradient(circle at 15% 88%, rgba(184,155,255,.12), transparent 26rem), linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px), #080911; background-size:auto, 42px 42px, 42px 42px, auto; color:#f4f3fa; position:relative; display:flex; flex-direction:column; font-family:Geist,sans-serif;">
+          <span style="position:absolute; left:0; top:0; bottom:0; width:10px; background:#b89bff;"></span>
+          <div style="display:flex; justify-content:space-between; padding:36px 56px 0 66px; font-family:'Geist Mono',monospace; font-size:17px; letter-spacing:.14em; color:#7e879e;"><span style="color:#b89bff;">STN B // ANALYSIS</span><span>CHRIS0JEKY.GITHUB.IO/DEVELOPER-LENS</span></div>
+          <div style="display:flex; align-items:center; flex:1; padding:0 56px 0 66px; gap:60px;">
+            <div style="flex:1;">
+              <div style="font-size:40px; font-weight:620; letter-spacing:-.03em; margin-bottom:20px;">Developer Lens</div>
+              <div style="font-size:76px; font-weight:620; letter-spacing:-.06em; line-height:1;">Your development trail,<br><span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">brought into focus.</span></div>
+            </div>
+            <svg viewBox="0 0 240 240" width="240" height="240" style="flex:0 0 auto;"><line x1="0" y1="120" x2="240" y2="120" stroke="rgba(198,207,233,.18)" stroke-width="1.5"></line><line x1="120" y1="0" x2="120" y2="240" stroke="rgba(198,207,233,.18)" stroke-width="1.5"></line><circle cx="120" cy="120" r="104" fill="none" stroke="rgba(184,155,255,.3)" stroke-width="2"></circle><circle cx="120" cy="120" r="70" fill="none" stroke="rgba(184,155,255,.55)" stroke-width="2.5"></circle><circle cx="120" cy="120" r="38" fill="none" stroke="#b89bff" stroke-width="3"></circle><circle cx="120" cy="120" r="9" fill="#58e6be"></circle></svg>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0 56px 36px 66px; font-family:'Geist Mono',monospace; font-size:16px; letter-spacing:.13em; color:#7e879e;"><span>OBSERVED → DERIVED → HYPOTHESIS · 100% SYNTHETIC DEMO</span><span style="color:#ffd166;">✓ MISSING IS NEVER ZERO</span></div>
+        </div>
+      </div>
+    </div>
+    <div id="4f" style="position:relative;">
+      <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">4F</span>&nbsp; FAVICON MARKS</div>
+      <div style="width:360px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:#0e0f0d; padding:28px 30px; color:#edf0e2;">
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:18px;">08 // ONE CONSTRUCTION, TWO MARKS</div>
+        <p style="margin:0 0 20px 0; font-size:13px; line-height:1.6; color:#9aa08c;">Same 16px frame, same 2px stroke, one corner tick. Atlas fills a map quadrant; Lens is a reticle. Siblings at a glance, distinct in a tab row.</p>
+        <div style="display:flex; gap:20px; margin-bottom:20px;">
+          <svg viewBox="0 0 16 16" width="96" height="96" style="border:1px solid rgba(237,240,226,.13); background:#121310;"><rect x="2" y="2" width="12" height="12" fill="none" stroke="#eee9e1" stroke-width="1.6"></rect><rect x="8.8" y="2.8" width="4.4" height="4.4" fill="#ff7a45"></rect><rect x="4" y="9" width="2" height="2" fill="#ffd166"></rect><line x1="2" y1="14" x2="0" y2="16" stroke="#ff7a45" stroke-width="1.4"></line></svg>
+          <svg viewBox="0 0 16 16" width="96" height="96" style="border:1px solid rgba(237,240,226,.13); background:#121310;"><circle cx="8" cy="8" r="6" fill="none" stroke="#f4f3fa" stroke-width="1.6"></circle><circle cx="8" cy="8" r="2.6" fill="none" stroke="#b89bff" stroke-width="1.4"></circle><circle cx="8" cy="8" r="1" fill="#58e6be"></circle><line x1="14" y1="14" x2="16" y2="16" stroke="#b89bff" stroke-width="1.4"></line></svg>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:16px; padding:16px; border:1px solid rgba(237,240,226,.11); background:#121310;">
+          <svg viewBox="0 0 16 16" width="32" height="32"><rect x="2" y="2" width="12" height="12" fill="none" stroke="#eee9e1" stroke-width="1.6"></rect><rect x="8.8" y="2.8" width="4.4" height="4.4" fill="#ff7a45"></rect><rect x="4" y="9" width="2" height="2" fill="#ffd166"></rect></svg>
+          <svg viewBox="0 0 16 16" width="16" height="16"><rect x="2" y="2" width="12" height="12" fill="none" stroke="#eee9e1" stroke-width="1.6"></rect><rect x="8.8" y="2.8" width="4.4" height="4.4" fill="#ff7a45"></rect><rect x="4" y="9" width="2" height="2" fill="#ffd166"></rect></svg>
+          <svg viewBox="0 0 16 16" width="32" height="32"><circle cx="8" cy="8" r="6" fill="none" stroke="#f4f3fa" stroke-width="1.6"></circle><circle cx="8" cy="8" r="2.6" fill="none" stroke="#b89bff" stroke-width="1.4"></circle><circle cx="8" cy="8" r="1" fill="#58e6be"></circle></svg>
+          <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6" fill="none" stroke="#f4f3fa" stroke-width="1.6"></circle><circle cx="8" cy="8" r="2.6" fill="none" stroke="#b89bff" stroke-width="1.4"></circle><circle cx="8" cy="8" r="1" fill="#58e6be"></circle></svg>
+          <span style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-left:auto;">32 + 16 ACTUAL</span>
+        </div>
+        <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#7e879e; margin-top:16px; line-height:1.9;">DROP-IN FOR THE EXISTING LIGHTNING MARK · P3 VARIANTS OPTIONAL<br>WORKS ON LIGHT TABS: STROKE FLIPS TO #23261C, ACCENTS HOLD</div>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 3A · HEALTH PANEL — SIX SIGNAL STATES ================= -->
+  <div id="3a" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">3A</span>&nbsp; HEALTH PANEL · SIX STATES — UNKNOWN NEVER LOOKS FINE</div>
+    <div style="width:1440px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px), #0e0f0d; background-size:42px 42px, 42px 42px, auto; padding:36px 48px 40px 48px; color:#edf0e2;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+        <div>
+          <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:14px;">03 // PORTFOLIO SIGNALS · CI STATE RACK</div>
+          <div style="font-size:40px; font-weight:620; letter-spacing:-.05em;">A dark gauge is a finding, <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#d9ff4a;">not a failure of the page.</span></div>
+        </div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#9aa08c; text-align:right; line-height:1.9;">LIVE SYNTHETIC READING: <span style="color:#edf0e2;">0/2 CI PASSING · 0 ATTENTION · 2 UNAVAILABLE</span><br>72H FRESHNESS WINDOW · calculateCiState()</div>
+      </div>
+      <p style="margin:0 0 26px 0; font-size:15px; line-height:1.6; color:#9aa08c; max-width:680px;">Every state gets a distinct lamp shape, a distinct trace, and a printed word — colour is never the only encoding. The three "we do not know" states are deliberately the most visually interesting bays in the rack.</p>
+      <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;">
+        <!-- UNAVAILABLE -->
+        <div style="border:1px solid rgba(237,240,226,.2); background:#0a0b09; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#edf0e2;"><span>UNAVAILABLE</span><span style="color:#9aa08c;">×2</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <span style="border:1px solid rgba(237,240,226,.45); color:rgba(237,240,226,.75); font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.22em; padding:6px 10px; transform:rotate(-3deg);">NO SIGNAL</span>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><line x1="0" y1="9" x2="160" y2="9" stroke="rgba(237,240,226,.35)" stroke-width="1.5"></line></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">PROVIDER RETURNED NOTHING.<br>NOT ZERO — <span style="color:#edf0e2;">UNOBSERVED.</span><br>LAMP UNLIT · STEADY · NO PULSE</div>
+        </div>
+        <!-- UNCONFIGURED -->
+        <div style="border:1px dashed rgba(237,240,226,.3); background:transparent; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c;"><span>UNCONFIGURED</span><span>—</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <span style="width:26px; height:26px; border:1.5px dashed rgba(237,240,226,.4); display:inline-block;"></span>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><line x1="0" y1="9" x2="160" y2="9" stroke="rgba(237,240,226,.25)" stroke-width="1.5" stroke-dasharray="3 5"></line></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">NO PROBE FITTED.<br>NO NAMED WORKFLOW TO WATCH.<br>EMPTY SOCKET · DASHED TRIM</div>
+        </div>
+        <!-- STALE -->
+        <div style="border:1px solid rgba(201,163,90,.4); background:#111008; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#c9a35a;"><span>STALE</span><span>◷</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="16" fill="none" stroke="#c9a35a" stroke-width="1.5" stroke-dasharray="4 3"></circle><line x1="20" y1="20" x2="20" y2="9" stroke="#c9a35a" stroke-width="1.5"></line><line x1="20" y1="20" x2="29" y2="24" stroke="#c9a35a" stroke-width="1.5"></line></svg>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><path d="M0,12 L30,12 L44,6 L58,12 L160,12" fill="none" stroke="#c9a35a" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="5 4"></path></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">LAST OBSERVED &gt;72H AGO.<br>WAS PASSING · <span style="color:#c9a35a;">NO LONGER CLAIMED.</span><br>NEEDLE FROZEN · DOTTED TRACE</div>
+        </div>
+        <!-- PASSING -->
+        <div style="border:1px solid rgba(117,214,155,.4); background:#0a120c; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#75d69b;"><span>PASSING</span><span>✓</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <span style="width:22px; height:22px; border-radius:50%; background:#75d69b; box-shadow:0 0 18px rgba(117,214,155,.55); display:inline-block;"></span>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><path d="M0,13 L24,13 L34,5 L46,13 L78,13 L90,6 L104,13 L160,13" fill="none" stroke="#75d69b" stroke-width="1.5"></path></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">NAMED WORKFLOW GREEN,<br>OBSERVED INSIDE 72H.<br>LAMP LIT · SOLID TRACE · ✓</div>
+        </div>
+        <!-- FAILING -->
+        <div style="border:1px solid rgba(255,123,123,.45); background:#140b0b; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ff7b7b;"><span>FAILING</span><span>✕</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <span style="width:20px; height:20px; background:#ff7b7b; transform:rotate(45deg); display:inline-block;"></span>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><path d="M0,13 L36,13 L48,4 L60,15 L72,4 L84,15 L96,13 L160,13" fill="none" stroke="#ff7b7b" stroke-width="1.5"></path></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">RED RUN, FRESH EVIDENCE.<br>A FACT, NOT A SHAME.<br>DIAMOND LAMP · SPIKED TRACE</div>
+        </div>
+        <!-- PENDING -->
+        <div style="border:1px solid rgba(255,209,102,.4); background:#12100a; padding:18px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ffd166;"><span>PENDING</span><span>◐</span></div>
+          <div style="height:64px; display:flex; align-items:center; justify-content:center; margin:14px 0;">
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #ffd166; background:linear-gradient(90deg, #ffd166 50%, transparent 50%); display:inline-block; animation:sigPulse 2.4s ease-in-out infinite;"></span>
+          </div>
+          <svg viewBox="0 0 160 18" width="100%" height="18"><path d="M0,13 L40,13 L52,8 L64,13 L104,13" fill="none" stroke="#ffd166" stroke-width="1.5"></path><path d="M104,13 L160,13" fill="none" stroke="#ffd166" stroke-opacity=".3" stroke-width="1.5" stroke-dasharray="2 4"></path></svg>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.09em; color:#9aa08c; line-height:1.8; margin-top:10px;">RUN IN FLIGHT.<br>ACQUIRING — THE ONLY STATE<br>ALLOWED TO PULSE. HALF LAMP</div>
+        </div>
+      </div>
+      <!-- acquisition sequence demo -->
+      <div style="display:flex; gap:26px; margin-top:22px; border:1px solid rgba(237,240,226,.13); background:rgba(20,22,16,.6); padding:20px 26px; align-items:center;">
+        <svg viewBox="0 0 220 122" width="190" height="105" role="img" aria-label="Gauge failing to acquire a signal: needle hunts, falls back to rest, lamp stays unlit">
+          <path d="M24,110 A86,86 0 0 1 196,110" fill="none" stroke="rgba(237,240,226,.14)" stroke-width="3"></path>
+          <g stroke="rgba(237,240,226,.3)" stroke-width="1.5"><line x1="24" y1="110" x2="32" y2="110"></line><line x1="110" y1="24" x2="110" y2="32"></line><line x1="196" y1="110" x2="188" y2="110"></line></g>
+          <g style="transform-origin:110px 110px; transform:rotate(-90deg); animation:needleHunt 5.5s cubic-bezier(.4,0,.3,1) infinite;">
+            <line x1="110" y1="110" x2="110" y2="34" stroke="#edf0e2" stroke-opacity=".8" stroke-width="2"></line>
+          </g>
+          <circle cx="110" cy="110" r="5" fill="#0e0f0d" stroke="#edf0e2" stroke-width="1.5"></circle>
+          <text x="138" y="116" font-family="Geist Mono,monospace" font-size="9" letter-spacing="1.5" fill="rgba(237,240,226,.6)">NO SIGNAL</text>
+        </svg>
+        <div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a;">M7 // ACQUISITION SEQUENCE — HOW A GAUGE FAILS HONESTLY</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; font-family:'Geist Mono',monospace; font-size:10px; padding:1px 6px;">M7</span></div>
+          <p style="margin:10px 0 0 0; font-size:14px; line-height:1.6; color:#9aa08c; max-width:820px;">On load, an <span style="color:#edf0e2;">unavailable</span> gauge does not snap to an error badge — the needle hunts: rises toward a reading, stutters twice, falls back to the −90° rest stop, and the lamp never lights. The plate reads NO SIGNAL from frame zero, so the motion adds theatre, never information.</p>
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#7e879e; margin-top:10px;">5.5S CYCLE · cubic-bezier(.4,0,.3,1) · TRANSFORM-ONLY · REDUCED MOTION: NEEDLE RESTS AT −90°, PLATE UNCHANGED</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:20px; padding-top:14px; border-top:1px solid rgba(237,240,226,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#9aa08c;">
+        <span>SIX SHAPES: PLATE · SOCKET · FROZEN CLOCK · DISC · DIAMOND · HALF-DISC — LEGIBLE IN GREYSCALE</span>
+        <span>AN UNKNOWN, MISSING, OR STALE SIGNAL IS NEVER DISPLAYED AS HEALTHY</span>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 3B · EVIDENCE LADDER + DRAWER ================= -->
+  <div id="3b" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">3B</span>&nbsp; EVIDENCE LAYER · OBSERVED → DERIVED → HYPOTHESIS + THE DRAWER</div>
+    <div style="width:1440px; box-sizing:border-box; border:1px solid rgba(237,240,226,.13); background:radial-gradient(circle at 12% 10%, rgba(184,155,255,.06), transparent 24rem), linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px), #0e0f0d; background-size:auto, 42px 42px, 42px 42px, auto; padding:36px 48px 40px 48px; color:#edf0e2;">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:14px;">04 // EVIDENCE LAYER · STN B</div>
+      <div style="font-size:40px; font-weight:620; letter-spacing:-.05em; margin-bottom:6px;">Facts become patterns. <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">Patterns become hypotheses.</span></div>
+      <p style="margin:0 0 28px 0; font-size:15px; line-height:1.6; color:#9aa08c; max-width:640px;">Every insight sits on one of three rungs, and every number on screen is a button that answers "how do you know that".</p>
+      <div style="display:grid; grid-template-columns:1fr 1.15fr; gap:32px; align-items:start;">
+        <!-- the ladder -->
+        <div style="position:relative; padding-left:22px;">
+          <span style="position:absolute; left:5px; top:12px; bottom:12px; width:1px; background:linear-gradient(#58e6be, #b89bff 50%, rgba(237,240,226,.3));"></span>
+          <div style="border:1px solid rgba(88,230,190,.4); background:rgba(10,18,15,.8); padding:18px 22px; position:relative;">
+            <span style="position:absolute; left:-22px; top:22px; width:11px; height:11px; border-radius:50%; background:#58e6be;"></span>
+            <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em;"><span style="color:#58e6be;">ORDER 1 · OBSERVED ●</span><span style="color:#9aa08c;">THIS IS IN THE DATA</span></div>
+            <div style="font-size:17px; font-weight:620; letter-spacing:-.02em; margin-top:10px;">26 active weeks across the 26-week window</div>
+            <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#7e879e; margin-top:6px;">RULE: rhythm-observed · COUNTED, NOT MODELLED</div>
+          </div>
+          <div style="border:1px solid rgba(184,155,255,.4); background:rgba(15,13,24,.8); padding:18px 22px; margin-top:14px; position:relative;">
+            <span style="position:absolute; left:-22px; top:22px; width:11px; height:11px; border-radius:50%; background:linear-gradient(90deg, #b89bff 50%, transparent 50%); border:1px solid #b89bff; box-sizing:border-box;"></span>
+            <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em;"><span style="color:#b89bff;">ORDER 2 · DERIVED ◍</span><span style="color:#9aa08c;">THIS FOLLOWS FROM THE DATA</span></div>
+            <div style="font-size:17px; font-weight:620; letter-spacing:-.02em; margin-top:10px;">Work spreads over 7.9 effective repositories</div>
+            <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#7e879e; margin-top:6px;">RULE: portfolio-gravity · COMPUTED FROM OBSERVED EVENTS</div>
+          </div>
+          <div style="border:1px dashed rgba(237,240,226,.35); background:transparent; padding:18px 22px; margin-top:14px; position:relative;">
+            <span style="position:absolute; left:-22px; top:22px; width:11px; height:11px; border-radius:50%; border:1.5px dashed rgba(237,240,226,.6); box-sizing:border-box;"></span>
+            <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em;"><span style="color:#edf0e2;">ORDER 3 · HYPOTHESIS ○</span><span style="color:#9aa08c;">THIS IS A GUESS — LABELLED AS ONE</span></div>
+            <div style="font-size:17px; font-weight:620; letter-spacing:-.02em; margin-top:10px;">Archetype: Force Multiplier</div>
+            <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#7e879e; margin-top:6px;">RULE: orchestration-hypothesis · DASHED TRIM EVERYWHERE IT APPEARS</div>
+          </div>
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c; margin-top:18px; line-height:1.9;">RUNG IS ENCODED THREE WAYS: WORD · DOT (SOLID / HALF / DASHED) · BORDER STYLE.<br>20 INSIGHT RULES SORT ONTO THESE THREE RUNGS — NEVER A FOURTH.</div>
+        </div>
+        <!-- the drawer -->
+        <div>
+          <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+            <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c;">CLOSED — EVERY NUMBER IS A BUTTON:</span>
+            <span style="font-size:20px; font-weight:620; border-bottom:1px dotted #58e6be; padding-bottom:1px;">7.9<span style="font-size:13px; color:#9aa08c;"> effective repositories</span></span>
+            <span style="font-family:'Geist Mono',monospace; font-size:10px; color:#58e6be;">← CLICK: "HOW DO YOU KNOW THAT?"</span>
+          </div>
+          <div style="border:1px solid rgba(184,155,255,.35); border-radius:12px; background:rgba(18,20,34,.9); box-shadow:0 24px 80px rgba(0,0,0,.28); overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 22px; border-bottom:1px solid rgba(198,207,233,.105);">
+              <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#b89bff;">EVIDENCE DRAWER · 7.9 EFFECTIVE REPOSITORIES</span>
+              <span style="display:flex; gap:8px; align-items:center;"><span style="border:1px solid #b89bff; color:#b89bff; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; padding:2px 8px; border-radius:20px;">◍ DERIVED</span><span style="border:1px solid rgba(198,207,233,.3); color:#7e879e; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; padding:2px 8px; border-radius:20px;">SYNTHETIC OCTOCAT</span></span>
+            </div>
+            <div style="padding:18px 22px; display:grid; grid-template-columns:86px 1fr; row-gap:14px; column-gap:18px; font-size:13.5px; line-height:1.55; color:#b4b8c9;">
+              <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#58e6be; padding-top:2px;">BASIS</span>
+              <span>277 commits, 21 merged PRs, 38 reviews, 125 issues across 8 repositories, 18 Feb — 18 Aug 2026. Counted directly from the synthetic event log.</span>
+              <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#b89bff; padding-top:2px;">FORMULA</span>
+              <span style="font-family:'Geist Mono',monospace; font-size:12px; color:#d9caff;">1 / Σ (repo_shareᵢ)² — inverse concentration: 8 repos weighted by activity behave like 7.9</span>
+              <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ffd166; padding-top:2px;">CAVEAT</span>
+              <span>Visible public work only. Private and local activity is unobserved — missing is never zero, so this number describes the trail, not the developer.</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:12px 22px; border-top:1px solid rgba(198,207,233,.105); font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.11em; color:#7e879e;">
+              <span>COVERAGE: 12 DIMENSIONS · "EVERY INSIGHT SHOULD KNOW WHAT IT CANNOT SEE"</span>
+              <span style="color:#58e6be;">ESC / CLICK OUTSIDE TO CLOSE</span>
+            </div>
+          </div>
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#7e879e; margin-top:14px; line-height:1.9;">M8 — DRAWER: SLIDES UP 12PX + SETTLES · 260MS · cubic-bezier(.2,.9,.3,1) · TRIGGER: CLICK ON ANY DOTTED-UNDERLINE NUMBER · REDUCED MOTION: APPEARS IN PLACE, FULLY DRAWN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 2A · HERO REV B — FIELDLINE ================= -->
+  <div id="2a" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">2A</span>&nbsp; HERO · 1440 · CHASSIS REV B — FIELDLINE</div>
+    <div style="position:relative; width:1440px; border:1px solid rgba(237,240,226,.13); background:radial-gradient(circle at 86% 8%, rgba(217,255,74,.05), transparent 26rem), radial-gradient(circle at 10% 94%, rgba(184,155,255,.06), transparent 26rem), linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px), #0e0f0d; background-size:auto, auto, 42px 42px, 42px 42px, auto; color:#edf0e2; overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 48px; border-bottom:1px solid rgba(237,240,226,.11); font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span style="color:#d9ff4a;">▼ OBSERVATORY // SHARED CHASSIS</span>
+          <span style="border:1px solid rgba(217,255,74,.4); color:#d9ff4a; padding:1px 8px;">REF: OBS/CH-REV-B</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:28px;">
+          <span><span style="color:#ff9f68;">STN A</span> COMMITATLAS · DISTRIBUTION</span>
+          <span><span style="color:#b89bff;">STN B</span> DEVELOPER-LENS · ANALYSIS</span>
+          <span style="color:#d9ff4a;">■ ■ □ □ □ □ &nbsp;02 / 06</span>
+        </div>
+      </div>
+      <span style="position:absolute; top:44px; right:24px; font-size:210px; font-weight:700; letter-spacing:-.06em; line-height:1; color:transparent; -webkit-text-stroke:1px rgba(217,255,74,.13); pointer-events:none; font-family:Geist,sans-serif;">02//</span>
+      <div style="padding:58px 48px 36px 48px; max-width:900px; position:relative;">
+        <div style="display:flex; align-items:center; gap:10px; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; text-transform:uppercase; margin-bottom:20px;">
+          <span style="width:6px; height:6px; background:#d9ff4a; box-shadow:0 0 14px #d9ff4a; display:inline-block;"></span>
+          00 // Two open-source instruments · one body of work
+        </div>
+        <h1 style="margin:0; font-size:76px; line-height:.98; letter-spacing:-.062em; font-weight:620;">Map the work,<br><span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#d9ff4a;">then ask what it became.</span></h1>
+        <p style="margin:26px 0 0 0; font-size:19px; line-height:1.55; color:#9aa08c; max-width:620px;">CommitAtlas renders the trail as embeddable evidence. developer-lens asks what shape the system became. One chassis carries both — the same survey grid, the same mono-over-sans, the same rule that an unknown signal never looks healthy.</p>
+      </div>
+      <div style="position:relative; margin:0 48px; border:1px solid rgba(237,240,226,.13); background:rgba(20,22,16,.6); clip-path:polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%);">
+        <span style="position:absolute; left:0; top:0; bottom:0; width:7px; background:repeating-linear-gradient(45deg, rgba(217,255,74,.45) 0 6px, transparent 6px 13px);"></span>
+        <div style="display:grid; grid-template-columns:1.25fr 1fr 1fr 1fr;">
+          <div style="padding:24px 26px 24px 34px; border-right:1px solid rgba(237,240,226,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c; margin-bottom:12px;"><span style="color:#ff9f68;">01 // MOMENTUM PLOTTER · 28D</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; padding:1px 6px;">M1</span></div>
+            <svg viewBox="0 0 336 96" width="100%" height="96" role="img" aria-label="28-day momentum trace, index 88, minus 1.1 percent vs prior 28 days">
+              <path d="M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30" fill="none" stroke="#ff7a45" stroke-opacity=".22" stroke-width="2"></path>
+              <path pathLength="100" style="stroke-dasharray:100; stroke-dashoffset:0; animation:penDraw 9s cubic-bezier(.4,0,.2,1) infinite;" d="M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30" fill="none" stroke="#ff7a45" stroke-width="2"></path>
+              <circle r="3.5" fill="#d9ff4a" style="offset-path:path('M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30'); animation:penMove 9s cubic-bezier(.4,0,.2,1) infinite;"></circle>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em;">88</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c;">−1.1% VS PRIOR 28D</span></div>
+          </div>
+          <div style="padding:24px 26px; border-right:1px solid rgba(237,240,226,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c; margin-bottom:12px;"><span style="color:#d9ff4a;">02 // RHYTHM · CONSISTENCY 0–100</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; padding:1px 6px;">M2</span></div>
+            <svg viewBox="0 0 220 122" width="100%" height="96" role="img" aria-label="Rhythm consistency gauge reading 72 of 100">
+              <path d="M24,110 A86,86 0 0 1 196,110" fill="none" stroke="rgba(237,240,226,.14)" stroke-width="3"></path>
+              <path d="M24,110 A86,86 0 0 1 196,110" pathLength="100" stroke-dasharray="72 28" fill="none" stroke="#d9ff4a" stroke-opacity=".85" stroke-width="3"></path>
+              <g stroke="rgba(237,240,226,.3)" stroke-width="1.5">
+                <line x1="24" y1="110" x2="32" y2="110"></line><line x1="35.5" y1="67" x2="42.5" y2="71"></line><line x1="67" y1="35.5" x2="71" y2="42.5"></line><line x1="110" y1="24" x2="110" y2="32"></line><line x1="153" y1="35.5" x2="149" y2="42.5"></line><line x1="184.5" y1="67" x2="177.5" y2="71"></line><line x1="196" y1="110" x2="188" y2="110"></line>
+              </g>
+              <text x="14" y="120" font-family="Geist Mono,monospace" font-size="9" fill="#9aa08c">0</text>
+              <text x="104" y="16" font-family="Geist Mono,monospace" font-size="9" fill="#9aa08c">50</text>
+              <text x="184" y="120" font-family="Geist Mono,monospace" font-size="9" fill="#9aa08c">100</text>
+              <g style="transform-origin:110px 110px; transform:rotate(39.6deg); animation:needleSettle 2.2s cubic-bezier(.33,1,.68,1) .3s both;">
+                <line x1="110" y1="110" x2="110" y2="34" stroke="#edf0e2" stroke-width="2"></line>
+              </g>
+              <circle cx="110" cy="110" r="5" fill="#0e0f0d" stroke="#edf0e2" stroke-width="1.5"></circle>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px; margin-top:8px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em; white-space:nowrap;">72<span style="color:#9aa08c; font-size:15px;">/100</span></span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c; text-align:right;">EVENNESS · NOT A RANK</span></div>
+          </div>
+          <div style="padding:24px 26px; border-right:1px solid rgba(237,240,226,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c; margin-bottom:12px;"><span style="color:#ff9f68;">03 // DENSITY SURVEY · 365D</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; padding:1px 6px;">M3</span></div>
+            <div style="height:96px; display:flex; align-items:center;">{{ heatGrid }}</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em;">77.8%</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c;">284 ACTIVE DAYS · 3.1/DAY</span></div>
+          </div>
+          <div style="padding:24px 26px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c; margin-bottom:12px;"><span style="color:#b89bff;">04 // SIGNAL DNA → ARCHETYPE</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; padding:1px 6px;">M4</span></div>
+            <svg viewBox="0 0 220 96" width="100%" height="96" role="img" aria-label="Six-axis DNA radar resolving to archetype Force Multiplier">
+              <polygon points="110,8 144.6,28 144.6,68 110,88 75.4,68 75.4,28" fill="none" stroke="rgba(184,155,255,.22)" stroke-width="1"></polygon>
+              <polygon points="110,28 127.3,38 127.3,58 110,68 92.7,58 92.7,38" fill="none" stroke="rgba(184,155,255,.18)" stroke-width="1"></polygon>
+              <polygon points="110,26 130.8,36 142.9,67 110,76 80.6,65 89.2,36" fill="rgba(184,155,255,.16)" stroke="#b89bff" stroke-width="1.4" style="transform-origin:110px 48px; animation:irisBreathe 4.5s ease-in-out infinite;"></polygon>
+              <circle cx="110" cy="48" r="2.5" fill="#58e6be"></circle>
+              <text x="102" y="6" font-family="Geist Mono,monospace" font-size="7.5" fill="#7e879e">FOC</text>
+              <text x="150" y="26" font-family="Geist Mono,monospace" font-size="7.5" fill="#7e879e">SHP</text>
+              <text x="150" y="74" font-family="Geist Mono,monospace" font-size="7.5" fill="#58e6be">COL</text>
+              <text x="102" y="96" font-family="Geist Mono,monospace" font-size="7.5" fill="#7e879e">CON</text>
+              <text x="52" y="74" font-family="Geist Mono,monospace" font-size="7.5" fill="#58e6be">BRD</text>
+              <text x="52" y="26" font-family="Geist Mono,monospace" font-size="7.5" fill="#7e879e">STW</text>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;"><span style="font-size:19px; font-weight:620; letter-spacing:-.02em; color:#d9caff;">Force Multiplier</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c;">HYPOTHESIS · FROM 6 OBSERVED AXES</span></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(237,240,226,.11); padding:14px 28px 14px 34px; display:flex; align-items:center; gap:18px;">
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c; white-space:nowrap;">INSTRUMENT SCALE</span>
+          <div style="position:relative; flex:1; height:6px; background:linear-gradient(90deg, #ff7a45, #ffc857 38%, #ffd166 50%, #8fd8d2 62%, #b89bff);">
+            <span style="position:absolute; left:50%; top:-5px; width:2px; height:16px; background:#ffd166; box-shadow:0 0 12px #ffd166;"></span>
+          </div>
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ffd166; white-space:nowrap;">HINGE #FFD166 · LIVES IN THE CARDS</span>
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a; white-space:nowrap;">CHROME #D9FF4A · FIELDLINE</span>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:30px 48px 36px 48px;">
+        <div style="border:1px solid rgba(255,122,69,.3); background:#16170f; padding:24px 28px; clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ff9f68; margin-bottom:12px;"><span>STN A // COMMITATLAS</span><span style="color:#9aa08c;">DISTRIBUTION · R0</span></div>
+          <div style="font-size:25px; font-weight:620; letter-spacing:-.04em;">Your GitHub work, <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#ff7a45;">mapped clearly.</span></div>
+          <div style="display:flex; gap:26px; margin-top:16px;">
+            <div><div style="font-size:20px; font-weight:620;">1.1k</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">CONTRIBUTIONS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">284</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">ACTIVE DAYS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">731<span style="color:#9aa08c;">/</span>160<span style="color:#9aa08c;">/</span>194<span style="color:#9aa08c;">/</span>57</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:2px;">CMT / PR / REV / ISS</div></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:16px; padding-top:12px; border-top:1px solid rgba(237,240,226,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#9aa08c;">
+            <span style="width:8px; height:8px; border:1px solid rgba(237,240,226,.35); display:inline-block;"></span>
+            <span style="width:8px; height:8px; border:1px solid rgba(237,240,226,.35); display:inline-block;"></span>
+            0/2 CI PASSING · 2 UNAVAILABLE — SHOWN DARK, NEVER GREEN
+          </div>
+        </div>
+        <div style="border:1px solid rgba(184,155,255,.3); background:rgba(18,20,34,.78); border-radius:12px; box-shadow:0 24px 80px rgba(0,0,0,.28); padding:24px 28px;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#b89bff; margin-bottom:12px;"><span>STN B // DEVELOPER-LENS</span><span style="color:#7e879e;">ANALYSIS · R12</span></div>
+          <div style="font-size:25px; font-weight:620; letter-spacing:-.04em; color:#f4f3fa;">Your development trail, <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">brought into focus.</span></div>
+          <div style="display:flex; gap:26px; margin-top:16px; color:#f4f3fa;">
+            <div><div style="font-size:20px; font-weight:620;">7.9</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">EFFECTIVE REPOS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">26</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">ACTIVE WEEKS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">21</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">MERGED</div></div>
+          </div>
+          <div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(198,207,233,.105); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#7e879e;">OBSERVED → DERIVED → HYPOTHESIS · EVERY NUMBER CARRIES ITS CAVEAT</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 48px; border-top:1px solid rgba(237,240,226,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#9aa08c;">
+        <span>✓ PUBLIC BY DEFAULT &nbsp; ✓ HONEST FRESHNESS &nbsp; ✓ LIVE OR STATIC</span>
+        <span style="display:inline-block; width:96px; height:14px; background:repeating-linear-gradient(90deg, rgba(237,240,226,.5) 0 2px, transparent 2px 5px, rgba(237,240,226,.5) 5px 6px, transparent 6px 11px);"></span>
+        <span>REDUCED MOTION: COMPLETE STATIC PAGE · NOTHING ENTERS FROM INVISIBLE</span>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 2B · CHASSIS THEMES ================= -->
+  <div id="2b" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">2B</span>&nbsp; CHASSIS THEMES · BRIGHTNESS + TEMPERATURE ARE THE ONLY VARIABLES</div>
+    <div style="width:1440px; border:1px solid rgba(237,240,226,.13); background:#0e0f0d; padding:36px 48px; color:#edf0e2; box-sizing:border-box;">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:24px;">01 // WEB-SURFACE THEMES — SVG CARD THEMES (AURORA · MIDNIGHT · PAPER · EMBER) ARE UNCHANGED</div>
+      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:20px;">
+        <div style="border:1px solid rgba(237,240,226,.16); background:#101208; padding:20px; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a;">▼ FIELDLINE · DARK</div>
+          <div style="margin-top:14px; font-size:22px; font-weight:620; letter-spacing:-.04em; color:#edf0e2;">72<span style="font-size:13px; color:#9aa08c;">/100</span></div>
+          <div style="height:5px; background:rgba(237,240,226,.12); margin-top:8px;"><div style="width:72%; height:100%; background:#d9ff4a;"></div></div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:8px;">■ ■ ■ □ · NOT A RANK</div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(237,240,226,.12); font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.08em; color:#9aa08c; line-height:2;">BG <span style="color:#edf0e2;">#0E0F0D</span> · INK <span style="color:#edf0e2;">#EDF0E2</span><br>CHROME <span style="color:#d9ff4a;">#D9FF4A</span> · DEFAULT</div>
+        </div>
+        <div style="border:1px solid rgba(238,233,225,.16); background:#11110f; padding:20px;">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ffd166;">▼ OBSERVATORY · DARK WARM</div>
+          <div style="margin-top:14px; font-size:22px; font-weight:620; letter-spacing:-.04em; color:#eee9e1;">72<span style="font-size:13px; color:#a9a198;">/100</span></div>
+          <div style="height:5px; background:rgba(238,233,225,.12); margin-top:8px;"><div style="width:72%; height:100%; background:#ffd166;"></div></div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#a9a198; margin-top:8px;">■ ■ ■ □ · NOT A RANK</div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(238,233,225,.12); font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.08em; color:#a9a198; line-height:2;">BG <span style="color:#eee9e1;">#11110F</span> · INK <span style="color:#eee9e1;">#EEE9E1</span><br>CHROME <span style="color:#ffd166;">#FFD166</span> · REV A</div>
+        </div>
+        <div style="border:1px solid rgba(240,242,228,.2); background:#3a3d33; padding:20px;">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#e6ff70;">▼ MIDLINE · MID</div>
+          <div style="margin-top:14px; font-size:22px; font-weight:620; letter-spacing:-.04em; color:#f0f2e4;">72<span style="font-size:13px; color:#c4c8b4;">/100</span></div>
+          <div style="height:5px; background:rgba(240,242,228,.18); margin-top:8px;"><div style="width:72%; height:100%; background:#e6ff70;"></div></div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#c4c8b4; margin-top:8px;">■ ■ ■ □ · NOT A RANK</div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(240,242,228,.18); font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.08em; color:#c4c8b4; line-height:2;">BG <span style="color:#f0f2e4;">#3A3D33</span> · INK <span style="color:#f0f2e4;">#F0F2E4</span><br>CHROME <span style="color:#e6ff70;">#E6FF70</span> · READING</div>
+        </div>
+        <div style="border:1px solid rgba(35,38,28,.25); background:#e8ecd6; padding:20px;">
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#55651a;">▼ LIMESTONE · LIGHT</div>
+          <div style="margin-top:14px; font-size:22px; font-weight:620; letter-spacing:-.04em; color:#23261c;">72<span style="font-size:13px; color:#6b7160;">/100</span></div>
+          <div style="height:5px; background:rgba(35,38,28,.15); margin-top:8px;"><div style="width:72%; height:100%; background:#55651a;"></div></div>
+          <div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#6b7160; margin-top:8px;">■ ■ ■ □ · NOT A RANK</div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(35,38,28,.18); font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.08em; color:#6b7160; line-height:2;">BG <span style="color:#23261c;">#E8ECD6</span> · INK <span style="color:#23261c;">#23261C</span><br>CHROME <span style="color:#55651a;">#55651A</span> · NO PURE WHITE</div>
+        </div>
+      </div>
+      <div style="margin-top:20px; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#9aa08c; line-height:1.9;">TEMPERATURE STAYS ORTHOGONAL: EMBER #FF7A45 (STN A) AND VIOLET #B89BFF (STN B) READ ON ALL FOUR GROUNDS · GOLD #FFD166 REMAINS THE DATA HINGE INSIDE THE SVG CARDS · LIMESTONE REPLACES PURE WHITE — <span style="color:#d9ff4a;">PAPER</span> CARD THEME STILL SHIPS FOR LIGHT GITHUB READMES</div>
+    </div>
+  </div>
+  <!-- ================= 2C · CARD GALLERY ================= -->
+  <div id="2c" style="position:relative;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#9aa08c;"><span style="border:1px solid rgba(217,255,74,.5); color:#d9ff4a; padding:2px 7px;">2C</span>&nbsp; CARD GALLERY · THE FRAME DOES THE WORK — CARDS CANNOT BE RESTYLED</div>
+    <div style="width:1440px; border:1px solid rgba(237,240,226,.13); background:radial-gradient(circle at 88% 6%, rgba(255,122,69,.05), transparent 24rem), linear-gradient(rgba(255,255,255,.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.016) 1px, transparent 1px), #0e0f0d; background-size:auto, 42px 42px, 42px 42px, auto; padding:36px 48px 44px 48px; color:#edf0e2; box-sizing:border-box;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:26px;">
+        <div>
+          <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:14px;">02 // SPECIMEN TRAY · 8 LIVE SVG ROUTES</div>
+          <div style="font-size:40px; font-weight:620; letter-spacing:-.05em; margin:0;">See the whole toolkit.</div>
+        </div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#9aa08c; text-align:right; line-height:1.9;">EVERY PREVIEW IS A REAL SVG RESPONSE<br>SAFE, DETERMINISTIC OCTOCAT DATA · NO GITHUB CALLS</div>
+      </div>
+      <div style="position:relative; border:1px solid rgba(237,240,226,.16); background:#121310; padding:22px; display:flex; gap:26px; overflow:hidden;">
+        <span style="position:absolute; top:10px; left:10px; width:14px; height:14px; border-top:1.5px solid #d9ff4a; border-left:1.5px solid #d9ff4a;"></span>
+        <span style="position:absolute; top:10px; right:10px; width:14px; height:14px; border-top:1.5px solid #d9ff4a; border-right:1.5px solid #d9ff4a;"></span>
+        <span style="position:absolute; bottom:10px; left:10px; width:14px; height:14px; border-bottom:1.5px solid #d9ff4a; border-left:1.5px solid #d9ff4a;"></span>
+        <span style="position:absolute; bottom:10px; right:10px; width:14px; height:14px; border-bottom:1.5px solid #d9ff4a; border-right:1.5px solid #d9ff4a;"></span>
+        <div style="position:relative; flex:0 0 auto;">
+          <img src="uploads/atlas-ember.svg" width="860" height="380" alt="CommitAtlas Atlas card, ember theme, synthetic octocat data" style="display:block; background:#0d1117;">
+          <span style="position:absolute; top:0; bottom:0; left:0; width:70px; background:linear-gradient(90deg, transparent, rgba(217,255,74,.07), transparent); animation:scanSweep 7s linear infinite; pointer-events:none;"></span>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:6px 4px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ff9f68;">CARD 00 // ATLAS · FLAGSHIP</span><span style="border:1px solid rgba(217,255,74,.45); color:#d9ff4a; font-family:'Geist Mono',monospace; font-size:10px; padding:1px 6px;">M6</span></div>
+            <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:#9aa08c; line-height:2.1; margin-top:14px;">ROUTE &nbsp;<span style="color:#edf0e2;">/svg/atlas?demo=true</span><br>SIZE &nbsp;&nbsp;<span style="color:#edf0e2;">860×380 FIXED · &lt;30 KiB</span><br>LIMITS <span style="color:#edf0e2;">NO SCRIPT · NO FOREIGNOBJECT · NO EXTERNAL REFS</span><br>MOTION <span style="color:#edf0e2;">NONE | SUBTLE (TRANSFORM-ONLY)</span></div>
+          </div>
+          <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.09em; color:#9aa08c; line-height:1.9; border-top:1px solid rgba(237,240,226,.11); padding-top:12px;">CAVEAT PRINTED ON EVERY ATLAS: LONGEST STREAK IS WINDOW-BOUNDED · RHYTHM IS NOT A GITHUB RANK<br><span style="color:#d9ff4a;">M6 — SURVEY BEAM:</span> 70PX GRADIENT SWEEPS THE PLATE L→R · 7S · LINEAR · INFINITE · THE CARD BENEATH NEVER MOVES</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-top:20px;">
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 01 // ATLAS COMPACT</span><span>480×570 FIXED</span></div>
+          <img src="uploads/atlas-ember-compact.svg" alt="Atlas compact card, ember theme" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>MOBILE README</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 02 // PROFILE</span><span>RESPONSIVE</span></div>
+          <img src="uploads/profile-ember.svg" alt="Profile card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>24 REPOS · 312 FOLLOWERS · 487 STARS</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 03 // STREAK</span><span>RESPONSIVE</span></div>
+          <img src="uploads/streak-ember.svg" alt="Streak card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>WINDOW-BOUNDED · NO GUILT</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 04 // BREAKDOWN</span><span>RESPONSIVE</span></div>
+          <img src="uploads/breakdown-ember.svg" alt="Breakdown card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>EXACT COUNTS OR LABELLED PROFILE %</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 05 // RHYTHM</span><span>RESPONSIVE</span></div>
+          <img src="uploads/rhythm-ember.svg" alt="Rhythm card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>72/100 · NOT A RANK</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 06 // ACTIVITY</span><span>RESPONSIVE</span></div>
+          <img src="uploads/activity-ember.svg" alt="Activity card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>EXACT DATE WINDOW</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 07 // LANGUAGES</span><span>RESPONSIVE</span></div>
+          <img src="uploads/languages-ember.svg" alt="Languages card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>BYTE SHARE, NOT PROFICIENCY</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+        <div style="border:1px solid rgba(237,240,226,.13); background:#121310; padding:14px; transition:transform .18s ease, border-color .18s ease;" style-hover="transform:translateY(-3px); border-color:rgba(217,255,74,.45);">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-bottom:10px;"><span style="color:#ff9f68;">CARD 08 // PROJECTS</span><span>RESPONSIVE</span></div>
+          <img src="uploads/projects-ember.svg" alt="Projects card" style="display:block; width:100%; height:auto; background:#0d1117;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.1em; color:#9aa08c; margin-top:10px;"><span>SIX HEALTH STATES · UNKNOWN ≠ FINE</span><span style="color:#d9ff4a;">OPEN SVG ↗</span></div>
+        </div>
+      </div>
+      <div style="margin-top:26px;">
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#d9ff4a; margin-bottom:12px;">03 // ATLAS × 4 CARD THEMES — PAPER SHIPS FOR LIGHT READMES</div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;">
+          <div style="border:1px solid rgba(237,240,226,.13); padding:10px; background:#121310;"><img src="uploads/atlas-aurora.svg" alt="Atlas card, aurora theme" style="display:block; width:100%; height:auto;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:8px;">AURORA · #09131F</div></div>
+          <div style="border:1px solid rgba(237,240,226,.13); padding:10px; background:#121310;"><img src="uploads/atlas-midnight.svg" alt="Atlas card, midnight theme" style="display:block; width:100%; height:auto;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#9aa08c; margin-top:8px;">MIDNIGHT · #05070D</div></div>
+          <div style="border:1px solid rgba(35,38,28,.3); padding:10px; background:#e8ecd6;"><img src="uploads/atlas-paper.svg" alt="Atlas card, paper light theme" style="display:block; width:100%; height:auto;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#55651a; margin-top:8px;">PAPER · #F8FAFC · ON LIMESTONE</div></div>
+          <div style="border:1px solid rgba(255,122,69,.35); padding:10px; background:#121310;"><img src="uploads/atlas-ember.svg" alt="Atlas card, ember default theme" style="display:block; width:100%; height:auto;"><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#ff9f68; margin-top:8px;">EMBER · #0D1117 · DEFAULT</div></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:26px; padding-top:14px; border-top:1px solid rgba(237,240,226,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#9aa08c;">
+        <span>HOVER: PLATE LIFTS 3PX · CROP MARKS BRIGHTEN · TRANSFORM-ONLY, 180MS EASE</span>
+        <span>PLATES, NOT CARDS: THE PAGE FRAMES; THE SVG IS THE UNTOUCHED SPECIMEN</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section style="display:flex; align-items:flex-start; gap:36px; padding:60px; font-family:Geist,sans-serif;">
+  <div id="1a" style="position:relative; flex:0 0 auto;">
+    <div style="position:absolute; top:-30px; left:0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#7e879e;"><span style="border:1px solid rgba(255,209,102,.4); color:#ffd166; padding:2px 7px;">1A</span>&nbsp; HERO · 1440 · SHARED CHASSIS REV A</div>
+    <div style="width:1440px; box-sizing:border-box; padding:0; border:1px solid rgba(238,233,225,.13); background:radial-gradient(circle at 84% 10%, rgba(255,122,69,.07), transparent 30rem), radial-gradient(circle at 12% 92%, rgba(184,155,255,.07), transparent 28rem), linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px), #0c0d10; background-size:auto, auto, 42px 42px, 42px 42px, auto; color:#eee9e1;">
+      <!-- console header strip -->
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 48px; border-bottom:1px solid rgba(238,233,225,.11); font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#a9a198;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span style="width:6px; height:6px; background:#ffd166; box-shadow:0 0 14px #ffd166; display:inline-block; animation:sigPulse 2.4s ease-in-out infinite;"></span>
+          <span style="color:#ffd166;">OBSERVATORY · SHARED CHASSIS</span>
+        </div>
+        <div style="display:flex; gap:28px;">
+          <span><span style="color:#ff9f68;">STN A</span> COMMITATLAS · DISTRIBUTION</span>
+          <span><span style="color:#b89bff;">STN B</span> DEVELOPER-LENS · ANALYSIS</span>
+          <span>GRID 42PX · HAIRLINE 11% · SYNTHETIC OCTOCAT</span>
+        </div>
+      </div>
+      <!-- headline -->
+      <div style="padding:64px 48px 40px 48px; max-width:900px;">
+        <div style="display:flex; align-items:center; gap:10px; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#ffc857; text-transform:uppercase; margin-bottom:22px;">
+          <span style="width:6px; height:6px; background:#ffc857; box-shadow:0 0 14px #ffc857; display:inline-block;"></span>
+          Two open-source instruments · one body of work
+        </div>
+        <h1 style="margin:0; font-size:76px; line-height:.98; letter-spacing:-.062em; font-weight:620;">{{ hlA }}<br><span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#ffd166;">{{ hlB }}</span></h1>
+        <p style="margin:28px 0 0 0; font-size:19px; line-height:1.55; color:#a9a198; max-width:640px;">CommitAtlas renders the trail as embeddable evidence. developer-lens asks what shape the system became. One chassis carries both — the same survey grid, the same mono-over-sans, the same rule that an unknown signal never looks healthy.</p>
+      </div>
+      <!-- instrument fascia -->
+      <div style="position:relative; margin:0 48px; border:1px solid rgba(238,233,225,.13); background:rgba(17,17,15,.55);">
+        <span style="position:absolute; top:8px; left:8px; width:8px; height:8px; border-radius:50%; border:1px solid rgba(238,233,225,.25); background:linear-gradient(135deg, rgba(255,255,255,.08), transparent);"></span>
+        <span style="position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; border:1px solid rgba(238,233,225,.25); background:linear-gradient(45deg, rgba(255,255,255,.08), transparent);"></span>
+        <span style="position:absolute; bottom:8px; left:8px; width:8px; height:8px; border-radius:50%; border:1px solid rgba(238,233,225,.25); background:linear-gradient(215deg, rgba(255,255,255,.08), transparent);"></span>
+        <span style="position:absolute; bottom:8px; right:8px; width:8px; height:8px; border-radius:50%; border:1px solid rgba(238,233,225,.25); background:linear-gradient(305deg, rgba(255,255,255,.08), transparent);"></span>
+        <div style="display:grid; grid-template-columns:1.25fr 1fr 1fr 1fr; gap:0;">
+          <!-- M1 plotter -->
+          <div style="padding:26px 28px; border-right:1px solid rgba(238,233,225,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; margin-bottom:14px;"><span style="color:#ff9f68;">MOMENTUM PLOTTER · 28D</span><sc-if value="{{ showAnnotations }}" hint-placeholder-val="{{ true }}"><span style="border:1px solid rgba(255,209,102,.45); color:#ffd166; padding:1px 6px;">M1</span></sc-if></div>
+            <svg viewBox="0 0 336 96" width="100%" height="96" role="img" aria-label="28-day momentum trace, index 88, minus 1.1 percent vs prior 28 days">
+              <path d="M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30" fill="none" stroke="#ff7a45" stroke-opacity=".22" stroke-width="2"></path>
+              <path pathLength="100" style="stroke-dasharray:100; stroke-dashoffset:0; animation:penDraw 9s cubic-bezier(.4,0,.2,1) infinite;" d="M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30" fill="none" stroke="#ff7a45" stroke-width="2"></path>
+              <circle r="3.5" fill="#ffd166" style="offset-path:path('M4,74 L16,66 L28,70 L40,58 L52,63 L64,50 L76,56 L88,44 L100,50 L112,40 L124,47 L136,34 L148,42 L160,30 L172,39 L184,27 L196,36 L208,24 L220,32 L232,21 L244,30 L256,19 L268,28 L280,22 L292,30 L304,26 L316,33 L330,30'); animation:penMove 9s cubic-bezier(.4,0,.2,1) infinite;"></circle>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em;">88</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#a9a198;">−1.1% VS PRIOR 28D</span></div>
+          </div>
+          <!-- M2 rhythm gauge -->
+          <div style="padding:26px 28px; border-right:1px solid rgba(238,233,225,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; margin-bottom:14px;"><span style="color:#ffd166;">RHYTHM GAUGE</span><sc-if value="{{ showAnnotations }}" hint-placeholder-val="{{ true }}"><span style="border:1px solid rgba(255,209,102,.45); color:#ffd166; padding:1px 6px;">M2</span></sc-if></div>
+            <svg viewBox="0 0 220 122" width="100%" height="96" role="img" aria-label="Rhythm gauge reading 72 of 100">
+              <path d="M24,110 A86,86 0 0 1 196,110" fill="none" stroke="rgba(238,233,225,.14)" stroke-width="3"></path>
+              <path d="M24,110 A86,86 0 0 1 196,110" pathLength="100" stroke-dasharray="72 28" fill="none" stroke="#ffd166" stroke-opacity=".85" stroke-width="3"></path>
+              <g stroke="rgba(238,233,225,.3)" stroke-width="1.5">
+                <line x1="24" y1="110" x2="32" y2="110"></line><line x1="35.5" y1="67" x2="42.5" y2="71"></line><line x1="67" y1="35.5" x2="71" y2="42.5"></line><line x1="110" y1="24" x2="110" y2="32"></line><line x1="153" y1="35.5" x2="149" y2="42.5"></line><line x1="184.5" y1="67" x2="177.5" y2="71"></line><line x1="196" y1="110" x2="188" y2="110"></line>
+              </g>
+              <g style="transform-origin:110px 110px; transform:rotate(39.6deg); animation:needleSettle 2.2s cubic-bezier(.33,1,.68,1) .3s both;">
+                <line x1="110" y1="110" x2="110" y2="34" stroke="#eee9e1" stroke-width="2"></line>
+              </g>
+              <circle cx="110" cy="110" r="5" fill="#11110f" stroke="#eee9e1" stroke-width="1.5"></circle>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em;">72<span style="color:#a9a198; font-size:15px;">/100</span></span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#a9a198;">NOT A GITHUB RANK</span></div>
+          </div>
+          <!-- M3 heatmap -->
+          <div style="padding:26px 28px; border-right:1px solid rgba(238,233,225,.11);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; margin-bottom:14px;"><span style="color:#ff9f68;">DENSITY SURVEY</span><sc-if value="{{ showAnnotations }}" hint-placeholder-val="{{ true }}"><span style="border:1px solid rgba(255,209,102,.45); color:#ffd166; padding:1px 6px;">M3</span></sc-if></div>
+            <div style="height:96px; display:flex; align-items:center;">{{ heatGrid }}</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;"><span style="font-size:26px; font-weight:620; letter-spacing:-.03em;">77.8%</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#a9a198;">284 ACTIVE DAYS · 3.1/DAY</span></div>
+          </div>
+          <!-- M4 lens iris -->
+          <div style="padding:26px 28px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; margin-bottom:14px;"><span style="color:#b89bff;">SIGNAL LENS</span><sc-if value="{{ showAnnotations }}" hint-placeholder-val="{{ true }}"><span style="border:1px solid rgba(255,209,102,.45); color:#ffd166; padding:1px 6px;">M4</span></sc-if></div>
+            <svg viewBox="0 0 220 96" width="100%" height="96" role="img" aria-label="Lens reticle, archetype Force Multiplier">
+              <line x1="0" y1="48" x2="220" y2="48" stroke="rgba(198,207,233,.14)" stroke-width="1"></line>
+              <line x1="110" y1="0" x2="110" y2="96" stroke="rgba(198,207,233,.14)" stroke-width="1"></line>
+              <circle cx="110" cy="48" r="44" fill="none" stroke="rgba(184,155,255,.25)" stroke-width="1"></circle>
+              <circle cx="110" cy="48" r="30" fill="none" stroke="rgba(184,155,255,.5)" stroke-width="1.2" style="transform-origin:110px 48px; animation:irisBreathe 4.5s ease-in-out infinite;"></circle>
+              <circle cx="110" cy="48" r="16" fill="none" stroke="#b89bff" stroke-width="1.4"></circle>
+              <circle cx="110" cy="48" r="3.5" fill="#58e6be"></circle>
+            </svg>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;"><span style="font-size:20px; font-weight:620; letter-spacing:-.02em; color:#d9caff;">Force Multiplier</span><span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.1em; color:#a9a198;">HYPOTHESIS</span></div>
+          </div>
+        </div>
+        <!-- temperature ramp rail -->
+        <div style="border-top:1px solid rgba(238,233,225,.11); padding:16px 28px; display:flex; align-items:center; gap:18px;">
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; white-space:nowrap;">INSTRUMENT SCALE</span>
+          <div style="position:relative; flex:1; height:6px; background:linear-gradient(90deg, #ff7a45, #ffc857 38%, #ffd166 50%, #8fd8d2 62%, #b89bff);">
+            <span style="position:absolute; left:50%; top:-5px; width:2px; height:16px; background:#ffd166; box-shadow:0 0 12px #ffd166;"></span>
+          </div>
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ffd166; white-space:nowrap;">HINGE #FFD166 · SHARED</span>
+          <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198; white-space:nowrap;">WARM = ATLAS · COOL = LENS</span>
+        </div>
+      </div>
+      <!-- station tiles -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:32px 48px 40px 48px;">
+        <div style="border:1px solid rgba(255,122,69,.3); background:#191916; padding:26px 28px;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#ff9f68; margin-bottom:14px;"><span>STATION A · COMMITATLAS</span><span style="color:#a9a198;">DISTRIBUTION · R0</span></div>
+          <div style="font-size:26px; font-weight:620; letter-spacing:-.04em;">Your GitHub work, <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#ff7a45;">mapped clearly.</span></div>
+          <div style="display:flex; gap:26px; margin-top:18px;">
+            <div><div style="font-size:20px; font-weight:620;">1.1k</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#a9a198; margin-top:2px;">CONTRIBUTIONS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">284</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#a9a198; margin-top:2px;">ACTIVE DAYS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">731<span style="color:#a9a198;">/</span>160<span style="color:#a9a198;">/</span>194<span style="color:#a9a198;">/</span>57</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#a9a198; margin-top:2px;">CMT / PR / REV / ISS</div></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:18px; padding-top:14px; border-top:1px solid rgba(238,233,225,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#a9a198;">
+            <span style="width:8px; height:8px; border:1px solid rgba(238,233,225,.35); background:transparent; display:inline-block;"></span>
+            <span style="width:8px; height:8px; border:1px solid rgba(238,233,225,.35); background:transparent; display:inline-block;"></span>
+            0/2 CI PASSING · 2 UNAVAILABLE — SHOWN DARK, NEVER GREEN
+          </div>
+        </div>
+        <div style="border:1px solid rgba(184,155,255,.3); background:rgba(18,20,34,.78); border-radius:12px; box-shadow:0 24px 80px rgba(0,0,0,.28); padding:26px 28px;">
+          <div style="display:flex; justify-content:space-between; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#b89bff; margin-bottom:14px;"><span>STATION B · DEVELOPER-LENS</span><span style="color:#7e879e;">ANALYSIS · R12</span></div>
+          <div style="font-size:26px; font-weight:620; letter-spacing:-.04em; color:#f4f3fa;">Your development trail, <span style="font-family:Georgia,serif; font-style:italic; font-weight:400; color:#b89bff;">brought into focus.</span></div>
+          <div style="display:flex; gap:26px; margin-top:18px; color:#f4f3fa;">
+            <div><div style="font-size:20px; font-weight:620;">7.9</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">EFFECTIVE REPOS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">26</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">ACTIVE WEEKS</div></div>
+            <div><div style="font-size:20px; font-weight:620;">21</div><div style="font-family:'Geist Mono',monospace; font-size:9px; letter-spacing:.12em; color:#7e879e; margin-top:2px;">MERGED</div></div>
+          </div>
+          <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(198,207,233,.105); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.11em; color:#7e879e;">OBSERVED → DERIVED → HYPOTHESIS · EVERY NUMBER CARRIES ITS CAVEAT</div>
+        </div>
+      </div>
+      <!-- footer strip -->
+      <div style="display:flex; justify-content:space-between; padding:16px 48px; border-top:1px solid rgba(238,233,225,.11); font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em; color:#a9a198;">
+        <span>✓ PUBLIC BY DEFAULT &nbsp; ✓ HONEST FRESHNESS &nbsp; ✓ LIVE OR STATIC</span>
+        <span>REDUCED MOTION: COMPLETE STATIC PAGE · NOTHING ENTERS FROM INVISIBLE</span>
+      </div>
+    </div>
+  </div>
+  <sc-if value="{{ showAnnotations }}" hint-placeholder-val="{{ true }}">
+    <div style="width:400px; flex:0 0 auto; margin-top:0; border:1px solid rgba(238,233,225,.13); background:#0c0d10; padding:28px; color:#eee9e1;">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.13em; color:#ffd166; margin-bottom:20px;">MOTION BRIEF · HERO CHOREOGRAPHY</div>
+      <sc-for list="{{ motionSpecs }}" as="m" hint-placeholder-count="6">
+        <div style="display:flex; gap:14px; padding:14px 0; border-top:1px solid rgba(238,233,225,.09);">
+          <span style="flex:0 0 auto; align-self:flex-start; border:1px solid rgba(255,209,102,.45); color:#ffd166; font-family:'Geist Mono',monospace; font-size:10px; padding:1px 6px;">{{ m.id }}</span>
+          <div>
+            <div style="font-size:13px; font-weight:620; letter-spacing:-.01em;">{{ m.title }}</div>
+            <div style="font-size:12px; line-height:1.55; color:#a9a198; margin-top:4px;">{{ m.what }}</div>
+            <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.06em; color:#7e879e; margin-top:6px;">{{ m.spec }}</div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="margin-top:18px; padding:14px; border:1px solid rgba(255,209,102,.25); font-size:12px; line-height:1.55; color:#a9a198;"><span style="color:#ffd166; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.13em;">FRAME ZERO RULE</span><br>Every trace is pre-drawn at low opacity; every value is printed as text. Motion re-inks what is already legible — it is never load-bearing. <code style="font-family:'Geist Mono',monospace; font-size:11px;">prefers-reduced-motion</code> removes all animation and each element's inline style already IS the final state.</div>
+    </div>
+  </sc-if>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: &quot;1980px&quot;, &quot;height&quot;: &quot;1200px&quot;}, &quot;headlineVariant&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;map-then-ask&quot;, &quot;two-instruments&quot;], &quot;default&quot;: &quot;map-then-ask&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Hero&quot;}, &quot;showAnnotations&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Hero&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const variant = this.props.headlineVariant ?? "map-then-ask";
+    const heads = {
+      "map-then-ask": ["Map the work,", "then ask what it became."],
+      "two-instruments": ["Two instruments.", "One body of work."]
+    };
+    const [hlA, hlB] = heads[variant] || heads["map-then-ask"];
+    // deterministic density grid: 14 weeks x 7 days, warm ramp, date-order stagger
+    const cols = 14, rows = 7, cells = [];
+    for (let c = 0; c < cols; c++) {
+      const col = [];
+      for (let r = 0; r < rows; r++) {
+        const i = c * rows + r;
+        const v = (Math.sin(i * 1.7) * 0.5 + 0.5) * (Math.cos(i * 0.43) * 0.35 + 0.65);
+        const empty = (i * 7 + 3) % 23 === 0;
+        const color = empty ? "rgba(238,233,225,.07)" : (v > 0.72 ? "#ffd166" : v > 0.42 ? "#ff7a45" : "rgba(255,122,69,.45)");
+        col.push(React.createElement("span", {
+          key: r,
+          style: { width: 9, height: 9, background: color, opacity: 1, display: "block", animation: "cellIn .4s ease-out both", animationDelay: (i * 14) + "ms" }
+        }));
+      }
+      cells.push(React.createElement("div", { key: c, style: { display: "flex", flexDirection: "column", gap: 3 } }, col));
+    }
+    const heatGrid = React.createElement("div", { style: { display: "flex", gap: 3 } }, cells);
+    // static OG heat grid: 11 cols x 7 rows, larger cells, no animation
+    const ogCols = [];
+    for (let c = 0; c < 11; c++) {
+      const col = [];
+      for (let r = 0; r < 7; r++) {
+        const i = c * 7 + r;
+        const v = (Math.sin(i * 1.7) * 0.5 + 0.5) * (Math.cos(i * 0.43) * 0.35 + 0.65);
+        const empty = (i * 7 + 3) % 23 === 0;
+        const color = empty ? "rgba(238,233,225,.09)" : (v > 0.72 ? "#ffd166" : v > 0.42 ? "#ff7a45" : "rgba(255,122,69,.45)");
+        col.push(React.createElement("span", { key: r, style: { width: 26, height: 26, background: color, display: "block" } }));
+      }
+      ogCols.push(React.createElement("div", { key: c, style: { display: "flex", flexDirection: "column", gap: 7 } }, col));
+    }
+    const heatGridOg = React.createElement("div", { style: { display: "flex", gap: 7 } }, ogCols);
+    const motionSpecs = [
+      { id: "M1", title: "Plotter re-inks the momentum trace", what: "The full 28-day trace is visible at 22% opacity from frame zero. A bright stroke draws over it while a gold pen dot rides the path, then holds and re-arms.", spec: "5.5s draw / 9s cycle · cubic-bezier(.4,0,.2,1) · on load · stroke-dashoffset + offset-path" },
+      { id: "M2", title: "Rhythm needle overshoots and settles", what: "Needle sweeps from the −90° rest position past 72, overshoots to ~47°, corrects to 36°, lands on 39.6° (= 72/100). The printed value carries the meaning; the needle is theatre.", spec: "2.2s · cubic-bezier(.33,1,.68,1) · .3s delay · once, fill both · transform-only" },
+      { id: "M3", title: "Density survey fills in date order", what: "Cells are visible dim at frame zero, then brighten oldest-first, one column of days at a time. Empty days stay dark — missing is never zero.", spec: "400ms per cell · ease-out · 14ms stagger in date order · opacity from .14 to final" },
+      { id: "M4", title: "Lens iris breathes", what: "The middle reticle ring scales 1 → 1.045 and back, continuously — an instrument holding focus, not a pulse for attention.", spec: "4.5s · ease-in-out · infinite alternate · transform-only" },
+      { id: "M5", title: "Signal lamp pulses only when acquiring", what: "The gold header lamp pulses opacity as the 'acquiring' idiom. On the health panel this idiom is reserved for pending/stale; unavailable stays unlit and steady.", spec: "2.4s · ease-in-out · infinite · opacity 1 ↔ .35" },
+      { id: "S", title: "Full page, on scroll (annotated)", what: "The 42px survey grid parallaxes at 0.85× scroll rate; the instrument-scale pointer slides warm→cool as the reader crosses from Atlas sections into Lens sections.", spec: "background-position via scroll · linear · passive listener, transform-only fallback" }
+    ];
+    return { hlA, hlB, heatGrid, heatGridOg, motionSpecs, showAnnotations: this.props.showAnnotations ?? true };
+  }
+}
+</script>
+</body>
+</html>

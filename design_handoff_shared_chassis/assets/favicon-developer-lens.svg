@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Developer Lens mark: reticle">
+  <title>Developer Lens</title>
+  <desc>A circular reticle: outer ring, violet iris ring, aqua focus dot — the lens mark.</desc>
+  <circle cx="8" cy="8" r="6" fill="none" stroke="#f4f3fa" stroke-width="1.6"></circle>
+  <circle cx="8" cy="8" r="2.6" fill="none" stroke="#b89bff" stroke-width="1.4"></circle>
+  <circle cx="8" cy="8" r="1" fill="#58e6be"></circle>
+</svg>
