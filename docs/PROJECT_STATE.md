@@ -90,8 +90,11 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   request, so the four-clause `if` that checks `head_repository.full_name` has never been exercised
   by a real fork event. It is reviewed, not demonstrated.
 - The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
-- Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
-  Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
+- Latest executable/static-producer checkpoint: `e17e8664588f50418ac99b09b74ba13c52bd98c4` (PR #77,
+  first bullet above), which changed `packages/svg` and `packages/static` and was proven by hosted
+  CI, Deploy, and the profile refresh run it feeds. The earlier checkpoint here was
+  `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`, whose exact-head hosted
+  [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
   passed. At the time, that follow-up changed only the generated project-catalog label and Action
   bundle, so the then-current Sites deployment stayed correctly bound to the preceding application
   source. This is a historical note; Sites is no longer the canonical host.
@@ -105,9 +108,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `4651009639e23aad79e106cbdb6ec3bcd2749491`.
-- Exact profile [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
-  passed every generation, validation, catalog, commit, and push step and produced that bot snapshot.
+- Public profile repository head: `d9f03f106865ac7a1ce76e2bea31d0156e06114d` — the bot commit
+  produced by the paired-theme refresh above.
+- Exact profile [refresh run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123)
+  passed both generation passes, both bundle validations, the catalog, commit, and push steps and
+  produced that bot snapshot. The prior checkpoint was `4651009` from
+  [run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680).
 - Repository description, GPL-3.0-only licence, and 20 focused topics are published. The homepage
   now points at the Workers origin; it previously still named the retired Sites mirror.
 - The public surface is discoverable and self-describing: `/robots.txt`, `/sitemap.xml`, schema.org
