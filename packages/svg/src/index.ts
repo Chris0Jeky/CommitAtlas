@@ -560,9 +560,11 @@ function sourceMarker(
 
 function cardMotionStyle(motion: RenderOptions["motion"]): string {
   if (motion !== "subtle") return "";
+  // Fill-mode none with a delay, for the same reason as atlasMotionStyle: a renderer that never
+  // runs CSS animations (SVG through <img>) must show the finished card, not a frozen keyframe.
   return `<style>
 @keyframes card-enter{from{transform:translateY(4px)}to{transform:translateY(0)}}
-.card-enter{transform-box:fill-box;transform-origin:center;animation:card-enter .38s ease-out both}
+.card-enter{transform-box:fill-box;transform-origin:center;animation:card-enter .38s ease-out .06s}
 @media (prefers-reduced-motion:reduce){.card-enter{animation:none!important}}
 </style>`;
 }
@@ -888,11 +890,13 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
   if (motion !== "subtle") return "";
   // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
-  // pipeline — and `both` holds the `from` state there forever. Every `from` state must therefore
-  // read as a finished card: translation only, never opacity or scale.
+  // pipeline — so the card must be finished before any keyframe applies. That means fill-mode
+  // none with a small delay, never "both": a renderer that ignores or freezes the animation sits
+  // in the delay phase and shows the natural, final geometry, while an animating renderer still
+  // gets the rise. Bars overlay static tracks, so their pre-run state must be exact, not close.
   return `<style>
 @keyframes atlas-rise{from{transform:translateY(5px)}to{transform:translateY(0)}}
-.atlas-enter{animation:atlas-rise .42s ease-out both}.atlas-delay{animation-delay:.1s}.atlas-bar{transform-box:fill-box;transform-origin:center bottom;animation:atlas-rise .55s ease-out both}.atlas-cell{animation:atlas-rise .32s ease-out both}
+.atlas-enter{animation:atlas-rise .42s ease-out .06s}.atlas-delay{animation-delay:.16s}.atlas-bar{animation:atlas-rise .55s ease-out .06s}.atlas-cell{animation:atlas-rise .32s ease-out .06s}
 @media (prefers-reduced-motion:reduce){.atlas-enter,.atlas-bar,.atlas-cell{animation:none!important}}
 </style>`;
 }
