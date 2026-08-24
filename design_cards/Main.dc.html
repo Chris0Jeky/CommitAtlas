@@ -1,0 +1,203 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #0e0f0d; }
+    a { color: #d9ff4a; } a:hover { color: #e9ff8a; }
+    /*
+      System stack only, deliberately. These cards ship as SVG inside an <img> on GitHub,
+      where no webfont can load and an embedded @font-face would blow the <30 KiB budget.
+      Geist is the chassis face on the web surface; here the design has to survive
+      substitution, so it is drawn at the stack that actually renders.
+    */
+    .s { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif; }
+    .m { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+  </style>
+</helmet>
+
+<div class="s" style="width: 860px; height: 380px; box-sizing: border-box; position: relative; background: #121310; color: #edf0e2; overflow: hidden; clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);">
+
+  <!-- left-edge hazard strip: the chassis mark that says "instrument" -->
+  <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(45deg, rgba(217,255,74,.42) 0 5px, transparent 5px 11px);"></div>
+
+  <div style="display: flex; flex-direction: column; height: 100%; padding: 18px 24px 16px 34px; box-sizing: border-box; gap: 0;">
+
+    <!-- ── header ─────────────────────────────────────────────── -->
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 30px; height: 30px; border: 1.5px solid #ff7a45; position: relative; flex: 0 0 auto;">
+          <div style="position: absolute; right: 3px; top: 3px; width: 10px; height: 10px; background: #ff7a45;"></div>
+          <div style="position: absolute; left: 4px; bottom: 4px; width: 5px; height: 5px; background: #ffd166;"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="font-size: 17px; font-weight: 640; letter-spacing: -0.035em; line-height: 1;">Synthetic preview</div>
+          <div class="m" style="font-size: 10px; letter-spacing: 0.1em; color: #9aa08c; line-height: 1;">@octocat</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+        <div class="m" style="font-size: 9px; letter-spacing: 0.16em; color: #d9ff4a; border: 1px solid rgba(217,255,74,.4); padding: 2px 7px;">SYNTHETIC</div>
+        <div class="m" style="font-size: 9px; letter-spacing: 0.12em; color: #9aa08c;">365D &middot; 2025-08-25 &rarr; 2026-08-24</div>
+      </div>
+    </div>
+
+    <!-- ── stat row ───────────────────────────────────────────── -->
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin-top: 16px; padding-bottom: 14px; border-bottom: 1px solid rgba(237,240,226,.13);">
+      <sc-for list="{{stats}}" as="s" hint-placeholder-count="6">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-size: 23px; font-weight: 640; letter-spacing: -0.04em; line-height: 1;">{{s.value}}</div>
+          <div class="m" style="font-size: 8.5px; letter-spacing: 0.13em; color: #9aa08c; line-height: 1;">{{s.label}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- ── body: density survey | contribution mix ─────────────── -->
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 268px; gap: 26px; margin-top: 15px; flex-grow: 1;">
+
+      <div style="display: flex; flex-direction: column; min-width: 0;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px;">
+          <div class="m" style="font-size: 9px; letter-spacing: 0.15em; color: #ff9f68;">01 // CONTRIBUTION DENSITY</div>
+          <div class="m" style="font-size: 9px; letter-spacing: 0.1em; color: #9aa08c;">7 PEAK &middot; 2025-08-26</div>
+        </div>
+
+        <!-- 53 weeks x 7 days. One hue, four steps: more is darker-to-brighter, never a
+             different colour, so it can never be read as a category. -->
+        <div style="display: grid; grid-template-rows: repeat(7, 6px); grid-auto-flow: column; grid-auto-columns: 6px; gap: 2px;">
+          <sc-for list="{{days}}" as="d" hint-placeholder-count="371">
+            <div style="width: 6px; height: 6px; background: {{d.fill}};"></div>
+          </sc-for>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 11px;">
+          <div class="m" style="font-size: 8.5px; letter-spacing: 0.1em; color: #9aa08c;">LESS</div>
+          <div style="display: flex; align-items: center; gap: 3px;">
+            <div style="width: 6px; height: 6px; background: #1c1f19;"></div>
+            <div style="width: 6px; height: 6px; background: #5c2a17;"></div>
+            <div style="width: 6px; height: 6px; background: #97431f;"></div>
+            <div style="width: 6px; height: 6px; background: #d05e2f;"></div>
+            <div style="width: 6px; height: 6px; background: #ff7a45;"></div>
+          </div>
+          <div class="m" style="font-size: 8.5px; letter-spacing: 0.1em; color: #9aa08c;">MORE</div>
+          <div style="flex-grow: 1;"></div>
+          <div class="m" style="font-size: 8.5px; letter-spacing: 0.1em; color: #9aa08c;">284 ACTIVE OF 365</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; min-width: 0;">
+        <div class="m" style="font-size: 9px; letter-spacing: 0.15em; color: #58e6be; margin-bottom: 9px;">02 // CONTRIBUTION MIX</div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <sc-for list="{{mix}}" as="m" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                <div class="m" style="font-size: 9px; letter-spacing: 0.09em; color: #9aa08c;">{{m.label}}</div>
+                <div class="m" style="font-size: 10px; font-weight: 600; color: #edf0e2;">{{m.count}}</div>
+              </div>
+              <!-- one ink for all four: the bar LENGTH is the variable, so colour is free to
+                   stay constant and stop competing with the calendar beside it -->
+              <div style="height: 4px; background: rgba(237,240,226,.09); position: relative;">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{m.pct}}; background: #58e6be;"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.09em; color: #9aa08c; margin-top: 10px; line-height: 1.6;">EXACT COUNTS &middot; NOT PROFILE %</div>
+      </div>
+    </div>
+
+    <!-- ── reading row ────────────────────────────────────────── -->
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(237,240,226,.13);">
+
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <div class="m" style="font-size: 9px; letter-spacing: 0.13em; color: #9aa08c; white-space: nowrap;">03 // RHYTHM</div>
+        <div style="display: flex; align-items: baseline; gap: 5px;">
+          <div style="font-size: 19px; font-weight: 640; letter-spacing: -0.035em; line-height: 1;">72</div>
+          <div class="m" style="font-size: 9px; color: #9aa08c;">/100</div>
+        </div>
+        <div style="display: flex; gap: 3px; align-items: center;">
+          <div style="width: 7px; height: 7px; background: #d9ff4a;"></div>
+          <div style="width: 7px; height: 7px; background: #d9ff4a;"></div>
+          <div style="width: 7px; height: 7px; background: #d9ff4a;"></div>
+          <div style="width: 7px; height: 7px; border: 1px solid rgba(237,240,226,.3); box-sizing: border-box;"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <div class="m" style="font-size: 9px; letter-spacing: 0.13em; color: #9aa08c; white-space: nowrap;">04 // MOMENTUM</div>
+        <div style="font-size: 19px; font-weight: 640; letter-spacing: -0.035em; line-height: 1;">88</div>
+        <div class="m" style="font-size: 9px; letter-spacing: 0.06em; color: #9aa08c;">&minus;1.1% VS PRIOR 28D</div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <div class="m" style="font-size: 9px; letter-spacing: 0.13em; color: #9aa08c; white-space: nowrap;">05 // PROJECTS</div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+          <div style="font-size: 19px; font-weight: 640; letter-spacing: -0.035em; line-height: 1;">0</div>
+          <div class="m" style="font-size: 9px; color: #9aa08c;">/2 CI</div>
+        </div>
+        <!-- an unconfigured probe is a dashed empty socket, never a green dot -->
+        <div style="display: flex; gap: 5px; align-items: center;">
+          <div style="width: 8px; height: 8px; border: 1.3px dashed rgba(237,240,226,.42); box-sizing: border-box;"></div>
+          <div style="width: 8px; height: 8px; border: 1.3px dashed rgba(237,240,226,.42); box-sizing: border-box;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── footer caveat ──────────────────────────────────────── -->
+    <div class="m" style="font-size: 8px; letter-spacing: 0.1em; color: #6f7565; margin-top: 11px; line-height: 1;">
+      LONGEST STREAK IS WINDOW-BOUNDED &nbsp;&middot;&nbsp; RHYTHM IS NOT A GITHUB RANK &nbsp;&middot;&nbsp; PUBLIC CONTRIBUTIONS ONLY
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":"860px","height":"380px"}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // The deterministic synthetic octocat window the routes actually render, reproduced by the
+    // same formula as packages/github/src/demo.ts so the design is drawn on real values.
+    const N = 365;
+    const counts = [];
+    for (let o = 0; o < N; o += 1) counts.push((o * 7 + Math.floor(o / 9)) % 8);
+
+    // Single hue, four steps. Level 0 is a NEUTRAL socket, not a faint tint of the activity
+    // colour — a pale ember square reads as a little activity, and a day with none had none.
+    const ramp = ['#5c2a17', '#97431f', '#d05e2f', '#ff7a45'];
+    const socket = '#1c1f19';
+
+    // 2025-08-25 is a Monday, so the first column is partial. The gap is left in rather than
+    // back-filled: a rendered zero and an unobserved day are different claims.
+    const lead = 1;
+    const days = [];
+    for (let i = 0; i < lead; i += 1) days.push({ fill: 'transparent' });
+    for (const count of counts) {
+      const level = count === 0 ? 0 : Math.min(4, Math.ceil(count / 2));
+      days.push({ fill: level === 0 ? socket : ramp[level - 1] });
+    }
+    while (days.length % 7 !== 0) days.push({ fill: 'transparent' });
+
+    const mix = [
+      { label: 'COMMITS', count: '731', pct: '100%' },
+      { label: 'PULL REQUESTS', count: '160', pct: '21.9%' },
+      { label: 'REVIEWS', count: '194', pct: '26.5%' },
+      { label: 'ISSUES', count: '57', pct: '7.8%' },
+    ];
+
+    const stats = [
+      { value: '1.1k', label: 'CONTRIBUTIONS' },
+      { value: '284', label: 'ACTIVE DAYS' },
+      { value: '77.8%', label: 'DENSITY' },
+      { value: '3.13', label: 'AVERAGE / DAY' },
+      { value: '4d', label: 'CURRENT STREAK' },
+      { value: '7d', label: 'LONGEST IN WINDOW' },
+    ];
+
+    return { days, mix, stats };
+  }
+}
+</script>
+</body>
+</html>

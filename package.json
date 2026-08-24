@@ -1,6 +1,6 @@
 {
   "name": "commit-atlas",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Accessible GitHub portfolio SVG cards, a truthful project-health dashboard, and a credential-free static generator.",
   "keywords": [
     "github",
