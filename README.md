@@ -16,10 +16,13 @@ live portfolio Studio.
 
 </div>
 
-> **v0.1 release candidate.** The hosted API and Studio, eight-card static generator with optional
-> same-snapshot responsive Atlas and project-catalog companions, and bundled
-> Node 24 Action are implemented. The GitHub `v0.1.0` release and npm publication are still separate
-> release decisions and are not claimed here.
+> **v0.1.0 is released.** The hosted API and Studio, the eight-card static generator with optional
+> same-snapshot responsive Atlas and project-catalog companions, and the bundled Node 24 Action are
+> implemented, deployed, and tagged. Every push to `main` that passes CI deploys to Cloudflare
+> Workers and is verified by seventeen probes against the origin it just published to.
+>
+> **npm publication is still not claimed.** The packages are built and pack-verified but are not on
+> the registry, and the README will not say otherwise until a registry lookup succeeds.
 
 ## The complete operating picture
 

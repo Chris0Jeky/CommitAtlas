@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-23 02:20 BST
+Last verified: 2026-08-24 12:45 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,12 +12,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
-- Exact deployed application implementation: **published by a local `npm run deploy` from the
-  `feat/cloudflare-workers-deploy` branch, not by the Deploy workflow.** The workflow exists and is
-  reviewed but has never published: the two Cloudflare secrets are not configured, so it emits a
-  notice and skips. Once they are added it will publish only a commit whose `CI` push run on `main`
-  concluded successfully, and a manual dispatch will run the full gate itself before deploying — but
-  that property is not yet demonstrated by a run.
+- **Push-to-deploy is live and demonstrated by real runs, not just reviewed.** `CLOUDFLARE_API_TOKEN`
+  and `CLOUDFLARE_ACCOUNT_ID` are configured as repository secrets, and the Deploy workflow has
+  published from `main` several times: it checks out the exact commit whose `CI` push run concluded
+  successfully, builds, deploys, and then runs the post-deploy probes against the origin Wrangler
+  reported, all green.
+- The gated-skip path is demonstrated too, from before the secrets were installed:
+  [run 32718000929](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32718000929) resolved
+  credentials as absent, skipped all seven deploying steps, emitted a notice, and concluded
+  **success**. An unconfigured fork gets a clean skip, not a red workflow.
+- The fork-provenance guard is still evidence-free by construction: no fork has opened a pull
+  request, so the four-clause `if` that checks `head_repository.full_name` has never been exercised
+  by a real fork event. It is reviewed, not demonstrated.
 - The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
 - Latest executable/static-producer checkpoint: `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`.
   Exact-head hosted [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
@@ -37,8 +43,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Public profile repository head: `4651009639e23aad79e106cbdb6ec3bcd2749491`.
 - Exact profile [refresh run 32429850680](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32429850680)
   passed every generation, validation, catalog, commit, and push step and produced that bot snapshot.
-- Repository description, production homepage, GPL-3.0-only licence, and 14 focused topics are
-  published. There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
+- Repository description, GPL-3.0-only licence, and 20 focused topics are published. The homepage
+  now points at the Workers origin; it previously still named the retired Sites mirror.
+- The public surface is discoverable and self-describing: `/robots.txt`, `/sitemap.xml`, schema.org
+  JSON-LD on the landing page, per-page canonical URLs, a favicon, and a theme colour. The
+  canonical origin is a Wrangler `vars` entry rather than a constant, so a fork advertises itself
+  rather than this deployment.
+- `/robots.txt` is served by the Worker alone. Before the route existed, Cloudflare's edge answered
+  that path itself with a 1248-byte managed Content Signals Policy block, and the documented
+  behaviour for a 200 from the origin is that the managed block is prepended to it. Measured after
+  the first deploy, it is not: the body is 253 bytes and is exactly the Worker's output. The
+  synthesised block appears only when the origin serves no robots.txt of its own.
+- There is no `HUMAN_TODO.md`; `.agent-harness/tier.json` declares `human_todo: null`.
 
 ## What now exists
 
@@ -180,8 +196,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `open_issues_count` counts pull requests too; `projects.md` already said `open issues/PRs` and is
   unchanged. `PROJECT_CATALOG_VERSION` is therefore `2`. The consumer's only compatibility gate is
   that number, so leaving it at `1` would let a version-1 reader accept a shape it cannot validate.
-  Version 2 is meant to cover the combined shape change including #53's added action keys, so #53
-  must land under version 2 rather than bump again.
+  Version 2 covers the combined shape change: #53's added `host`/`external` action keys landed
+  first, then #57 bumped the version once for both, so there is no second bump to make.
+  The consumer in the profile repository must accept version 2 before the pinned Action SHA in its
+  workflow is advanced; that ordering is tracked in #60 and is the one cross-repo obligation left.
 - The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
   reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
   GitHub `v0.1.0` and optional npm publication separately.

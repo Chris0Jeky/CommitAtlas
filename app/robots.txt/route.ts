@@ -27,11 +27,13 @@ import { absoluteUrl } from "@/lib/site";
  *    fetch robots.txt for the URL they are previewing. Landing-page unfurls are unaffected — the
  *    `og:image` is `/og.png`, a static asset outside `/api/`.
  *
- * Note also that this origin sits behind Cloudflare, which prepends its own managed Content Signals
- * Policy block to a 200 robots.txt. The body a crawler receives is therefore this text plus that
- * block, so this module is the source of truth for CommitAtlas's own directives but not for the
- * complete response. Check the served body after a deploy rather than assuming it matches this file
- * byte for byte.
+ * One thing that was worth checking and turned out not to be true: while this route did not exist,
+ * Cloudflare's edge answered `/robots.txt` itself with a 1248-byte managed Content Signals Policy
+ * block, and the documented behaviour for a 200 from the origin is that the managed block is
+ * prepended. Measured after the first deploy of this route, it is not: the served body is 253 bytes
+ * and is exactly what this function returns. The synthesised block appears only when the origin has
+ * no robots.txt of its own. Re-check after any change to the zone's bot settings rather than
+ * assuming either way.
  */
 export function GET(): Response {
   const body = [
