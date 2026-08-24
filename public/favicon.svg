@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="CommitAtlas">
+  <title>CommitAtlas</title>
+  <!--
+    Deliberately built from four shapes. A favicon is read at 16px, where hairlines disappear and
+    anything busier than this collapses into a smudge, so the survey grid is a single low-contrast
+    cross rather than a real grid and the trace is one thick polyline.
+  -->
+  <rect width="32" height="32" rx="7" fill="#11110f"/>
+  <path d="M16 6.5v19M6.5 16h19" stroke="#ffc857" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M6.5 22.5 12 17l4.5 4 9-11.5" fill="none" stroke="#ff7a45" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="25.5" cy="9.5" r="3" fill="#ffc857"/>
+</svg>

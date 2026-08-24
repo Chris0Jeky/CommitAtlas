@@ -18,5 +18,16 @@
   // CommitAtlas renders public GitHub data and needs no secrets to serve every
   // documented surface. GITHUB_TOKEN is optional and, when used, is installed
   // out of band with `wrangler secret put GITHUB_TOKEN` — never committed.
+  //
+  // If you are deploying a fork, set SITE_ORIGIN to your own origin:
+  //
+  //   "vars": { "SITE_ORIGIN": "https://commit-atlas.<your-subdomain>.workers.dev" }
+  //
+  // It is the canonical URL this deployment advertises — in rel=canonical, the sitemap, the
+  // robots.txt Sitemap line, and the JSON-LD. Left unset it defaults to this project's own
+  // origin, which means a fork would tell crawlers the canonical copy of its pages lives
+  // somewhere else and quietly deindex itself. It is deliberately a var rather than something
+  // read from the request Host: a canonical URL has to be stable, and a per-request one would
+  // name whatever alias a visitor arrived on.
   "vars": {}
 }

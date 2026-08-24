@@ -1,5 +1,12 @@
 import Link from "next/link";
 import { LandingCardShowcase, LandingHeroCard } from "./card-showcase";
+import { StructuredData } from "./structured-data";
+import type { Metadata } from "next";
+import { PAGE_ROBOTS } from "@/lib/site";
+
+// Only the indexing directive. Title, description, canonical, and the social cards all come from
+// the root layout, which already describes this page.
+export const metadata: Metadata = { robots: PAGE_ROBOTS };
 
 const capabilities = [
   {
@@ -22,6 +29,7 @@ const capabilities = [
 export default function Home() {
   return (
     <main>
+      <StructuredData />
       <nav className="nav" aria-label="Primary navigation">
         <a className="brand" href="#top" aria-label="CommitAtlas home">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>

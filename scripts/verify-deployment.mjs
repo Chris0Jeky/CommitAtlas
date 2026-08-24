@@ -34,6 +34,13 @@ const SVG_CARDS = [
 ];
 
 /** @type {{name: string, run: (fetchPath: (p: string) => Promise<Response>) => Promise<void>}[]} */
+/**
+ * The sitemap URL robots.txt advertised, captured by the robots probe and cross-checked by the
+ * sitemap probe. Deliberately not compared against the origin under test: the served files name
+ * the canonical origin, which differs from a fork's own subdomain or a custom domain.
+ */
+let advertisedSitemap = null;
+
 const checks = [
   {
     name: "health endpoint reports ok",
@@ -51,6 +58,74 @@ const checks = [
       assert(response.status === 200, `expected 200, got ${response.status}`);
       const html = await response.text();
       assert(/<title>CommitAtlas/.test(html), "landing page is missing its CommitAtlas title");
+    },
+  },
+  {
+    name: "robots.txt is served and keeps crawlers off the render endpoints",
+    async run(get) {
+      const response = await get("/robots.txt");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      assert(/^text\/plain\b/i.test(contentType), `expected text/plain, got "${contentType}"`);
+      const body = await response.text();
+      assert(/^Disallow: \/api\/$/m.test(body), "robots.txt does not disallow the render endpoints");
+      assert(!/^Disallow: \/$/m.test(body), "robots.txt deindexes the whole site");
+      // Deliberately NOT `new URL("/sitemap.xml", base)`. The served robots.txt names the
+      // canonical SITE_ORIGIN by design, so on a fork's own workers.dev subdomain, or behind a
+      // custom domain reached via DEPLOY_BASE_URL, `base` and the canonical origin differ and an
+      // equality check would fail a perfectly healthy deployment. That is the exact inverse of
+      // the false pass this script exists to prevent. Assert the shape, then cross-check that
+      // robots.txt and the sitemap agree with each other, which is origin-independent and is the
+      // property that actually matters.
+      const sitemapLine = /^Sitemap: (https:[^\s]+\/sitemap\.xml)$/m.exec(body);
+      assert(sitemapLine, "robots.txt names no https sitemap");
+      advertisedSitemap = sitemapLine[1];
+    },
+  },
+  {
+    name: "sitemap.xml lists the canonical pages and nothing dynamic",
+    async run(get) {
+      const response = await get("/sitemap.xml");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      assert(/^application\/xml\b/i.test(contentType), `expected application/xml, got "${contentType}"`);
+      const body = await response.text();
+      const locations = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+      assert(locations.length === 2, `expected 2 sitemap entries, got ${locations.length}`);
+      assert(!/\/api\//.test(body), "sitemap advertises a dynamic render endpoint as a document");
+      // Every entry must be absolute and on one origin, or a crawler reads the set as duplicates.
+      for (const location of locations) {
+        assert(
+          location.startsWith(new URL(locations[0]).origin),
+          `sitemap mixes origins: ${location}`,
+        );
+      }
+      // And that origin must be the one robots.txt advertised. This is the real invariant: the
+      // two files must describe the same site as each other, whatever origin that is.
+      if (advertisedSitemap) {
+        assert(
+          locations[0].startsWith(new URL(advertisedSitemap).origin),
+          `robots.txt advertises ${advertisedSitemap} but the sitemap lists ${locations[0]}`,
+        );
+      }
+    },
+  },
+  {
+    name: "the landing page carries structured data with no invented rating",
+    async run(get) {
+      const response = await get("/");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      const html = await response.text();
+      const block = /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html);
+      assert(block, "no JSON-LD block was rendered");
+      const graph = JSON.parse(block[1]);
+      assert(graph["@context"] === "https://schema.org", "JSON-LD is not schema.org");
+      const software = graph["@graph"].find((node) => node["@type"] === "SoftwareApplication");
+      assert(software, "JSON-LD has no SoftwareApplication node");
+      assert(
+        software.aggregateRating === undefined && software.review === undefined,
+        "JSON-LD claims a rating or review the project cannot evidence",
+      );
     },
   },
   {

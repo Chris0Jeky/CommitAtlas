@@ -68,6 +68,32 @@ reports for that deployment, which is correct for any account.
 
 Never commit either value. `wrangler.jsonc` deliberately carries an empty `vars` block.
 
+## Deploying a fork: set your canonical origin
+
+If you deploy your own copy, set `SITE_ORIGIN` in `wrangler.jsonc` to the origin your Worker
+actually answers on:
+
+```jsonc
+"vars": { "SITE_ORIGIN": "https://commit-atlas.<your-subdomain>.workers.dev" }
+```
+
+This is the canonical URL your deployment advertises — in `rel=canonical`, `/sitemap.xml`, the
+`Sitemap:` line of `/robots.txt`, and the landing page's JSON-LD. **Leave it unset and your
+deployment tells crawlers that the canonical copy of its pages lives on this project's origin**,
+which deindexes your own site in favour of someone else's.
+
+It is deliberately deployment configuration rather than something read from the request `Host`
+header. A canonical URL has to be stable, and a per-request one would name whatever alias a
+visitor arrived on — including a preview hostname, which is the duplicate-content problem
+`rel=canonical` exists to solve. Anything unparseable, non-`https`, or carrying a path, query, or
+fragment falls back to the default rather than emitting a broken canonical URL on every page at
+once.
+
+This is separate from `DEPLOY_BASE_URL` above: `SITE_ORIGIN` is what the site *says about itself*,
+`DEPLOY_BASE_URL` is what the post-deploy check *probes*. The verifier does not require them to
+match the origin it was pointed at — it checks that `robots.txt` and `sitemap.xml` agree with each
+other, which holds on any host.
+
 ## The optional GitHub token
 
 Anonymous GitHub requests are rate-limited, and CommitAtlas reports that honestly rather than
