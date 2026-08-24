@@ -330,7 +330,8 @@ test("renders empty languages and partial projects without inventing actions or 
   }, () => request("/api/v1/cards/languages.svg?user=octocat&demo=false&theme=aurora&motion=none"));
   assert.equal(languageResponse.status, 200);
   const languageBody = await languageResponse.text();
-  assert.match(languageBody, />LANGUAGES</);
+  // The section heading carries a chassis numeral now.
+  assert.match(languageBody, />01 \/\/ LANGUAGES</);
   assert.doesNotMatch(languageBody, /Unknown language|NaN|undefined/);
 
   const projectsResponse = await request(

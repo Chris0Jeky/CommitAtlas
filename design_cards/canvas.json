@@ -1,0 +1,54 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Shipped \u2014 dark (theme=ember)",
+      "x": 0,
+      "y": 0,
+      "w": 880,
+      "h": 400
+    },
+    {
+      "file": "LightPair.dc.html",
+      "title": "Shipped \u2014 light (theme=paper)",
+      "x": 980,
+      "y": 0,
+      "w": 880,
+      "h": 400
+    },
+    {
+      "file": "DensityRamp.dc.html",
+      "title": "The density-ramp fix",
+      "x": 0,
+      "y": 560,
+      "w": 920,
+      "h": 820
+    }
+  ],
+  "annotations": [
+    {
+      "id": "shipped-note",
+      "x": 1960,
+      "y": 0,
+      "w": 330,
+      "text": "SHIPPED IN v0.3.0\n\nDirection A, built into all eight cards. These two are one deliverable: the Studio emits a <picture> block keyed on prefers-color-scheme, so a README serves whichever matches the reader instead of pinning one and being wrong for half the audience.\n\nTwo things changed between this drawing and the shipped card, both found by looking at it at real size rather than by testing:\n\nThe hazard strip is quieter \u2014 4px at 18% rather than 6px at 42%. It works on a 1440px fascia as one element among many; repeated down a README at 720px it was the loudest thing on screen while carrying no information.\n\nThe font stacks use single quotes. Double quotes inside a double-quoted XML attribute closed font-family= early and produced malformed SVG."
+    },
+    {
+      "id": "ramp-note",
+      "x": 1000,
+      "y": 560,
+      "w": 340,
+      "text": "THE DEFECT, AND WHY IT WAS WORSE THAN IT LOOKED\n\nLevels 2-4 were drawn in accent / positive / warning \u2014 the exact three colours the contribution mix used one panel to the right. A square's colour named a category it did not mean.\n\nUnderneath that: hue has no order. Nothing about orange to green to yellow says 'more', and in greyscale the old ramp inverted between levels 3 and 4, so it failed outright without colour.\n\nShipped as one hue at four steps plus a neutral socket. Every adjacent step separates by at least 1.25x in luminance, asserted in svg.test.mjs, and densityFill resolves a non-finite level to the socket rather than to the maximum."
+    },
+    {
+      "id": "font-note",
+      "x": 1000,
+      "y": 1000,
+      "w": 340,
+      "text": "ON THE TYPEFACE\n\nA system stack, not Geist, and deliberately so. These ship as SVG inside an <img> on GitHub, where no webfont loads and an embedded @font-face would spend the whole 30 KiB budget before any data was drawn.\n\nThe card has to survive font substitution on whatever machine renders it, so it is drawn at the stack that actually paints."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

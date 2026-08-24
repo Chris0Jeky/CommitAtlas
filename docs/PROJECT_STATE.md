@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 16:40 BST
+Last verified: 2026-08-24 17:30 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -204,6 +204,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - 2026-08-24: Enter inside a Studio text field submits the intended action. All five in-form
   buttons declare an explicit `type`, and the first submit in DOM order is Preview atlas — not
   Remove, which is what an implicit type on a destructive button would have caused.
+- **2026-08-24: the two card defects are fixed and the eight cards are redesigned.** The density
+  ramp is one hue at four steps plus a neutral socket, asserted monotonic with a ≥1.25× separation
+  at every step so it survives greyscale, and `densityFill` resolves a non-finite level to the
+  socket rather than to the maximum. The contribution mix is one ink with bar length as the only
+  variable. Every theme names a partner in the opposite colour scheme, and the Studio emits a
+  `<picture>` block so a README serves the reader's own scheme. Verified by rendering all eight
+  cards as `<img>` on both GitHub grounds, which is how they are actually consumed.
+- 2026-08-24: two faults were caught by looking rather than by testing. The font stacks first
+  shipped with double quotes around multi-word families, which closed `font-family="` early and
+  produced malformed XML — `assertWellFormedXml` failed five suites at once, exactly as designed.
+  And the hazard strip, fine on a 1440px fascia, was the loudest element on a 720px card repeated
+  down a README while carrying no information; it is edge texture now.
 - **2026-08-24: the 1440x900 pair is captured, on production.** This machine's display is 1440x810
   with 762 usable, so a native 1440x900 viewport cannot exist here — which is why this stayed
   unverified rather than being quietly claimed. Measured in a true 1440x900 same-origin frame
@@ -270,19 +282,6 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Residual risk and next slice
 
-- **The atlas heatmap uses hue as an ordinal scale, and collides with the panel beside it.** Levels
-  2, 3, and 4 render as `accent`, `positive`, and `warning` — the same three theme colours the
-  contribution mix uses for Commits, Pull requests, and Reviews, one panel to the right. So an
-  orange square reads as a commit rather than as a medium day, and nothing about orange to green to
-  yellow communicates *more*. GitHub's own calendar uses a single hue at four lightnesses for
-  exactly this reason. Being fixed in the card redesign.
-- **The generated README Markdown pins one card theme for every reader.** `buildStudioMarkdown`
-  emits a plain image link, and each card carries its own opaque background — `ember` is `#0d1117`,
-  which is GitHub's dark canvas exactly, so it blends on dark and reads as a dark slab with light
-  corner notches on light. The Studio's LIGHT preview canvas is therefore accurate rather than
-  misleading. GitHub READMEs support a `picture` element keyed on `prefers-color-scheme`, which
-  would serve a dark and a light card from one snippet; today whichever theme is chosen is wrong
-  for half of the readers. Being fixed in the card redesign.
 
 - Two review findings were triaged as non-blocking and left as they are, on purpose. The portfolio
   reticle SVG stays `aria-hidden`: its per-project breakdown is printed in full in the health-rack

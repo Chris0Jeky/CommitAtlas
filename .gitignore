@@ -46,3 +46,8 @@ yarn-error.log*
 
 # agent worktrees and local agent state
 /.claude/
+
+# The seeded design canvas is a ~2 MiB build artifact: the editor payload with the artboards
+# injected. The .dc.html files beside it are the actual source and re-seed it on demand.
+/design_cards/*.html
+!/design_cards/*.dc.html

@@ -32,9 +32,9 @@ applied to `<html>` before first paint by an inline bootstrap in the root layout
 and fragmenting that cache per visitor to carry a preference that costs one attribute on the client
 is a bad trade.
 
-**The SVG card `theme=` query parameter is a different setting and is untouched by any of this.**
-`aurora`, `midnight`, `paper`, and `ember` are unchanged; `paper` still ships for light README
-embeds.
+**The SVG card `theme=` query parameter is a different setting** — the chassis theme switch never
+touches it. The four card themes keep their names, so every existing `theme=` URL still resolves,
+but they were redrawn in this vocabulary in v0.3.0. See "The cards" below.
 
 ## The temperature scale
 
@@ -181,3 +181,60 @@ The shared-chassis hero in the handoff presents two stations, CommitAtlas and de
 repository is one of them, so the second tile names CommitAtlas's own distribution surfaces instead.
 None of developer-lens's vocabulary appears on this surface, and `rendered-html.test.mjs` asserts
 that it does not.
+
+
+## The cards
+
+`packages/svg`. Eight SVG surfaces, drawn in the same vocabulary as the web surface: corner-cut
+plates, section numerals, mono chrome labels, square swatches, dashed sockets for an unconfigured
+probe.
+
+They are rendered inside an `<img>` on GitHub, which sets two hard constraints the web surface does
+not have. **No webfont can load**, so the cards use a system stack and have to survive substitution
+on whatever machine renders them — an embedded `@font-face` would spend the whole 30 KiB budget
+before any data was drawn. And **the card carries its own opaque background**, so it is a plate on
+the reader's page rather than part of it.
+
+### The density ramp
+
+One hue at four steps, plus a neutral socket for a day with nothing observed.
+
+Never four hues. Hue carries no order — nothing about orange, green and yellow says *more* — and
+the ramp this replaced also borrowed `accent`, `positive` and `warning`, which are the three colours
+the contribution mix prints one panel to the right. A square's colour therefore named a category it
+did not mean. In greyscale that ramp inverted between levels 3 and 4, so it failed outright for
+anyone reading without colour.
+
+`densityFill` is the only place a level becomes a colour, and a non-finite level resolves to the
+socket rather than indexing past the end of the ramp: an unreadable signal must never paint as the
+busiest day. `svg.test.mjs` asserts monotonic luminance, a ≥1.25× separation at every step, and that
+no step collides with the mix ink or a status colour.
+
+The direction follows the ground. On a dark card more activity is **brighter**; on a light card it
+is **darker**. The socket stays neutral either way, because a pale tint of the activity colour reads
+as a little activity and a day with none had none.
+
+### The contribution mix
+
+One ink, four rows. The bar's *length* is the variable, so its colour is free to stay constant — and
+holding it constant is what stops the mix handing the reader a second, contradictory colour
+vocabulary beside the density grid.
+
+### The dark/light pair
+
+Every theme names a partner in the opposite colour scheme: `paper` is the light partner for all three
+dark themes, and `ember` is the dark partner for `paper`.
+
+`buildStudioMarkdown` uses that pairing to emit a `<picture>` block keyed on `prefers-color-scheme`,
+so a README serves whichever card matches the reader rather than pinning one and being wrong for
+half the audience. The `<img>` fallback names the theme the user actually chose, so a renderer
+without `<picture>` support still shows their selection.
+
+| Theme | Scheme | Ground | Partner |
+| --- | --- | --- | --- |
+| `ember` | dark | `#121310` | `paper` |
+| `aurora` | dark | `#09131f` | `paper` |
+| `midnight` | dark | `#05070d` | `paper` |
+| `paper` | light | `#dfe4c9` | `ember` |
+
+`paper` is Limestone rather than white, so the light card still reads as a card on a white page.

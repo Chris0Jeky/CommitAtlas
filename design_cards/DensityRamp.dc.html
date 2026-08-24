@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #0e0f0d; }
+    a { color: #d9ff4a; } a:hover { color: #e9ff8a; }
+    .s { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif; }
+    .m { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+    .grey { filter: grayscale(1); }
+  </style>
+</helmet>
+
+<!--
+  The defect study. This is not a style choice — the shipped ramp draws levels 2, 3 and 4 in
+  `accent`, `positive` and `warning`, which are the SAME three theme colours the contribution
+  mix uses for Commits, Pull requests and Reviews one panel to the right. A square's colour
+  therefore reads as a category it does not mean, and orange -> green -> yellow carries no
+  sense of "more" in any case.
+-->
+<div class="s" style="width: 900px; box-sizing: border-box; background: #121310; color: #edf0e2; padding: 32px 36px 34px 36px;">
+
+  <div class="m" style="font-size: 10px; letter-spacing: 0.18em; color: #d9ff4a;">DENSITY RAMP &middot; THE FIX</div>
+  <div style="font-size: 25px; font-weight: 640; letter-spacing: -0.04em; margin-top: 12px; line-height: 1.15;">
+    Hue cannot say &ldquo;more&rdquo;.
+  </div>
+  <div style="font-size: 13px; line-height: 1.6; color: #9aa08c; margin-top: 10px; max-width: 640px;">
+    Levels 2&ndash;4 currently borrow the three colours the contribution mix uses beside them, so an
+    orange square reads as <em style="color: #edf0e2; font-style: normal;">a commit</em> rather than
+    <em style="color: #edf0e2; font-style: normal;">a medium day</em>. One hue at four steps fixes
+    both problems at once: the scale gains an order, and the collision disappears.
+  </div>
+
+  <!-- ── shipped ─────────────────────────────────────────────── -->
+  <div style="margin-top: 26px; padding: 18px 20px; border: 1px solid rgba(255,123,123,.34); background: rgba(255,123,123,.045);">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div class="m" style="font-size: 9.5px; letter-spacing: 0.16em; color: #ff7b7b;">&#10007; SHIPPED &middot; FOUR HUES, NO ORDER</div>
+      <div class="m" style="font-size: 9px; letter-spacing: 0.1em; color: #9aa08c;">packages/svg/src/index.ts</div>
+    </div>
+
+    <div style="display: flex; gap: 26px; margin-top: 15px; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div style="display: flex; gap: 4px;">
+          <sc-for list="{{oldRamp}}" as="c" hint-placeholder-count="5">
+            <div style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
+              <div style="width: 34px; height: 34px; background: {{c.hex}};"></div>
+              <div class="m" style="font-size: 7.5px; letter-spacing: 0.06em; color: #9aa08c;">{{c.level}}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8px; letter-spacing: 0.08em; color: #6f7565; line-height: 1.7;">
+          surface &middot; border &middot; accent &middot; positive &middot; warning
+        </div>
+      </div>
+
+      <div style="width: 1px; align-self: stretch; background: rgba(237,240,226,.12);"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.12em; color: #9aa08c;">THE SAME THREE, ONE PANEL RIGHT</div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <sc-for list="{{collision}}" as="c" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 14px; height: 6px; background: {{c.hex}};"></div>
+              <div class="m" style="font-size: 8.5px; letter-spacing: 0.08em; color: #9aa08c;">{{c.label}}</div>
+              <div class="m" style="font-size: 8.5px; color: #ff7b7b;">{{c.clash}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="width: 1px; align-self: stretch; background: rgba(237,240,226,.12);"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.12em; color: #9aa08c;">IN GREYSCALE</div>
+        <div class="grey" style="display: flex; gap: 4px;">
+          <sc-for list="{{oldRamp}}" as="c" hint-placeholder-count="5">
+            <div style="width: 26px; height: 26px; background: {{c.hex}};"></div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8px; letter-spacing: 0.06em; color: #ff7b7b; line-height: 1.6;">levels 3 and 4 invert</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── proposed ────────────────────────────────────────────── -->
+  <div style="margin-top: 18px; padding: 18px 20px; border: 1px solid rgba(117,214,155,.34); background: rgba(117,214,155,.045);">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div class="m" style="font-size: 9.5px; letter-spacing: 0.16em; color: #75d69b;">&#10003; PROPOSED &middot; ONE HUE, FOUR STEPS</div>
+      <div class="m" style="font-size: 9px; letter-spacing: 0.1em; color: #9aa08c;">EVERY STEP SEPARATES &ge;1.25&times; IN LUMINANCE</div>
+    </div>
+
+    <div style="display: flex; gap: 26px; margin-top: 15px; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div style="display: flex; gap: 4px;">
+          <sc-for list="{{newRamp}}" as="c" hint-placeholder-count="5">
+            <div style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
+              <div style="width: 34px; height: 34px; background: {{c.hex}};"></div>
+              <div class="m" style="font-size: 7.5px; letter-spacing: 0.06em; color: #9aa08c;">{{c.level}}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8px; letter-spacing: 0.08em; color: #6f7565; line-height: 1.7;">
+          neutral socket, then ember at four lightnesses
+        </div>
+      </div>
+
+      <div style="width: 1px; align-self: stretch; background: rgba(237,240,226,.12);"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.12em; color: #9aa08c;">MIX BECOMES LENGTH, NOT HUE</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; width: 190px;">
+          <sc-for list="{{mixFixed}}" as="c" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="m" style="font-size: 8px; letter-spacing: 0.06em; color: #9aa08c; width: 58px;">{{c.label}}</div>
+              <div style="height: 5px; background: rgba(237,240,226,.09); flex-grow: 1; position: relative;">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{c.pct}}; background: #58e6be;"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8px; letter-spacing: 0.06em; color: #6f7565; line-height: 1.6;">one ink; the bar length is the variable</div>
+      </div>
+
+      <div style="width: 1px; align-self: stretch; background: rgba(237,240,226,.12);"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.12em; color: #9aa08c;">IN GREYSCALE</div>
+        <div class="grey" style="display: flex; gap: 4px;">
+          <sc-for list="{{newRamp}}" as="c" hint-placeholder-count="5">
+            <div style="width: 26px; height: 26px; background: {{c.hex}};"></div>
+          </sc-for>
+        </div>
+        <div class="m" style="font-size: 8px; letter-spacing: 0.06em; color: #75d69b; line-height: 1.6;">still monotonic</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── light ───────────────────────────────────────────────── -->
+  <div style="margin-top: 18px; padding: 18px 20px; border: 1px solid rgba(35,38,28,.2); background: #dfe4c9; color: #23261c;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div class="m" style="font-size: 9.5px; letter-spacing: 0.16em; color: #55651a;">LIGHT PAIR &middot; MORE READS DARKER</div>
+      <div class="m" style="font-size: 9px; letter-spacing: 0.1em; color: #5b6150;">FOR prefers-color-scheme: light</div>
+    </div>
+    <div style="display: flex; gap: 26px; margin-top: 15px; align-items: center;">
+      <div style="display: flex; gap: 4px;">
+        <sc-for list="{{lightRamp}}" as="c" hint-placeholder-count="5">
+          <div style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
+            <div style="width: 34px; height: 34px; background: {{c.hex}};"></div>
+            <div class="m" style="font-size: 7.5px; letter-spacing: 0.06em; color: #5b6150;">{{c.level}}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="width: 1px; align-self: stretch; background: rgba(35,38,28,.16);"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div class="m" style="font-size: 8.5px; letter-spacing: 0.1em; color: #5b6150; line-height: 1.8;">
+          The direction inverts with the ground: on a pale card more activity is<br>
+          <span style="color: #23261c;">darker</span>, not brighter. The socket stays neutral either way.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── on a real year ──────────────────────────────────────── -->
+  <div style="margin-top: 22px;">
+    <div class="m" style="font-size: 9px; letter-spacing: 0.15em; color: #9aa08c; margin-bottom: 11px;">THE SAME 365 DAYS, BOTH WAYS</div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div class="m" style="font-size: 8px; letter-spacing: 0.1em; color: #ff7b7b; width: 62px;">SHIPPED</div>
+        <div style="display: grid; grid-template-rows: repeat(7, 6px); grid-auto-flow: column; grid-auto-columns: 6px; gap: 2px;">
+          <sc-for list="{{daysOld}}" as="d" hint-placeholder-count="371">
+            <div style="width: 6px; height: 6px; background: {{d.fill}};"></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div class="m" style="font-size: 8px; letter-spacing: 0.1em; color: #75d69b; width: 62px;">PROPOSED</div>
+        <div style="display: grid; grid-template-rows: repeat(7, 6px); grid-auto-flow: column; grid-auto-columns: 6px; gap: 2px;">
+          <sc-for list="{{daysNew}}" as="d" hint-placeholder-count="371">
+            <div style="width: 6px; height: 6px; background: {{d.fill}};"></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":"900px","height":"700px"}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // The ember theme, exactly as packages/svg/src/index.ts defines it today.
+    const shipped = ['#161b22', '#30363d', '#ff9f68', '#75d69b', '#ffd166'];
+    const proposed = ['#1c1f19', '#5c2a17', '#97431f', '#d05e2f', '#ff7a45'];
+    const light = ['#c9cfb2', '#f0a878', '#dd7440', '#b84f1e', '#82300a'];
+
+    const label = (i) => `L${i}`;
+    const oldRamp = shipped.map((hex, i) => ({ hex, level: label(i) }));
+    const newRamp = proposed.map((hex, i) => ({ hex, level: label(i) }));
+    const lightRamp = light.map((hex, i) => ({ hex, level: label(i) }));
+
+    const collision = [
+      { hex: '#ff9f68', label: 'COMMITS', clash: '= LEVEL 2' },
+      { hex: '#75d69b', label: 'PULL REQUESTS', clash: '= LEVEL 3' },
+      { hex: '#ffd166', label: 'REVIEWS', clash: '= LEVEL 4' },
+    ];
+
+    const mixFixed = [
+      { label: 'COMMITS', pct: '100%' },
+      { label: 'PRS', pct: '21.9%' },
+      { label: 'REVIEWS', pct: '26.5%' },
+    ];
+
+    const build = (ramp, socketFirst) => {
+      const days = [{ fill: 'transparent' }];
+      for (let o = 0; o < 365; o += 1) {
+        const count = (o * 7 + Math.floor(o / 9)) % 8;
+        const level = count === 0 ? 0 : Math.min(4, Math.ceil(count / 2));
+        days.push({ fill: level === 0 ? socketFirst : ramp[level] });
+      }
+      while (days.length % 7 !== 0) days.push({ fill: 'transparent' });
+      return days;
+    };
+
+    return {
+      oldRamp,
+      newRamp,
+      lightRamp,
+      collision,
+      mixFixed,
+      daysOld: build(shipped, shipped[0]),
+      daysNew: build(proposed, proposed[0]),
+    };
+  }
+}
+</script>
+</body>
+</html>

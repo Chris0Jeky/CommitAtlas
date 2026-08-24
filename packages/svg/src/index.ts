@@ -17,29 +17,85 @@ export interface SvgTheme {
   readonly warning: string;
   readonly negative: string;
   readonly border: string;
+  /** Chassis chrome: mono labels, section numerals, rules. */
+  readonly chrome: string;
+  /**
+   * The density ramp: ONE hue at four ascending steps, level 1 through level 4.
+   *
+   * Never four different hues. Hue carries no order — nothing about orange, green and yellow
+   * says "more" — and the previous ramp additionally borrowed `accent`, `positive` and `warning`,
+   * which are the same three colours the contribution mix prints beside it, so a square's colour
+   * named a category it did not mean. `svg.test.mjs` asserts monotonic luminance and a ≥1.25×
+   * separation at every step, in both directions, so the scale survives greyscale.
+   */
+  readonly density: readonly [string, string, string, string];
+  /**
+   * A day with nothing observed. Neutral, and deliberately not a faint tint of the ramp: a pale
+   * ember square reads as a little activity, and a day with none had none.
+   */
+  readonly socket: string;
+  /**
+   * The single ink every contribution-mix bar is drawn in.
+   *
+   * The bar's LENGTH is the variable, so its colour is free to stay constant — which is what
+   * stops the mix competing with the density grid for the reader's colour vocabulary.
+   */
+  readonly mixInk: string;
+  /** Unfilled bar track. */
+  readonly track: string;
   readonly languagePalette: readonly string[];
+  /** Which colour scheme this theme is for, and its partner in the other one. */
+  readonly scheme: "dark" | "light";
+  readonly pair: ThemeName;
 }
 
+/**
+ * The four card themes, drawn in the Fieldline chassis vocabulary.
+ *
+ * Every theme is a dark/light PAIR with another: `paper` is the light partner for all three dark
+ * themes, and `ember` is the dark partner for `paper`. `buildStudioMarkdown` uses that pairing to
+ * emit a `<picture>` block, so a README serves whichever card matches the reader's colour scheme
+ * instead of pinning one and being wrong for half the audience.
+ */
 export const themes: Readonly<Record<ThemeName, SvgTheme>> = {
   aurora: {
-    background: "#09131f", surface: "#102238", text: "#f6fbff", muted: "#a9c1d5",
-    accent: "#79f2c0", positive: "#79f2c0", warning: "#ffd166", negative: "#ff7b9c",
-    border: "#26445f", languagePalette: ["#79f2c0", "#6cc6ff", "#c4a7ff", "#ffd166", "#ff9f68"],
+    background: "#09131f", surface: "#0e1b2b", text: "#f6fbff", muted: "#a9c1d5",
+    accent: "#58e6be", positive: "#79f2c0", warning: "#ffd166", negative: "#ff7b9c",
+    border: "#1d3348", chrome: "#8fd8d2",
+    density: ["#123f3a", "#1a6b60", "#2f9e8c", "#58e6be"], socket: "#101e2c",
+    mixInk: "#6cc6ff", track: "#16283a",
+    languagePalette: ["#58e6be", "#6cc6ff", "#c4a7ff", "#ffd166", "#ff9f68"],
+    scheme: "dark", pair: "paper",
   },
   midnight: {
-    background: "#05070d", surface: "#111827", text: "#f8fafc", muted: "#b5c1d5",
-    accent: "#a78bfa", positive: "#6ee7b7", warning: "#fbbf24", negative: "#fb7185",
-    border: "#2f3b53", languagePalette: ["#a78bfa", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"],
+    background: "#05070d", surface: "#0d1017", text: "#f8fafc", muted: "#b5c1d5",
+    accent: "#b89bff", positive: "#6ee7b7", warning: "#fbbf24", negative: "#fb7185",
+    border: "#1e2434", chrome: "#d9caff",
+    density: ["#2b1f52", "#4a3585", "#7a5cc4", "#b89bff"], socket: "#101420",
+    mixInk: "#8da4ff", track: "#161b28",
+    languagePalette: ["#b89bff", "#8da4ff", "#6ee7b7", "#fbbf24", "#fb7185"],
+    scheme: "dark", pair: "paper",
   },
   paper: {
-    background: "#f8fafc", surface: "#ffffff", text: "#0f172a", muted: "#475569",
-    accent: "#0f766e", positive: "#15803d", warning: "#b45309", negative: "#b91c1c",
-    border: "#cbd5e1", languagePalette: ["#0f766e", "#2563eb", "#7c3aed", "#b45309", "#be185d"],
+    // Limestone, not white. A card on a pale ground still needs to read as a card, and the
+    // chassis has one light ground rather than a bleached version of a dark one.
+    background: "#dfe4c9", surface: "#e8ecd6", text: "#23261c", muted: "#5b6150",
+    accent: "#9c3d0d", positive: "#186b3c", warning: "#6b4f08", negative: "#8f1c1c",
+    border: "#c2c9a8", chrome: "#55651a",
+    // The ramp inverts with the ground: on a pale card more activity is DARKER, not brighter.
+    density: ["#f0a878", "#dd7440", "#b84f1e", "#82300a"], socket: "#c9cfb2",
+    mixInk: "#0f5f50", track: "#cdd3b6",
+    languagePalette: ["#9c3d0d", "#0f5f50", "#4d3494", "#6b4f08", "#8f1c1c"],
+    scheme: "light", pair: "ember",
   },
   ember: {
-    background: "#0d1117", surface: "#161b22", text: "#f2f4f7", muted: "#a7adb7",
-    accent: "#ff9f68", positive: "#75d69b", warning: "#ffd166", negative: "#ff7b7b",
-    border: "#30363d", languagePalette: ["#ff9f68", "#ffd166", "#75d69b", "#9bd5ff", "#d7a8ff"],
+    background: "#121310", surface: "#191a15", text: "#edf0e2", muted: "#9aa08c",
+    accent: "#ff7a45", positive: "#75d69b", warning: "#ffd166", negative: "#ff7b7b",
+    border: "#2a2c24", chrome: "#d9ff4a",
+    density: ["#5c2a17", "#97431f", "#d05e2f", "#ff7a45"], socket: "#1c1f19",
+    mixInk: "#58e6be", track: "#23261e",
+    languagePalette: ["#ff7a45", "#ffd166", "#75d69b", "#58e6be", "#b89bff"],
+    scheme: "dark", pair: "paper",
   },
 };
 
@@ -359,17 +415,97 @@ function svgStart(
 ): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(title)}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" fill="none">` +
     `<title>${escapeXml(title)}</title><desc>${escapeXml(accessibleDescription)}</desc>` +
-    `<rect width="${width}" height="${height}" rx="18" fill="${theme.background}"/>`;
+    plate(width, height, theme);
 }
 
 function svgEnd(): string { return "</svg>"; }
 
+/**
+ * Type stacks.
+ *
+ * System faces only, and not by preference. These cards render as SVG inside an `<img>` on
+ * GitHub, where no webfont can load and an embedded `@font-face` would spend the entire 30 KiB
+ * budget before any data was drawn. Geist is the chassis face on the web surface; here the design
+ * has to survive substitution on whatever machine renders it, so it is drawn at the stack that
+ * actually paints. `Inter` is deliberately absent — it is almost never installed, so naming it
+ * only added a failed lookup before the same fallback.
+ */
+// Single quotes inside the family list, never double. These land in a double-quoted XML
+// attribute, so a double quote here closes `font-family="` early and the whole tag becomes
+// malformed — which is exactly what `assertWellFormedXml` caught on the first attempt.
+// Multi-word families are the only ones that need quoting at all, so the two here are the
+// only two that matter.
+const SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+const MONO = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace";
+
 function text(x: number, y: number, value: unknown, size: number, fill: string, weight = 400, anchor = "start"): string {
-  return `<text x="${x}" y="${y}" fill="${fill}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
+  return `<text x="${x}" y="${y}" fill="${fill}" font-family="${SANS}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
+}
+
+/**
+ * A chassis label: mono, tracked out, upper case.
+ *
+ * `letter-spacing` is what makes these read as instrument chrome rather than as small body copy,
+ * and it is the one type property the chassis uses consistently across both surfaces.
+ */
+function mono(x: number, y: number, value: unknown, size: number, fill: string, weight = 500, anchor = "start", tracking = 0.13): string {
+  return `<text x="${x}" y="${y}" fill="${fill}" font-family="${MONO}" font-size="${size}" font-weight="${weight}" letter-spacing="${(size * tracking).toFixed(2)}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
+}
+
+/** A section numeral — `01 //` — the chassis's way of ordering panels without a heading. */
+function numeral(x: number, y: number, index: number, label: string, theme: SvgTheme): string {
+  return mono(x, y, `${String(index).padStart(2, "0")} // ${label}`, 9, theme.chrome);
 }
 
 function panel(x: number, y: number, width: number, height: number, theme: SvgTheme): string {
   return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="14" fill="${theme.surface}" stroke="${theme.border}"/>`;
+}
+
+/**
+ * The corner-cut card plate and its hazard strip — the two marks that say "instrument".
+ *
+ * A `path` rather than a `rect` because the top-right corner is cut at 45°, which is the chassis
+ * panel shape. The strip is drawn as a clipped group of diagonals rather than a pattern fill:
+ * `<pattern>` would work, but every card would then carry a `defs` block and an id, and ids are
+ * what collide when two cards are inlined into one document.
+ */
+function plate(width: number, height: number, theme: SvgTheme, cut = 22): string {
+  const d = `M0 0H${width - cut}L${width} ${cut}V${height}H0Z`;
+  let out = `<path d="${d}" fill="${theme.background}"/>`;
+  // Deliberately faint. On the web fascia this strip is one element among many across 1440px;
+  // on a 720px card repeated eight times down a README it was the loudest thing on screen while
+  // carrying no information at all. It earns its place as edge texture, not as a feature.
+  const bars: string[] = [];
+  for (let y = -8; y < height; y += 11) {
+    bars.push(`M0 ${y}l4 0l-4 11l0 -11Z`);
+  }
+  out += `<g aria-hidden="true" opacity="0.18">${bars.map((b) => `<path d="${b}" fill="${theme.chrome}"/>`).join("")}</g>`;
+  return out;
+}
+
+/**
+ * Map a contribution level to a fill. The ONLY place in this module that decision is made.
+ *
+ * Level 0 is the neutral socket, never the faintest step of the ramp. A non-finite or negative
+ * level also resolves to the socket rather than indexing past the end — an unreadable signal must
+ * never render as the strongest reading, which is the inversion this product exists to refuse.
+ */
+function densityFill(level: number, theme: SvgTheme): string {
+  if (!Number.isFinite(level)) return theme.socket;
+  const step = Math.trunc(level);
+  if (step <= 0) return theme.socket;
+  return theme.density[Math.min(3, step - 1)]!;
+}
+
+/** The Less…More key every density surface prints, so the ramp is self-describing. */
+function densityKey(x: number, y: number, theme: SvgTheme, size = 8): string {
+  let out = mono(x, y + size, "LESS", 8, theme.muted, 500, "end");
+  const swatches = [theme.socket, ...theme.density];
+  swatches.forEach((fill, index) => {
+    out += `<rect x="${x + 6 + index * (size + 3)}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
+  });
+  out += mono(x + 12 + swatches.length * (size + 3), y + size, "MORE", 8, theme.muted);
+  return out;
 }
 
 function statusColor(state: CiState, theme: SvgTheme): string {
@@ -490,7 +626,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += sourceMarker(data.source, width - 34, 31, t);
-  out += text(34, 48, "CONTRIBUTION STREAK", 11, t.muted, 700);
+  out += numeral(34, 48, 1, "CONTRIBUTION STREAK", t);
   out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window", 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
   out += text(width / 2 + 28, personalBestY, `Longest in ${windowLabel}`, 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
@@ -516,21 +652,23 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
-  out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, periodLabel, 11, t.muted, 700);
+  out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, periodLabel, t);
   out += sourceMarker(data.source, width - 34, 29, t);
-  out += text(width - 34, 48, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
+  out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const columns = Math.min(53, Math.max(1, Math.ceil(days.length / 7))); const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
   const start = 40; const top = 66;
+  // Quartiles of the observed peak, so the four steps describe THIS window rather than an
+  // absolute scale no reader can see. A zero day is level 0 and takes the neutral socket.
   const cells: string[] = [];
   days.forEach((day, index) => {
-    const column = Math.floor(index / 7); const row = index % 7; const intensity = Math.min(1, finite(day.count) / max);
-    const fill = intensity === 0 ? t.background : intensity < 0.34 ? t.border : intensity < 0.67 ? t.accent : t.positive;
+    const column = Math.floor(index / 7); const row = index % 7;
+    const count = finite(day.count);
+    const level = count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
     const x = start + column * (cell + 2); const y = top + row * (cell + 2);
-    cells.push(`<path fill="${fill}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
+    cells.push(`<path fill="${densityFill(level, t)}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
   });
   out += `<g aria-hidden="true">${cells.join("")}</g>`;
-  out += text(40, top + 7 * (cell + 2) + 19, "Less", 10, t.muted) + text(78, top + 7 * (cell + 2) + 19, "More", 10, t.muted);
-  out += `<rect x="${width - 94}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.background}"/><rect x="${width - 78}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.border}"/><rect x="${width - 62}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.accent}"/><rect x="${width - 46}" y="${top + 7 * (cell + 2) + 10}" width="9" height="9" rx="2" fill="${t.positive}"/>`;
+  out += `<g aria-hidden="true">${densityKey(width - 118, top + 7 * (cell + 2) + 10, t)}</g>`;
   return out + `</g>` + svgEnd();
 }
 
@@ -568,7 +706,6 @@ export function renderContributionBreakdownCard(
   const metadata = sourceMetadata(data.source, o.title, o.description);
   const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
   const total = values.reduce((sum, value) => sum + value, 0);
-  const colors = [t.accent, t.negative, t.positive, t.warning] as const;
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
   // Window boundaries come from the caller, so bound them here rather than trusting the adapter.
   const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
@@ -580,14 +717,14 @@ export function renderContributionBreakdownCard(
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
-  out += text(34, 48, "CONTRIBUTION BREAKDOWN", 11, t.muted, 750);
-  out += `<rect x="${width - 150}" y="31" width="116" height="22" rx="11" fill="${t.background}" stroke="${t.border}"/>`;
-  out += text(width - 92, 46, basisLabel, 9, data.basis === "public-profile-percentages" ? t.warning : t.positive, 750, "middle");
+  out += numeral(34, 48, 1, "CONTRIBUTION BREAKDOWN", t);
+  out += `<rect x="${width - 150}" y="31" width="116" height="22" fill="${t.background}" stroke="${t.border}"/>`;
+  out += mono(width - 92, 46, basisLabel, 8.5, data.basis === "public-profile-percentages" ? t.warning : t.positive, 600, "middle", 0.1);
   out += sourceMarker(data.source, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
     : `${windowFrom} → ${windowTo} · ${formatNumber(data.window.days, false)} days`;
-  out += text(34, 70, scopeLabel, 10, t.muted, 550);
+  out += mono(34, 70, scopeLabel, 9, t.muted, 500, "start", 0.06);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
   breakdownLabels.forEach(([label], index) => {
@@ -597,16 +734,17 @@ export function renderContributionBreakdownCard(
       ? Math.min(100, value) / 100
       : total > 0 ? value / total : 0;
     const fillWidth = barWidth * normalized;
-    out += text(34, y + 10, label, 10, t.text, 600);
-    out += `<rect x="${barX}" y="${y}" width="${barWidth}" height="10" rx="5" fill="${t.background}"/>`;
-    if (fillWidth > 0) out += `<rect x="${barX}" y="${y}" width="${fillWidth.toFixed(2)}" height="10" rx="5" fill="${colors[index]}"/>`;
-    out += text(width - 34, y + 10, breakdownValue(value, data.basis), 10, t.text, 700, "end");
+    // One ink, four rows: the bar length is the variable, so the colour does not have to be.
+    out += mono(34, y + 9, label, 9, t.muted, 500, "start", 0.08);
+    out += `<rect x="${barX}" y="${y + 1}" width="${barWidth}" height="8" fill="${t.track}"/>`;
+    if (fillWidth > 0) out += `<rect x="${barX}" y="${y + 1}" width="${fillWidth.toFixed(2)}" height="8" fill="${t.mixInk}"/>`;
+    out += mono(width - 34, y + 9, breakdownValue(value, data.basis), 9.5, t.text, 600, "end", 0.04);
   });
   out += `<line x1="34" y1="190" x2="${width - 34}" y2="190" stroke="${t.border}"/>`;
   const footer = publicProfileMix
     ? width < 600 ? "Annual profile % · not window-scoped" : "Annual profile-view percentages · exact window counts unavailable"
     : width < 520 ? "Exact categorized counts · normalized bars" : "Categorized exact counts · bars normalized to categorized total";
-  out += text(34, 208, footer, 9, t.muted, 550);
+  out += mono(34, 208, footer, 8.5, t.muted, 500, "start", 0.06);
   return out + `</g>` + svgEnd();
 }
 
@@ -647,7 +785,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
-  out += text(34, 48, "PERSONAL CONSISTENCY", 11, t.muted, 750);
+  out += numeral(34, 48, 1, "PERSONAL CONSISTENCY", t);
   out += sourceMarker(data.source, width - 34, 48, t);
   const radius = compact ? 42 : 43;
   const centerX = compact ? 91 : 88;
@@ -677,7 +815,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
     const x = trendX + index * (barWidth + gap);
     out += `<rect x="${x.toFixed(2)}" y="${(baseline - height).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${height.toFixed(2)}" rx="3" fill="${value > 0 ? t.accent : t.background}"/>`;
   });
-  out += text(34, o.height - 11, "CommitAtlas personal consistency · not a GitHub rank", 9, t.muted, 550);
+  out += mono(34, o.height - 11, "COMMITATLAS CONSISTENCY · NOT A GITHUB RANK", 8.5, t.muted, 500, "start", 0.06);
   return out + `</g>` + svgEnd();
 }
 
@@ -701,7 +839,7 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
   const metadata = sourceMetadata(data.source, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
-  out += panel(16, 16, width - 32, o.height - 32, t) + text(34, 48, "LANGUAGES", 11, t.muted, 700);
+  out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, "LANGUAGES", t);
   out += sourceMarker(data.source, width - 34, 48, t);
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
   languages.forEach((item, index) => {
@@ -714,7 +852,9 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     const x = 34 + (index % 2) * (barW / 2); const y = 111 + Math.floor(index / 2) * 25;
     const color = safeColor(item.color, t.languagePalette[index % t.languagePalette.length]);
     const label = item.name ?? item.language ?? "Unknown language";
-    out += `<circle cx="${x + 5}" cy="${y - 4}" r="4" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 12, t.text, 600) + text(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 11, t.muted, 500, "end");
+    // Square swatch, not a disc: it matches the density cell so the two surfaces read as one
+    // system, and a square survives at the sizes a README actually renders at.
+    out += `<rect x="${x + 1}" y="${y - 8}" width="8" height="8" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 11.5, t.text, 600) + mono(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 9.5, t.muted, 500, "end", 0.04);
   });
   return out + `</g>` + svgEnd();
 }
@@ -729,7 +869,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   let out = svgStart(width, height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += sourceMarker(data.source, width - 24, 18, t);
-  out += text(24, 34, "PROJECT SIGNALS", 12, t.muted, 750);
+  out += numeral(24, 34, 1, "PROJECT SIGNALS", t);
   if (projects.length < totalProjects) out += text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
   projects.forEach((project, index) => {
     const col = index % columns; const row = Math.floor(index / columns); const x = 24 + col * (cardWidth + 12); const y = 50 + row * 90;
@@ -847,44 +987,49 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const columns = Math.max(1, Math.ceil(days.length / 7));
   const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
   const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
-  out += text(heatmapLeft, heatmapTop - 14, "CONTRIBUTION DENSITY", 10, t.muted, 700);
-  out += text(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} peak · ${truncateText(data.peakDay.date, 10)}`, 9, t.muted, 550, "end");
+  out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t);
+  out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   days.forEach((day, index) => {
     const column = Math.floor(index / 7);
     const row = index % 7;
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
-    const fill = level === 0 ? t.surface : level === 1 ? t.border : level === 2 ? t.accent : level === 3 ? t.positive : t.warning;
     const x = heatmapLeft + column * (cell + 2);
     const y = heatmapTop + row * (cell + 2);
+    const fill = densityFill(level, t);
     const paths = heatmapPaths.get(fill) ?? [];
     paths.push(`M${x} ${y}h${cell}v${cell}H${x}Z`);
     heatmapPaths.set(fill, paths);
   });
   out += [...heatmapPaths.entries()].map(([fill, paths]) => `<path class="atlas-cell" fill="${fill}" d="${paths.join("")}"/>`).join("");
   const heatmapBottom = heatmapTop + 7 * (cell + 2);
-  out += text(heatmapLeft, heatmapBottom + 13, windowFrom, 8, t.muted, 500);
-  out += text(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, windowTo, 8, t.muted, 500, "end");
+  out += mono(heatmapLeft, heatmapBottom + 13, windowFrom, 8, t.muted, 500, "start", 0.08);
+  out += mono(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, windowTo, 8, t.muted, 500, "end", 0.08);
+  // The key sits under the grid it explains, so the ramp never needs to be inferred.
+  out += `<g aria-hidden="true">${densityKey(heatmapLeft + heatmapActualWidth - 118, heatmapBottom + 22, t, 6)}</g>`;
 
   const breakdownX = narrow ? 24 : Math.floor(width * .64);
   const breakdownY = narrow ? 290 : 144;
   const breakdownWidth = width - breakdownX - 24;
+  // One ink for all four rows. The bar's LENGTH is the variable, so its colour is free to stay
+  // constant — and holding it constant is what stops this panel handing the reader a second,
+  // contradictory colour vocabulary next to the density grid.
   const breakdown = [
-    ["Commits", data.breakdown.commits, t.accent],
-    ["Pull requests", data.breakdown.pullRequests, t.positive],
-    ["Reviews", data.breakdown.reviews, t.warning],
-    ["Issues", data.breakdown.issues, t.negative],
+    ["Commits", data.breakdown.commits],
+    ["Pull requests", data.breakdown.pullRequests],
+    ["Reviews", data.breakdown.reviews],
+    ["Issues", data.breakdown.issues],
   ] as const;
   const breakdownMax = Math.max(1, ...breakdown.map(([, value]) => finite(value)));
-  out += text(breakdownX, breakdownY, data.breakdownBasis === "public-profile-percentages" ? "PUBLIC PROFILE MIX · NOT WINDOW-SCOPED" : "CONTRIBUTION MIX", 10, t.muted, 700);
-  breakdown.forEach(([label, value, color], index) => {
+  out += numeral(breakdownX, breakdownY, 2, data.breakdownBasis === "public-profile-percentages" ? "PROFILE MIX · NOT WINDOW-SCOPED" : "CONTRIBUTION MIX", t);
+  breakdown.forEach(([label, value], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);
     const barWidth = Math.max(2, trackWidth * finite(value) / breakdownMax);
-    out += text(breakdownX, y + 8, label, 9, t.muted, 550);
-    out += `<rect x="${breakdownX + 76}" y="${y}" width="${trackWidth}" height="8" rx="4" fill="${t.surface}"/>`;
-    out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y}" width="${barWidth.toFixed(2)}" height="8" rx="4" fill="${color}"/>`;
-    out += text(width - 24, y + 8, atlasBreakdownValue(value, data.breakdownBasis), 9, t.text, 650, "end");
+    out += mono(breakdownX, y + 8, label, 8.5, t.muted, 500, "start", 0.08);
+    out += `<rect x="${breakdownX + 76}" y="${y + 1}" width="${trackWidth}" height="6" fill="${t.track}"/>`;
+    out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y + 1}" width="${barWidth.toFixed(2)}" height="6" fill="${t.mixInk}"/>`;
+    out += mono(width - 24, y + 8, atlasBreakdownValue(value, data.breakdownBasis), 9, t.text, 600, "end", 0.04);
   });
 
   const footerTop = narrow ? 408 : 282;
@@ -907,7 +1052,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const rhythmX = narrow ? trendX + trendWidth + 22 : Math.floor(width * .40);
   out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
   out += text(rhythmX, footerTop + 27, `${Math.round(finite(data.rhythm.score))}/100`, 23, t.text, 780);
-  out += text(rhythmX, footerTop + 43, `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY`, 8, t.muted, 650);
+  out += mono(rhythmX, footerTop + 43, `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY`, 7.5, t.muted, 600, "start", 0.08);
 
   const detailX = narrow ? 24 : Math.floor(width * .60);
   const detailY = narrow ? footerTop + 78 : footerTop;

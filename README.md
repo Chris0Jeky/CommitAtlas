@@ -59,6 +59,11 @@ not presented as a universal GitHub ranking or a comparison with other developer
 | Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
 | Projects | Up to six curated projects with declared lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` (static: `projects.json`, `projects.md`) |
 
+The cards are drawn in one hue per scale, never four: a density square's colour says *how much*,
+and never *what kind*. The Studio emits each card as a `<picture>` pair keyed on
+`prefers-color-scheme`, so a README serves a dark card to dark readers and a light one to light
+readers from a single snippet.
+
 The [Studio](https://commit-atlas.commit-atlas.workers.dev/studio) configures, previews, and copies
 embeds. Project Docs, Install, Download, Release, Source, and CI actions live in its accessible HTML
 dashboard: a README-embedded SVG is one linked image and cannot reliably contain independent links.
