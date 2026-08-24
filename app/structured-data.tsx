@@ -26,7 +26,7 @@ const graph = {
       softwareHelp: `${SOURCE_REPOSITORY}#readme`,
       codeRepository: SOURCE_REPOSITORY,
       programmingLanguage: "TypeScript",
-      license: "https://opensource.org/licenses/MIT",
+      license: "https://www.gnu.org/licenses/gpl-3.0.html",
       isAccessibleForFree: true,
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       featureList: [

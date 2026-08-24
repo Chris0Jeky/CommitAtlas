@@ -1,6 +1,35 @@
 {
   "name": "commit-atlas",
   "version": "0.1.0",
+  "description": "Accessible GitHub portfolio SVG cards, a truthful project-health dashboard, and a credential-free static generator.",
+  "keywords": [
+    "github",
+    "github-stats",
+    "github-profile",
+    "profile-readme",
+    "readme",
+    "svg",
+    "cards",
+    "contribution-graph",
+    "streak",
+    "project-health",
+    "dashboard",
+    "data-visualization",
+    "github-action",
+    "cloudflare-workers",
+    "typescript",
+    "accessibility"
+  ],
+  "license": "GPL-3.0-only",
+  "author": "CommitAtlas contributors",
+  "homepage": "https://commit-atlas.commit-atlas.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chris0Jeky/CommitAtlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Chris0Jeky/CommitAtlas/issues"
+  },
   "private": true,
   "workspaces": [
     "packages/*"

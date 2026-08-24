@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 const ORIGIN = "https://commit-atlas.commit-atlas.workers.dev";
 
@@ -85,6 +86,25 @@ test("the landing page carries a canonical URL and honest structured data", asyn
   assert.equal(software.review, undefined);
   // The JSON-LD payload must never be able to close its own script element.
   assert.doesNotMatch(block[1], /<\/script/i);
+});
+
+test("the published license claim matches the license the repository actually ships", async () => {
+  // A license URL is a machine-readable legal claim about how the work may be reused. Getting it
+  // wrong is worse than omitting it, and it is exactly the kind of value that gets copied from a
+  // template and never re-read — this shipped as MIT in its first draft against a GPL-3.0 repo.
+  const licenseText = readFileSync(new URL("../LICENSE", import.meta.url), "utf8");
+  assert.match(licenseText, /GNU GENERAL PUBLIC LICENSE/);
+  assert.match(licenseText, /Version 3/);
+
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(pkg.license, "GPL-3.0-only");
+
+  const response = await request("/");
+  const html = await response.text();
+  const block = /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html);
+  const graph = JSON.parse(block[1].replace(/\\u003c/gi, "<"));
+  const software = graph["@graph"].find((node) => node["@type"] === "SoftwareApplication");
+  assert.match(software.license, /gnu\.org\/licenses\/gpl-3\.0/);
 });
 
 test("the Studio page has its own canonical URL and title, not the landing page's", async () => {
