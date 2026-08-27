@@ -330,6 +330,8 @@ const MAX_RHYTHM_BASIS_LENGTH = 120;
  * makes the strip overflow its region — and keeps the card far below the 30KB output budget.
  */
 const MAX_ATLAS_TREND_BUCKETS = 26;
+/** Compact cadence summaries stay inside the right-aligned header at the minimum card width. */
+const MAX_COMPACT_CADENCE_LABEL_LENGTH = 42;
 
 /** Escape text and attribute values before they enter an SVG document. */
 export function escapeXml(value: unknown): string {
@@ -999,34 +1001,54 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
     .filter((day) => isValidIsoDate(day.date) && Number.isFinite(day.count) && day.count >= 0)
     .sort((left, right) => left.date.localeCompare(right.date))
     .slice(-MAX_ACTIVITY_DAYS);
-  // getUTCDay puts Sunday first; the chassis reads weeks Monday-first.
+  // getUTCDay puts Sunday first; the chassis reads weeks Monday-first. Normalize against the
+  // largest finite count before summing so several Number.MAX_VALUE observations cannot turn the
+  // total into Infinity and make every share appear to be zero.
+  const scale = days.reduce((maximum, day) => Math.max(maximum, day.count), 0);
   const totals = Array.from({ length: 7 }, () => 0);
-  for (const day of days) totals[(new Date(`${day.date}T00:00:00Z`).getUTCDay() + 6) % 7] += day.count;
-  const total = totals.reduce((sum, value) => sum + value, 0);
+  if (scale > 0) {
+    for (const day of days) totals[(new Date(`${day.date}T00:00:00Z`).getUTCDay() + 6) % 7] += day.count / scale;
+  }
+  const normalizedTotal = totals.reduce((sum, value) => sum + value, 0);
+  let total = 0;
+  let totalOverflowed = false;
+  for (const day of days) {
+    if (totalOverflowed) continue;
+    if (day.count > Number.MAX_VALUE - total) totalOverflowed = true;
+    else total += day.count;
+  }
   const o = optionsFor(options, 224, "Weekly cadence", "Contribution share by day of week for the returned window, on UTC day boundaries.", 190, 300); const t = o.theme; const width = o.width;
-  const shares = totals.map((value) => (total > 0 ? (value / total) * 100 : 0));
-  const maxShare = Math.max(...shares);
-  const busiestDays = shares.flatMap((share, index) => share === maxShare ? [index] : []);
+  const shares = totals.map((value) => (normalizedTotal > 0 ? (value / normalizedTotal) * 100 : 0));
+  const maxShare = normalizedTotal > 0 ? Math.max(...shares) : 0;
+  const busiestDays = normalizedTotal > 0
+    ? shares.flatMap((share, index) => share === maxShare ? [index] : [])
+    : [];
   const metadata = sourceMetadata(data.source, o.title, o.description);
   const busiestDescription = busiestDays.length > 1
     ? ` Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} at ${maxShare.toFixed(1).replace(/\.0$/, "")}%.`
     : "";
-  const accessibleDescription = total > 0
-    ? `${metadata.description} ${WEEKDAY_NAMES.map((name, index) => `${name} ${shares[index]!.toFixed(1)}%`).join(", ")}.${busiestDescription}`
+  const normalizationDescription = totalOverflowed
+    ? " Finite contribution counts were normalized to avoid total overflow."
+    : "";
+  const accessibleDescription = normalizedTotal > 0
+    ? `${metadata.description}${normalizationDescription} ${WEEKDAY_NAMES.map((name, index) => `${name} ${shares[index]!.toFixed(1)}%`).join(", ")}.${busiestDescription}`
     : `${metadata.description} No contributions observed in this window.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "WEEKLY CADENCE", t);
   out += sourceMarker(data.source, width - 34, 31, t);
-  if (total === 0) {
+  if (normalizedTotal === 0) {
     out += text(34, o.height / 2 + 6, "No contributions observed in this window", 13, t.muted, 550);
     return out + `</g>` + svgEnd();
   }
+  const shareLabel = maxShare.toFixed(1).replace(/\.0$/, "");
   const busiestLabel = busiestDays.length > 1
-    ? `Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} carry ${maxShare.toFixed(1).replace(/\.0$/, "")}%`
-    : `${WEEKDAY_NAMES[busiestDays[0]!]} carries ${maxShare.toFixed(1).replace(/\.0$/, "")}%`;
-  out += text(width - 34, 50, busiestLabel, 12, t.text, 600, "end");
+    ? width < 560 || busiestDays.length > 3
+      ? `Busiest: ${busiestDays.length}-way tie · ${shareLabel}%`
+      : `Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} carry ${shareLabel}%`
+    : `${WEEKDAY_NAMES[busiestDays[0]!]} carries ${shareLabel}%`;
+  out += text(width - 34, 50, truncateText(busiestLabel, width < 560 ? MAX_COMPACT_CADENCE_LABEL_LENGTH : 72), 12, t.text, 600, "end");
   const baseline = o.height - 62; const chartTop = 78;
   const gap = 14; const barWidth = (width - 68 - gap * 6) / 7;
   const chartMaxShare = Math.max(1, ...shares);
@@ -1038,25 +1060,32 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
     out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 8.5, isBusiest ? t.text : t.muted, 550, "middle", 0.04);
     out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 8.5, t.muted, 550, "middle");
   });
-  out += mono(34, o.height - 26, `SHARE OF ${formatNumber(total)} CONTRIBUTIONS · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 7.5, t.muted, 550, "start", 0.08);
+  const totalLabel = totalOverflowed ? "NORMALIZED FINITE COUNTS" : `${formatNumber(total)} CONTRIBUTIONS`;
+  out += mono(34, o.height - 26, `SHARE OF ${totalLabel} · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 7.5, t.muted, 550, "start", 0.08);
   return out + `</g>` + svgEnd();
 }
 
 const RELEASE_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptions): string {
-  const valid = data.releases
+  const sorted = data.releases
     .map((release) => ({ release, timestamp: Date.parse(String(release.publishedAt ?? "")) }))
     .filter(({ release, timestamp }) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
       && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? ""))
       && isValidIsoDate(String(release.publishedAt).slice(0, 10)) && Number.isFinite(timestamp))
     // Parse rather than compare strings: ".5Z" would sort before "Z" lexically despite being later.
-    .sort((left, right) => right.timestamp - left.timestamp)
-    // Keep only the newest release for each project before applying the six-row cap and absence
-    // arithmetic. Trimming the identity also makes whitespace-only presentation differences safe.
-    .filter((entry, index, entries) => entries.findIndex((candidate) =>
-      String(candidate.release.project).trim() === String(entry.release.project).trim()) === index)
-    .map(({ release }) => ({ ...release, project: String(release.project).trim() }));
+    .sort((left, right) => right.timestamp - left.timestamp);
+  // Keep only the newest release for each project before applying the six-row cap and absence
+  // arithmetic. This pass is linear after sorting; trimming the identity also makes whitespace-
+  // only presentation differences safe without the former quadratic findIndex scan.
+  const seenProjects = new Set<string>();
+  const valid = [];
+  for (const { release } of sorted) {
+    const project = String(release.project).trim();
+    if (seenProjects.has(project)) continue;
+    seenProjects.add(project);
+    valid.push({ ...release, project });
+  }
   const releases = valid.slice(0, 6);
   // The absence footer is computed from the pre-cap count: a release cut by the six-row display
   // cap still exists, and counting it as "no published release" would state a falsehood.
