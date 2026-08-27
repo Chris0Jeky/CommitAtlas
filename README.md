@@ -70,14 +70,18 @@ dashboard: a README-embedded SVG is one linked image and cannot reliably contain
 
 ## Hosted examples
 
-- [Rich Atlas — live public profile](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
-- [Streak — live public profile](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/streak.svg?user=Chris0Jeky&demo=false&theme=ember)
-- [Breakdown — live public profile](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/breakdown.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle)
-- [Rhythm — live public profile](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/rhythm.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle)
-- [Activity — live public profile](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/activity.svg?user=Chris0Jeky&demo=false&theme=ember&days=365)
-- [Profile — live public data](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=Chris0Jeky&demo=false&theme=ember)
-- [Languages — live public data](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/languages.svg?user=Chris0Jeky&demo=false&theme=ember)
+Start with the deterministic examples: they make no GitHub request and therefore separate product
+behavior from upstream availability.
+
+- [Rich Atlas — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle&layout=wide)
+- [Profile — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none)
 - [Project board — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
+
+The [live public Atlas](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
+is the availability-dependent example. A validated public response is retained for seven days. If
+anonymous GitHub later times out or rate-limits the route, CommitAtlas serves that snapshot with a
+visible `STALE SNAPSHOT` strip plus freshness headers; a cold or expired route still returns the
+original bounded error. Synthetic and token-backed requests never use the fallback.
 
 ## Run locally
 
@@ -99,7 +103,8 @@ npm run check
 ## Deploy your own
 
 CommitAtlas is a Cloudflare Worker with static assets and needs **no credentials** to serve every
-documented surface, so the free Workers plan is enough:
+documented surface. A deployment that wants hosted last-good resilience also binds one Workers KV
+namespace; see the account-specific setup in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ```bash
 npx wrangler login

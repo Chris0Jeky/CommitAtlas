@@ -75,7 +75,27 @@ details through that path.
 
 The hosted service is best-effort and cache-first. Public responses use canonical cache keys and
 bounded edge lifetimes; private/token responses use `no-store`. Stable ETags support conditional
-requests. No database is required for v1.
+requests.
+
+The Worker also keeps a public-only last-known-good layer in the `LAST_GOOD` Workers KV binding.
+Only validated `200` JSON/SVG representations from canonical live-public requests are eligible.
+The key is a SHA-256 digest of the route plus sorted query pairs, so user, theme, layout, window,
+repository, lifecycle, and workflow choices cannot collide or leak across responses. Synthetic
+requests, token-backed requests, invalid input, not-found answers, and malformed upstream data are
+never written or served from this layer.
+
+Entries expire after seven days. When anonymous GitHub later produces a supported quota (`429`) or
+availability (`502`) error, a valid entry is returned with `X-CommitAtlas-Data-State: stale`, its
+stored and observed timestamps, a short cache lifetime, and an HTTP stale warning. SVG responses
+also receive a high-contrast `STALE SNAPSHOT` strip with the observation time; versioned JSON bodies
+stay byte-identical and carry their existing freshness object. A cold, expired, corrupt, or
+cross-key lookup retains the original bounded error.
+
+KV is eventually consistent, so a just-primed value may take time to become visible in another
+Cloudflare location. That is an honest resilience layer, not an availability guarantee or a source
+of stronger evidence. Persistence runs through `ctx.waitUntil()` and cannot delay a successful
+response. See Cloudflare's [KV consistency model](https://developers.cloudflare.com/kv/concepts/how-kv-works/)
+and [`waitUntil` contract](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
 
 The Studio uses the same versioned API and renderers. It only emits Markdown for a configuration that
 actually rendered, retires stale project evidence after edits, and keeps independent project actions

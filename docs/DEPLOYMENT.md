@@ -2,6 +2,7 @@
 
 CommitAtlas is a Cloudflare Worker with static assets. It renders public GitHub data and needs
 **no credentials** to serve every documented surface, so a deployment has no required secrets.
+Hosted last-good resilience uses one non-secret Workers KV binding.
 
 ## What is deployed
 
@@ -18,8 +19,20 @@ CommitAtlas is a Cloudflare Worker with static assets. It renders public GitHub 
 ```bash
 npm ci
 npx wrangler login          # opens a browser; grants Workers deploy scope
+npx wrangler kv namespace create commit-atlas-last-good
+# Copy the returned namespace id into the LAST_GOOD binding in wrangler.jsonc.
 npm run deploy              # builds, deploys, and smoke-checks the result
 ```
+
+Workers KV namespace IDs belong to one Cloudflare account. The checked-in `LAST_GOOD` ID is for the
+maintainer's deployment; a fork must create its own namespace and replace that ID before deploying.
+The generated `worker-configuration.d.ts` is kept in step with the binding by
+`npm run typecheck:worker`.
+
+The binding stores only validated, credential-free public API representations. Entries expire after
+seven days. Synthetic and token-backed requests bypass it; a cold or expired lookup preserves the
+normal `429`/`502` response. See [ARCHITECTURE.md](./ARCHITECTURE.md#hosted-delivery-and-caching) for
+the cache key, stale response, and eventual-consistency contract.
 
 `npm run deploy` builds, deploys, reads the origin **out of Wrangler's own output**, and verifies
 that origin. A `workers.dev` hostname is `<worker-name>.<account-subdomain>.workers.dev`, so it
@@ -28,8 +41,8 @@ differs per Cloudflare account — the maintainer's is
 the origin cannot be read the script says so and exits non-zero rather than verifying someone
 else's site.
 
-The free Workers plan is sufficient: the bundle is well under the 3 MiB gzipped script limit and
-every response is either cached at the edge or a bounded error.
+The bundle is well under the 3 MiB gzipped script limit. Confirm current Workers and KV quotas for
+your account before deploying sustained traffic; CommitAtlas does not assume a paid plan.
 
 > **Do not run a bare `wrangler deploy` on an unbuilt checkout.** After a build, Wrangler follows
 > `.wrangler/deploy/config.json` to the generated `dist/server/wrangler.json`. Without one it uses
@@ -114,7 +127,7 @@ mode and the scheduled static snapshot never need it.
 node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev
 ```
 
-Fourteen deterministic probes:
+Seventeen deterministic probes:
 
 - health, the landing page, and the Studio (matched on the title only `/studio` sets, so serving the
   landing page for that route fails rather than passes);
@@ -123,7 +136,8 @@ Fourteen deterministic probes:
 - `motion=none`, which takes the other CSP branch, asserted to emit no `@keyframes` and to carry a
   script-blocking `Content-Security-Policy`;
 - an out-of-range parameter value **and** an unknown parameter, both proving a bounded `400` with
-  `no-store` and a JSON error envelope.
+  `no-store` and a JSON error envelope;
+- `robots.txt`, `sitemap.xml`, and the landing page's structured data.
 
 Every probe uses synthetic mode, so a failure means the deployment is wrong — not that GitHub was
 rate-limited.
