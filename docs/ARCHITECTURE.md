@@ -97,6 +97,13 @@ same warning to the accessible description. Versioned JSON bodies preserve their
 while changing `freshness.mode` to `stale`; both representations receive a new ETag. A cold, expired, corrupt, or
 cross-key lookup retains the original bounded error.
 
+A matching public `304 Not Modified` is also useful evidence: GitHub has confirmed that the
+canonical representation is still current even though it did not resend the body. CommitAtlas
+therefore refreshes that entry's KV retention through `ctx.waitUntil()`, but only when the request,
+response, canonical key, and stored weak ETag all agree. The stored and observed timestamps are
+preserved because no body was newly observed. Missing, expired, malformed, or mismatched entries
+are not revived, and a KV read or write failure cannot replace the original `304`.
+
 KV is eventually consistent, so a just-primed value may take time to become visible in another
 Cloudflare location. That is an honest resilience layer, not an availability guarantee or a source
 of stronger evidence. Persistence runs through `ctx.waitUntil()` and cannot delay a successful

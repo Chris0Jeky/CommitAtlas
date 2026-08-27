@@ -78,6 +78,24 @@ export async function withPublicLastGood(
     return responseWithHeader(response, "X-CommitAtlas-Data-State", "live");
   }
 
+  if (isValidatedNotModified(response, request)) {
+    const refresh = refreshLastGoodRetention(runtime.store, key, request, response, now)
+      .catch((error: unknown) => {
+        const detail = error instanceof Error ? error.message : "unknown error";
+        try {
+          (runtime.logError ?? console.error)(JSON.stringify({
+            message: "last-good retention refresh failed",
+            path: new URL(request.url).pathname,
+            detail,
+          }));
+        } catch {
+          // Diagnostics must not replace the route's original 304 response.
+        }
+      });
+    runtime.waitUntil(refresh);
+    return response;
+  }
+
   const fallbackReason = await upstreamFallbackReason(response);
   if (!fallbackReason) return response;
 
@@ -128,6 +146,14 @@ function isValidatedSuccess(response: Response, request: Request): boolean {
   return isSvgPath(request) ? contentType.startsWith("image/svg+xml") : contentType.startsWith("application/json");
 }
 
+function isValidatedNotModified(response: Response, request: Request): boolean {
+  if (response.status !== 304) return false;
+  if (!/^public\b/i.test(response.headers.get("cache-control") ?? "")) return false;
+  const etag = response.headers.get("etag");
+  return /^W\/"[a-f\d]{64}"$/i.test(etag ?? "")
+    && ifNoneMatch(request.headers.get("if-none-match"), etag);
+}
+
 async function persistLastGood(
   store: LastGoodStore,
   key: string,
@@ -156,6 +182,21 @@ async function persistLastGood(
     throw new Error("response exceeded the last-good entry limit");
   }
   await store.put(key, serialized, { expirationTtl: RETENTION_SECONDS });
+}
+
+async function refreshLastGoodRetention(
+  store: LastGoodStore,
+  key: string,
+  request: Request,
+  response: Response,
+  now: Date,
+): Promise<void> {
+  const raw = await store.get(key);
+  const entry = parseEntry(raw, request, now);
+  if (!entry || response.headers.get("etag") !== entry.headers.etag) return;
+  // Re-persist the validated representation only to extend KV retention. Its original storage and
+  // observation timestamps remain evidence of when the body was actually seen.
+  await store.put(key, JSON.stringify(entry), { expirationTtl: RETENTION_SECONDS });
 }
 
 async function upstreamFallbackReason(response: Response): Promise<"rate-limited" | "unavailable" | null> {
