@@ -878,7 +878,8 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const gap = 4;
   const barWidth = Math.max(4, (trendWidth - Math.max(0, buckets.length - 1) * gap) / Math.max(1, buckets.length));
   buckets.forEach((value, index) => {
-    const height = value > 0 ? Math.max(3, 48 * value / trendMax) : 2;
+    // Divide before scaling: multiplying a huge finite value first can overflow to Infinity.
+    const height = value > 0 ? Math.max(3, 48 * (value / trendMax)) : 2;
     const x = trendX + index * (barWidth + gap);
     out += `<rect x="${x.toFixed(2)}" y="${(baseline - height).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${height.toFixed(2)}" rx="3" fill="${value > 0 ? t.accent : t.background}"/>`;
   });
@@ -1002,10 +1003,14 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
   const total = totals.reduce((sum, value) => sum + value, 0);
   const o = optionsFor(options, 224, "Weekly cadence", "Contribution share by day of week for the returned window, on UTC day boundaries.", 190, 300); const t = o.theme; const width = o.width;
   const shares = totals.map((value) => (total > 0 ? (value / total) * 100 : 0));
-  const busiest = shares.indexOf(Math.max(...shares));
+  const maxShare = Math.max(...shares);
+  const busiestDays = shares.flatMap((share, index) => share === maxShare ? [index] : []);
   const metadata = sourceMetadata(data.source, o.title, o.description);
+  const busiestDescription = busiestDays.length > 1
+    ? ` Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} at ${maxShare.toFixed(1).replace(/\.0$/, "")}%.`
+    : "";
   const accessibleDescription = total > 0
-    ? `${metadata.description} ${WEEKDAY_NAMES.map((name, index) => `${name} ${shares[index]!.toFixed(1)}%`).join(", ")}.`
+    ? `${metadata.description} ${WEEKDAY_NAMES.map((name, index) => `${name} ${shares[index]!.toFixed(1)}%`).join(", ")}.${busiestDescription}`
     : `${metadata.description} No contributions observed in this window.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
@@ -1016,15 +1021,19 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
     out += text(34, o.height / 2 + 6, "No contributions observed in this window", 13, t.muted, 550);
     return out + `</g>` + svgEnd();
   }
-  out += text(width - 34, 50, `${WEEKDAY_NAMES[busiest]} carries ${shares[busiest]!.toFixed(1).replace(/\.0$/, "")}%`, 12, t.text, 600, "end");
+  const busiestLabel = busiestDays.length > 1
+    ? `Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} carry ${maxShare.toFixed(1).replace(/\.0$/, "")}%`
+    : `${WEEKDAY_NAMES[busiestDays[0]!]} carries ${maxShare.toFixed(1).replace(/\.0$/, "")}%`;
+  out += text(width - 34, 50, busiestLabel, 12, t.text, 600, "end");
   const baseline = o.height - 62; const chartTop = 78;
   const gap = 14; const barWidth = (width - 68 - gap * 6) / 7;
-  const maxShare = Math.max(1, ...shares);
+  const chartMaxShare = Math.max(1, ...shares);
   shares.forEach((share, index) => {
     const x = 34 + index * (barWidth + gap);
-    const barHeight = Math.max(2, (share / maxShare) * (baseline - chartTop));
-    out += `<rect x="${x.toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="3" fill="${index === busiest ? t.accent : t.track}"/>`;
-    out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 8.5, index === busiest ? t.text : t.muted, 550, "middle", 0.04);
+    const barHeight = Math.max(2, (share / chartMaxShare) * (baseline - chartTop));
+    const isBusiest = busiestDays.includes(index);
+    out += `<rect x="${x.toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="3" fill="${isBusiest ? t.accent : t.track}"/>`;
+    out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 8.5, isBusiest ? t.text : t.muted, 550, "middle", 0.04);
     out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 8.5, t.muted, 550, "middle");
   });
   out += mono(34, o.height - 26, `SHARE OF ${formatNumber(total)} CONTRIBUTIONS · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 7.5, t.muted, 550, "start", 0.08);
@@ -1035,10 +1044,17 @@ const RELEASE_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)
 
 export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptions): string {
   const valid = data.releases
-    .filter((release) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
-      && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? "")) && isValidIsoDate(String(release.publishedAt).slice(0, 10)))
+    .map((release) => ({ release, timestamp: Date.parse(String(release.publishedAt ?? "")) }))
+    .filter(({ release, timestamp }) => String(release.project ?? "").trim() && String(release.tag ?? "").trim()
+      && RELEASE_TIMESTAMP_PATTERN.test(String(release.publishedAt ?? ""))
+      && isValidIsoDate(String(release.publishedAt).slice(0, 10)) && Number.isFinite(timestamp))
     // Parse rather than compare strings: ".5Z" would sort before "Z" lexically despite being later.
-    .sort((left, right) => Date.parse(right.publishedAt) - Date.parse(left.publishedAt));
+    .sort((left, right) => right.timestamp - left.timestamp)
+    // Keep only the newest release for each project before applying the six-row cap and absence
+    // arithmetic. Trimming the identity also makes whitespace-only presentation differences safe.
+    .filter((entry, index, entries) => entries.findIndex((candidate) =>
+      String(candidate.release.project).trim() === String(entry.release.project).trim()) === index)
+    .map(({ release }) => ({ ...release, project: String(release.project).trim() }));
   const releases = valid.slice(0, 6);
   // The absence footer is computed from the pre-cap count: a release cut by the six-row display
   // cap still exists, and counting it as "no published release" would state a falsehood.
@@ -1056,7 +1072,7 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     : "";
   const accessibleDescription = releases.length
     ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.${absenceSentence}`
-    : `${metadata.description} No published releases observed for the curated projects.`;
+    : `${metadata.description} No published releases observed for the curated projects.${absenceSentence}`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -1064,6 +1080,9 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   out += sourceMarker(data.source, width - 34, 31, t);
   if (!releases.length) {
     out += text(34, 92, "No published releases observed for the curated projects", 13, t.muted, 550);
+    if (observed !== null && observed > 0) {
+      out += mono(34, o.height - 28, `${observed} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
+    }
     return out + `</g>` + svgEnd();
   }
   if (releases.length < valid.length) out += text(width - 34, 50, `${releases.length} of ${valid.length} shown`, 11, t.muted, 500, "end");
@@ -1193,7 +1212,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   breakdown.forEach(([label, value], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);
-    const barWidth = Math.max(2, trackWidth * finite(value) / breakdownMax);
+    // Divide before scaling: multiplying a huge finite value first can overflow to Infinity.
+    const barWidth = Math.max(2, trackWidth * (finite(value) / breakdownMax));
     out += mono(breakdownX, y + 8, label, 8.5, t.muted, 500, "start", 0.08);
     out += `<rect x="${breakdownX + 76}" y="${y + 1}" width="${trackWidth}" height="6" fill="${t.track}"/>`;
     out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y + 1}" width="${barWidth.toFixed(2)}" height="6" fill="${t.mixInk}"/>`;
@@ -1213,7 +1233,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const trendGap = 3;
   const trendBarWidth = Math.max(3, (trendWidth - Math.max(0, trendBuckets.length - 1) * trendGap) / Math.max(1, trendBuckets.length));
   trendBuckets.forEach((value, index) => {
-    const barHeight = Math.max(2, 22 * finite(value) / trendMax);
+    // Divide before scaling: multiplying a huge finite value first can overflow to Infinity.
+    const barHeight = Math.max(2, 22 * (finite(value) / trendMax));
     out += `<rect class="atlas-bar" x="${(trendX + index * (trendBarWidth + trendGap)).toFixed(2)}" y="${(trendBaseline - barHeight).toFixed(2)}" width="${trendBarWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" fill="${t.accent}"/>`;
   });
 

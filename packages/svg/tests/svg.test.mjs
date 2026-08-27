@@ -893,6 +893,28 @@ test("atlas card keeps non-finite direct-caller numerics out of the rendered SVG
   assert.doesNotMatch(coerced, /undefined/);
 });
 
+test("ratio geometry stays finite for huge direct-caller numerics", () => {
+  for (const value of [Number.MAX_VALUE, 3.8e306]) {
+    const outputs = [
+      renderRhythmCard(rhythmFixture({ trend: { buckets: [value, 1], recent28Days: value, previous28Days: 1, changePercent: 0, direction: "flat" } })),
+      renderContributionBreakdownCard({
+        window: { from: "2026-01-01", to: "2026-01-31", days: 31 },
+        breakdown: { commits: value, issues: 1, pullRequests: 1, reviews: 1 }, basis: "exact-counts",
+      }),
+      renderAtlasCard(atlasFixture({
+        breakdown: { commits: value, issues: 1, pullRequests: 1, reviews: 1 },
+        trend: { buckets: [value, 1], recent28Days: value, previous28Days: 1, changePercent: 0, direction: "flat" },
+      }), { motion: "none" }),
+    ];
+    for (const output of outputs) {
+      assertSafeSvg(output);
+      assertWellFormedXml(output);
+      assertFiniteGeometry(output);
+      assert.doesNotMatch(output, /NaN|Infinity/, `huge finite ${value} leaked into the SVG`);
+    }
+  }
+});
+
 test("atlas card bounds the momentum strip like the rhythm card does", () => {
   const bars = (output) => (output.match(/<rect class="atlas-bar"/g) ?? []).length;
   // Four breakdown bars plus one bar per rendered trend bucket.
@@ -1019,6 +1041,21 @@ test("cadence card computes Monday-first weekday shares and names the busiest da
   assert.equal(accents.length, 1);
 });
 
+test("cadence card accents every tied busiest day and names the tie", () => {
+  const output = renderCadenceCard({
+    days: [
+      { date: "2026-02-23", count: 2 },
+      { date: "2026-02-25", count: 2 },
+      { date: "2026-02-27", count: 1 },
+    ],
+  });
+  assertSafeSvg(output);
+  assert.match(output, /Busiest days: Monday, Wednesday carry 40%/);
+  assert.match(output, /Busiest days: Monday, Wednesday at 40%/);
+  const accents = output.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? [];
+  assert.equal(accents.length, 2);
+});
+
 test("cadence card states an empty window honestly and survives hostile and huge input", () => {
   const empty = renderCadenceCard({ days: [] });
   assertSafeSvg(empty);
@@ -1041,11 +1078,13 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   const output = renderReleasesCard({
     releases: [
       { project: "Older", tag: "v0.1.0", publishedAt: "2026-01-05T09:00:00Z" },
+      { project: "Newest", tag: "v0.0.1", publishedAt: "2026-01-01T09:00:00Z" },
       { project: "Newest", tag: "v2.0.0", publishedAt: "2026-08-01T09:00:00Z" },
       { project: "Middle", tag: "v1.0.0", publishedAt: "2026-04-20T09:00:00.123Z" },
       { project: "", tag: "v9.9.9", publishedAt: "2026-08-02T09:00:00Z" },
       { project: "BadDate", tag: "v9.9.9", publishedAt: "yesterday" },
       { project: "BadDay", tag: "v9.9.9", publishedAt: "2026-02-30T09:00:00Z" },
+      { project: "BadClock", tag: "v9.9.9", publishedAt: "2026-02-28T99:00:00Z" },
     ],
     projectsObserved: 6,
   });
@@ -1053,7 +1092,7 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   const dates = output.match(/>\d{4}-\d{2}-\d{2}</g) ?? [];
   assert.deepEqual(dates, [">2026-08-01<", ">2026-04-20<", ">2026-01-05<"]);
   assert.match(output, />Newest</);
-  assert.doesNotMatch(output, /BadDate|BadDay|v9\.9\.9/);
+  assert.doesNotMatch(output, /BadDate|BadDay|BadClock|v9\.9\.9|v0\.0\.1/);
   assert.match(output, /3 OF 6 CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED/);
   const capped = renderReleasesCard({
     releases: Array.from({ length: 9 }, (_, index) => ({
@@ -1084,6 +1123,8 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   const empty = renderReleasesCard({ releases: [], projectsObserved: 4 });
   assertSafeSvg(empty);
   assert.match(empty, /No published releases observed for the curated projects/);
+  assert.match(empty, /4 OF 4 CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED/);
+  assert.match(empty, /<desc>[^<]*4 of 4 curated projects have no published release observed\./i);
   const hostile = renderReleasesCard({
     releases: [{ project: injection, tag: injection, publishedAt: "2026-08-01T09:00:00Z" }],
   });
