@@ -237,6 +237,20 @@ test("streak cards distinguish boundary-open values from observed-window values"
   assert.doesNotMatch(closed, />42\+<\/text>/);
 });
 
+test("streak cards disclose when an open UTC day leaves the streak ending yesterday", () => {
+  const output = renderStreakCard({
+    current: 37,
+    currentThrough: "2026-08-26",
+    asOf: "2026-08-27",
+    longest: 53,
+    windowDays: 365,
+    boundary: { current: "closed", longest: "closed" },
+  });
+  assert.match(output, /days · through 2026-08-26/);
+  assert.match(output, /Current streak: 37 days through 2026-08-26/);
+  assertSafeSvg(output);
+});
+
 test("project boards remain summary-only when action URLs are present", () => {
   const board = renderProjectBoard({ projects: [{
     name: "Atlas", lifecycle: "active", ci: "passing",
@@ -331,6 +345,29 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.match(publicProfileAtlas, /02 \/\/ PROFILE MIX · NOT WINDOW-SCOPED/);
   assert.match(publicProfileAtlas, />77\.8%<\/text>/);
   assert.match(publicProfileAtlas, /Public profile activity percentage mix from calendar-year views, not scoped to this contribution window: 77\.8% commits/);
+});
+
+test("atlas heatmap uses GitHub weekday geometry and labels an open-day streak honestly", () => {
+  const activity = [
+    { date: "2026-08-20", count: 999, level: 1 },
+    { date: "2026-08-21", count: 1, level: 4 },
+    { date: "2026-08-22", count: 8, level: 2 },
+    { date: "2026-08-23", count: 7, level: 3 },
+  ];
+  const output = renderAtlasCard(atlasFixture({
+    activity,
+    window: { from: "2026-08-20", to: "2026-08-23", days: 4 },
+    currentStreak: 3,
+    currentStreakThrough: "2026-08-22",
+  }), { theme: "ember", motion: "none" });
+  assert.match(output, /<path class="atlas-cell" fill="#5c2a17" d="M24 190h7v7H24Z"\/>/);
+  assert.match(output, /<path class="atlas-cell" fill="#ff7a45" d="M24 199h7v7H24Z"\/>/);
+  assert.match(output, /<path class="atlas-cell" fill="#97431f" d="M24 208h7v7H24Z"\/>/);
+  assert.match(output, /<path class="atlas-cell" fill="#d05e2f" d="M33 154h7v7H33Z"\/>/);
+  assert.match(output, />STREAK TO 08-22<\/text>/);
+  assert.doesNotMatch(output, /\sx="-/);
+  assert.match(output, /3 day current streak through 2026-08-22/);
+  assertSafeSvg(output);
 });
 
 test("credential-bearing URLs never enter public SVG output", () => {
@@ -448,6 +485,21 @@ test("activity cells preserve chronological DOM order across alternating intensi
   assert.ok(output.indexOf("2026-08-18 0") < output.indexOf("2026-08-19 1"));
   assert.ok(output.indexOf("2026-08-19 1") < output.indexOf("2026-08-20 5"));
   assert.ok(output.indexOf("2026-08-20 5") < output.indexOf("2026-08-21 9"));
+});
+
+test("activity cells use Sunday rows and preserve GitHub's supplied intensity levels", () => {
+  const output = renderActivityCard({ days: [
+    { date: "2026-08-20", count: 999, level: 1 },
+    { date: "2026-08-21", count: 1, level: 4 },
+    { date: "2026-08-22", count: 8, level: 2 },
+    { date: "2026-08-23", count: 7, level: 3 },
+  ] }, { theme: "ember" });
+  // Thursday, Friday, and Saturday remain in the first week column. Sunday begins the next one.
+  assert.match(output, /<path fill="#5c2a17" d="M40 118h11v11H40"\/>/);
+  assert.match(output, /<path fill="#ff7a45" d="M40 131h11v11H40"\/>/);
+  assert.match(output, /<path fill="#97431f" d="M40 144h11v11H40"\/>/);
+  assert.match(output, /<path fill="#d05e2f" d="M53 66h11v11H53"\/>/);
+  assertSafeSvg(output);
 });
 
 test("missing profile and streak fields stay honestly unavailable", () => {
@@ -587,6 +639,14 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(compact, /Trend unavailable/);
   assert.match(compact, /Streak is bounded to this window/);
   assertSafeSvg(compact);
+
+  const throughYesterday = renderRhythmCard({
+    ...data,
+    currentStreak: 3,
+    currentStreakThrough: "2026-03-30",
+  });
+  assert.match(throughYesterday, /Current streak observed through 2026-03-30/);
+  assert.match(throughYesterday, /Current streak: at least 3 days · OPEN through 2026-03-30/);
 });
 
 /** A lone surrogate is not a legal XML character; truncation must never split an astral pair. */

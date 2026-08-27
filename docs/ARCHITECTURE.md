@@ -30,6 +30,8 @@ GitHub public evidence ──┼─ interactive HTML Studio
 | Activity | Bounded daily contribution graph and exact date window | SVG + JSON |
 | Languages | Complete repository-language share, not proficiency | SVG + JSON |
 | Projects | Explicit lifecycle, named-workflow CI, release, freshness, and configured actions | SVG summary + HTML actions + JSON |
+| Cadence | UTC weekday contribution share and busiest day | Static SVG |
+| Releases | Latest published releases across curated projects | Static SVG |
 | Studio | Configure, preview, copy Markdown, and inspect source/freshness | HTML |
 
 An external SVG embedded in a README is one image link. Internal pseudo-buttons are not a reliable
@@ -82,7 +84,7 @@ in HTML.
 ## Static delivery
 
 The static package reads one tracked `.commitatlas.json`, fetches public data without a credential,
-builds one `PortfolioSnapshot`, renders a selected subset of eight cards, and writes `manifest.json`
+builds one `PortfolioSnapshot`, renders a selected subset of ten cards, and writes `manifest.json`
 with byte sizes and SHA-256 hashes. Repository-contained path and symlink checks run before output.
 All data and payloads validate before staged per-file replacement; unrelated siblings survive while
 stale files from the bounded set of CommitAtlas-managed artifact names are removed after success.

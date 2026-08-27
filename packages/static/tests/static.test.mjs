@@ -8,6 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { calculateContributionMetrics } from "@commit-atlas/core";
 import {
+  assembleStaticPortfolio,
   codeSpan,
   generateStaticFromSnapshot,
   loadStaticConfig,
@@ -89,6 +90,29 @@ test("renders all rich widgets deterministically from one snapshot", () => {
     assert.doesNotMatch(svg, /<script\b|<foreignObject\b|<image\b/i);
     assert.doesNotMatch(svg, /SYNTHETIC DEMO|Synthetic demo:|Synthetic demonstration data/);
   }
+});
+
+test("static assembly distinguishes an open final UTC day from a closed historical snapshot", () => {
+  const base = snapshot();
+  const days = base.contributions.days.map((day, index, all) => (
+    index === all.length - 1 ? { ...day, count: 0, level: 0 } : day
+  ));
+  const contributions = {
+    ...base.contributions,
+    days,
+    totalContributions: days.reduce((sum, day) => sum + day.count, 0),
+  };
+  const open = assembleStaticPortfolio(base.profile, contributions, base.projects, { currentDay: "open" });
+  const closed = assembleStaticPortfolio(base.profile, contributions, base.projects);
+  assert.equal(open.metrics.streak.current, 3);
+  assert.equal(open.metrics.streak.currentThrough, days.at(-2).date);
+  assert.equal(closed.metrics.streak.current, 0);
+  assert.equal(closed.metrics.streak.currentThrough, null);
+
+  const rendered = renderStaticArtifacts(open, config());
+  assert.match(rendered["streak.svg"], new RegExp(`through ${days.at(-2).date}`));
+  assert.match(rendered["rhythm.svg"], new RegExp(`observed through ${days.at(-2).date}`));
+  assert.match(rendered["atlas.svg"], new RegExp(`STREAK TO ${days.at(-2).date.slice(5)}`));
 });
 
 test("propagates synthetic source truth to every standalone static card", () => {

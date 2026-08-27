@@ -44,6 +44,10 @@ test("server-renders the CommitAtlas product surface", async () => {
   ]) assert.match(html, new RegExp(family.replace(/[.?]/g, "\\$&")));
   assert.match(html, /Synthetic demo/);
   assert.match(html, /No GitHub calls are made to render this page/);
+  assert.match(html, /Available now/);
+  assert.match(html, /The packages are not published to npm/);
+  assert.match(html, /Explainer only/);
+  assert.match(html, /not separate cards or monitoring services/);
   assert.match(html, /Exact categorized counts when available; otherwise clearly labelled public-profile percentages/);
   assert.match(html, /Transparent personal consistency based on density and streak — not a GitHub rank/);
   assert.match(html, /aria-label="Open the synthetic Contribution breakdown SVG"/);
@@ -165,9 +169,12 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /Declare lifecycle yourself/);
   assert.match(html, /Open links below/);
   assert.match(html, /README Markdown/);
-  assert.match(html, /Contribution breakdown/);
-  assert.match(html, /Personal rhythm/);
-  assert.match(html, /Run Preview to bind these URLs to this Studio origin/);
+  assert.match(html, /<span>Breakdown<\/span>/);
+  assert.match(html, /<span>Rhythm<\/span>/);
+  assert.match(html, /2<!-- --> preview<!-- -->s/);
+  assert.match(html, /Copy stays disabled until Preview validates this exact configuration/);
+  assert.match(html, /<button type="button" disabled="">Copy Markdown<\/button>/);
+  assert.doesNotMatch(html, /your-commitatlas-host\.example/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%|Building in public, one useful commit/);
 });
 

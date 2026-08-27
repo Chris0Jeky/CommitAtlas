@@ -42,9 +42,8 @@ export function ConsoleHeader({
 }
 
 export const LANDING_LINKS = [
-  { href: "#cards", label: "Cards" },
-  { href: "#health", label: "Health" },
-  { href: "#evidence", label: "Evidence" },
+  { href: "#capabilities", label: "Capabilities" },
+  { href: "#cards", label: "Examples" },
   { href: "/studio", label: "Studio" },
   { href: SOURCE_REPOSITORY, label: "GitHub", external: true },
 ] as const;

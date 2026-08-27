@@ -4,10 +4,23 @@ import { parseLifecycleMap, parseRepositoryNames, parseWorkflowMap } from "@/lib
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
   type StudioCardKind,
 } from "./studio-urls";
+
+test("copies embeds only from a deployed HTTPS Studio origin", () => {
+  assert.equal(isCopyableStudioOrigin("https://commit-atlas.example"), true);
+  assert.equal(isCopyableStudioOrigin("https://preview.commit-atlas.example"), true);
+  assert.equal(isCopyableStudioOrigin("http://commit-atlas.example"), false);
+  assert.equal(isCopyableStudioOrigin("http://localhost:3000"), false);
+  assert.equal(isCopyableStudioOrigin("https://localhost:3000"), false);
+  assert.equal(isCopyableStudioOrigin("http://127.0.0.1:3000"), false);
+  assert.equal(isCopyableStudioOrigin("http://[::1]:3000"), false);
+  assert.equal(isCopyableStudioOrigin("https://atlas.local"), false);
+  assert.equal(isCopyableStudioOrigin("not a URL"), false);
+});
 
 const projects = [
   { repo: "alpha", lifecycle: "active", workflow: "ci file.yml" },

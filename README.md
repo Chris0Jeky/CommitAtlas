@@ -16,16 +16,14 @@ live portfolio Studio.
 
 </div>
 
-> **v0.2.0 rebuilds the web surface on the shared chassis.** The landing page is now the product
-> measuring itself: every number in the instrument fascia, the six-state health rack, and the new
-> evidence drawer comes from the same `fetchPortfolioSnapshot` call the SVG routes use, so nothing
-> on the front page is typed in and none of it costs a GitHub request. Four chassis themes, a
-> complete reduced-motion page, and an evidence layer that lets every printed number answer
-> "how do you know that". The contract is in [docs/DESIGN_CHASSIS.md](docs/DESIGN_CHASSIS.md).
+> **Current product boundary:** eight hosted SVG routes and the Studio are available on the public
+> Worker. The static CLI and bundled Node 24 Action support ten card types — the hosted eight plus
+> Cadence and Releases — from one credential-free public snapshot. The landing-page instrument
+> fascia, six-state rack, and evidence ladder are optional explainers, not additional exported cards
+> or a monitoring service. Their contract is in [docs/DESIGN_CHASSIS.md](docs/DESIGN_CHASSIS.md).
 >
-> The hosted API, the eight-card static generator, and the bundled Node 24 Action are unchanged.
-> Every push to `main` that passes CI deploys to Cloudflare Workers and is verified by probes
-> against the origin it just published to.
+> Every push to `main` that passes CI deploys to Cloudflare Workers and is verified by probes against
+> the origin it just published to.
 >
 > **npm publication is still not claimed.** The packages are built and pack-verified but are not on
 > the registry, and the README will not say otherwise until a registry lookup succeeds.

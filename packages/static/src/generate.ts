@@ -68,7 +68,12 @@ export async function generateStatic(options: GenerateStaticOptions = {}): Promi
   const loaded = await loadStaticConfig(options.cwd ?? process.cwd(), options.configPath);
   const config = options.outputDir ? { ...loaded.config, outputDir: options.outputDir } : loaded.config;
   const now = resolveAsOf(options.asOf);
-  const snapshot = await fetchStaticPortfolio(config, now, options.fetchImpl);
+  const snapshot = await fetchStaticPortfolio(
+    config,
+    now,
+    options.fetchImpl,
+    options.asOf === undefined ? "open" : "closed",
+  );
   return generateStaticFromSnapshot({
     root: loaded.root,
     config,
@@ -113,7 +118,12 @@ export async function generateStaticFromSnapshot(options: {
   return { root: options.root, outputDir, manifest, written: !options.dryRun };
 }
 
-async function fetchStaticPortfolio(config: StaticConfig, now: Date, fetchImpl?: typeof fetch): Promise<PortfolioSnapshot> {
+async function fetchStaticPortfolio(
+  config: StaticConfig,
+  now: Date,
+  fetchImpl?: typeof fetch,
+  currentDay: "closed" | "open" = "closed",
+): Promise<PortfolioSnapshot> {
   const client = new GitHubClient({ fetchImpl, now: () => now });
   const repositories = config.projects.map((project) => project.repo.split("/")[1]!);
   const lifecycles = new Map<string, ProjectLifecycle>();
@@ -128,7 +138,7 @@ async function fetchStaticPortfolio(config: StaticConfig, now: Date, fetchImpl?:
     client.fetchPublicProfileContributions(config.user, config.days),
     client.fetchProjects(config.user, repositories, lifecycles, workflows),
   ]);
-  return assembleStaticPortfolio(profile, contributions, projects);
+  return assembleStaticPortfolio(profile, contributions, projects, { currentDay });
 }
 
 function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>): { name: string; body: string }[] {

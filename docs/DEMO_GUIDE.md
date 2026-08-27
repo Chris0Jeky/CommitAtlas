@@ -1,6 +1,6 @@
 # CommitAtlas demonstration guide
 
-This walkthrough exercises every implemented v0.1 demonstration surface without requiring a
+This walkthrough exercises every implemented CommitAtlas demonstration surface without requiring a
 GitHub token. It uses synthetic data for repeatability, then the credential-free live public-profile
 path and static generator.
 
@@ -11,10 +11,10 @@ at [commit-atlas.commit-atlas.workers.dev/studio](https://commit-atlas.commit-at
 The public [Chris0Jeky profile](https://github.com/Chris0Jeky) shows dependable SVG snapshots and a
 responsive Atlas companion produced from one public GitHub snapshot, with links back to the Studio.
 
-For an exact local production-build comparison, use Node.js 22.13 or newer and npm:
+For an exact local production-build comparison, use Node.js 22.13 or newer and npm from a clone of
+this repository:
 
 ```powershell
-Set-Location 'C:\Users\Cristian3\Documents\Codex\2026-08-18\i-x20\work\CommitAtlas'
 npm.cmd ci
 npm.cmd run check
 npm.cmd run start
@@ -36,19 +36,22 @@ preview-only; the public Studio emits its real HTTPS origin.
 ### 2. Synthetic Studio preview
 
 - Leave `octocat`, Synthetic, and Ember selected.
-- Confirm all eight cards are checked by default: Atlas, Profile, Streak, Breakdown, Rhythm,
-  Activity, Languages, and Projects. Two starter projects should be present.
+- Confirm the recommended pair, Atlas and Projects, is checked by default. Two starter projects
+  should be present; the other hosted cards remain available as optional focused views.
+- Before the first successful preview, **Copy Markdown** must be disabled and the textarea must not
+  contain a placeholder deployment host.
 - Select **Preview atlas**.
 - The status should say `Synthetic preview loaded`; the dashboard should show Hello-World and
-  Spoon-Knife; the Markdown should contain all eight card URLs on the current public origin (or
-  localhost when deliberately running the local build).
+  Spoon-Knife; the Markdown should contain the two selected card URLs on the current public origin.
+  A deliberately local build remains preview-only and must not offer copyable localhost embeds.
 
 ### 3. Themes and card selection
 
 - Switch through Ember, Aurora, Midnight, and Paper and preview each one.
 - Uncheck a card and confirm its Markdown line disappears immediately. Restore it.
-- Uncheck every card and select **Copy Markdown**. The status should ask for at least one card.
-- Restore all eight and copy again. The clipboard should equal the textarea exactly.
+- Uncheck every card. **Copy Markdown** should disable and the textarea should ask for at least one
+  card. Restore Atlas and Projects, preview the exact configuration, and copy again. The clipboard
+  should equal the textarea exactly.
 - Switch Motion to `subtle`, preview, and confirm the SVG contains load keyframes plus a
   `prefers-reduced-motion` override. Switch to `none`, preview again, and confirm no animation
   keyframes are emitted. A reduced-motion browser preference must not re-enable motion.
@@ -78,7 +81,7 @@ preview-only; the public Studio emits its real HTTPS origin.
 - If a public GitHub endpoint is unavailable or its HTML shape becomes incomplete, the bounded error
   is expected to fail closed. Use Synthetic for the deterministic walkthrough; do not add a
   private-capable token merely to make the demo pass.
-- Switch back to Synthetic. All eight retained selections should be available again.
+- Switch back to Synthetic. Every selection you retained should be available again.
 
 ### 6. Error retention
 
@@ -117,8 +120,8 @@ node packages/static/dist/cli.js generate --config .commitatlas.json
 npm.cmd run test:action
 ```
 
-Inspect `outputs/commitatlas`: with the example config it should contain the eight canonical SVGs,
-`atlas-compact.svg`, `projects.json`, `projects.md`, and `manifest.json` (12 files total). Confirm
+Inspect `outputs/commitatlas`: with the example config it should contain the ten canonical SVGs,
+`atlas-compact.svg`, `projects.json`, `projects.md`, and `manifest.json` (14 files total). Confirm
 one window and generation time across the bundle, re-hash each artifact against its manifest entry,
 open every SVG, and inspect both project catalog outputs. The Action proof must regenerate
 `action/dist/index.js` without a diff and must not accept or emit a credential.
@@ -137,11 +140,12 @@ open every SVG, and inspect both project catalog outputs. The Action proof must 
 - A real keyboard can reach and activate navigation, fields, details, checkboxes, Preview, Copy, and
   action links with a visible focus indicator.
 
-The last item still needs a human or a driver capable of proving sequential focus movement; the
-current automation controller could not do so reliably.
+The native-control and focus-order contract has browser evidence in `docs/PROJECT_STATE.md`; repeat
+the keyboard pass after any interaction or document-order change.
 
 ## Deliberately outside this demonstration
 
-- No GitHub `v0.1.0` release or npm publication is claimed.
+- npm publication and a GitHub Marketplace listing are not claimed. Source installation and
+  immutable Action pins are the supported distribution paths.
 - Optional token-backed hosted contribution data requires a server-side credential that CommitAtlas
   can prove is public-only; static generation and its Action remain credential-free.

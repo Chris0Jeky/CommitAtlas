@@ -36,6 +36,7 @@ export function assembleStaticPortfolio(
   profile: ProfileSnapshot,
   contributions: ContributionSnapshot,
   projects: ProjectBoardSnapshot,
+  options: { readonly currentDay?: "closed" | "open" } = {},
 ): PortfolioSnapshot {
   if (profile.login.toLowerCase() !== contributions.login.toLowerCase()) {
     throw new Error("Portfolio sources refer to different GitHub users");
@@ -45,6 +46,7 @@ export function assembleStaticPortfolio(
   if (!asOf) throw new Error("GitHub returned an empty contribution calendar");
   const metrics = calculateContributionMetrics(calendar, {
     asOf,
+    currentDay: options.currentDay ?? "closed",
     days: calendar.days.length,
     commits: contributions.commits,
     issues: contributions.issues,
@@ -100,6 +102,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   if (selected.has("streak")) {
     artifacts["streak.svg"] = renderStreakCard({
       current: metrics.streak.current,
+      ...(metrics.streak.currentThrough ? { currentThrough: metrics.streak.currentThrough } : {}),
+      asOf: metrics.window.to,
       longest: metrics.streak.longest,
       windowDays: metrics.window.days,
       boundary: metrics.streak.boundary,
@@ -132,6 +136,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       activeDays: metrics.activeDays,
       density: metrics.density,
       currentStreak: metrics.streak.current,
+      ...(metrics.streak.currentThrough ? { currentStreakThrough: metrics.streak.currentThrough } : {}),
       currentStreakBoundary: metrics.streak.boundary.current,
       trend: {
         buckets: metrics.trend.buckets.map((bucket) => bucket.total),
@@ -192,6 +197,7 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     density: metrics.density,
     averagePerDay: metrics.averagePerDay,
     currentStreak: metrics.streak.current,
+    ...(metrics.streak.currentThrough ? { currentStreakThrough: metrics.streak.currentThrough } : {}),
     longestStreak: metrics.streak.longest,
     streakBasis: metrics.streak.basis,
     streakBoundary: metrics.streak.boundary,

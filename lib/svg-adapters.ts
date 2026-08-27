@@ -31,6 +31,10 @@ function toCardSource(freshness: Freshness): CardSource {
   return freshness.source === "github-profile-html" ? "public-profile" : "public-github";
 }
 
+function contributionCurrentDay(snapshot: ContributionSnapshot, asOf: string): "closed" | "open" {
+  return snapshot.freshness.generatedAt.slice(0, 10) === asOf ? "open" : "closed";
+}
+
 /** Convert the public profile contract without fabricating contribution data. */
 export function toProfileCard(snapshot: ProfileSnapshot): ProfileCardData {
   return {
@@ -62,12 +66,14 @@ export function toStreakCard(snapshot: ContributionSnapshot, expectedDays: numbe
   const calendar = contributionCalendar(snapshot);
   const asOf = latestContributionDate(calendar);
   const window = completeContributionWindow(calendar, asOf, expectedDays);
-  const summary = calculateStreaks(window, { asOf });
+  const summary = calculateStreaks(window, { asOf, currentDay: contributionCurrentDay(snapshot, asOf) });
   const total = window.days.reduce((sum, day) => sum + day.count, 0);
   const activeDays = window.days.filter((day) => day.count > 0).length;
   const lastActive = [...window.days].reverse().find((day) => day.count > 0)?.date;
   return {
     current: summary.current,
+    ...(summary.currentThrough ? { currentThrough: summary.currentThrough } : {}),
+    asOf,
     longest: summary.longest,
     windowDays: expectedDays,
     boundary: summary.boundary,
@@ -84,7 +90,7 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
   const window = completeContributionWindow(calendar, asOf, days);
   const series = calculateActivitySeries(window, { asOf, days });
   return {
-    days: series.points.map(({ date, count }) => ({ date, count })),
+    days: series.points.map(({ date, count, level }) => ({ date, count, level })),
     total: series.total,
     periodLabel: `${series.from} → ${series.to}`,
     source: toCardSource(snapshot.freshness),
@@ -112,6 +118,7 @@ export function toContributionMetricsCards(
   }
   const metrics = calculateContributionMetrics(window, {
     asOf,
+    currentDay: contributionCurrentDay(snapshot, asOf),
     days: expectedDays,
     commits: snapshot.commits,
     issues: snapshot.issues,
@@ -136,6 +143,7 @@ export function toContributionMetricsCards(
       activeDays: metrics.activeDays,
       density: metrics.density,
       currentStreak: metrics.streak.current,
+      ...(metrics.streak.currentThrough ? { currentStreakThrough: metrics.streak.currentThrough } : {}),
       currentStreakBoundary: metrics.streak.boundary.current,
       trend: {
         buckets: metrics.trend.buckets.map((bucket) => bucket.total),

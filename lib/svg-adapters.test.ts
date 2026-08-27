@@ -67,18 +67,43 @@ test("contribution adapters sort leap-day input and use its latest UTC day as as
     { date: "2024-02-26", count: 0 },
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
-    current: 1, longest: 2, windowDays: 7, boundary: { current: "closed", longest: "closed" },
+    current: 1, currentThrough: "2024-03-02", asOf: "2024-03-02",
+    longest: 2, windowDays: 7, boundary: { current: "closed", longest: "closed" },
     total: 5, activeDays: 3, lastActive: "2024-03-02", source: "synthetic-demo",
   });
   const activity = toActivityCard(snapshot, 7);
   assert.equal(activity.source, "synthetic-demo");
   assert.equal(activity.periodLabel, "2024-02-25 → 2024-03-02");
   assert.deepEqual(activity.days.slice(-4), [
-    { date: "2024-02-28", count: 1 },
-    { date: "2024-02-29", count: 1 },
-    { date: "2024-03-01", count: 0 },
-    { date: "2024-03-02", count: 3 },
+    { date: "2024-02-28", count: 1, level: 0 },
+    { date: "2024-02-29", count: 1, level: 0 },
+    { date: "2024-03-01", count: 0, level: 0 },
+    { date: "2024-03-02", count: 3, level: 0 },
   ]);
+});
+
+test("contribution adapters preserve a streak through yesterday while the final UTC day is open", () => {
+  const snapshot = contributions([
+    { date: "2026-08-18", count: 2, level: 1 },
+    { date: "2026-08-19", count: 3, level: 2 },
+    { date: "2026-08-20", count: 0, level: 0 },
+  ]);
+  const streak = toStreakCard(snapshot, 3);
+  const cards = toContributionMetricsCards(snapshot, 3);
+  assert.deepEqual(streak, {
+    current: 2,
+    currentThrough: "2026-08-19",
+    asOf: "2026-08-20",
+    longest: 2,
+    windowDays: 3,
+    boundary: { current: "open", longest: "open" },
+    total: 5,
+    activeDays: 2,
+    lastActive: "2026-08-19",
+    source: "synthetic-demo",
+  });
+  assert.equal(cards.rhythm.currentStreak, 2);
+  assert.equal(cards.rhythm.currentStreakThrough, "2026-08-19");
 });
 
 test("an explicit all-zero calendar renders a zero streak rather than becoming unavailable", () => {
@@ -92,7 +117,8 @@ test("an explicit all-zero calendar renders a zero streak rather than becoming u
     { date: "2026-08-19", count: 0 },
   ]);
   assert.deepEqual(toStreakCard(snapshot, 7), {
-    current: 0, longest: 0, windowDays: 7, boundary: { current: "closed", longest: "closed" },
+    current: 0, asOf: "2026-08-19", longest: 0, windowDays: 7,
+    boundary: { current: "closed", longest: "closed" },
     total: 0, activeDays: 0, lastActive: undefined, source: "synthetic-demo",
   });
 });

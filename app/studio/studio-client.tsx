@@ -24,6 +24,7 @@ import {
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
   type StudioCardKind,
@@ -143,7 +144,7 @@ export default function StudioClient() {
   const [motion, setMotion] = useState<"none" | "subtle">("subtle");
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
-  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(STUDIO_CARD_KINDS));
+  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(["atlas", "projects"]));
   const [profile, setProfile] = useState<ProfileSnapshot>(starterProfile);
   const [contributions, setContributions] = useState<ContributionSnapshot | null>(starterContributions);
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
@@ -253,6 +254,13 @@ export default function StudioClient() {
       layout,
     });
   }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, hasCurrentLanguages, layout, motion, selectedCards, theme]);
+  const previewIsValidated = configurationIsValidated && !refreshUnresolved;
+  const markdownReady = previewIsValidated && isCopyableStudioOrigin(baseUrl);
+  const visibleMarkdown = markdownReady
+    ? markdown || "Select one or more cards to generate Markdown."
+    : previewIsValidated
+      ? "Preview validated. README copying is available from a deployed HTTPS Studio; local previews remain local."
+      : "Run Preview to validate this configuration and bind its card URLs before copying Markdown.";
 
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -352,6 +360,10 @@ export default function StudioClient() {
   }
 
   async function copyMarkdown() {
+    if (!markdownReady) {
+      setNotice("Run Preview on the deployed Studio before copying README Markdown.");
+      return;
+    }
     if (!markdown) {
       setNotice("Select at least one card before copying Markdown.");
       return;
@@ -509,8 +521,8 @@ export default function StudioClient() {
           </div>
 
           <div className="markdown-panel">
-            <div><p>README Markdown</p><button type="button" onClick={copyMarkdown}>Copy Markdown</button></div>
-            <textarea aria-label="Generated README Markdown" readOnly value={markdown || "Select one or more cards to generate Markdown."} />
+            <div><p>README Markdown</p><button type="button" onClick={copyMarkdown} disabled={!markdownReady || !markdown}>Copy Markdown</button></div>
+            <textarea aria-label="Generated README Markdown" readOnly value={visibleMarkdown} />
             {/*
               The withheld-evidence explanation also lives beside the card picker, in the
               other column. Repeat it here: this is where the short Markdown is read and
@@ -519,8 +531,10 @@ export default function StudioClient() {
             {!demo && refreshUnresolved && (
               <small>{unconfirmedEvidenceNotice()}</small>
             )}
-            {(baseUrl.includes("localhost") || baseUrl.includes("your-commitatlas-host.example")) && (
-              <small>Run Preview to bind these URLs to this Studio origin. Local URLs are for preview only.</small>
+            {!markdownReady && (
+              <small>{previewIsValidated
+                ? "This preview is valid, but local URLs remain preview-only. Open the deployed Studio to copy portable README Markdown."
+                : "Copy stays disabled until Preview validates this exact configuration on a deployed Studio. Local URLs remain preview-only."}</small>
             )}
           </div>
         </section>

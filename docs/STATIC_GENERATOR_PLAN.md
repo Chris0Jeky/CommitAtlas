@@ -120,17 +120,17 @@ per file; unrelated sibling files are preserved. This is per-file atomic replace
 a cross-file filesystem transaction. After successful replacement, known CommitAtlas artifact names
 that are absent from the new manifest are removed to prevent stale responsive or deselected cards.
 
-All eight renderers consume one `PortfolioSnapshot`, so every card, project catalog, and the manifest
+All ten renderers consume one `PortfolioSnapshot`, so every card, project catalog, and the manifest
 share one window and provenance. `responsiveAtlas` renders the alternate wide/compact layout from
 that same snapshot and records it as `atlas-compact.svg` or `atlas-wide.svg`; no second GitHub fetch
-can make the pair drift. With all eight cards, responsive Atlas, and Projects selected, there are
-11 payload artifacts plus `manifest.json` (12 output files total). SVG and text validation rejects
+can make the pair drift. With all ten cards, responsive Atlas, and Projects selected, there are
+13 payload artifacts plus `manifest.json` (14 output files total). SVG and text validation rejects
 scripts, external images, `foreignObject` content, and forbidden control characters.
 
 ## Action
 
 The repository-root [`action.yml`](../action.yml) exposes `config`, `output-dir`, `as-of`, and
-`dry-run`, plus paths for the manifest, eight card types, `projects.json`, `projects.md`, and optional
+`dry-run`, plus paths for the manifest, ten card types, `projects.json`, `projects.md`, and optional
 Atlas companion outputs. It runs the checked-in
 `action/dist/index.js` bundle using `node24`.
 

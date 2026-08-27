@@ -34,6 +34,7 @@ export function EvidenceLayer({ evidence }: { evidence: EvidenceSet }) {
         </p>
       </div>
       <p className="section-lede">
+        <strong className="explainer-note">Design-lab interaction — not an exported card.</strong>{" "}
         Every reading sits on one of three rungs, and every dotted number on screen answers
         &ldquo;how do you know that&rdquo;. CommitAtlas already refuses to paint an unknown signal
         green; this is the same rule one level up, applied to the difference between a number that

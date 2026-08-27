@@ -35,6 +35,7 @@ export async function fetchPortfolioSnapshot(request: PortfolioRequest): Promise
       demoProfile(request.user, now),
       demoContributions(request.user, request.days, now),
       repositories.length > 0 ? demoProjects(request.user, repositories, lifecycles, workflows, now) : null,
+      { currentDay: "open" },
     );
   }
 
@@ -48,13 +49,14 @@ export async function fetchPortfolioSnapshot(request: PortfolioRequest): Promise
       ? client.fetchProjects(request.user, repositories, lifecycles, workflows)
       : Promise.resolve(null),
   ]);
-  return assemblePortfolioSnapshot(profile, contributions, projects);
+  return assemblePortfolioSnapshot(profile, contributions, projects, { currentDay: "open" });
 }
 
 export function assemblePortfolioSnapshot(
   profile: ProfileSnapshot,
   contributions: ContributionSnapshot,
   projects: ProjectBoardSnapshot | null = null,
+  options: { readonly currentDay?: "closed" | "open" } = {},
 ): PortfolioSnapshot {
   if (profile.login.toLowerCase() !== contributions.login.toLowerCase()) {
     throw new GitHubApiError("invalid_response", "Portfolio sources refer to different GitHub users");
@@ -64,6 +66,7 @@ export function assemblePortfolioSnapshot(
   if (!asOf) throw new GitHubApiError("invalid_response", "GitHub returned an empty contribution calendar");
   const metrics = calculateContributionMetrics(calendar, {
     asOf,
+    currentDay: options.currentDay ?? "closed",
     days: calendar.days.length,
     commits: contributions.commits,
     issues: contributions.issues,
@@ -108,6 +111,7 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     density: metrics.density,
     averagePerDay: metrics.averagePerDay,
     currentStreak: metrics.streak.current,
+    ...(metrics.streak.currentThrough ? { currentStreakThrough: metrics.streak.currentThrough } : {}),
     longestStreak: metrics.streak.longest,
     streakBasis: metrics.streak.basis,
     streakBoundary: metrics.streak.boundary,

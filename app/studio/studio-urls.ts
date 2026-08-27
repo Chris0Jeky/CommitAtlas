@@ -62,6 +62,18 @@ export function isStudioPreviewCurrent<T extends { key: string }>(
   return validatedPreview?.key === currentConfigurationKey;
 }
 
+export function isCopyableStudioOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname.toLowerCase();
+    return url.protocol === "https:"
+      && !["localhost", "127.0.0.1", "[::1]"].includes(hostname)
+      && !hostname.endsWith(".local");
+  } catch {
+    return false;
+  }
+}
+
 const cardPaths: Record<Exclude<StudioCardKind, "projects">, string> = {
   atlas: "/api/v1/cards/atlas.svg",
   profile: "/api/v1/cards/profile.svg",
