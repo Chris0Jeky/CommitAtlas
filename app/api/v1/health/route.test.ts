@@ -3,9 +3,18 @@ import test from "node:test";
 import { withWorkerEnv } from "@/lib/runtime-env";
 import { GET } from "./route";
 
+interface HealthPayload {
+  capabilities: {
+    contributions: {
+      status: string;
+      mode: string;
+    };
+  };
+}
+
 test("reports tokenless public contributions as available", async () => {
   const response = await healthWithToken("");
-  const payload = await response.json();
+  const payload = await response.json() as HealthPayload;
 
   assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=60");
   assert.deepEqual(payload.capabilities.contributions, {
@@ -17,7 +26,7 @@ test("reports tokenless public contributions as available", async () => {
 test("reports every configured contribution credential as unverified", async () => {
   for (const token of ["ghp_public-only", "unknown-private-capable-token"]) {
     const response = await healthWithToken(token);
-    const payload = await response.json();
+    const payload = await response.json() as HealthPayload;
 
     assert.equal(response.headers.get("cache-control"), "private, no-store");
     assert.deepEqual(payload.capabilities.contributions, {

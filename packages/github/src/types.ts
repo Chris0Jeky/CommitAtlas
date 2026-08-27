@@ -4,7 +4,7 @@ import type {
   ProjectLifecycle as CoreProjectLifecycle,
 } from "@commit-atlas/core";
 
-export type DataMode = "live" | "demo" | "partial" | "unavailable";
+export type DataMode = "live" | "demo" | "partial" | "stale" | "unavailable";
 
 /** Core owns the lifecycle vocabulary; GitHub only supplies observations. */
 export type ProjectLifecycle = CoreProjectLifecycle;

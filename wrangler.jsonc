@@ -15,6 +15,15 @@
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Public-only last-known-good responses survive transient anonymous GitHub
+  // quota and deadline failures for up to seven days. Forks must create and
+  // bind their own namespace; namespace IDs are account-specific.
+  "kv_namespaces": [
+    {
+      "binding": "LAST_GOOD",
+      "id": "496ffd2df9144ec0814c381a62d13dbf"
+    }
+  ],
   // CommitAtlas renders public GitHub data and needs no secrets to serve every
   // documented surface. GITHUB_TOKEN is optional and, when used, is installed
   // out of band with `wrangler secret put GITHUB_TOKEN` — never committed.

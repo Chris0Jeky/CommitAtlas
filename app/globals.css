@@ -1107,7 +1107,7 @@ button, input, select, textarea { font: inherit; }
 .preview-heading .mode-chip { margin-left: auto; }
 .mode-chip { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--pass-ink) 30%, transparent); color: var(--pass-ink); font: 500 9px/1 var(--font-geist-mono), monospace; letter-spacing: 0.1em; text-transform: uppercase; }
 .mode-chip.demo { color: var(--hinge-ink); border-color: color-mix(in srgb, var(--hinge-ink) 30%, transparent); }
-.mode-chip.partial, .mode-chip.unavailable { color: var(--stale-ink); border-color: color-mix(in srgb, var(--stale-ink) 40%, transparent); }
+.mode-chip.partial, .mode-chip.stale, .mode-chip.unavailable { color: var(--stale-ink); border-color: color-mix(in srgb, var(--stale-ink) 40%, transparent); }
 .mode-chip i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
 
 .studio-notice { min-height: 40px; margin: 0 0 16px; padding: 11px 13px; border-left: 2px solid var(--line); color: var(--muted); background: color-mix(in srgb, var(--ink) 2%, transparent); font-size: 11px; line-height: 1.55; }
