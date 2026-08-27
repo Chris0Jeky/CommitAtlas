@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-24 19:40 BST
+Last verified: 2026-08-27 22:45 BST
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -11,6 +11,25 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md).
 
 ## Public checkpoint
+
+- **Contribution freshness and calendar fidelity are fixed, deployed, and live on the profile.**
+  [PR #83](https://github.com/Chris0Jeky/CommitAtlas/pull/83) merged as `1062a87`; the exact reviewed
+  producer head was `63278f5`. An in-progress final day is now explicit rather than silently treated
+  as a closed zero, so a scheduled run during the UTC day no longer resets an otherwise continuing
+  streak to zero. The contribution grid is Sunday-aligned and preserves GitHub's supplied intensity
+  levels instead of grouping the arbitrary 365-day start into row zero and recalculating quartiles.
+  Hosted CI, [Deploy run 33119202170](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33119202170),
+  and an independent post-deploy 17/17 endpoint probe are green at the merged SHA.
+- **The public boundary and profile composition now match the shipped product.** The landing page
+  distinguishes eight available hosted routes, ten static card types, source-only distribution,
+  and an optional design explainer that is collapsed by default. The profile leads with the
+  full-width Atlas and Project radar; the four secondary views are full-width, purpose-labelled,
+  and collapsed under `More public signals`. [Profile PR #6](https://github.com/Chris0Jeky/Chris0Jeky/pull/6)
+  merged as `3a14cbe`, pinned both generation passes to `63278f5`, and dispatched
+  [refresh run 33119356827](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/33119356827).
+  The run passed every generation, validation, catalog, and commit step and produced bot snapshot
+  `ce59d76`: 29,217 contributions, 200 active days, and a 37-day current streak through
+  2026-08-27. Chrome inspection confirmed that GitHub's own total was also 29,217 at that checkpoint.
 
 - **Two new card types shipped and are live on the profile: `cadence` and `releases`**
   ([PR #80](https://github.com/Chris0Jeky/CommitAtlas/pull/80), merged as `4a6b1c4`, hosted CI green
@@ -122,9 +141,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `3a914a9` — the bot commit produced by the ten-card refresh
-  [run 32762878305](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32762878305) recorded in
-  the first bullet above.
+- Public profile repository head: `ce59d76` — the bot commit produced by freshness-fix refresh
+  [run 33119356827](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/33119356827) recorded in
+  the current checkpoint above.
 - The preceding checkpoints, both superseded the same day: paired-theme bot head `d9f03f1` from
   [run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123) (both
   generation passes, both bundle validations, catalog, commit, and push all passing), and before
@@ -197,9 +216,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   Docs, Install, and Download destinations appear only when observed or explicitly configured;
   individual action links remain in HTML/Markdown because an embedded README SVG cannot reliably
   expose multiple click targets.
-- Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create the
-  eight canonical SVGs, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
-  manifest while removing only known stale CommitAtlas artifacts.
+- Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create ten
+  selected SVG types, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
+  manifest — up to 14 output files — while removing only known stale CommitAtlas artifacts.
 - Generated catalog boundaries are pinned by adversarial fixtures: untrusted release tags and
   workflow names use delimiter-safe CommonMark code spans (fence grown past the longest backtick
   run, padded at backtick edges) and `projects.md` emits no Markdown table, so no upstream value can
@@ -219,14 +238,24 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   limit stays `github_rate_limited` with HTTP 429 and retry guidance; every other upstream failure
   stays `github_unavailable` with HTTP 502. Optional release and workflow lookups treat only 404 as
   absence, so a throttled optional lookup can no longer read as "no release" or a clean CI signal.
-- The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, shows
-  Breakdown, Rhythm, and the Weekly cadence card visibly, retains the Project radar with the
-  Latest-releases card beneath it and four optional focused widgets, and renders a marker-bounded
-  six-project catalog with observed/configured action links. Its daily workflow runs one generation
-  pass per colour scheme and validates 13 payload artifacts and every manifest hash in each bundle
-  before updating README/assets.
+- The [Chris0Jeky profile](https://github.com/Chris0Jeky) now leads with the responsive Atlas, then
+  Taskdeck, the Project radar, and the marker-bounded six-project catalog. Breakdown, Rhythm,
+  Cadence, and Releases remain available as full-width focused views under one collapsed,
+  purpose-labelled disclosure; Profile, Streak, Activity, and Languages are omitted from the README
+  because the Atlas already carries those signals. Its daily workflow runs one generation pass per
+  colour scheme and validates 13 payload artifacts and every manifest hash in each bundle before
+  updating README/assets.
 
 ## Verified
+
+- **2026-08-27: freshness, product-boundary, and profile-consumer rollout is closed.**
+  `npm.cmd run check` passed at producer head `63278f5` (all 332 focused tests plus typecheck, lint,
+  four package builds, Action parity, and production build). A fresh-context adversarial review and
+  the Codex connector found no blocker. Main CI and deployment are green at merge `1062a87`; the
+  deployed origin passed 17/17 probes. The profile consumer passed 10/10 focused tests and its
+  hosted test, merged at `3a14cbe`, then regenerated and hash-validated both colour schemes in
+  `ce59d76`. Browser inspection verified the landing boundary, the profile hierarchy, the collapsed
+  secondary views, and exact agreement with GitHub's 29,217 contribution total at the checkpoint.
 
 - 2026-08-24: `npm.cmd run check` passes at the chassis head — TypeScript, ESLint, deploy tooling 5,
   core 20, chassis 46, GitHub/API 93, Studio 49, SVG 30, static 14, Action 2, packaging 3, and
@@ -337,8 +366,8 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   recorded as what it is.
 - Token-backed private contribution history. The service and profile intentionally use public
   evidence and never request private repository details.
-- npm registry publication or a GitHub `v0.1.0` release. Packages and the Action are built and used
-  from immutable commits, but registry/release availability is not claimed.
+- npm registry publication or GitHub Marketplace listing. Packages and the Action are built and
+  used from immutable commits, but registry and Marketplace availability are not claimed.
 
 ## Residual risk and next slice
 
@@ -396,11 +425,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   that number, so leaving it at `1` would let a version-1 reader accept a shape it cannot validate.
   Version 2 covers the combined shape change: #53's added `host`/`external` action keys landed
   first, then #57 bumped the version once for both, so there is no second bump to make.
-  The consumer in the profile repository must accept version 2 before the pinned Action SHA in its
-  workflow is advanced; that ordering is tracked in #60 and is the one cross-repo obligation left.
-- The next bounded milestone is release preparation: finish keyboard QA if tooling permits,
-  reconcile release-impact dependencies/issues, rerun exact-head proof/review, then decide the
-  GitHub `v0.1.0` and optional npm publication separately.
+  The consumer in the profile repository accepted version 2 before the pinned Action SHA advanced;
+  #60 is closed, and refresh run 33119356827 proves the producer/consumer contract end to end.
+- The next bounded milestone is operational resilience: #85 tracks an honest hosted last-good
+  fallback after the live Atlas reproduced a bounded GitHub-deadline 502 on 2026-08-27; #78 reduces
+  the duplicate dark/light static fetch, and #62 classifies the remaining non-rate-limit 403 case.
+  npm publication, Marketplace listing, and a patch release remain separate owner decisions.
 
 ## Clean resume commands
 
