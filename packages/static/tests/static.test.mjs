@@ -54,6 +54,10 @@ test("accepts bounded opposite-scheme theme outputs and rejects ambiguous varian
   }), /unique outputDir/);
   assert.throws(() => parseStaticConfig({
     ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "ASSETS/COMMITATLAS" }],
+  }), /unique outputDir/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
     themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }, { theme: "paper", outputDir: "assets/commitatlas/other" }],
   }), /duplicate themes/);
   assert.throws(() => parseStaticConfig({

@@ -82,16 +82,17 @@ export function parseStaticConfig(input: unknown): StaticConfig {
   const outputDir = raw.outputDir.replaceAll("\\", "/");
   const themes: StaticThemeVariant[] = [];
   const seenThemes = new Set<StaticThemeName>([raw.theme]);
-  const seenOutputDirs = new Set<string>([outputDir]);
+  const seenOutputDirs = new Set<string>([outputDir.toLowerCase()]);
   for (const variant of raw.themes) {
     if (seenThemes.has(variant.theme)) throw new Error("themes must not contain duplicate themes");
     if (STATIC_THEME_SCHEMES[variant.theme] === STATIC_THEME_SCHEMES[raw.theme]) {
       throw new Error("themes must use the opposite colour scheme");
     }
     const variantOutputDir = variant.outputDir.replaceAll("\\", "/");
-    if (seenOutputDirs.has(variantOutputDir)) throw new Error("themes must use unique outputDir paths");
+    const outputKey = variantOutputDir.toLowerCase();
+    if (seenOutputDirs.has(outputKey)) throw new Error("themes must use unique outputDir paths");
     seenThemes.add(variant.theme);
-    seenOutputDirs.add(variantOutputDir);
+    seenOutputDirs.add(outputKey);
     themes.push({ theme: variant.theme, outputDir: variantOutputDir });
   }
   const user = parseHandle({ version: 1, handle: raw.user }).handle;
