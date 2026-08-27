@@ -427,10 +427,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   first, then #57 bumped the version once for both, so there is no second bump to make.
   The consumer in the profile repository accepted version 2 before the pinned Action SHA advanced;
   #60 is closed, and refresh run 33119356827 proves the producer/consumer contract end to end.
-- The next bounded milestone is operational resilience: reduce the duplicate dark/light public
-  fetch tracked in #78, classify the remaining non-rate-limit 403 case tracked in #62, and add a
-  visible freshness-age cue before considering a patch release. npm publication and Marketplace
-  listing remain separate owner decisions.
+- The next bounded milestone is operational resilience: #85 tracks an honest hosted last-good
+  fallback after the live Atlas reproduced a bounded GitHub-deadline 502 on 2026-08-27; #78 reduces
+  the duplicate dark/light static fetch, and #62 classifies the remaining non-rate-limit 403 case.
+  npm publication, Marketplace listing, and a patch release remain separate owner decisions.
 
 ## Clean resume commands
 
