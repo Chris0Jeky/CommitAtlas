@@ -175,6 +175,9 @@ export function buildProjectCatalog(snapshot: PortfolioSnapshot, config: StaticC
 }
 
 function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): ProjectCatalogEntry {
+  if ((project.releaseState === "published") !== Boolean(project.release)) {
+    throw new Error(`Release observation mismatch for ${project.repo}`);
+  }
   const links = ProjectLinksSchema.parse(entry.links);
   const actions: ProjectCatalogAction[] = [];
   addAction(actions, "source", "Source", project.sourceUrl, "snapshot");
