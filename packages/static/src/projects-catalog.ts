@@ -59,7 +59,6 @@ export interface ProjectCatalogEntry {
   readonly openIssuesAndPullRequests: number;
   readonly pushedAt?: string;
   readonly ci: ProjectCatalogCi;
-  readonly releaseState: ProjectSnapshot["releaseState"];
   readonly release?: ProjectCatalogRelease;
   readonly actions: readonly ProjectCatalogAction[];
 }
@@ -208,7 +207,6 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
       workflow: project.ci.workflow ? boundedText(project.ci.workflow, "workflow", MAX_LABEL) : null,
       ...(project.ci.url ? { url: validatedObservedUrl(project.ci.url, "CI") } : {}),
     },
-    releaseState: project.releaseState,
     ...(project.release ? { release: buildRelease(project.release) } : {}),
     actions,
   };
@@ -320,10 +318,6 @@ function renderProjectCatalogMarkdown(catalog: ProjectCatalog): string {
     if (project.release) {
       const tag = project.release.tag ? ` (${codeSpan(project.release.tag)})` : "";
       lines.push(`- **Release:** ${escapeMarkdown(project.release.name)}${tag}`);
-    } else if (project.releaseState === "none") {
-      lines.push("- **Release:** No published release observed");
-    } else {
-      lines.push("- **Release:** Unavailable (not observed)");
     }
     lines.push("", "### Actions", "");
     for (const action of project.actions) {

@@ -178,17 +178,6 @@ test("never counts an unavailable release lookup as an observed absence", () => 
   assert.match(rendered["releases.svg"], /v1\.0\.0/);
   assert.doesNotMatch(rendered["releases.svg"], /1 OF 2 CURATED PROJECTS/);
 
-  const catalogSnapshot = {
-    ...base,
-    projects: {
-      ...base.projects,
-      freshness: partial.projects.freshness,
-      projects: [{ ...unavailableProject, repo: "octocat/atlas", name: "atlas" }],
-    },
-  };
-  const catalog = renderProjectCatalogArtifacts(catalogSnapshot, config());
-  assert.equal(JSON.parse(catalog["projects.json"]).projects[0].releaseState, "unavailable");
-  assert.match(catalog["projects.md"], /Release:\*\* Unavailable \(not observed\)/);
 });
 
 test("renders a truthful deterministic catalog from observed and explicitly configured links", () => {
@@ -230,7 +219,9 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   // must be turned away by the version gate rather than shown a shape it
   // cannot validate.
   assert.equal(parsed.version, 2);
-  assert.equal(parsed.projects[0].releaseState, "published");
+  // Catalog v2 is a strict cross-repository contract. Release observation state belongs to the
+  // source snapshot until a coordinated catalog version introduces it.
+  assert.equal("releaseState" in parsed.projects[0], false);
   assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
     ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
