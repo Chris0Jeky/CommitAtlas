@@ -1056,6 +1056,31 @@ test("cadence card accents every tied busiest day and names the tie", () => {
   assert.equal(accents.length, 2);
 });
 
+test("cadence card bounds compact tie labels while keeping the full accessible tie", () => {
+  const fourWay = renderCadenceCard({
+    days: [
+      { date: "2026-02-23", count: 1 },
+      { date: "2026-02-24", count: 1 },
+      { date: "2026-02-25", count: 1 },
+      { date: "2026-02-26", count: 1 },
+    ],
+  }, { width: 420 });
+  assertSafeSvg(fourWay);
+  assert.match(fourWay, /Busiest: 4-way tie · 25%/);
+  assert.match(fourWay, /<desc>[^<]*Busiest days: Monday, Tuesday, Wednesday, Thursday at 25%/);
+  assert.equal((fourWay.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? []).length, 4);
+
+  const sevenWay = renderCadenceCard({
+    days: Array.from({ length: 7 }, (_, index) => ({
+      date: new Date(Date.UTC(2026, 1, 23 + index)).toISOString().slice(0, 10), count: 1,
+    })),
+  }, { width: 420 });
+  assertSafeSvg(sevenWay);
+  assert.match(sevenWay, /Busiest: 7-way tie · 14\.3%/);
+  assert.match(sevenWay, /<desc>[^<]*Busiest days: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday at 14\.3%/);
+  assert.equal((sevenWay.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? []).length, 7);
+});
+
 test("cadence card states an empty window honestly and survives hostile and huge input", () => {
   const empty = renderCadenceCard({ days: [] });
   assertSafeSvg(empty);
@@ -1072,6 +1097,24 @@ test("cadence card states an empty window honestly and survives hostile and huge
   assertWellFormedXml(large);
   const bytes = Buffer.byteLength(large, "utf8");
   assert.ok(bytes < 30_000, `cadence SVG exceeded budget (${bytes} UTF-8 bytes)`);
+});
+
+test("cadence card normalizes overflowing finite totals without false zero ties", () => {
+  const output = renderCadenceCard({
+    days: [
+      { date: "2026-02-23", count: Number.MAX_VALUE },
+      { date: "2026-02-24", count: Number.MAX_VALUE },
+      { date: "2026-02-25", count: 0 },
+    ],
+  }, { width: 420 });
+  assertSafeSvg(output);
+  assertWellFormedXml(output);
+  assertFiniteGeometry(output);
+  assert.doesNotMatch(output, /NaN|Infinity/);
+  assert.match(output, /NORMALIZED FINITE COUNTS/);
+  assert.match(output, /Finite contribution counts were normalized to avoid total overflow/);
+  assert.match(output, /Busiest: 2-way tie · 50%/);
+  assert.equal((output.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? []).length, 2);
 });
 
 test("releases card sorts newest first, caps at six, drops malformed entries, and states absence", () => {
@@ -1143,4 +1186,22 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   assertSafeSvg(hostile);
   assertWellFormedXml(hostile);
   assertWellFormedXml(renderCadenceCard({ days: [{ date: "2026-02-25", count: 3 }] }, { title: injection, description: injection }));
+});
+
+test("releases card deduplicates a large adversarial list within its output/time budget", () => {
+  const releases = Array.from({ length: 20_000 }, (_, index) => ({
+    project: `Project ${index}`,
+    tag: `v${index}.0.0`,
+    // Equal timestamps force the dedup pass to inspect every distinct project rather than
+    // allowing an accidental early match to hide a quadratic scan.
+    publishedAt: "2026-08-01T09:00:00Z",
+  }));
+  const started = performance.now();
+  const output = renderReleasesCard({ releases, projectsObserved: releases.length }, { width: 420 });
+  const elapsed = performance.now() - started;
+  assert.ok(elapsed < 2_000, `large release list exceeded render budget (${elapsed.toFixed(1)}ms)`);
+  assertSafeSvg(output);
+  assertWellFormedXml(output);
+  assert.equal((output.match(/>2026-08-01</g) ?? []).length, 6);
+  assert.match(output, />6 of 20000 shown</);
 });
