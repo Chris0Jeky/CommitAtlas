@@ -38,6 +38,46 @@ test("validates one contained config and rejects ambiguous projects or card sele
   }), /owned by the configured user/);
 });
 
+test("accepts bounded opposite-scheme theme outputs and rejects ambiguous variants", () => {
+  const paired = parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }],
+  });
+  assert.deepEqual(paired.themes, [{ theme: "paper", outputDir: "assets/commitatlas/light" }]);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "midnight", outputDir: "assets/commitatlas/other" }],
+  }), /opposite colour scheme/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "assets/commitatlas" }],
+  }), /unique outputDir/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "ASSETS/COMMITATLAS" }],
+  }), /unique outputDir/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    outputDir: "assets/./commitatlas",
+  }), /contained relative path/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "assets/./commitatlas" }],
+  }), /contained relative path/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "assets/commitatlas/./light" }],
+  }), /contained relative path/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }, { theme: "paper", outputDir: "assets/commitatlas/other" }],
+  }), /duplicate themes/);
+  assert.throws(() => parseStaticConfig({
+    ...rawConfig(),
+    themes: Array.from({ length: 4 }, (_, index) => ({ theme: "paper", outputDir: `assets/commitatlas/${index}` })),
+  }), /too_big|at most/i);
+});
+
 test("renders wide and compact Atlas variants from one snapshot", () => {
   const rendered = renderStaticArtifacts(snapshot(), parseStaticConfig({
     ...rawConfig(),
@@ -320,6 +360,53 @@ test("writes selected SVGs and a hash manifest while preserving unrelated siblin
     const narrowed = parseStaticConfig({ ...rawConfig(), cards: ["atlas"], layout: "compact" });
     await generateStaticFromSnapshot({ root, config: narrowed, snapshot: snapshot() });
     assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "keep.txt", "manifest.json"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("writes theme variants from one snapshot with an independent v1 manifest per directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-theme-pairs-"));
+  try {
+    const paired = parseStaticConfig({
+      ...rawConfig(),
+      cards: ["atlas"],
+      themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }],
+    });
+    const result = await generateStaticFromSnapshot({ root, config: paired, snapshot: snapshot() });
+    assert.equal(result.outputDir, path.join(root, "assets", "commitatlas"));
+    assert.equal(result.variants.length, 1);
+    assert.equal(result.variants[0].theme, "paper");
+    assert.equal(result.variants[0].outputDir, path.join(root, "assets", "commitatlas", "light"));
+    assert.equal(result.manifest.version, 1);
+    assert.equal(result.variants[0].manifest.version, 1);
+    assert.deepEqual(result.manifest.window, result.variants[0].manifest.window);
+    assert.equal(result.manifest.generatedAt, result.variants[0].manifest.generatedAt);
+    assert.notEqual(
+      await readFile(path.join(result.outputDir, "atlas.svg"), "utf8"),
+      await readFile(path.join(result.variants[0].outputDir, "atlas.svg"), "utf8"),
+    );
+    for (const outputDir of [result.outputDir, result.variants[0].outputDir]) {
+      const manifest = JSON.parse(await readFile(path.join(outputDir, "manifest.json"), "utf8"));
+      assert.deepEqual(manifest.artifacts.map((artifact) => artifact.path), ["atlas.svg"]);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validates every theme output before writing the primary directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-theme-preflight-"));
+  try {
+    const configWithUnsafeVariant = {
+      ...config(),
+      themes: [{ theme: "paper", outputDir: "../outside" }],
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: configWithUnsafeVariant, snapshot: snapshot() }),
+      /inside the repository/,
+    );
+    await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

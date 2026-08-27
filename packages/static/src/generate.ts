@@ -7,6 +7,7 @@ import {
   resolveContainedPath,
   STATIC_CARD_NAMES,
   type StaticConfig,
+  type StaticThemeName,
 } from "./config.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
@@ -62,6 +63,15 @@ export interface GenerateStaticResult {
   readonly outputDir: string;
   readonly manifest: StaticManifest;
   readonly written: boolean;
+  /** Additional theme outputs rendered from the same snapshot as the primary result. */
+  readonly variants: readonly GeneratedStaticVariant[];
+}
+
+export interface GeneratedStaticVariant {
+  readonly theme: StaticThemeName;
+  readonly outputDir: string;
+  readonly manifest: StaticManifest;
+  readonly written: boolean;
 }
 
 export async function generateStatic(options: GenerateStaticOptions = {}): Promise<GenerateStaticResult> {
@@ -88,34 +98,67 @@ export async function generateStaticFromSnapshot(options: {
   readonly snapshot: PortfolioSnapshot;
   readonly dryRun?: boolean;
 }): Promise<GenerateStaticResult> {
-  const outputDir = await resolveContainedPath(options.root, options.config.outputDir, {
-    mustExist: false,
-    label: "output",
-  });
-  const rendered = {
-    ...renderStaticArtifacts(options.snapshot, options.config),
-    ...(options.config.cards.includes("projects") ? renderProjectCatalogArtifacts(options.snapshot, options.config) : {}),
+  const configs: StaticConfig[] = [
+    options.config,
+    ...(options.config.themes ?? []).map((variant) => ({
+      ...options.config,
+      theme: variant.theme,
+      outputDir: variant.outputDir,
+      themes: [],
+    })),
+  ];
+  // Render and validate every variant before the first write. A malformed secondary output must
+  // not leave the primary directory updated while the pair is still unusable.
+  const targets = await Promise.all(configs.map(async (config) => {
+    const outputDir = await resolveContainedPath(options.root, config.outputDir, {
+      mustExist: false,
+      label: "output",
+    });
+    const rendered = {
+      ...renderStaticArtifacts(options.snapshot, config),
+      ...(config.cards.includes("projects") ? renderProjectCatalogArtifacts(options.snapshot, config) : {}),
+    };
+    const payloads = validateArtifacts(rendered);
+    const manifest = buildManifest(options.snapshot, payloads);
+    return { config, outputDir, payloads, manifest };
+  }));
+  if (!options.dryRun) {
+    for (const target of targets) await writeArtifacts(target.outputDir, target.payloads, target.manifest);
+  }
+  const [primary, ...variants] = targets;
+  if (!primary) throw new Error("No static cards were selected");
+  return {
+    root: options.root,
+    outputDir: primary.outputDir,
+    manifest: primary.manifest,
+    written: !options.dryRun,
+    variants: variants.map((variant) => ({
+      theme: variant.config.theme,
+      outputDir: variant.outputDir,
+      manifest: variant.manifest,
+      written: !options.dryRun,
+    })),
   };
-  const payloads = validateArtifacts(rendered);
-  const manifest: StaticManifest = {
+}
+
+function buildManifest(snapshot: PortfolioSnapshot, payloads: readonly { readonly name: string; readonly body: string }[]): StaticManifest {
+  return {
     version: 1,
     generator: "CommitAtlas",
-    user: options.snapshot.profile.login,
+    user: snapshot.profile.login,
     source: "github-public-profile",
     window: {
-      from: options.snapshot.metrics.window.from,
-      to: options.snapshot.metrics.window.to,
-      days: options.snapshot.metrics.window.days,
+      from: snapshot.metrics.window.from,
+      to: snapshot.metrics.window.to,
+      days: snapshot.metrics.window.days,
     },
-    generatedAt: options.snapshot.freshness.generatedAt,
+    generatedAt: snapshot.freshness.generatedAt,
     artifacts: payloads.map(({ name, body }) => ({
       path: name,
       bytes: Buffer.byteLength(body, "utf8"),
       sha256: hash(body),
     })),
   };
-  if (!options.dryRun) await writeArtifacts(outputDir, payloads, manifest);
-  return { root: options.root, outputDir, manifest, written: !options.dryRun };
 }
 
 async function fetchStaticPortfolio(

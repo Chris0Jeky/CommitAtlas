@@ -27,6 +27,23 @@ primary Atlas adds `atlas-compact.svg`; a compact primary adds `atlas-wide.svg`.
 the exact metrics, window, and generation time and are hashed in the same manifest, making them safe
 to use in a responsive HTML `<picture>` without desktop/mobile data drift.
 
+To render a dark/light pair without fetching GitHub twice, add bounded `themes` entries to the v1
+config. Each entry names an opposite-scheme card theme and an explicit contained output directory:
+
+```json
+{
+  "theme": "ember",
+  "outputDir": "assets/commitatlas",
+  "themes": [{ "theme": "paper", "outputDir": "assets/commitatlas/light" }]
+}
+```
+
+Theme names and output directories must be unique, and up to three variants are allowed. The primary
+result and its v1 `manifest.json` stay at `outputDir`; each variant gets its own v1 manifest and
+ownership-aware cleanup boundary. All variants are rendered and validated from the one fetched
+snapshot before any output directory is written. The CLI `--output-dir` override applies to the
+primary output; variant paths remain the explicit paths from `themes`.
+
 When `projects` is selected, the same snapshot also produces `projects.json` and `projects.md`.
 The JSON is a bounded machine-readable catalog; the Markdown is a human-readable catalog with
 observed and configured action links.
