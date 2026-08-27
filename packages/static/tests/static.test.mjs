@@ -146,6 +146,40 @@ test("preserves the declared planned lifecycle in static project SVGs", () => {
   assert.doesNotMatch(rendered["projects.svg"], /Experimental/);
 });
 
+test("never counts an unavailable release lookup as an observed absence", () => {
+  const base = snapshot();
+  const known = {
+    ...base.projects.projects[0],
+    releaseState: "published",
+    release: {
+      tag: "v1.0.0",
+      name: "Version 1.0.0",
+      url: "https://github.com/octocat/atlas/releases/tag/v1.0.0",
+      publishedAt: generatedAt,
+      download: null,
+    },
+  };
+  const unavailableProject = {
+    ...base.projects.projects[0],
+    repo: "octocat/unknown-release",
+    name: "unknown-release",
+    releaseState: "unavailable",
+    release: null,
+  };
+  const partial = {
+    ...base,
+    projects: {
+      ...base.projects,
+      freshness: { ...base.projects.freshness, mode: "partial" },
+      projects: [known, unavailableProject],
+    },
+  };
+  const rendered = renderStaticArtifacts(partial, config());
+  assert.match(rendered["releases.svg"], /v1\.0\.0/);
+  assert.doesNotMatch(rendered["releases.svg"], /1 OF 2 CURATED PROJECTS/);
+
+});
+
 test("renders a truthful deterministic catalog from observed and explicitly configured links", () => {
   const catalogConfig = parseStaticConfig({
     ...rawConfig(),
@@ -173,6 +207,7 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
           publishedAt: generatedAt,
           download: { name: "atlas.zip", url: "https://github.com/octocat/atlas/releases/download/v1.2.3/atlas.zip" },
         },
+        releaseState: "published",
       }],
     },
   };
@@ -184,6 +219,9 @@ test("renders a truthful deterministic catalog from observed and explicitly conf
   // must be turned away by the version gate rather than shown a shape it
   // cannot validate.
   assert.equal(parsed.version, 2);
+  // Catalog v2 is a strict cross-repository contract. Release observation state belongs to the
+  // source snapshot until a coordinated catalog version introduces it.
+  assert.equal("releaseState" in parsed.projects[0], false);
   assert.deepEqual(parsed.projects[0].actions.map((action) => [action.kind, action.origin]), [
     ["source", "snapshot"], ["website", "snapshot"], ["ci", "snapshot"], ["release", "snapshot"],
     ["release-download", "snapshot"], ["docs", "config"], ["install", "config"], ["download", "config"],
@@ -403,6 +441,7 @@ test("names every non-GitHub destination without dropping legitimate project web
       projects: [{
         ...base.projects.projects[0],
         websiteUrl: "https://octocat.github.io/atlas",
+        releaseState: "published",
         release: {
           tag: "v1",
           name: "Atlas 1",
@@ -502,6 +541,7 @@ function withRelease(tag) {
       ...base.projects,
       projects: [{
         ...base.projects.projects[0],
+        releaseState: "published",
         release: {
           tag,
           name: "Atlas release",
@@ -651,6 +691,7 @@ function snapshot() {
         pushedAt: generatedAt,
         license: "GPL-3.0-only",
         ci: { state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: generatedAt, headSha: null },
+        releaseState: "none",
         release: null,
       }],
       freshness: { generatedAt, source: "github-rest", mode: "live" },

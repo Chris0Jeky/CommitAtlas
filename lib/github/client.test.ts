@@ -458,6 +458,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
   );
   assert.equal(board.projects[0].lifecycle, "active");
   assert.equal(board.projects[0].ci.state, "passing");
+  assert.equal(board.projects[0].releaseState, "none");
   assert.equal(board.projects[0].release, null);
   assert.equal(board.projects[0].websiteUrl, null);
   assert.equal(board.projects[0].license, null);
@@ -611,6 +612,47 @@ test("prefers upstream Retry-After for 403 rate limits", async () => {
   );
 });
 
+test("classifies 403 as rate-limited only when GitHub supplies supporting evidence", async () => {
+  for (const [label, response, retryAfter] of [
+    ["remaining exhausted", () => json({ message: "Forbidden" }, 403, {
+      "x-ratelimit-remaining": "0",
+      "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30),
+    }), "30"],
+    ["secondary-limit message", () => json({ message: "Secondary-limit reached." }, 403), "60"],
+    ["abuse message", () => new Response("Abuse detection mechanism triggered", { status: 403 }), "60"],
+  ] as const) {
+    await assert.rejects(
+      new GitHubClient({ fetchImpl: async () => response(), now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError, label);
+        assert.equal(error.code, "github_rate_limited", label);
+        assert.equal(error.status, 429, label);
+        assert.equal(error.retryAfter, retryAfter, label);
+        return true;
+      },
+    );
+  }
+
+  for (const [label, response] of [
+    ["no evidence", () => json({ message: "Resource not accessible" }, 403)],
+    ["reset alone", () => json({ message: "Forbidden" }, 403, {
+      "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30),
+    })],
+    ["unrelated JSON field", () => json({ message: "Forbidden", detail: "rate limit" }, 403)],
+  ] as const) {
+    await assert.rejects(
+      new GitHubClient({ fetchImpl: async () => response(), now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubApiError, label);
+        assert.equal(error.code, "github_unavailable", label);
+        assert.equal(error.status, 502, label);
+        assert.equal(error.retryAfter, null, label);
+        return true;
+      },
+    );
+  }
+});
+
 test("accepts each HTTP Retry-After form", async () => {
   for (const retryAfter of [
     "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -671,7 +713,10 @@ test("clamps past reset epochs to zero for 403 and 429 rate limits", async () =>
   for (const status of [403, 429]) {
     const fetchImpl: typeof fetch = async () => new Response(null, {
       status,
-      headers: { "x-ratelimit-reset": String(NOW.getTime() / 1000 - 45) },
+      headers: {
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": String(NOW.getTime() / 1000 - 45),
+      },
     });
     await assert.rejects(
       new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
@@ -686,7 +731,7 @@ test("clamps past reset epochs to zero for 403 and 429 rate limits", async () =>
   }
 });
 
-test("omits malformed x-ratelimit-reset retry hints", async () => {
+test("uses the documented one-minute fallback for malformed 429 retry hints", async () => {
   for (const reset of ["not-an-epoch", "123.5", "-1", "999999999999999999999"]) {
     const fetchImpl: typeof fetch = async () => new Response(null, {
       status: 429,
@@ -696,7 +741,7 @@ test("omits malformed x-ratelimit-reset retry hints", async () => {
       new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
       (error: unknown) => {
         assert.ok(error instanceof GitHubApiError);
-        assert.equal(error.retryAfter, null);
+        assert.equal(error.retryAfter, "60");
         return true;
       },
     );
@@ -839,7 +884,7 @@ test("keeps rate-limit and upstream-outage semantics distinct from not found", a
     [404, "github_not_found", 404, null],
     [500, "github_unavailable", 502, "30"],
     [502, "github_unavailable", 502, "30"],
-    [403, "github_rate_limited", 429, "30"],
+    [403, "github_unavailable", 502, null],
     [429, "github_rate_limited", 429, "30"],
   ] as const) {
     const fetchImpl: typeof fetch = async () => new Response(null, { status, headers: { "x-ratelimit-reset": reset } });
@@ -868,11 +913,15 @@ test("treats only 404 as an absent optional release or workflow run", async () =
   const board = await new GitHubClient({ fetchImpl: optionalFetch(() => json({ message: "Not Found" }, 404)), now: () => NOW })
     .fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]]));
   assert.equal(board.projects[0].release, null);
+  assert.equal(board.projects[0].releaseState, "none");
   assert.equal(board.projects[0].ci.state, "unavailable");
   assert.equal(board.projects[0].ci.label, "CI unavailable");
 
   for (const [status, retryAfterHeader, expectedRetryAfter] of [
-    [403, { "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30) }, "30"],
+    [403, {
+      "x-ratelimit-remaining": "0",
+      "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30),
+    }, "30"],
     [429, { "retry-after": "31" }, "31"],
   ] as const) {
     await assert.rejects(
@@ -889,6 +938,16 @@ test("treats only 404 as an absent optional release or workflow run", async () =
       },
     );
   }
+
+  const restricted = await new GitHubClient({
+    fetchImpl: optionalFetch(() => json({ message: "Resource not accessible" }, 403)),
+    now: () => NOW,
+  }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]]));
+  assert.equal(restricted.projects[0].release, null);
+  assert.equal(restricted.projects[0].releaseState, "unavailable");
+  assert.equal(restricted.projects[0].ci.state, "unavailable");
+  assert.equal(restricted.projects[0].ci.label, "CI unavailable");
+  assert.equal(restricted.freshness.mode, "partial");
 });
 
 test("reports missing or non-array workflow_runs as unavailable rather than unconfigured", async () => {

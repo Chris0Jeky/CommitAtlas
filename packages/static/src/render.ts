@@ -168,13 +168,14 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     }, { ...common, width });
   }
   if (selected.has("releases")) {
-    const observed = projects?.projects ?? [];
+    const projectsWithReleaseEvidence = (projects?.projects ?? [])
+      .filter((project) => project.releaseState !== "unavailable");
     artifacts["releases.svg"] = renderReleasesCard({
       source: toCardSource(projects?.freshness ?? snapshot.freshness),
-      releases: observed.flatMap((project) => project.release
+      releases: projectsWithReleaseEvidence.flatMap((project) => project.release
         ? [{ project: project.name, tag: project.release.tag, publishedAt: project.release.publishedAt }]
         : []),
-      projectsObserved: observed.length,
+      projectsObserved: projectsWithReleaseEvidence.length,
     }, { ...common, width });
   }
   return artifacts;

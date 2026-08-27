@@ -69,6 +69,11 @@ details through that path.
   attributes, or arbitrary external CSS.
 - Missing, partial, gapped, stale, restricted, and unavailable evidence is never silently rewritten
   as zero or passing.
+- A GitHub `403` becomes `github_rate_limited` only with a valid `Retry-After`, exhausted
+  `x-ratelimit-remaining`, or an explicit rate-limit/abuse message. Other 403s are unavailable:
+  optional project signals degrade locally, while required lookups return the bounded 502 contract.
+  Project snapshots carry `releaseState` (`published`, `none`, or `unavailable`) so a refused release
+  lookup can never be rendered or counted as an observed absence.
 - The rhythm score is a documented within-window consistency summary, not a universal developer rank.
 
 ## Hosted delivery and caching

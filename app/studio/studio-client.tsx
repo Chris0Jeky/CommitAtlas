@@ -83,6 +83,7 @@ interface ProjectSnapshot {
   forks: number;
   openIssuesAndPullRequests: number;
   ci: { state: string; label: string; url: string | null; checkedAt: string | null };
+  releaseState: "published" | "none" | "unavailable";
   release: { tag: string; url: string; download: { name: string; url: string } | null } | null;
 }
 
@@ -599,10 +600,15 @@ function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: Proj
   return (
     <article className="dashboard-project">
       <div className="project-title"><span className="signal-mark" data-state={project.ci.state} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
-      <dl><div><dt>CI</dt><dd className={ciTone(project.ci.state)}>{project.ci.label}</dd></div><div><dt>Release</dt><dd>{project.release?.tag || "Unavailable"}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
+      <dl><div><dt>CI</dt><dd className={ciTone(project.ci.state)}>{project.ci.label}</dd></div><div><dt>Release</dt><dd className={project.releaseState === "unavailable" ? "unknown" : undefined}>{releaseLabel(project)}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
       {actions.length > 0 && <div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div>}
     </article>
   );
+}
+
+function releaseLabel(project: ProjectSnapshot): string {
+  if (project.release) return project.release.tag;
+  return project.releaseState === "none" ? "None observed" : "Unavailable";
 }
 
 function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: string }) {

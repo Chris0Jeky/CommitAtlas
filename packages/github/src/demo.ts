@@ -145,6 +145,7 @@ export function demoProjects(
           checkedAt: workflow ? stableTimestamp : null,
           headSha: null,
         },
+        releaseState: index === 0 ? "published" : "none",
         release: index === 0
           ? {
               tag: "v0.1.0",

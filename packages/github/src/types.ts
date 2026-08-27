@@ -80,6 +80,9 @@ export interface ProjectReleaseSignal {
   download: { name: string; url: string } | null;
 }
 
+/** Whether the latest-release endpoint produced evidence, proved absence, or could not be observed. */
+export type ProjectReleaseState = "published" | "none" | "unavailable";
+
 export interface ProjectSnapshot {
   repo: string;
   name: string;
@@ -94,6 +97,7 @@ export interface ProjectSnapshot {
   pushedAt: string | null;
   license: string | null;
   ci: ProjectCiSignal;
+  releaseState: ProjectReleaseState;
   release: ProjectReleaseSignal | null;
 }
 
