@@ -60,6 +60,113 @@ test("a validated public SVG primes one expiring entry and later serves an expli
   assert.match(staleBody, /<rect x="0" y="220" width="720" height="16"/);
 });
 
+test("a matching public 304 refreshes only retention while preserving the stored observation", async () => {
+  const store = memoryStore();
+  const url = "https://example.test/api/v1/profile?demo=false&user=octocat";
+  const request = new Request(url);
+  const priming: Promise<unknown>[] = [];
+  await withPublicLastGood(request, async () => jsonSuccess(), runtime(store, priming, LIVE_AT));
+  await Promise.all(priming);
+
+  const key = await publicLastGoodKey(request);
+  const before = JSON.parse(store.values.get(key)!) as { storedAt: string; observedAt: string; body: string };
+  const etag = 'W/"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"';
+  const confirmation = new Request(url, { headers: { "if-none-match": etag } });
+  const pending: Promise<unknown>[] = [];
+  const response = await withPublicLastGood(
+    confirmation,
+    async () => notModified(etag),
+    runtime(store, pending, new Date("2026-09-02T20:00:00.000Z")),
+  );
+
+  assert.equal(response.status, 304);
+  assert.equal(response.headers.get("x-route-proof"), "unchanged");
+  assert.equal(pending.length, 1, "refresh is delegated to the runtime lifetime");
+  await Promise.all(pending);
+  assert.equal(store.putOptions.length, 2);
+  assert.deepEqual(store.putOptions[1], { expirationTtl: 604800 });
+  const after = JSON.parse(store.values.get(key)!) as { storedAt: string; observedAt: string; body: string };
+  assert.deepEqual(after, before);
+  assert.equal(store.reads, 1);
+});
+
+test("missing, mismatched, corrupt, and cross-key entries cannot be refreshed by a 304", async () => {
+  const url = "https://example.test/api/v1/profile?demo=false&user=octocat";
+  const etag = 'W/"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"';
+  const otherEtag = 'W/"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"';
+  const confirm = async (store: ReturnType<typeof memoryStore>, request: Request, responseEtag = etag) => {
+    const pending: Promise<unknown>[] = [];
+    const response = await withPublicLastGood(
+      request,
+      async () => notModified(responseEtag),
+      runtime(store, pending, new Date("2026-08-28T20:00:00.000Z")),
+    );
+    await Promise.all(pending);
+    assert.equal(response.status, 304);
+  };
+
+  const missing = memoryStore();
+  await confirm(missing, new Request(url, { headers: { "if-none-match": etag } }));
+  assert.equal(missing.putOptions.length, 0);
+
+  const primed = memoryStore();
+  const primePending: Promise<unknown>[] = [];
+  const primeRequest = new Request(url);
+  await withPublicLastGood(primeRequest, async () => jsonSuccess(), runtime(primed, primePending, LIVE_AT));
+  await Promise.all(primePending);
+  await confirm(primed, new Request(url, { headers: { "if-none-match": otherEtag } }), otherEtag);
+  assert.equal(primed.putOptions.length, 1, "a different representation cannot extend retention");
+
+  const corrupt = memoryStore();
+  corrupt.values.set(await publicLastGoodKey(primeRequest), JSON.stringify({
+    version: 1,
+    body: "not-json",
+    storedAt: LIVE_AT.toISOString(),
+    observedAt: LIVE_AT.toISOString(),
+    headers: { "content-type": "application/json", etag },
+  }));
+  await confirm(corrupt, new Request(url, { headers: { "if-none-match": etag } }));
+  assert.equal(corrupt.putOptions.length, 0);
+
+  const otherUser = new Request("https://example.test/api/v1/profile?demo=false&user=hubot", {
+    headers: { "if-none-match": etag },
+  });
+  await confirm(primed, otherUser);
+  assert.equal(primed.putOptions.length, 1);
+  assert.equal(primed.values.size, 1);
+});
+
+test("304 retention read and write failures keep the original route response", async () => {
+  const url = "https://example.test/api/v1/profile?demo=false&user=octocat";
+  const etag = 'W/"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"';
+  const request = new Request(url, { headers: { "if-none-match": etag } });
+  const original = async () => notModified(etag);
+
+  const readPending: Promise<unknown>[] = [];
+  const readFailure = await withPublicLastGood(request, original, runtime({
+    async get() { throw new Error("KV read failed"); },
+    async put() { assert.fail("a failed read must not write"); },
+  }, readPending, LIVE_AT));
+  await Promise.all(readPending);
+  assert.equal(readFailure.status, 304);
+  assert.equal(readFailure.headers.get("x-route-proof"), "unchanged");
+
+  const primed = memoryStore();
+  const primePending: Promise<unknown>[] = [];
+  const primeRequest = new Request(url);
+  await withPublicLastGood(primeRequest, async () => jsonSuccess(), runtime(primed, primePending, LIVE_AT));
+  await Promise.all(primePending);
+  const key = await publicLastGoodKey(primeRequest);
+  const writePending: Promise<unknown>[] = [];
+  const writeFailure = await withPublicLastGood(request, original, runtime({
+    async get(candidate) { return candidate === key ? primed.values.get(key) ?? null : null; },
+    async put() { throw new Error("KV write failed"); },
+  }, writePending, new Date("2026-08-28T20:00:00.000Z")));
+  await Promise.all(writePending);
+  assert.equal(writeFailure.status, 304);
+  assert.equal(writeFailure.headers.get("x-route-proof"), "unchanged");
+});
+
 test("a stale conditional SVG response uses the marked representation ETag", async () => {
   const store = memoryStore();
   const path = "https://example.test/api/v1/cards/profile.svg?user=octocat&demo=false&theme=aurora&motion=none";
@@ -276,5 +383,16 @@ function githubError(status: number, code: string) {
   return new Response(JSON.stringify({ version: 1, status: "error", error: { code, message: "upstream failed" } }), {
     status,
     headers: { "cache-control": "no-store", "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+function notModified(etag: string) {
+  return new Response(null, {
+    status: 304,
+    headers: {
+      "cache-control": "public, max-age=60, s-maxage=900",
+      etag,
+      "x-route-proof": "unchanged",
+    },
   });
 }

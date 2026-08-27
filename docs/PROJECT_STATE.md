@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-27 22:45 BST
+Last verified: 2026-08-28 (local implementation and focused verification in progress)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,6 +12,15 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+- **Hosted public snapshots now fail honestly and retain confirmed last-good evidence.** PR #86
+  added a public-only, seven-day Workers KV fallback for validated canonical JSON/SVG responses;
+  quota and availability failures can reuse that evidence with explicit stale headers, timestamps,
+  accessible SVG marking, and a short cache lifetime. Cold, expired, corrupt, synthetic,
+  token-backed, and cross-key requests keep their original bounded response. A matching public
+  `304 Not Modified` now refreshes only KV retention when the request, response, canonical key, and
+  stored ETag agree, while preserving the original stored/observed timestamps. Missing or
+  mismatched evidence is never revived and KV failures cannot replace the route response. This
+  closes the retention gap tracked in #87 without presenting cache survival as fresher GitHub data.
 - **Contribution freshness and calendar fidelity are fixed, deployed, and live on the profile.**
   [PR #83](https://github.com/Chris0Jeky/CommitAtlas/pull/83) merged as `1062a87`; the exact reviewed
   producer head was `63278f5`. An in-progress final day is now explicit rather than silently treated
@@ -429,11 +438,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   first, then #57 bumped the version once for both, so there is no second bump to make.
   The consumer in the profile repository accepted version 2 before the pinned Action SHA advanced;
   #60 is closed, and refresh run 33119356827 proves the producer/consumer contract end to end.
-- The next bounded milestones are operational resilience and upstream error classification: #85 tracks
-  an honest hosted last-good fallback after the live Atlas reproduced a bounded GitHub-deadline 502 on
-  2026-08-27, and #62 classifies the remaining non-rate-limit 403 case. The static dark/light fetch
-  duplication tracked by #78 is addressed by the config-level theme variants described above.
-  npm publication, Marketplace listing, and a patch release remain separate owner decisions.
+- Operational resilience and response-boundary follow-ups #85, #62, #58, and #82 are complete.
+  The static dark/light fetch duplication tracked by #78 is addressed by the config-level theme
+  variants described above; the profile consumer can now move to that atomic bundle. npm publication,
+  Marketplace listing, and a patch release remain separate owner decisions.
 
 ## Clean resume commands
 
