@@ -31,6 +31,7 @@ export function HealthRack({ reading }: { reading: CiReading }) {
         </p>
       </div>
       <p className="section-lede">
+        <strong className="explainer-note">Design-lab explainer — not a separate monitoring service.</strong>{" "}
         Every state gets a distinct lamp shape, a distinct trace, and a printed word — colour is
         never the only encoding. The three &ldquo;we do not know&rdquo; states are deliberately the
         most visually interesting bays in the rack.

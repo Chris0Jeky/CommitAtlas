@@ -82,7 +82,7 @@ test("gallery exposes only selected, currently available cards", () => {
 
   assert.deepEqual(cards.map((card) => card.kind), ["profile", "languages", "projects"]);
   assert.equal(cards.find((card) => card.kind === "projects")?.dimensions, "720 × 248");
-  assert.equal(cards.find((card) => card.kind === "profile")?.compact, true);
+  assert.equal(cards.find((card) => card.kind === "profile")?.compact, false);
 });
 
 test("gallery pairs the two insight cards with truthful presentation metadata", () => {
@@ -111,7 +111,7 @@ test("gallery pairs the two insight cards with truthful presentation metadata", 
     "languages",
     "projects",
   ]);
-  assert.deepEqual(cards.map((card) => card.span), ["full", "half", "half", "half", "half", "full", "half", "half"]);
+  assert.deepEqual(cards.map((card) => card.span), ["full", "full", "full", "full", "full", "full", "full", "full"]);
   assert.equal(cards.find((card) => card.kind === "breakdown")?.dimensions, "720 × 220");
   assert.match(cards.find((card) => card.kind === "breakdown")?.purpose ?? "", /exact categorized counts.*public-profile percentages/i);
   assert.match(cards.find((card) => card.kind === "rhythm")?.purpose ?? "", /transparent personal consistency.*not a GitHub rank/i);

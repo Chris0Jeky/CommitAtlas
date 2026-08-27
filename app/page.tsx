@@ -54,10 +54,13 @@ export default async function Home() {
                 <em>mapped clearly.</em>
               </h1>
               <p className="lede">
-                CommitAtlas renders the trail as embeddable evidence: eight accessible SVG cards, a
-                project-health dashboard that never paints an unknown signal green, and a
-                credential-free generator that produces the same files offline. Every reading below
-                is live from the same routes a README can embed.
+                Explore a clearly labelled synthetic example, then generate your own portfolio from
+                public GitHub evidence. CommitAtlas ships eight hosted SVG routes, ten static card
+                types, an HTML project dashboard, and a credential-free GitHub Action.
+              </p>
+              <p className="hero-disclosure">
+                This landing page uses deterministic octocat data. It does not represent your account
+                until you run a Studio preview or generate a static snapshot.
               </p>
               <div className="hero-actions">
                 <Link className="button button-primary" href="/studio">Build your atlas <span aria-hidden="true">→</span></Link>
@@ -66,6 +69,19 @@ export default async function Home() {
             </div>
           </section>
 
+          <CapabilityStatus />
+          <SpecimenTray snapshot={snapshot} />
+
+          <details className="design-lab">
+            <summary className="design-lab-summary shell">
+              <span>
+                <span className="numeral">04 // Optional design lab</span>
+                <strong>See how CommitAtlas decides what to trust.</strong>
+                <small>Landing-page explainers only — these instruments are not separate cards or monitoring services.</small>
+              </span>
+              <span className="design-lab-toggle">Open lab <span aria-hidden="true">+</span></span>
+            </summary>
+            <div className="design-lab-body">
           <div className="shell">
             {/* ── Instrument fascia ─────────────────────────────────────────── */}
             <div className="fascia cut">
@@ -216,9 +232,10 @@ export default async function Home() {
             </p>
           </div>
 
-          <SpecimenTray snapshot={snapshot} />
           <HealthRack reading={reading} />
           <EvidenceLayer evidence={evidence} />
+            </div>
+          </details>
 
           <section className="cta shell" aria-labelledby="cta-title">
             <span className="hazard" aria-hidden="true" />
@@ -237,5 +254,43 @@ export default async function Home() {
 
       <ChassisFooter note={`Synthetic octocat · ${LANDING_DAYS}-day public window · @${profile.login}`} />
     </>
+  );
+}
+
+function CapabilityStatus() {
+  return (
+    <section className="capabilities shell" id="capabilities" aria-labelledby="capabilities-title">
+      <p className="numeral">01 // Product boundary · August 2026</p>
+      <div className="section-head">
+        <h2 id="capabilities-title">What you can use <em>today.</em></h2>
+        <p className="section-aside">Public-only by design<br />Unknown is never green</p>
+      </div>
+      <div className="capability-grid">
+        <article>
+          <span className="capability-state available">Available now</span>
+          <h3>Hosted cards + Studio</h3>
+          <p>Eight public SVG routes with synthetic or live-public previews, plus an HTML dashboard with project actions.</p>
+          <Link href="/studio">Open Studio <span aria-hidden="true">→</span></Link>
+        </article>
+        <article>
+          <span className="capability-state available">Available now</span>
+          <h3>Static portfolio</h3>
+          <p>Ten card types, responsive Atlas companions, a project catalog, and hash manifests from one public snapshot.</p>
+          <a href={`${SOURCE_REPOSITORY}/tree/main/packages/static`}>View generator <span aria-hidden="true">↗</span></a>
+        </article>
+        <article>
+          <span className="capability-state source">Source install</span>
+          <h3>Distribution</h3>
+          <p>The pinned GitHub Action and repository CLI work now. The packages are not published to npm, and the Action is not listed in Marketplace.</p>
+          <a href={`${SOURCE_REPOSITORY}/blob/main/action.yml`}>View Action <span aria-hidden="true">↗</span></a>
+        </article>
+        <article>
+          <span className="capability-state explainer">Explainer only</span>
+          <h3>Design lab</h3>
+          <p>The fascia, six-state rack, and evidence drawer explain product rules. They are not selectable exports or a hosted monitoring service.</p>
+          <a href="#cards">See shipped outputs <span aria-hidden="true">↓</span></a>
+        </article>
+      </div>
+    </section>
   );
 }

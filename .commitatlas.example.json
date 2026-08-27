@@ -7,7 +7,7 @@
   "layout": "wide",
   "responsiveAtlas": true,
   "outputDir": "outputs/commitatlas",
-  "cards": ["atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects"],
+  "cards": ["atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects", "cadence", "releases"],
   "projects": [
     {
       "repo": "Chris0Jeky/Taskdeck",

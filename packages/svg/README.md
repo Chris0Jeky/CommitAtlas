@@ -5,8 +5,10 @@ complete SVG string and are safe to put in a README or a static site: user text 
 escaped, links are restricted to `http`/`https`, and no scripts, images, or remote assets are
 emitted. Subtle motion uses only a bounded inline presentation style.
 
-The package includes eight cards: a rich developer Atlas, profile, streak, contribution breakdown,
-personal rhythm, activity, language, and project signal-board (up to six projects). Choose one of
+The package includes ten renderers: a rich developer Atlas, profile, streak, contribution breakdown,
+personal rhythm, activity, language, project signal-board (up to six projects), weekly cadence, and
+latest releases. The hosted service exposes the first eight; Cadence and Releases are static-only.
+Choose one of
 the four built-in themes (`aurora`, `midnight`, `paper`, or `ember`) and provide plain presentation
 data from your own GitHub adapter. The breakdown renderer preserves its basis: exact categorized
 counts are rendered as window-scoped counts, while GitHub calendar-year public-profile activity
@@ -28,7 +30,8 @@ const svg = renderProfileCard({
 }, { theme: "aurora" });
 ```
 
-Published packages contain compiled JavaScript and TypeScript declarations in `dist`.
+Built package artifacts contain compiled JavaScript and TypeScript declarations in `dist`. The
+package is source-installable but is not currently published to npm.
 
 Renderer inputs are bounded for portable README use: dimensions clamp to renderer-safe ranges,
 accessible title and description labels are length-limited, and activity cards accept up to a
