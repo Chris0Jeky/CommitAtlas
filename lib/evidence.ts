@@ -247,7 +247,9 @@ export function buildEvidence(snapshot: PortfolioSnapshot): EvidenceSet {
       value: `${metrics.streak.current}`,
       tier: "observed",
       rule: "streak-observed",
-      basis: `${metrics.streak.current} consecutive active ${metrics.streak.current === 1 ? "day" : "days"} ending ${formatUtcDate(metrics.window.to)}. ${source}`,
+      basis: metrics.streak.currentThrough
+        ? `${metrics.streak.current} consecutive active ${metrics.streak.current === 1 ? "day" : "days"} ending ${formatUtcDate(metrics.streak.currentThrough)}. ${source}`
+        : `No current active-day streak was observed at the end of the requested window. ${source}`,
       formula: null,
       caveat: metrics.streak.boundary.current === "open"
         ? "The streak reaches the first day of the window, so it may have started earlier than CommitAtlas can see. It is a floor, not a total."

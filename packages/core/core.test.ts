@@ -71,8 +71,49 @@ describe("core contracts", () => {
   });
 
   it("calculates current and longest UTC streaks across a leap day and a gap", () => {
-    expect(calculateStreaks(calendar, { asOf: "2024-02-29" })).toMatchObject({ current: 2, longest: 2 });
-    expect(calculateStreaks(calendar, { asOf: "2024-03-03" })).toMatchObject({ current: 1, longest: 2 });
+    expect(calculateStreaks(calendar, { asOf: "2024-02-29" })).toMatchObject({
+      current: 2,
+      currentThrough: "2024-02-29",
+      longest: 2,
+    });
+    expect(calculateStreaks(calendar, { asOf: "2024-03-03" })).toMatchObject({
+      current: 1,
+      currentThrough: "2024-03-03",
+      longest: 2,
+    });
+  });
+
+  it("keeps yesterday's streak current while the observed as-of day is still inactive", () => {
+    const openDay = [
+      { date: "2024-03-01", count: 1, level: 1 },
+      { date: "2024-03-02", count: 1, level: 1 },
+      { date: "2024-03-03", count: 0, level: 0 },
+    ];
+    expect(calculateStreaks(openDay, { asOf: "2024-03-03", currentDay: "open" })).toMatchObject({
+      current: 2,
+      currentThrough: "2024-03-02",
+      longest: 2,
+    });
+    expect(calculateStreaks(openDay, { asOf: "2024-03-03" })).toMatchObject({
+      current: 0,
+      currentThrough: null,
+    });
+
+    const brokenBeforeToday = [
+      { date: "2024-03-01", count: 1, level: 1 },
+      { date: "2024-03-02", count: 0, level: 0 },
+      { date: "2024-03-03", count: 0, level: 0 },
+    ];
+    expect(calculateStreaks(brokenBeforeToday, { asOf: "2024-03-03", currentDay: "open" })).toMatchObject({
+      current: 0,
+      currentThrough: null,
+      longest: 1,
+    });
+
+    expect(calculateStreaks(openDay.slice(0, 2), { asOf: "2024-03-03", currentDay: "open" })).toMatchObject({
+      current: 0,
+      currentThrough: null,
+    });
   });
 
   it("discloses streaks that can continue before the returned boundary", () => {

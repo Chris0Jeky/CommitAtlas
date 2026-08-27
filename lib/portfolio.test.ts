@@ -75,6 +75,27 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.equal(atlas.source, "public-github");
 });
 
+test("keeps an open final UTC day from erasing yesterday's portfolio streak", () => {
+  const openContributions: ContributionSnapshot = {
+    ...contributions,
+    totalContributions: 7,
+    days: [
+      { date: "2026-08-18", count: 2, level: 2 },
+      { date: "2026-08-19", count: 5, level: 4 },
+      { date: "2026-08-20", count: 0, level: 0 },
+    ],
+  };
+  const snapshot = assemblePortfolioSnapshot(profile, openContributions, projects, { currentDay: "open" });
+  const atlas = toAtlasCard(snapshot);
+  assert.equal(snapshot.metrics.streak.current, 2);
+  assert.equal(snapshot.metrics.streak.currentThrough, "2026-08-19");
+  assert.equal(atlas.currentStreakThrough, "2026-08-19");
+
+  const closed = assemblePortfolioSnapshot(profile, openContributions, projects);
+  assert.equal(closed.metrics.streak.current, 0);
+  assert.equal(closed.metrics.streak.currentThrough, null);
+});
+
 test("rejects mixed-user and incomplete portfolio sources", () => {
   assert.throws(
     () => assemblePortfolioSnapshot(profile, { ...contributions, login: "other" }),

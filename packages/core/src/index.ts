@@ -189,14 +189,19 @@ function dateDistance(left: string, right: string): number {
   return Math.round((Date.parse(`${right}T00:00:00Z`) - Date.parse(`${left}T00:00:00Z`)) / 86_400_000);
 }
 
-export const StreakOptionsSchema = z.object({ asOf: UtcDateSchema }).strict();
-export type StreakOptions = z.infer<typeof StreakOptionsSchema>;
+export const StreakOptionsSchema = z.object({
+  asOf: UtcDateSchema,
+  currentDay: z.enum(["closed", "open"]).default("closed"),
+}).strict();
+export type StreakOptions = z.input<typeof StreakOptionsSchema>;
 export type StreakBoundary = "closed" | "open";
 
 export interface StreakSummary {
   version: typeof CORE_VERSION;
   asOf: string;
   current: number;
+  /** Last active UTC date in the current streak, or null when no current streak exists. */
+  currentThrough: string | null;
   longest: number;
   boundary: {
     current: StreakBoundary;
@@ -206,11 +211,23 @@ export interface StreakSummary {
 
 export function calculateStreaks(input: unknown, options: StreakOptions): StreakSummary {
   const days = parseDays(input);
-  const { asOf } = StreakOptionsSchema.parse(options);
+  const { asOf, currentDay } = StreakOptionsSchema.parse(options);
   const boundedDays = days.filter((day) => day.date <= asOf);
   const counts = new Map(boundedDays.map((day) => [day.date, day.count]));
+  const previousDate = addUtcDays(asOf, -1);
+  // The `asOf` day is still in progress when a daily profile snapshot runs. A confirmed zero on
+  // that open day must not erase an otherwise-continuous streak through yesterday. We grant
+  // exactly one day of grace, and only when the `asOf` day was actually observed; a missing day
+  // remains unknown and therefore cannot sustain a streak.
+  const currentThrough = (counts.get(asOf) ?? 0) > 0
+    ? asOf
+    : currentDay === "open" && counts.get(asOf) === 0 && (counts.get(previousDate) ?? 0) > 0
+      ? previousDate
+      : null;
   let current = 0;
-  for (let date = asOf; (counts.get(date) ?? 0) > 0; date = addUtcDays(date, -1)) current += 1;
+  if (currentThrough) {
+    for (let date = currentThrough; (counts.get(date) ?? 0) > 0; date = addUtcDays(date, -1)) current += 1;
+  }
 
   let longest = 0;
   let run = 0;
@@ -222,11 +239,12 @@ export function calculateStreaks(input: unknown, options: StreakOptions): Streak
     previous = day.date;
   }
   const oldest = boundedDays[0];
-  const currentStart = current > 0 ? addUtcDays(asOf, -(current - 1)) : null;
+  const currentStart = current > 0 && currentThrough ? addUtcDays(currentThrough, -(current - 1)) : null;
   return {
     version: CORE_VERSION,
     asOf,
     current,
+    currentThrough,
     longest,
     boundary: {
       current: oldest && oldest.count > 0 && currentStart === oldest.date ? "open" : "closed",
@@ -281,6 +299,7 @@ export type ContributionBreakdown = z.infer<typeof ContributionBreakdownSchema>;
 
 export const ContributionMetricsOptionsSchema = ContributionBreakdownSchema.extend({
   asOf: UtcDateSchema,
+  currentDay: z.enum(["closed", "open"]).default("closed"),
   days: z.number().int().min(1).max(366),
   trendWeeks: z.number().int().min(1).max(16).default(12),
   breakdownBasis: z.enum(["exact-counts", "public-profile-percentages"]).default("exact-counts"),
@@ -365,7 +384,7 @@ export function calculateContributionMetrics(
   );
   const streak = calculateStreaks(
     bounded.length > 0 ? bounded : [{ date: parsed.asOf, count: 0, level: 0 }],
-    { asOf: parsed.asOf },
+    { asOf: parsed.asOf, currentDay: parsed.currentDay },
   );
 
   const trendDays = Math.min(parsed.days, parsed.trendWeeks * 7);

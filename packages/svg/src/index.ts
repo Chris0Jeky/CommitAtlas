@@ -130,6 +130,8 @@ export interface ProfileCardData extends SourceLabelledCardData {
 
 export interface StreakCardData extends SourceLabelledCardData {
   readonly current: number;
+  readonly currentThrough?: string;
+  readonly asOf?: string;
   readonly longest: number;
   readonly total?: number;
   readonly activeDays?: number;
@@ -144,6 +146,8 @@ export interface StreakCardData extends SourceLabelledCardData {
 export interface ActivityDay {
   readonly date: string;
   readonly count: number;
+  /** Upstream GitHub intensity, when available. Falls back to a local scale for direct callers. */
+  readonly level?: number;
 }
 
 export interface ActivityCardData extends SourceLabelledCardData {
@@ -168,6 +172,7 @@ export interface RhythmCardData extends SourceLabelledCardData {
   readonly activeDays: number;
   readonly density: number;
   readonly currentStreak: number;
+  readonly currentStreakThrough?: string;
   readonly currentStreakBoundary: "closed" | "open";
   readonly trend: {
     readonly buckets: readonly number[];
@@ -256,6 +261,7 @@ export interface AtlasCardData {
   readonly density: number;
   readonly averagePerDay: number;
   readonly currentStreak: number;
+  readonly currentStreakThrough?: string;
   readonly longestStreak: number;
   readonly streakBasis: "returned-window";
   readonly streakBoundary?: {
@@ -422,6 +428,34 @@ function isValidIsoDate(value: unknown): value is string {
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1];
+}
+
+interface CalendarGridCell {
+  readonly day: ActivityDay;
+  readonly column: number;
+  readonly row: number;
+}
+
+/**
+ * Place contribution days on GitHub-compatible Sunday-to-Saturday week rows.
+ *
+ * Chunking an arbitrary 365-day window into groups of seven makes row zero inherit the weekday
+ * of the window's first date. The data stays current, but the visual pattern cannot be compared
+ * with GitHub's calendar and therefore looks stale. Anchoring the first column to its preceding
+ * Sunday gives the same weekday geometry while retaining the exact requested date window.
+ */
+function calendarGrid(days: readonly ActivityDay[]): { readonly cells: readonly CalendarGridCell[]; readonly columns: number } {
+  const first = days[0];
+  if (!first) return { cells: [], columns: 1 };
+  const millisecondsPerDay = 86_400_000;
+  const firstTimestamp = Date.parse(`${first.date}T00:00:00Z`);
+  const gridStart = firstTimestamp - new Date(firstTimestamp).getUTCDay() * millisecondsPerDay;
+  const cells = days.map((day) => {
+    const timestamp = Date.parse(`${day.date}T00:00:00Z`);
+    const offset = Math.round((timestamp - gridStart) / millisecondsPerDay);
+    return { day, column: Math.floor(offset / 7), row: new Date(timestamp).getUTCDay() };
+  });
+  return { cells, columns: Math.max(1, (cells.at(-1)?.column ?? 0) + 1) };
 }
 
 function svgStart(
@@ -637,18 +671,26 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
     ? Math.max(1, Math.min(MAX_ACTIVITY_DAYS, Math.round(data.windowDays as number)))
     : null;
   const windowLabel = windowDays ? `${windowDays}-day window` : "returned window";
+  const currentThrough = isValidIsoDate(data.currentThrough) ? data.currentThrough : null;
+  const asOf = isValidIsoDate(data.asOf) ? data.asOf : null;
+  const throughPriorDay = currentThrough && asOf && currentThrough !== asOf;
   const currentOpen = data.boundary?.current === "open";
-  const currentValue = `${formatNumber(finite(data.current), false)}${currentOpen ? "+" : ""}`;
+  const currentCount = finite(data.current);
+  const currentValue = `${formatNumber(currentCount, false)}${currentOpen ? "+" : ""}`;
   const metadata = sourceMetadata(data.source, o.title, o.description);
   const accessibleDescription = data.boundary
-    ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(finite(data.current), false)} days. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
+    ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(currentCount, false)} days${currentThrough ? ` through ${currentThrough}` : ""}. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += sourceMarker(data.source, width - 34, 31, t);
   out += numeral(34, 48, 1, "CONTRIBUTION STREAK", t);
-  out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window", 12, t.text, 600);
+  const currentLabel = currentCount <= 0
+    ? "no current streak"
+    : throughPriorDay ? `days · through ${currentThrough}`
+      : currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window";
+  out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentLabel, throughPriorDay ? 10 : 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
   out += text(width / 2 + 28, personalBestY, `Longest in ${windowLabel}`, 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
   const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
@@ -676,15 +718,17 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, periodLabel, t);
   out += sourceMarker(data.source, width - 34, 29, t);
   out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
-  const columns = Math.min(53, Math.max(1, Math.ceil(days.length / 7))); const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
+  const grid = calendarGrid(days);
+  const columns = grid.columns; const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
   const start = 40; const top = 66;
   // Quartiles of the observed peak, so the four steps describe THIS window rather than an
   // absolute scale no reader can see. A zero day is level 0 and takes the neutral socket.
   const cells: string[] = [];
-  days.forEach((day, index) => {
-    const column = Math.floor(index / 7); const row = index % 7;
+  grid.cells.forEach(({ day, column, row }) => {
     const count = finite(day.count);
-    const level = count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
+    const level = Number.isFinite(day.level)
+      ? Math.max(0, Math.min(4, Math.round(day.level as number)))
+      : count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
     const x = start + column * (cell + 2); const y = top + row * (cell + 2);
     cells.push(`<path fill="${densityFill(level, t)}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
   });
@@ -799,10 +843,12 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const basis = truncateText(data.rhythm.basis, MAX_RHYTHM_BASIS_LENGTH);
   const current = formatNumber(finite(data.currentStreak), false);
   const open = data.currentStreakBoundary === "open";
+  const currentThrough = isValidIsoDate(data.currentStreakThrough) ? data.currentStreakThrough : null;
+  const throughPriorDay = currentThrough && currentThrough !== data.window.to;
   const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
   const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
   const metadata = sourceMetadata(data.source, o.title, o.description);
-  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${level}; this is not a GitHub rank. ${basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${level}; this is not a GitHub rank. ${basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -819,7 +865,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   out += text(infoX, compact ? 91 : 88, level.toUpperCase(), 11, t.accent, 750);
   out += text(infoX, compact ? 114 : 111, `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`, 11, t.text, 600);
   out += text(infoX, compact ? 134 : 131, `${formatNumber(data.window.days, false)}-day window · current ${streakText}`, 10, t.muted, 550);
-  out += text(infoX, compact ? 154 : 151, open ? "Streak can continue beyond this window" : "Streak is bounded to this window", 9, t.muted, 550);
+  out += text(infoX, compact ? 154 : 151, throughPriorDay ? `Current streak observed through ${currentThrough}` : open ? "Streak can continue beyond this window" : "Streak is bounded to this window", 9, t.muted, 550);
   const trendX = compact ? 28 : 400;
   const trendTop = compact ? 187 : 76;
   const trendWidth = compact ? width - 56 : width - trendX - 34;
@@ -1065,7 +1111,11 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
   const windowDays = formatNumber(data.window.days, false);
   const rhythmLevel = truncateText(data.rhythm.level, MAX_RHYTHM_LEVEL_LENGTH);
-  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${windowDays} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const currentStreakThrough = isValidIsoDate(data.currentStreakThrough) ? data.currentStreakThrough : null;
+  const currentStreakLabel = currentStreakThrough && currentStreakThrough !== data.window.to
+    ? `Streak to ${currentStreakThrough.slice(5)}`
+    : "Current streak";
+  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${windowDays} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak${currentStreakThrough ? ` through ${currentStreakThrough}` : ""} and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
   out += atlasMotionStyle(options?.motion);
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
@@ -1081,7 +1131,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Active days", formatNumber(data.activeDays, false)],
     ["Density", `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%`],
     ["Average / day", finite(data.averagePerDay).toFixed(1)],
-    ["Current streak", `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d`],
+    [currentStreakLabel, `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d`],
     ["Longest in window", `${formatNumber(data.longestStreak, false)}d`],
   ] as const;
   if (narrow) {
@@ -1102,15 +1152,14 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const heatmapLeft = 24;
   const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
   const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-366);
-  const columns = Math.max(1, Math.ceil(days.length / 7));
+  const grid = calendarGrid(days);
+  const columns = grid.columns;
   const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
   const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
   out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t);
   out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
-  days.forEach((day, index) => {
-    const column = Math.floor(index / 7);
-    const row = index % 7;
+  grid.cells.forEach(({ day, column, row }) => {
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
     const x = heatmapLeft + column * (cell + 2);
     const y = heatmapTop + row * (cell + 2);
@@ -1124,7 +1173,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += mono(heatmapLeft, heatmapBottom + 13, windowFrom, 8, t.muted, 500, "start", 0.08);
   out += mono(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, windowTo, 8, t.muted, 500, "end", 0.08);
   // The key sits under the grid it explains, so the ramp never needs to be inferred.
-  out += `<g aria-hidden="true">${densityKey(heatmapLeft + heatmapActualWidth - 118, heatmapBottom + 22, t, 6)}</g>`;
+  const densityKeyX = Math.max(heatmapLeft, heatmapLeft + heatmapActualWidth - 118);
+  out += `<g aria-hidden="true">${densityKey(densityKeyX, heatmapBottom + 22, t, 6)}</g>`;
 
   const breakdownX = narrow ? 24 : Math.floor(width * .64);
   const breakdownY = narrow ? 290 : 144;
