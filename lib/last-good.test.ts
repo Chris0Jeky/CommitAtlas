@@ -143,6 +143,19 @@ test("cold, expired, corrupt, and non-upstream failures retain the original erro
   );
   assert.equal(invalidResponse.status, 502);
   assert.equal(invalid.reads, 0);
+
+  const readFailure = await withPublicLastGood(
+    request,
+    async () => githubError(502, "github_unavailable"),
+    runtime({
+      async get() {
+        throw new Error("KV temporarily unavailable");
+      },
+      async put() {},
+    }, [], LIVE_AT),
+  );
+  assert.equal(readFailure.status, 502);
+  assert.equal((await readFailure.json() as { error: { code: string } }).error.code, "github_unavailable");
 });
 
 test("synthetic, token-backed, method-mismatched, and cross-key requests never reuse public entries", async () => {
@@ -173,7 +186,7 @@ test("synthetic, token-backed, method-mismatched, and cross-key requests never r
 });
 
 function runtime(
-  store: ReturnType<typeof memoryStore>,
+  store: LastGoodStore,
   pending: Promise<unknown>[],
   now: Date,
   publicOnly = true,

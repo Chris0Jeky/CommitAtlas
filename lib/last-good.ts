@@ -81,7 +81,22 @@ export async function withPublicLastGood(
   const fallbackReason = await upstreamFallbackReason(response);
   if (!fallbackReason) return response;
 
-  const stored = await runtime.store.get(key);
+  let stored: string | null;
+  try {
+    stored = await runtime.store.get(key);
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : "unknown error";
+    try {
+      (runtime.logError ?? console.error)(JSON.stringify({
+        message: "last-good lookup failed",
+        path: new URL(request.url).pathname,
+        detail,
+      }));
+    } catch {
+      // Diagnostics must not replace the route's original bounded error.
+    }
+    return response;
+  }
   const entry = parseEntry(stored, request, now);
   if (!entry) return response;
 
