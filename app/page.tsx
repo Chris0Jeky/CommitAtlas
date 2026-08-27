@@ -7,6 +7,7 @@ import { EvidenceProvider, Ev } from "./chassis/evidence-ui";
 import { EvidenceLayer } from "./chassis/evidence-layer";
 import { HealthRack } from "./chassis/health-rack";
 import { SpecimenTray } from "./chassis/specimen-tray";
+import { WorkflowMap } from "./chassis/workflow-map";
 import { buildEvidence } from "@/lib/evidence";
 import { summariseCiStates } from "@/lib/health";
 import { compactCount, signedPercent } from "@/lib/instruments";
@@ -70,6 +71,7 @@ export default async function Home() {
           </section>
 
           <CapabilityStatus />
+          <WorkflowMap />
           <SpecimenTray snapshot={snapshot} />
 
           <details className="design-lab">
