@@ -15,15 +15,29 @@ export const STATIC_CARD_NAMES = [
 ] as const;
 export type StaticCardName = (typeof STATIC_CARD_NAMES)[number];
 
+export const STATIC_THEME_NAMES = ["aurora", "midnight", "paper", "ember"] as const;
+export type StaticThemeName = (typeof STATIC_THEME_NAMES)[number];
+
+const STATIC_THEME_SCHEMES: Readonly<Record<StaticThemeName, "dark" | "light">> = {
+  aurora: "dark",
+  midnight: "dark",
+  paper: "light",
+  ember: "dark",
+};
+
 const RelativePathSchema = z.string().trim().min(1).max(240).refine((value) => {
   if (path.isAbsolute(value) || value === ".") return false;
-  return !value.replaceAll("\\", "/").split("/").some((part) => part === ".." || part === "");
+  return !value.replaceAll("\\", "/").split("/").some((part) => part === "." || part === ".." || part === "");
 }, "Expected a contained relative path");
 
 const RawStaticConfigSchema = z.object({
   version: z.literal(1),
   user: z.string().trim().min(1).max(39),
-  theme: z.enum(["aurora", "midnight", "paper", "ember"]).default("aurora"),
+  theme: z.enum(STATIC_THEME_NAMES).default("aurora"),
+  themes: z.array(z.object({
+    theme: z.enum(STATIC_THEME_NAMES),
+    outputDir: RelativePathSchema,
+  }).strict()).max(3).default([]),
   days: z.number().int().min(7).max(365).default(365),
   motion: z.enum(["none", "subtle"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
@@ -36,7 +50,8 @@ const RawStaticConfigSchema = z.object({
 export interface StaticConfig {
   readonly version: 1;
   readonly user: string;
-  readonly theme: "aurora" | "midnight" | "paper" | "ember";
+  readonly theme: StaticThemeName;
+  readonly themes: readonly StaticThemeVariant[];
   readonly days: number;
   readonly motion: "none" | "subtle";
   readonly layout: "wide" | "compact";
@@ -44,6 +59,11 @@ export interface StaticConfig {
   readonly outputDir: string;
   readonly cards: readonly StaticCardName[];
   readonly projects: ProjectManifest["projects"];
+}
+
+export interface StaticThemeVariant {
+  readonly theme: StaticThemeName;
+  readonly outputDir: string;
 }
 
 export interface LoadedStaticConfig {
@@ -59,6 +79,22 @@ export function parseStaticConfig(input: unknown): StaticConfig {
   if (raw.responsiveAtlas && !cards.includes("atlas")) {
     throw new Error("responsiveAtlas requires atlas in cards");
   }
+  const outputDir = raw.outputDir.replaceAll("\\", "/");
+  const themes: StaticThemeVariant[] = [];
+  const seenThemes = new Set<StaticThemeName>([raw.theme]);
+  const seenOutputDirs = new Set<string>([outputDir.toLowerCase()]);
+  for (const variant of raw.themes) {
+    if (seenThemes.has(variant.theme)) throw new Error("themes must not contain duplicate themes");
+    if (STATIC_THEME_SCHEMES[variant.theme] === STATIC_THEME_SCHEMES[raw.theme]) {
+      throw new Error("themes must use the opposite colour scheme");
+    }
+    const variantOutputDir = variant.outputDir.replaceAll("\\", "/");
+    const outputKey = variantOutputDir.toLowerCase();
+    if (seenOutputDirs.has(outputKey)) throw new Error("themes must use unique outputDir paths");
+    seenThemes.add(variant.theme);
+    seenOutputDirs.add(outputKey);
+    themes.push({ theme: variant.theme, outputDir: variantOutputDir });
+  }
   const user = parseHandle({ version: 1, handle: raw.user }).handle;
   const manifest = parseManifest({ version: 1, projects: raw.projects });
   if (manifest.projects.some((project) => project.repo.split("/")[0]?.toLowerCase() !== user)) {
@@ -68,11 +104,12 @@ export function parseStaticConfig(input: unknown): StaticConfig {
     version: 1,
     user,
     theme: raw.theme,
+    themes,
     days: raw.days,
     motion: raw.motion,
     layout: raw.layout,
     responsiveAtlas: raw.responsiveAtlas,
-    outputDir: raw.outputDir.replaceAll("\\", "/"),
+    outputDir,
     cards,
     projects: manifest.projects,
   };
@@ -100,7 +137,7 @@ export async function resolveContainedPath(
 ): Promise<string> {
   if (path.isAbsolute(relativePath)) throw new Error(`${options.label} path must be relative`);
   const normalized = relativePath.replaceAll("\\", "/");
-  if (normalized === "." || normalized.split("/").some((part) => part === ".." || part === "")) {
+  if (normalized === "." || normalized.split("/").some((part) => part === "." || part === ".." || part === "")) {
     throw new Error(`${options.label} path must stay inside the repository`);
   }
   const target = path.resolve(root, relativePath);

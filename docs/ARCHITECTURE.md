@@ -117,12 +117,15 @@ in HTML.
 ## Static delivery
 
 The static package reads one tracked `.commitatlas.json`, fetches public data without a credential,
-builds one `PortfolioSnapshot`, renders a selected subset of ten cards, and writes `manifest.json`
-with byte sizes and SHA-256 hashes. Repository-contained path and symlink checks run before output.
-All data and payloads validate before staged per-file replacement; unrelated siblings survive while
-stale files from the bounded set of CommitAtlas-managed artifact names are removed after success.
-When `responsiveAtlas` is enabled, the same snapshot also renders the alternate Atlas layout into
-the same manifest, so responsive consumers never compare two independently fetched datasets.
+builds one `PortfolioSnapshot`, and renders a selected subset of ten cards. The primary output and
+each optional `themes` entry have an independent v1 `manifest.json` with byte sizes and SHA-256
+hashes. Repository-contained path and symlink checks run for every output before any write. Every
+variant is rendered and validated from the same snapshot before staged per-file replacement;
+unrelated siblings survive while stale files from the bounded set of CommitAtlas-managed artifact
+names are removed only inside the directory whose prior manifest recorded ownership. When
+`responsiveAtlas` is enabled, the same snapshot also renders the alternate Atlas layout into that
+directory's manifest, so responsive and dark/light consumers never compare independently fetched
+datasets.
 
 The root Node 24 Action calls that package and returns generated paths. It does not commit, push,
 upload, deploy, or receive `GITHUB_TOKEN`. A consumer workflow owns publication and can preserve the
@@ -136,6 +139,7 @@ last known-good committed cards when refresh fails. See
   "version": 1,
   "user": "Chris0Jeky",
   "theme": "ember",
+  "themes": [{ "theme": "paper", "outputDir": "assets/commitatlas/light" }],
   "days": 365,
   "motion": "subtle",
   "layout": "wide",

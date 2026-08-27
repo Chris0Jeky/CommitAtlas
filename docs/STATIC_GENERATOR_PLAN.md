@@ -42,6 +42,7 @@ its built-in token to commit already-generated public assets.
   "version": 1,
   "user": "Chris0Jeky",
   "theme": "ember",
+  "themes": [{ "theme": "paper", "outputDir": "assets/commitatlas/light" }],
   "days": 365,
   "motion": "subtle",
   "layout": "wide",
@@ -62,7 +63,9 @@ its built-in token to commit already-generated public assets.
 }
 ```
 
-V1 deliberately limits a config to one GitHub owner and one to six explicitly curated projects.
+V1 deliberately limits a config to one GitHub owner, one primary output, and up to three explicitly
+contained opposite-scheme theme variants. Each variant has a unique theme and explicit `outputDir`;
+the primary output path is also unique. The config still allows one to six explicitly curated projects.
 The config must be a tracked regular JSON file below 64 KiB. Unknown fields, token-shaped additions,
 duplicate cards/projects, invalid GitHub handles, control characters, `.`/`..` workflow identities,
 absolute or traversing paths, and symlinked path components fail closed.
@@ -123,7 +126,10 @@ that are absent from the new manifest are removed to prevent stale responsive or
 All ten renderers consume one `PortfolioSnapshot`, so every card, project catalog, and the manifest
 share one window and provenance. `responsiveAtlas` renders the alternate wide/compact layout from
 that same snapshot and records it as `atlas-compact.svg` or `atlas-wide.svg`; no second GitHub fetch
-can make the pair drift. With all ten cards, responsive Atlas, and Projects selected, there are
+can make the pair drift. Configured `themes` variants likewise render from that snapshot, but write
+to their explicit directories and retain an independent v1 manifest and cleanup boundary. The
+primary `GenerateStaticResult` fields remain unchanged; its additive `variants` results and the
+Action summary identify each secondary theme output. With all ten cards, responsive Atlas, and Projects selected, there are
 13 payload artifacts plus `manifest.json` (14 output files total). SVG and text validation rejects
 scripts, external images, `foreignObject` content, and forbidden control characters.
 
