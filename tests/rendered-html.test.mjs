@@ -624,7 +624,10 @@ test("the built Worker serves an honest public last-good response after a primed
   assert.equal(stale.headers.get("x-commitatlas-fallback-reason"), "unavailable");
   assert.equal(stale.headers.get("warning"), '110 - "Response is stale"');
   assert.match(stale.headers.get("x-commitatlas-observed-at") ?? "", /^\d{4}-\d{2}-\d{2}T/);
-  assert.deepEqual(await stale.json(), livePayload);
+  assert.deepEqual(await stale.json(), {
+    ...livePayload,
+    freshness: { ...livePayload.freshness, mode: "stale" },
+  });
 });
 
 async function withMockedFetch(fetchImpl, operation) {

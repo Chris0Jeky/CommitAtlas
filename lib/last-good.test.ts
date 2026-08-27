@@ -54,7 +54,10 @@ test("a validated public SVG primes one expiring entry and later serves an expli
   const staleBody = await stale.text();
   assert.match(staleBody, /STALE SNAPSHOT/);
   assert.match(staleBody, /OBSERVED 2026-08-27T19:58:00\.000Z/);
-  assert.match(staleBody, /<g role="note" aria-label="STALE SNAPSHOT/);
+  assert.match(staleBody, /data-commitatlas-state="stale"/);
+  assert.match(staleBody, /viewBox="0 0 720 236"/);
+  assert.match(staleBody, /<desc>[^<]*STALE SNAPSHOT/);
+  assert.match(staleBody, /<rect x="0" y="220" width="720" height="16"/);
 });
 
 test("a stale conditional SVG response uses the marked representation ETag", async () => {
@@ -83,7 +86,7 @@ test("a stale conditional SVG response uses the marked representation ETag", asy
   assert.equal(await conditional.text(), "");
 });
 
-test("JSON fallbacks preserve the versioned payload and expose its observation time in headers", async () => {
+test("JSON fallbacks preserve the versioned payload while marking its freshness stale", async () => {
   const store = memoryStore();
   const pending: Promise<unknown>[] = [];
   const request = new Request("https://example.test/api/v1/profile?demo=false&user=octocat");
@@ -102,7 +105,27 @@ test("JSON fallbacks preserve the versioned payload and expose its observation t
   );
   assert.equal(stale.status, 200);
   assert.equal(stale.headers.get("x-commitatlas-observed-at"), "2026-08-27T19:45:00.000Z");
-  assert.deepEqual(await stale.json(), JSON.parse(body));
+  assert.deepEqual(await stale.json(), {
+    ...JSON.parse(body),
+    freshness: { generatedAt: "2026-08-27T19:45:00.000Z", mode: "stale", source: "github-rest" },
+  });
+  assert.notEqual(stale.headers.get("etag"), jsonSuccess(body).headers.get("etag"));
+});
+
+test("user-controlled stale wording cannot suppress the generated SVG marker", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const request = new Request("https://example.test/api/v1/cards/profile.svg?user=octocat&demo=false&theme=paper&motion=none");
+  const body = svgBody().replace("<title>Atlas</title>", "<title>STALE SNAPSHOT</title>");
+  await withPublicLastGood(request, async () => svgResponse(body), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+
+  const stale = await withPublicLastGood(
+    request,
+    async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-08-27T20:01:00.000Z")),
+  );
+  assert.match(await stale.text(), /data-commitatlas-stale-banner="true"/);
 });
 
 test("cold, expired, corrupt, and non-upstream failures retain the original error", async () => {

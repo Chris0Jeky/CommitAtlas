@@ -87,8 +87,9 @@ never written or served from this layer.
 Entries expire after seven days. When anonymous GitHub later produces a supported quota (`429`) or
 availability (`502`) error, a valid entry is returned with `X-CommitAtlas-Data-State: stale`, its
 stored and observed timestamps, a short cache lifetime, and an HTTP stale warning. SVG responses
-also receive a high-contrast `STALE SNAPSHOT` strip with the observation time; versioned JSON bodies
-stay byte-identical and carry their existing freshness object. A cold, expired, corrupt, or
+also receive a high-contrast `STALE SNAPSHOT` strip below the original view box content and add the
+same warning to the accessible description. Versioned JSON bodies preserve their observed values
+while changing `freshness.mode` to `stale`; both representations receive a new ETag. A cold, expired, corrupt, or
 cross-key lookup retains the original bounded error.
 
 KV is eventually consistent, so a just-primed value may take time to become visible in another

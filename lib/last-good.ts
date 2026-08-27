@@ -219,7 +219,7 @@ async function staleResponse(
   now: Date,
 ): Promise<Response> {
   const svg = entry.headers["content-type"]?.toLowerCase().startsWith("image/svg+xml") ?? false;
-  const body = svg ? markSvgStale(entry.body, entry.observedAt) : entry.body;
+  const body = svg ? markSvgStale(entry.body, entry.observedAt) : markJsonStale(entry.body);
   const headers = new Headers(entry.headers);
   headers.set("Cache-Control", "public, max-age=60, s-maxage=60");
   headers.set("Warning", '110 - "Response is stale"');
@@ -238,15 +238,36 @@ async function staleResponse(
 
 function markSvgStale(body: string, observedAt: string): string {
   const viewBox = body.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-  if (!viewBox || body.includes("STALE SNAPSHOT")) return body;
+  if (!viewBox || /<svg\b[^>]*\bdata-commitatlas-state="stale"/i.test(body)) return body;
   const width = Number(viewBox[1]);
   const height = Number(viewBox[2]);
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 240 || height < 100) return body;
   const bannerHeight = Math.min(22, Math.max(16, Math.round(height * 0.07)));
   const fontSize = Math.min(10, Math.max(8, Math.round(width / 80)));
   const label = `STALE SNAPSHOT \u00b7 OBSERVED ${observedAt}`;
-  const marker = `<g role="note" aria-label="${label}"><rect x="0" y="${height - bannerHeight}" width="${width}" height="${bannerHeight}" fill="#111827"/><text x="${width / 2}" y="${height - Math.max(5, Math.round(bannerHeight * 0.3))}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="${fontSize}" font-weight="700" fill="#FCD34D">${label}</text></g>`;
-  return body.replace(/<\/svg>\s*$/, `${marker}</svg>`);
+  const extendedHeight = height + bannerHeight;
+  const marker = `<g role="note" aria-label="${label}" data-commitatlas-stale-banner="true"><rect x="0" y="${height}" width="${width}" height="${bannerHeight}" fill="#111827"/><text x="${width / 2}" y="${height + bannerHeight - Math.max(5, Math.round(bannerHeight * 0.3))}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="${fontSize}" font-weight="700" fill="#FCD34D">${label}</text></g>`;
+  let marked = body.replace(/^<svg\b([^>]*)>/i, (opening) => {
+    const sized = opening
+      .replace(viewBox[0], `viewBox="0 0 ${width} ${extendedHeight}"`)
+      .replace(/\bheight="[\d.]+"/i, `height="${extendedHeight}"`);
+    return sized.replace(/^<svg\b/i, '<svg data-commitatlas-state="stale"');
+  });
+  marked = marked.replace(/<desc>([\s\S]*?)<\/desc>/i, `<desc>$1 ${label}.</desc>`);
+  return marked.replace(/<\/svg>\s*$/, `${marker}</svg>`);
+}
+
+function markJsonStale(body: string): string {
+  try {
+    const payload = JSON.parse(body) as unknown;
+    if (!isRecord(payload) || !isRecord(payload.freshness)) return body;
+    return JSON.stringify({
+      ...payload,
+      freshness: { ...payload.freshness, mode: "stale" },
+    });
+  } catch {
+    return body;
+  }
 }
 
 function isSafeBody(body: string, contentType: string): boolean {
