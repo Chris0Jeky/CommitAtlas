@@ -176,7 +176,25 @@ test("never counts an unavailable release lookup as an observed absence", () => 
   };
   const rendered = renderStaticArtifacts(partial, config());
   assert.match(rendered["releases.svg"], /v1\.0\.0/);
-  assert.doesNotMatch(rendered["releases.svg"], /1 OF 2 CURATED PROJECTS/);
+  assert.match(rendered["releases.svg"], /1 OF 2 RELEASE LOOKUPS UNAVAILABLE/);
+
+  const allUnavailable = renderStaticArtifacts({
+    ...base,
+    projects: { ...partial.projects, projects: [unavailableProject] },
+  }, config())["releases.svg"];
+  assert.match(allUnavailable, /Release evidence unavailable/);
+  assert.match(allUnavailable, /1 of 1 curated projects were not observed/);
+  assert.doesNotMatch(allUnavailable, /No published releases observed for the curated projects/);
+
+  const mixedEmpty = renderStaticArtifacts({
+    ...base,
+    projects: {
+      ...partial.projects,
+      projects: [base.projects.projects[0], unavailableProject],
+    },
+  }, config())["releases.svg"];
+  assert.match(mixedEmpty, /No published releases in observed projects/);
+  assert.match(mixedEmpty, /1 of 2 release lookups unavailable/);
 
 });
 
