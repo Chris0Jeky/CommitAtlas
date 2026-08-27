@@ -458,6 +458,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
   );
   assert.equal(board.projects[0].lifecycle, "active");
   assert.equal(board.projects[0].ci.state, "passing");
+  assert.equal(board.projects[0].releaseState, "none");
   assert.equal(board.projects[0].release, null);
   assert.equal(board.projects[0].websiteUrl, null);
   assert.equal(board.projects[0].license, null);
@@ -912,6 +913,7 @@ test("treats only 404 as an absent optional release or workflow run", async () =
   const board = await new GitHubClient({ fetchImpl: optionalFetch(() => json({ message: "Not Found" }, 404)), now: () => NOW })
     .fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]]));
   assert.equal(board.projects[0].release, null);
+  assert.equal(board.projects[0].releaseState, "none");
   assert.equal(board.projects[0].ci.state, "unavailable");
   assert.equal(board.projects[0].ci.label, "CI unavailable");
 
@@ -942,6 +944,7 @@ test("treats only 404 as an absent optional release or workflow run", async () =
     now: () => NOW,
   }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]), new Map([["atlas", "ci.yml"]]));
   assert.equal(restricted.projects[0].release, null);
+  assert.equal(restricted.projects[0].releaseState, "unavailable");
   assert.equal(restricted.projects[0].ci.state, "unavailable");
   assert.equal(restricted.projects[0].ci.label, "CI unavailable");
   assert.equal(restricted.freshness.mode, "partial");

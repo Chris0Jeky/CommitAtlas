@@ -16,4 +16,8 @@ require positive public-only classic OAuth scope evidence before resource lookup
 The static generator and Action currently use logged-out public data only. Private generation is not
 implemented or implied.
 
+Project snapshots keep release evidence explicit: `releaseState: "none"` means GitHub proved that no
+latest release exists, while `"unavailable"` means the optional lookup could not be observed. Consumers
+must not count the latter as an unreleased project.
+
 Licensed under GPL-3.0-only.

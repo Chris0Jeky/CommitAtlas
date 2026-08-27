@@ -495,6 +495,7 @@ test("treats only 404 as an absent optional lookup in the built Worker project r
   assert.equal(absent.status, 200);
   const absentPayload = await absent.json();
   assert.equal(absentPayload.projects[0].release, null);
+  assert.equal(absentPayload.projects[0].releaseState, "none");
   assert.equal(absentPayload.projects[0].ci.state, "unavailable");
   assert.equal(absentPayload.projects[0].ci.label, "CI unavailable");
 
@@ -514,6 +515,7 @@ test("treats only 404 as an absent optional lookup in the built Worker project r
   assert.equal(restricted.status, 200);
   const restrictedPayload = await restricted.json();
   assert.equal(restrictedPayload.projects[0].release, null);
+  assert.equal(restrictedPayload.projects[0].releaseState, "unavailable");
   assert.equal(restrictedPayload.projects[0].ci.state, "unavailable");
   assert.equal(restrictedPayload.projects[0].ci.label, "CI unavailable");
   assert.equal(restrictedPayload.freshness.mode, "partial");

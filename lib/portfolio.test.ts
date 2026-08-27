@@ -47,6 +47,7 @@ const projects: ProjectBoardSnapshot = {
       lifecycle: "active", primaryLanguage: "TypeScript", stars: 2, forks: 0,
       openIssuesAndPullRequests: 0, pushedAt: generatedAt, license: "GPL-3.0-only",
       ci: { state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: generatedAt, headSha: null },
+      releaseState: "none",
       release: null,
     },
     {
@@ -55,6 +56,7 @@ const projects: ProjectBoardSnapshot = {
       lifecycle: "maintenance", primaryLanguage: "Python", stars: 0, forks: 0,
       openIssuesAndPullRequests: 0, pushedAt: generatedAt, license: null,
       ci: { state: "unconfigured", label: "Not configured", workflow: null, url: null, checkedAt: null, headSha: null },
+      releaseState: "none",
       release: null,
     },
   ],

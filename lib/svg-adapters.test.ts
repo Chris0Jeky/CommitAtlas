@@ -212,6 +212,7 @@ test("language and project adapters preserve explicit semantics and omit SVG act
       pushedAt: null,
       license: null,
       ci: { state: "unavailable", label: "CI unavailable", workflow: null, url: null, checkedAt: null, headSha: null },
+      releaseState: "none",
       release: null,
     }],
     freshness,

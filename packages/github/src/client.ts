@@ -15,6 +15,7 @@ import type {
   ProjectCiSignal,
   ProjectLifecycle,
   ProjectReleaseSignal,
+  ProjectReleaseState,
   ProjectSnapshot,
   ProjectWorkflow,
 } from "./types.js";
@@ -28,6 +29,7 @@ const API_ORIGIN = "https://api.github.com";
 const WEB_ORIGIN = "https://github.com";
 const GRAPHQL_URL = "https://api.github.com/graphql";
 const API_VERSION = "2026-03-10";
+const OPTIONAL_LOOKUP_UNAVAILABLE = Symbol("optional-lookup-unavailable");
 const MAX_RESPONSE_BYTES = 1_500_000;
 const REQUEST_DEADLINE_MS = 12_000;
 const PROJECT_CONCURRENCY = 2;
@@ -308,7 +310,9 @@ export class GitHubClient {
       freshness: {
         generatedAt: this.now().toISOString(),
         source: "github-rest",
-        mode: projects.some((project) => project.ci.state === "unavailable") ? "partial" : "live",
+        mode: projects.some((project) => project.ci.state === "unavailable" || project.releaseState === "unavailable")
+          ? "partial"
+          : "live",
       },
     };
   }
@@ -324,7 +328,7 @@ export class GitHubClient {
     if (repo.private === true) throw privateDataError("CommitAtlas only serves public GitHub repositories");
 
     const defaultBranch = textField(repo, "default_branch", GITHUB_TEXT_LIMITS.branch) ?? "main";
-    const [release, ci] = await Promise.all([
+    const [releaseObservation, ci] = await Promise.all([
       this.fetchLatestRelease(owner, repository),
       configuredWorkflow
         ? this.fetchLatestRun(owner, repository, defaultBranch, configuredWorkflow)
@@ -351,33 +355,42 @@ export class GitHubClient {
       pushedAt: textField(repo, "pushed_at", GITHUB_TEXT_LIMITS.timestamp),
       license: license === "NOASSERTION" ? null : license,
       ci,
-      release,
+      releaseState: releaseObservation.state,
+      release: releaseObservation.release,
     };
   }
 
-  private async fetchLatestRelease(owner: string, repository: string): Promise<ProjectReleaseSignal | null> {
+  private async fetchLatestRelease(
+    owner: string,
+    repository: string,
+  ): Promise<{ state: ProjectReleaseState; release: ProjectReleaseSignal | null }> {
     const result = await this.getJson(
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/releases/latest`,
       true,
     );
-    if (result === null || !isRecord(result)) return null;
+    if (result === OPTIONAL_LOOKUP_UNAVAILABLE) return { state: "unavailable", release: null };
+    if (result === null) return { state: "none", release: null };
+    if (!isRecord(result)) return { state: "unavailable", release: null };
     const assets = Array.isArray(result.assets) ? result.assets.filter(isRecord) : [];
     const firstAsset = assets.find((asset) => safeHttpsUrl(asset.browser_download_url));
     const url = safeHttpsUrl(result.html_url);
     const publishedAt = textField(result, "published_at", GITHUB_TEXT_LIMITS.timestamp);
     const tag = textField(result, "tag_name", GITHUB_TEXT_LIMITS.releaseTag);
-    if (!url || !publishedAt || !tag) return null;
+    if (!url || !publishedAt || !tag) return { state: "unavailable", release: null };
     return {
-      tag,
-      name: textField(result, "name", GITHUB_TEXT_LIMITS.releaseName) ?? tag,
-      url,
-      publishedAt,
-      download: firstAsset
-        ? {
-            name: textField(firstAsset, "name", GITHUB_TEXT_LIMITS.assetName) ?? "Release asset",
-            url: safeHttpsUrl(firstAsset.browser_download_url)!,
-          }
-        : null,
+      state: "published",
+      release: {
+        tag,
+        name: textField(result, "name", GITHUB_TEXT_LIMITS.releaseName) ?? tag,
+        url,
+        publishedAt,
+        download: firstAsset
+          ? {
+              name: textField(firstAsset, "name", GITHUB_TEXT_LIMITS.assetName) ?? "Release asset",
+              url: safeHttpsUrl(firstAsset.browser_download_url)!,
+            }
+          : null,
+      },
     };
   }
 
@@ -391,7 +404,7 @@ export class GitHubClient {
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/actions/workflows/${encodeURIComponent(workflow)}/runs?branch=${encodeURIComponent(branch)}&per_page=1&exclude_pull_requests=true`,
       true,
     );
-    if (result === null || !isRecord(result)) {
+    if (result === null || result === OPTIONAL_LOOKUP_UNAVAILABLE || !isRecord(result)) {
       return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
     // A 200 whose workflow_runs is missing or not an array is an unreadable
@@ -482,7 +495,7 @@ export class GitHubClient {
     response: Response,
     allowMissing: boolean,
     allowPayloadErrors = false,
-  ): Promise<Record<string, unknown> | unknown[] | null> {
+  ): Promise<Record<string, unknown> | unknown[] | null | typeof OPTIONAL_LOOKUP_UNAVAILABLE> {
     // Only 404 proves an optional resource is absent. A 403 or 429 is a refusal
     // or a rate limit, and reporting it as "no release" or "no workflow run"
     // would turn an unknown signal into an observed one.
@@ -492,7 +505,9 @@ export class GitHubClient {
     }
     if (!response.ok) {
       const error = await this.transportError(response, "GitHub data is currently unavailable");
-      if (allowMissing && response.status === 403 && error.code === "github_unavailable") return null;
+      if (allowMissing && response.status === 403 && error.code === "github_unavailable") {
+        return OPTIONAL_LOOKUP_UNAVAILABLE;
+      }
       throw error;
     }
     const declaredLength = response.headers.get("content-length");
