@@ -427,7 +427,7 @@ test("keeps rate-limit and upstream-outage codes distinct from not found in the 
   for (const [status, expectedStatus, expectedCode] of [
     [404, 404, "github_not_found"],
     [500, 502, "github_unavailable"],
-    [403, 429, "github_rate_limited"],
+    [403, 502, "github_unavailable"],
     [429, 429, "github_rate_limited"],
   ]) {
     const response = await withMockedFetch(
@@ -437,6 +437,19 @@ test("keeps rate-limit and upstream-outage codes distinct from not found in the 
     assert.equal(response.status, expectedStatus, `upstream ${status}`);
     assert.equal((await response.json()).error.code, expectedCode, `upstream ${status}`);
   }
+
+  const exhausted = await withMockedFetch(
+    async () => new Response(null, {
+      status: 403,
+      headers: {
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 30),
+      },
+    }),
+    () => request("/api/v1/profile?user=octocat"),
+  );
+  assert.equal(exhausted.status, 429);
+  assert.equal((await exhausted.json()).error.code, "github_rate_limited");
 });
 
 test("returns the not-found contract for the partial GraphQL not-found answer in the built Worker", async () => {
@@ -493,6 +506,17 @@ test("treats only 404 as an absent optional lookup in the built Worker project r
   assert.equal(limited.headers.get("cache-control"), "no-store");
   assert.equal(limited.headers.get("retry-after"), "31");
   assert.equal((await limited.json()).error.code, "github_rate_limited");
+
+  const restricted = await withMockedFetch(
+    projectFetch(() => githubJson({ message: "Resource not accessible" }, 403)),
+    () => request(path),
+  );
+  assert.equal(restricted.status, 200);
+  const restrictedPayload = await restricted.json();
+  assert.equal(restrictedPayload.projects[0].release, null);
+  assert.equal(restrictedPayload.projects[0].ci.state, "unavailable");
+  assert.equal(restrictedPayload.projects[0].ci.label, "CI unavailable");
+  assert.equal(restrictedPayload.freshness.mode, "partial");
 });
 
 test("never reports a malformed workflow_runs payload as configured or clean in the built Worker", async () => {
