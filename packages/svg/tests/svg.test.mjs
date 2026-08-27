@@ -1093,7 +1093,7 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   assert.deepEqual(dates, [">2026-08-01<", ">2026-04-20<", ">2026-01-05<"]);
   assert.match(output, />Newest</);
   assert.doesNotMatch(output, /BadDate|BadDay|BadClock|v9\.9\.9|v0\.0\.1/);
-  assert.match(output, /3 OF 6 CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED/);
+  assert.match(output, /3 OF 6 OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE/);
   const capped = renderReleasesCard({
     releases: Array.from({ length: 9 }, (_, index) => ({
       project: `Project ${index}`, tag: `v0.${index}.0`, publishedAt: `2026-03-0${index + 1}T09:00:00Z`,
@@ -1123,8 +1123,20 @@ test("releases card sorts newest first, caps at six, drops malformed entries, an
   const empty = renderReleasesCard({ releases: [], projectsObserved: 4 });
   assertSafeSvg(empty);
   assert.match(empty, /No published releases observed for the curated projects/);
-  assert.match(empty, /4 OF 4 CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED/);
-  assert.match(empty, /<desc>[^<]*4 of 4 curated projects have no published release observed\./i);
+  assert.match(empty, /4 OF 4 OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE/);
+  assert.match(empty, /<desc>[^<]*No published releases were observed for 4 observed curated projects\./i);
+  const unavailable = renderReleasesCard({ releases: [], projectsObserved: 0, projectsUnavailable: 4 });
+  assertSafeSvg(unavailable);
+  assert.match(unavailable, /Release evidence unavailable/);
+  assert.match(unavailable, /4 of 4 curated projects were not observed/);
+  assert.match(unavailable, /4 OF 4 RELEASE LOOKUPS UNAVAILABLE/);
+  assert.doesNotMatch(unavailable, /No published releases observed for the curated projects/);
+  assert.match(unavailable, /<desc>[^<]*unavailable for all 4 curated projects\./i);
+  const mixedEmpty = renderReleasesCard({ releases: [], projectsObserved: 3, projectsUnavailable: 1 });
+  assertSafeSvg(mixedEmpty);
+  assert.match(mixedEmpty, /No published releases in observed projects/);
+  assert.match(mixedEmpty, /1 of 4 release lookups unavailable/);
+  assert.match(mixedEmpty, /3 OF 3 OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE · 1 OF 4 RELEASE LOOKUPS UNAVAILABLE/);
   const hostile = renderReleasesCard({
     releases: [{ project: injection, tag: injection, publishedAt: "2026-08-01T09:00:00Z" }],
   });

@@ -245,6 +245,8 @@ export interface ReleasesCardData extends SourceLabelledCardData {
   readonly releases: readonly ReleaseSignal[];
   /** How many curated projects were observed, so absence can be stated rather than implied. */
   readonly projectsObserved?: number;
+  /** How many curated-project release lookups were unavailable and therefore cannot imply absence. */
+  readonly projectsUnavailable?: number;
 }
 
 export interface AtlasCardData {
@@ -1059,30 +1061,58 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   // The absence footer is computed from the pre-cap count: a release cut by the six-row display
   // cap still exists, and counting it as "no published release" would state a falsehood.
   const observed = Number.isFinite(data.projectsObserved)
-    ? Math.max(valid.length, Math.min(50, Math.round(data.projectsObserved as number)))
+    ? Math.max(valid.length, Math.max(0, Math.min(50, Math.round(data.projectsObserved as number))))
     : null;
-  const rows = Math.max(1, releases.length);
+  const unavailable = Number.isFinite(data.projectsUnavailable)
+    ? Math.max(0, Math.min(50 - (observed ?? valid.length), Math.round(data.projectsUnavailable as number)))
+    : null;
+  const unavailableCount = unavailable ?? 0;
+  const total = observed !== null || unavailable !== null
+    ? Math.min(50, (observed ?? valid.length) + unavailableCount)
+    : null;
+  const absentCount = observed === null ? 0 : Math.max(0, observed - valid.length);
+  const rows = releases.length > 0 ? releases.length : unavailableCount > 0 ? 2 : 1;
   // The minimum height scales with the rows actually drawn, so a caller-supplied height can
   // shrink margins but never clip a release row out of the panel.
   const rowsHeight = 92 + rows * 34 + 30;
   const o = optionsFor(options, rowsHeight, "Latest releases", "The most recent published release per curated project, newest first.", rowsHeight, 420); const t = o.theme; const width = o.width;
   const metadata = sourceMetadata(data.source, o.title, o.description);
-  const absenceSentence = observed !== null && observed > valid.length
-    ? ` ${observed - valid.length} of ${observed} curated projects have no published release observed.`
+  const absenceSentence = absentCount > 0
+    ? ` ${absentCount} of ${observed} observed curated projects have no published release observed.`
     : "";
+  const unavailableSentence = unavailableCount > 0 && total !== null
+    ? ` Release evidence was unavailable for ${unavailableCount} of ${total} curated projects.`
+    : "";
+  const emptySentence = unavailableCount > 0 && observed === 0
+    ? `Release evidence was unavailable for all ${total} curated projects.`
+    : unavailableCount > 0
+      ? `No published releases were observed for ${observed ?? valid.length} observed curated projects.${unavailableSentence}`
+      : observed !== null
+        ? `No published releases were observed for ${observed} observed curated projects.`
+        : "No published releases observed for the curated projects.";
   const accessibleDescription = releases.length
-    ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.${absenceSentence}`
-    : `${metadata.description} No published releases observed for the curated projects.${absenceSentence}`;
+    ? `${metadata.description} ${releases.map((release) => `${truncateText(release.project, 25)} ${truncateText(release.tag, 18)} on ${release.publishedAt.slice(0, 10)}`).join("; ")}.${absenceSentence}${unavailableSentence}`
+    : `${metadata.description} ${emptySentence}`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "LATEST RELEASES", t);
   out += sourceMarker(data.source, width - 34, 31, t);
   if (!releases.length) {
-    out += text(34, 92, "No published releases observed for the curated projects", 13, t.muted, 550);
-    if (observed !== null && observed > 0) {
-      out += mono(34, o.height - 28, `${observed} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
+    if (unavailableCount > 0) {
+      const allUnavailable = observed === 0;
+      out += text(34, 88, allUnavailable ? "Release evidence unavailable" : "No published releases in observed projects", 13, t.muted, 550);
+      out += text(34, 112, allUnavailable
+        ? `${unavailableCount} of ${total} curated projects were not observed`
+        : `${unavailableCount} of ${total} release lookups unavailable`, 11, t.muted, 500);
+    } else {
+      out += text(34, 92, "No published releases observed for the curated projects", 13, t.muted, 550);
     }
+    const footer = [
+      absentCount > 0 ? `${absentCount} OF ${observed} OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE` : null,
+      unavailableCount > 0 ? `${unavailableCount} OF ${total} RELEASE LOOKUPS UNAVAILABLE` : null,
+    ].filter((part): part is string => part !== null).join(" · ");
+    if (footer) out += mono(34, o.height - 28, footer, 7.5, t.muted, 550, "start", 0.08);
     return out + `</g>` + svgEnd();
   }
   if (releases.length < valid.length) out += text(width - 34, 50, `${releases.length} of ${valid.length} shown`, 11, t.muted, 500, "end");
@@ -1093,9 +1123,11 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
     out += text(128, y, truncateText(release.project, width < 560 ? 16 : 30), 13.5, t.text, 700);
     out += mono(width - 34, y, truncateText(release.tag, width < 560 ? 12 : 18), 10.5, t.accent, 600, "end", 0.04);
   });
-  if (observed !== null && observed > valid.length) {
-    out += mono(34, o.height - 28, `${observed - valid.length} OF ${observed} CURATED PROJECTS HAVE NO PUBLISHED RELEASE OBSERVED`, 7.5, t.muted, 550, "start", 0.08);
-  }
+  const footer = [
+    absentCount > 0 ? `${absentCount} OF ${observed} OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE` : null,
+    unavailableCount > 0 ? `${unavailableCount} OF ${total} RELEASE LOOKUPS UNAVAILABLE` : null,
+  ].filter((part): part is string => part !== null).join(" · ");
+  if (footer) out += mono(34, o.height - 28, footer, 7.5, t.muted, 550, "start", 0.08);
   return out + `</g>` + svgEnd();
 }
 

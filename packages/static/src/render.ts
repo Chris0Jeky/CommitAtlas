@@ -168,7 +168,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     }, { ...common, width });
   }
   if (selected.has("releases")) {
-    const projectsWithReleaseEvidence = (projects?.projects ?? [])
+    const projectStates = projects?.projects ?? [];
+    const projectsWithReleaseEvidence = projectStates
       .filter((project) => project.releaseState !== "unavailable");
     artifacts["releases.svg"] = renderReleasesCard({
       source: toCardSource(projects?.freshness ?? snapshot.freshness),
@@ -176,6 +177,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
         ? [{ project: project.name, tag: project.release.tag, publishedAt: project.release.publishedAt }]
         : []),
       projectsObserved: projectsWithReleaseEvidence.length,
+      projectsUnavailable: projectStates.length - projectsWithReleaseEvidence.length,
     }, { ...common, width });
   }
   return artifacts;
