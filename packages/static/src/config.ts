@@ -27,7 +27,7 @@ const STATIC_THEME_SCHEMES: Readonly<Record<StaticThemeName, "dark" | "light">> 
 
 const RelativePathSchema = z.string().trim().min(1).max(240).refine((value) => {
   if (path.isAbsolute(value) || value === ".") return false;
-  return !value.replaceAll("\\", "/").split("/").some((part) => part === ".." || part === "");
+  return !value.replaceAll("\\", "/").split("/").some((part) => part === "." || part === ".." || part === "");
 }, "Expected a contained relative path");
 
 const RawStaticConfigSchema = z.object({
@@ -137,7 +137,7 @@ export async function resolveContainedPath(
 ): Promise<string> {
   if (path.isAbsolute(relativePath)) throw new Error(`${options.label} path must be relative`);
   const normalized = relativePath.replaceAll("\\", "/");
-  if (normalized === "." || normalized.split("/").some((part) => part === ".." || part === "")) {
+  if (normalized === "." || normalized.split("/").some((part) => part === "." || part === ".." || part === "")) {
     throw new Error(`${options.label} path must stay inside the repository`);
   }
   const target = path.resolve(root, relativePath);
