@@ -578,6 +578,55 @@ test("returns a validated rate-limit retry hint without caching the error", asyn
   assert.equal((await response.json()).error.code, "github_rate_limited");
 });
 
+test("the built Worker serves an honest public last-good response after a primed upstream outage", async () => {
+  const worker = await (async () => loadBuiltWorker("last-good"))();
+  const values = new Map();
+  const pending = [];
+  const env = {
+    ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    LAST_GOOD: {
+      get: async (key, type) => {
+        assert.equal(type, "text");
+        return values.get(key) ?? null;
+      },
+      put: async (key, value, options) => {
+        assert.deepEqual(options, { expirationTtl: 604800 });
+        values.set(key, value);
+      },
+    },
+  };
+  const ctx = {
+    waitUntil(promise) { pending.push(promise); },
+    passThroughOnException() {},
+  };
+  const path = "/api/v1/profile?user=octocat&demo=false";
+
+  const live = await withMockedFetch(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return githubJson({ login: "octocat", name: "The Octocat", public_repos: 0, followers: 1, following: 2 });
+    }
+    if (url.pathname === "/users/octocat/repos") return githubJson([]);
+    assert.fail(`unexpected GitHub route: ${url.pathname}`);
+  }, () => worker.fetch(new Request(`http://localhost${path}`), env, ctx));
+  assert.equal(live.status, 200);
+  assert.equal(live.headers.get("x-commitatlas-data-state"), "live");
+  await Promise.all(pending);
+  assert.equal(values.size, 1);
+  const livePayload = await live.json();
+
+  const stale = await withMockedFetch(
+    async () => githubJson({ message: "upstream unavailable" }, 500),
+    () => worker.fetch(new Request(`http://localhost${path}`), env, ctx),
+  );
+  assert.equal(stale.status, 200);
+  assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale");
+  assert.equal(stale.headers.get("x-commitatlas-fallback-reason"), "unavailable");
+  assert.equal(stale.headers.get("warning"), '110 - "Response is stale"');
+  assert.match(stale.headers.get("x-commitatlas-observed-at") ?? "", /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(await stale.json(), livePayload);
+});
+
 async function withMockedFetch(fetchImpl, operation) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
@@ -586,6 +635,13 @@ async function withMockedFetch(fetchImpl, operation) {
   } finally {
     globalThis.fetch = originalFetch;
   }
+}
+
+async function loadBuiltWorker(label) {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${label}`);
+  const { default: worker } = await import(workerUrl.href);
+  return worker;
 }
 
 function publicContributionPayload(restrictions = {}, endingDate = new Date().toISOString().slice(0, 10), includeFuture = false) {

@@ -1,9 +1,10 @@
 /** Cloudflare Worker entry point for CommitAtlas. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { withWorkerEnv, type CommitAtlasWorkerEnv } from "@/lib/runtime-env";
+import { withPublicLastGood, type LastGoodStore } from "@/lib/last-good";
+import { getGitHubToken, withWorkerEnv, type CommitAtlasWorkerEnv } from "@/lib/runtime-env";
 
-interface Env extends CommitAtlasWorkerEnv {
+interface Env extends CommitAtlasWorkerEnv, CloudflareBindings {
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
@@ -18,7 +19,6 @@ interface Env extends CommitAtlasWorkerEnv {
 
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
-  passThroughOnException(): void;
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -42,7 +42,22 @@ const worker = {
       }, allowedWidths);
     }
 
-    return withWorkerEnv(env, () => handler.fetch(request, env, ctx));
+    return withWorkerEnv(env, async () => {
+      const binding = (env as Partial<CloudflareBindings>).LAST_GOOD;
+      const store: LastGoodStore | undefined = binding ? {
+        get: (key) => binding.get(key, "text"),
+        put: (key, value, options) => binding.put(key, value, options),
+      } : undefined;
+      return withPublicLastGood(
+        request,
+        () => handler.fetch(request, env, ctx),
+        {
+          publicOnly: !getGitHubToken(),
+          store,
+          waitUntil: (promise) => ctx.waitUntil(promise),
+        },
+      );
+    });
   },
 };
 
