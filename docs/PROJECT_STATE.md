@@ -218,7 +218,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   expose multiple click targets.
 - Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create ten
   selected SVG types, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
-  manifest — up to 14 output files — while removing only known stale CommitAtlas artifacts.
+  manifest — up to 14 output files — while removing only known stale CommitAtlas artifacts. Optional
+  bounded `themes` entries render opposite-scheme outputs into explicit directories from that same
+  snapshot; each directory retains its own v1 manifest and ownership-aware cleanup boundary.
 - Generated catalog boundaries are pinned by adversarial fixtures: untrusted release tags and
   workflow names use delimiter-safe CommonMark code spans (fence grown past the longest backtick
   run, padded at backtick edges) and `projects.md` emits no Markdown table, so no upstream value can
@@ -427,9 +429,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   first, then #57 bumped the version once for both, so there is no second bump to make.
   The consumer in the profile repository accepted version 2 before the pinned Action SHA advanced;
   #60 is closed, and refresh run 33119356827 proves the producer/consumer contract end to end.
-- The next bounded milestone is operational resilience: #85 tracks an honest hosted last-good
-  fallback after the live Atlas reproduced a bounded GitHub-deadline 502 on 2026-08-27; #78 reduces
-  the duplicate dark/light static fetch, and #62 classifies the remaining non-rate-limit 403 case.
+- The next bounded milestones are operational resilience and upstream error classification: #85 tracks
+  an honest hosted last-good fallback after the live Atlas reproduced a bounded GitHub-deadline 502 on
+  2026-08-27, and #62 classifies the remaining non-rate-limit 403 case. The static dark/light fetch
+  duplication tracked by #78 is addressed by the config-level theme variants described above.
   npm publication, Marketplace listing, and a patch release remain separate owner decisions.
 
 ## Clean resume commands

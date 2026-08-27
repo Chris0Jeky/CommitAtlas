@@ -16,5 +16,6 @@ test("action is a credential-free Node 24 generator", async () => {
 test("checked bundle contains the static generator but no source map or token sentinel", async () => {
   const bundle = await readFile(new URL("./dist/index.js", import.meta.url), "utf8");
   assert.match(bundle, /CommitAtlas static portfolio/);
+  assert.match(bundle, /Variant/);
   assert.doesNotMatch(bundle, /must-not-leave-process|sourceMappingURL=/);
 });

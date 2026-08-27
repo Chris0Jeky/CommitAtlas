@@ -135,8 +135,10 @@ node packages/static/dist/cli.js generate --config .commitatlas.json
 
 The v1 config is intentionally one-owner and public-only. It rejects unknown fields, credentials,
 absolute/traversing/symlinked paths, untracked config, duplicate cards/projects, and invalid workflow
-identities. Generation validates all upstream data and SVG payloads before staged per-file
-replacement; unrelated files in the output directory are preserved.
+identities. Add optional `themes` entries to render opposite-scheme outputs (for example, `paper` in
+`assets/commitatlas/light`) from the same fetched snapshot; each entry requires its own contained
+output path. Generation validates every variant before staged per-file replacement; unrelated files
+in each output directory are preserved.
 
 ## Refresh with GitHub Actions
 

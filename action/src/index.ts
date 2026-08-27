@@ -39,15 +39,19 @@ async function run(): Promise<void> {
     core.setOutput(output, generated.has(artifact) ? `${outputRoot}/${artifact}` : "");
   }
   core.info(`Generated ${result.manifest.artifacts.length} CommitAtlas card(s) for ${result.manifest.user}.`);
+  const summaryRows: ([string, string] | [{ data: string; header: boolean }, { data: string; header: boolean }])[] = [
+    [{ data: "Signal", header: true }, { data: "Value", header: true }],
+    ["User", result.manifest.user],
+    ["Window", `${result.manifest.window.from} to ${result.manifest.window.to}`],
+    ["Cards", String(result.manifest.artifacts.length)],
+    ["Output", outputRoot],
+  ];
+  for (const variant of result.variants) {
+    summaryRows.push([`Variant · ${variant.theme}`, `${variant.manifest.artifacts.length} cards · ${relative(root, variant.outputDir)}`]);
+  }
   await core.summary
     .addHeading("CommitAtlas static portfolio")
-    .addTable([
-      [{ data: "Signal", header: true }, { data: "Value", header: true }],
-      ["User", result.manifest.user],
-      ["Window", `${result.manifest.window.from} to ${result.manifest.window.to}`],
-      ["Cards", String(result.manifest.artifacts.length)],
-      ["Output", outputRoot],
-    ])
+    .addTable(summaryRows)
     .write();
 }
 
