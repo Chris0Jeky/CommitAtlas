@@ -1064,7 +1064,10 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
     out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 10, t.muted, 550, "middle");
   });
   const totalLabel = totalOverflowed ? "NORMALIZED FINITE COUNTS" : `${formatNumber(total)} CONTRIBUTIONS`;
-  out += mono(34, o.height - 26, `SHARE OF ${totalLabel} · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 9.5, t.muted, 550, "start", 0.08);
+  const footerLabel = width < 560
+    ? `SHARE OF ${totalLabel} · UTC · WINDOW-SCOPED`
+    : `SHARE OF ${totalLabel} · UTC DAY BOUNDARIES · WINDOW-SCOPED`;
+  out += mono(34, o.height - 26, footerLabel, 9.5, t.muted, 550, "start", 0.08);
   return out + `</g>` + svgEnd();
 }
 

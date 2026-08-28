@@ -1076,6 +1076,20 @@ test("cadence card computes Monday-first weekday shares and names the busiest da
   assert.equal(accents.length, 1);
 });
 
+test("cadence footer stays inside the panel at the supported 420px width", () => {
+  const output = renderCadenceCard({ days: [{ date: "2026-02-25", count: 10 }] }, { width: 420 });
+  assertSafeSvg(output);
+  assert.match(output, /SHARE OF 10 CONTRIBUTIONS · UTC · WINDOW-SCOPED/);
+  assert.doesNotMatch(output, /UTC DAY BOUNDARIES/);
+  const footer = output.match(/<text x="34" y="198"[^>]*font-size="9\.5"[^>]*letter-spacing="0\.76"[^>]*>([^<]+)<\/text>/);
+  assert.ok(footer, "expected the compact cadence footer text");
+  // The mono stack's conservative 0.6em advance plus letter spacing must remain inside
+  // the panel's right edge (420 - 16); the old 62-character footer estimated beyond it.
+  const characters = [...footer[1]];
+  const estimatedRight = 34 + characters.length * 9.5 * 0.6 + Math.max(0, characters.length - 1) * 0.76;
+  assert.ok(estimatedRight <= 404, `cadence footer extends past panel: ${estimatedRight}`);
+});
+
 test("cadence card accents every tied busiest day and names the tie", () => {
   const output = renderCadenceCard({
     days: [
