@@ -520,6 +520,28 @@ button, input, select, textarea { font: inherit; }
 .explainer-note { color: var(--cool-ink); font-weight: 600; }
 
 /* ============================================================================
+   RESEARCH BRIDGE
+   A compact, pinned Developer Lens finding. It lives in the optional lab and reads like evidence,
+   not a live product signal; the body deliberately stays at a comfortable reading size.
+   ========================================================================== */
+
+.research-bridge { margin-top: 56px; padding: 30px; border: 1px solid color-mix(in srgb, var(--teal) 48%, var(--line)); background: color-mix(in srgb, var(--teal) 4%, var(--fascia)); }
+.research-bridge-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.research-bridge h2 { max-width: 720px; margin: 10px 0 0; font-size: clamp(26px, 4vw, 42px); letter-spacing: -0.05em; }
+.research-bridge-status { flex: 0 0 auto; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--orange) 60%, var(--line)); color: var(--orange); font: 600 12px/1.3 var(--font-geist-mono), monospace; letter-spacing: 0.05em; text-transform: uppercase; }
+.research-bridge-lede { max-width: 900px; margin: 22px 0 0; color: var(--cool-ink); font-size: 16px; line-height: 1.65; }
+.research-bridge-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+.research-bridge-metrics > div { min-width: 0; padding: 18px; border: 1px solid var(--hairline); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.research-bridge-metrics span, .research-bridge-metrics small { display: block; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.research-bridge-metrics strong { display: block; margin: 10px 0 8px; color: var(--chrome); font-size: clamp(24px, 3vw, 32px); letter-spacing: -0.04em; }
+.research-bridge-outcome { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 18px; padding: 18px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.research-bridge-outcome p, .research-bridge-boundary p { margin: 0; color: var(--cool-ink); font-size: 16px; line-height: 1.6; }
+.research-bridge-outcome a { flex: 0 0 auto; color: var(--teal); font-size: 15px; font-weight: 650; }
+.research-bridge-boundary { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr); gap: 24px; margin-top: 18px; }
+.research-bridge-provenance { color: var(--muted) !important; font-size: 14px !important; }
+.research-bridge code { color: var(--chrome); font: 600 0.9em/1.4 var(--font-geist-mono), monospace; }
+
+/* ============================================================================
    INSTRUMENT FASCIA
    ========================================================================== */
 
@@ -1316,6 +1338,11 @@ button, input, select, textarea { font: inherit; }
   .workflow-boundary-note { padding: 12px 0 0; border-top: 1px solid var(--hairline); border-left: 0; }
   .design-lab-summary { align-items: flex-start; flex-direction: column; }
   .design-lab-toggle { width: 100%; justify-content: space-between; }
+  .research-bridge { margin-top: 36px; padding: 20px 16px; }
+  .research-bridge-head, .research-bridge-outcome { align-items: flex-start; flex-direction: column; }
+  .research-bridge-status, .research-bridge-outcome a { width: 100%; }
+  .research-bridge-metrics, .research-bridge-boundary { grid-template-columns: 1fr; }
+  .research-bridge-metrics > div { padding: 16px; }
   .watermark { display: none; }
   /* 4D: the fascia stacks — plotter full width, then one instrument per row. */
   .fascia-bays { grid-template-columns: 1fr; }
