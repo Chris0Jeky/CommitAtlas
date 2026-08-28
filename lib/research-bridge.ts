@@ -41,6 +41,20 @@ const UnsupportedClaimSchema = z.object({
   ]),
 }).strict();
 
+const limitationDisplayText: Record<z.infer<typeof LimitationSchema>["code"], string> = {
+  c0_synthetic_only: "Evidence is limited to invented C0 weekly system series.",
+  bounded_three_case_selection: "Only three bounded representative windows are exported.",
+  missingness_and_confound: "Missing observations and instrumentation confounds are explicit.",
+  thresholds_nonviable: "Both threshold selections are nonviable.",
+};
+
+const unsupportedClaimDisplayText: Record<z.infer<typeof UnsupportedClaimSchema>["code"], string> = {
+  real_repository_validity: "This result does not establish validity on real repositories.",
+  person_level_inference: "No person-level inference is supported or attempted.",
+  model_promotion: "This rejected trial cannot promote a model.",
+  online_pelt_performance: "Offline PELT markers do not establish online performance.",
+};
+
 const ProvenanceSchema = z.object({
   derivation: z.literal("MethodTrialViewSchema.parse"),
   public_url: z.literal("https://chris0jeky.github.io/developer-lens/?view=method-trial"),
@@ -91,7 +105,59 @@ export const DeveloperLensMethodTrialSummarySchema = z.object({
     verdict_summary: z.literal("The candidate is rejected because both selections are nonviable and false alerts are higher."),
   }).strict(),
   unsupported_claims: z.array(UnsupportedClaimSchema).length(4),
-}).strict();
+}).strict().superRefine((value, context) => {
+  const baselineFalseAlerts = value.metrics.false_alerts_per_year.baseline.value;
+  const candidateFalseAlerts = value.metrics.false_alerts_per_year.candidate.value;
+  if (candidateFalseAlerts <= baselineFalseAlerts) {
+    context.addIssue({
+      code: "custom",
+      path: ["metrics", "false_alerts_per_year", "candidate"],
+      message: "the rejected candidate must have more false alerts than baseline",
+    });
+  }
+
+  const baselineDetection = value.metrics.detection_rate.baseline.value;
+  const candidateDetection = value.metrics.detection_rate.candidate.value;
+  if (candidateDetection !== baselineDetection) {
+    context.addIssue({
+      code: "custom",
+      path: ["metrics", "detection_rate", "candidate"],
+      message: "the frozen trial records equal baseline and candidate detection",
+    });
+  }
+
+  const limitationCodes = value.limitations.map(({ code }) => code);
+  if (new Set(limitationCodes).size !== limitationCodes.length) {
+    context.addIssue({ code: "custom", path: ["limitations"], message: "limitations must be unique and complete" });
+  }
+  value.limitations.forEach((item, index) => {
+    if (item.display_text !== limitationDisplayText[item.code]) {
+      context.addIssue({
+        code: "custom",
+        path: ["limitations", index],
+        message: "limitation text must match its code",
+      });
+    }
+  });
+
+  const unsupportedClaimCodes = value.unsupported_claims.map(({ code }) => code);
+  if (new Set(unsupportedClaimCodes).size !== unsupportedClaimCodes.length) {
+    context.addIssue({
+      code: "custom",
+      path: ["unsupported_claims"],
+      message: "unsupported claims must be unique and complete",
+    });
+  }
+  value.unsupported_claims.forEach((item, index) => {
+    if (item.display_text !== unsupportedClaimDisplayText[item.code]) {
+      context.addIssue({
+        code: "custom",
+        path: ["unsupported_claims", index],
+        message: "unsupported claim text must match its code",
+      });
+    }
+  });
+});
 
 export type DeveloperLensMethodTrialSummary = z.infer<typeof DeveloperLensMethodTrialSummarySchema>;
 

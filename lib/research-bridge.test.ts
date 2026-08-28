@@ -38,3 +38,36 @@ test("pins producer provenance and the vendored summary content", () => {
   assert.equal(developerLensMethodTrialSummary.provenance.derivation, "MethodTrialViewSchema.parse");
   assert.equal(developerLensMethodTrialSummary.provenance.public_url, "https://chris0jeky.github.io/developer-lens/?view=method-trial");
 });
+
+test("rejects summaries whose semantics contradict the frozen verdict", () => {
+  const lowerFalseAlerts = structuredClone(developerLensMethodTrialSummary);
+  lowerFalseAlerts.metrics.false_alerts_per_year.candidate.value = 2;
+  assert.throws(
+    () => DeveloperLensMethodTrialSummarySchema.parse(lowerFalseAlerts),
+    /candidate must have more false alerts/i,
+  );
+
+  const unequalDetection = structuredClone(developerLensMethodTrialSummary);
+  unequalDetection.metrics.detection_rate.candidate.value = 0.5;
+  assert.throws(
+    () => DeveloperLensMethodTrialSummarySchema.parse(unequalDetection),
+    /equal baseline and candidate detection/i,
+  );
+
+  const duplicateLimitation = structuredClone(developerLensMethodTrialSummary);
+  duplicateLimitation.limitations[1] = duplicateLimitation.limitations[0];
+  assert.throws(
+    () => DeveloperLensMethodTrialSummarySchema.parse(duplicateLimitation),
+    /limitations must be unique and complete/i,
+  );
+
+  const mismatchedClaim = structuredClone(developerLensMethodTrialSummary);
+  mismatchedClaim.unsupported_claims[0] = {
+    ...mismatchedClaim.unsupported_claims[0],
+    display_text: mismatchedClaim.unsupported_claims[1].display_text,
+  };
+  assert.throws(
+    () => DeveloperLensMethodTrialSummarySchema.parse(mismatchedClaim),
+    /unsupported claim text must match its code/i,
+  );
+});
