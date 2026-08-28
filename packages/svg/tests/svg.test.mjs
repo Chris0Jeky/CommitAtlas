@@ -649,6 +649,41 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(throughYesterday, /Current streak: at least 3 days · OPEN through 2026-03-30/);
 });
 
+function renderedTextSizes(output) {
+  return [...output.matchAll(/<text\b[^>]*\bfont-size="([\d.]+)"/g)].map((match) => Number(match[1]));
+}
+
+test("standalone cards keep meaningful visible text above the readability floor at compact widths", () => {
+  const cards = [
+    renderProfileCard({ name: "Ada Lovelace", login: "ada", repositories: 3, followers: 5 }, { width: 420, height: 190 }),
+    renderStreakCard({ current: 4, longest: 12, lastActive: "2026-08-28" }, { width: 420, height: 150 }),
+    renderActivityCard({ days: [{ date: "2026-08-28", count: 4 }] }, { width: 420 }),
+    renderContributionBreakdownCard({
+      window: { from: "2026-01-01", to: "2026-08-28", days: 240 },
+      breakdown: { commits: 7, issues: 2, pullRequests: 1, reviews: 0 },
+      basis: "exact-counts",
+    }, { width: 420 }),
+    renderRhythmCard(rhythmFixture(), { width: 480 }),
+    renderLanguagesCard({ languages: [{ name: "TypeScript", percentage: 100 }] }, { width: 420 }),
+    renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", version: "v1.2.3", stars: 4 }] }, { width: 420 }),
+    renderCadenceCard({ days: [{ date: "2026-08-24", count: 4 }, { date: "2026-08-28", count: 2 }] }, { width: 420 }),
+    renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.2.3", publishedAt: "2026-08-28T12:00:00Z" }] }, { width: 420 }),
+  ];
+  for (const output of cards) {
+    assertSafeSvg(output);
+    const sizes = renderedTextSizes(output);
+    assert.ok(sizes.length > 0, "expected visible text in representative card");
+    assert.ok(Math.min(...sizes) >= 9.5, `visible text fell below 9.5px: ${sizes.join(", ")}`);
+  }
+
+  const compactRhythm = renderRhythmCard(rhythmFixture(), { width: 480, height: 1 });
+  assert.match(compactRhythm, /viewBox="0 0 480 300"/);
+  const compactCadence = renderCadenceCard({ days: [{ date: "2026-08-24", count: 4 }] }, { width: 420, height: 1 });
+  assert.match(compactCadence, /viewBox="0 0 420 190"/);
+  const compactReleases = renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.2.3", publishedAt: "2026-08-28T12:00:00Z" }] }, { width: 420, height: 1 });
+  assert.match(compactReleases, /viewBox="0 0 420 156"/);
+});
+
 /** A lone surrogate is not a legal XML character; truncation must never split an astral pair. */
 function assertNoLoneSurrogate(output) {
   assert.doesNotMatch(

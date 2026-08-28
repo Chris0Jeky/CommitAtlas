@@ -510,8 +510,8 @@ function mono(x: number, y: number, value: unknown, size: number, fill: string, 
 }
 
 /** A section numeral — `01 //` — the chassis's way of ordering panels without a heading. */
-function numeral(x: number, y: number, index: number, label: string, theme: SvgTheme): string {
-  return mono(x, y, `${String(index).padStart(2, "0")} // ${label}`, 9, theme.chrome);
+function numeral(x: number, y: number, index: number, label: string, theme: SvgTheme, size = 10): string {
+  return mono(x, y, `${String(index).padStart(2, "0")} // ${label}`, size, theme.chrome);
 }
 
 function panel(x: number, y: number, width: number, height: number, theme: SvgTheme): string {
@@ -555,13 +555,13 @@ function densityFill(level: number, theme: SvgTheme): string {
 }
 
 /** The Less…More key every density surface prints, so the ramp is self-describing. */
-function densityKey(x: number, y: number, theme: SvgTheme, size = 8): string {
-  let out = mono(x, y + size, "LESS", 8, theme.muted, 500, "end");
+function densityKey(x: number, y: number, theme: SvgTheme, size = 8, labelSize = size >= 8 ? 10 : 8): string {
+  let out = mono(x, y + size, "LESS", labelSize, theme.muted, 500, "end");
   const swatches = [theme.socket, ...theme.density];
   swatches.forEach((fill, index) => {
     out += `<rect x="${x + 6 + index * (size + 3)}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
   });
-  out += mono(x + 12 + swatches.length * (size + 3), y + size, "MORE", 8, theme.muted);
+  out += mono(x + 12 + swatches.length * (size + 3), y + size, "MORE", labelSize, theme.muted);
   return out;
 }
 
@@ -611,7 +611,7 @@ function sourceMarker(
   anchor: "start" | "end" = "end",
 ): string {
   return source === "synthetic-demo"
-    ? `<g aria-hidden="true">${text(x, y, "SYNTHETIC DEMO", 9, theme.warning, 750, anchor)}</g>`
+    ? `<g aria-hidden="true">${text(x, y, "SYNTHETIC DEMO", 10, theme.warning, 750, anchor)}</g>`
     : "";
 }
 
@@ -658,7 +658,8 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   const statY = o.height - 31; const statWidth = (width - 64) / Math.max(1, stats.length);
   stats.forEach(([label, value], index) => {
     const x = 32 + statWidth * index;
-    out += text(x, statY - 13, formatNumber(finite(value)), 18, t.text, 750) + text(x, statY + 5, label, 10, t.muted);
+    const visibleLabel = width < 560 ? truncateText(label, 10) : label;
+    out += text(x, statY - 13, formatNumber(finite(value)), 18, t.text, 750) + text(x, statY + 5, visibleLabel, 11, t.muted);
   });
   if (data.website) out += link("Website ↗", data.website, width - 93, 34, t);
   return out + `</g>` + svgEnd();
@@ -703,7 +704,7 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   const historyLabel = width < 560
     ? "Earlier history not observed"
     : `${data.lastActive ? `Last active ${truncateText(data.lastActive, 10)} · ` : ""}earlier history not observed`;
-  out += text(width / 2 + 28, lastActiveY, historyLabel, width < 560 ? 9 : 10, t.muted);
+  out += text(width / 2 + 28, lastActiveY, historyLabel, 10, t.muted);
   return out + `</g>` + svgEnd();
 }
 
@@ -788,12 +789,12 @@ export function renderContributionBreakdownCard(
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "CONTRIBUTION BREAKDOWN", t);
   out += `<rect x="${width - 150}" y="31" width="116" height="22" fill="${t.background}" stroke="${t.border}"/>`;
-  out += mono(width - 92, 46, basisLabel, 8.5, data.basis === "public-profile-percentages" ? t.warning : t.positive, 600, "middle", 0.1);
+  out += mono(width - 92, 46, basisLabel, 10, data.basis === "public-profile-percentages" ? t.warning : t.positive, 600, "middle", 0.1);
   out += sourceMarker(data.source, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
     : `${windowFrom} → ${windowTo} · ${formatNumber(data.window.days, false)} days`;
-  out += mono(34, 70, scopeLabel, 9, t.muted, 500, "start", 0.06);
+  out += mono(34, 70, scopeLabel, 10, t.muted, 500, "start", 0.06);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
   breakdownLabels.forEach(([label], index) => {
@@ -804,16 +805,16 @@ export function renderContributionBreakdownCard(
       : total > 0 ? value / total : 0;
     const fillWidth = barWidth * normalized;
     // One ink, four rows: the bar length is the variable, so the colour does not have to be.
-    out += mono(34, y + 9, label, 9, t.muted, 500, "start", 0.08);
+    out += mono(34, y + 9, label, 10, t.muted, 500, "start", 0.08);
     out += `<rect x="${barX}" y="${y + 1}" width="${barWidth}" height="8" fill="${t.track}"/>`;
     if (fillWidth > 0) out += `<rect x="${barX}" y="${y + 1}" width="${fillWidth.toFixed(2)}" height="8" fill="${t.mixInk}"/>`;
-    out += mono(width - 34, y + 9, breakdownValue(value, data.basis), 9.5, t.text, 600, "end", 0.04);
+    out += mono(width - 34, y + 9, breakdownValue(value, data.basis), 10, t.text, 600, "end", 0.04);
   });
   out += `<line x1="34" y1="190" x2="${width - 34}" y2="190" stroke="${t.border}"/>`;
   const footer = publicProfileMix
     ? width < 600 ? "Annual profile % · not window-scoped" : "Annual profile-view percentages · exact window counts unavailable"
     : width < 520 ? "Exact categorized counts · normalized bars" : "Categorized exact counts · bars normalized to categorized total";
-  out += mono(34, 208, footer, 8.5, t.muted, 500, "start", 0.06);
+  out += mono(34, 208, footer, 9.5, t.muted, 500, "start", 0.06);
   return out + `</g>` + svgEnd();
 }
 
@@ -867,9 +868,11 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   out += text(centerX, centerY + 7, `${Math.round(score)}`, 28, t.text, 800, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
   const infoX = compact ? 164 : 166;
   out += text(infoX, compact ? 91 : 88, level.toUpperCase(), 11, t.accent, 750);
-  out += text(infoX, compact ? 114 : 111, `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`, 11, t.text, 600);
+  const densityLabel = `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`;
+  out += text(infoX, compact ? 114 : 111, truncateText(densityLabel, compact ? 34 : 64), 11, t.text, 600);
   out += text(infoX, compact ? 134 : 131, `${formatNumber(data.window.days, false)}-day window · current ${streakText}`, 10, t.muted, 550);
-  out += text(infoX, compact ? 154 : 151, throughPriorDay ? `Current streak observed through ${currentThrough}` : open ? "Streak can continue beyond this window" : "Streak is bounded to this window", 9, t.muted, 550);
+  const boundaryLabel = throughPriorDay ? `Current streak observed through ${currentThrough}` : open ? "Streak can continue beyond this window" : "Streak is bounded to this window";
+  out += text(infoX, compact ? 154 : 151, truncateText(boundaryLabel, compact ? 36 : 64), 10, t.muted, 550);
   const trendX = compact ? 28 : 400;
   const trendTop = compact ? 187 : 76;
   const trendWidth = compact ? width - 56 : width - trendX - 34;
@@ -877,7 +880,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const trendMax = Math.max(1, ...buckets);
   out += `<line x1="${compact ? 28 : 370}" y1="${compact ? 174 : 65}" x2="${width - 28}" y2="${compact ? 174 : 65}" stroke="${t.border}"/>`;
   out += text(trendX, trendTop, "WEEKLY RHYTHM", 10, t.muted, 700);
-  out += text(trendX, trendTop + 17, rhythmTrendLabel(data.trend), 9, t.text, 550);
+  out += text(trendX, trendTop + 17, truncateText(rhythmTrendLabel(data.trend), compact ? 54 : 50), 10, t.text, 550);
   const baseline = compact ? 264 : 166;
   const gap = 4;
   const barWidth = Math.max(4, (trendWidth - Math.max(0, buckets.length - 1) * gap) / Math.max(1, buckets.length));
@@ -887,7 +890,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
     const x = trendX + index * (barWidth + gap);
     out += `<rect x="${x.toFixed(2)}" y="${(baseline - height).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${height.toFixed(2)}" rx="3" fill="${value > 0 ? t.accent : t.background}"/>`;
   });
-  out += mono(34, o.height - 11, "COMMITATLAS CONSISTENCY · NOT A GITHUB RANK", 8.5, t.muted, 500, "start", 0.06);
+  out += mono(34, o.height - 11, "COMMITATLAS CONSISTENCY · NOT A GITHUB RANK", 9.5, t.muted, 500, "start", 0.06);
   return out + `</g>` + svgEnd();
 }
 
@@ -926,7 +929,7 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     const label = item.name ?? item.language ?? "Unknown language";
     // Square swatch, not a disc: it matches the density cell so the two surfaces read as one
     // system, and a square survives at the sizes a README actually renders at.
-    out += `<rect x="${x + 1}" y="${y - 8}" width="8" height="8" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 11.5, t.text, 600) + mono(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 9.5, t.muted, 500, "end", 0.04);
+    out += `<rect x="${x + 1}" y="${y - 8}" width="8" height="8" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 11.5, t.text, 600) + mono(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 10, t.muted, 500, "end", 0.04);
   });
   return out + `</g>` + svgEnd();
 }
@@ -950,9 +953,9 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
     out += text(x + 14, y + 23, projectName, 15, t.text, 700);
     out += text(x + 14, y + 43, `${lifecycleLabel(project.lifecycle)} · CI ${statusLabel(project.ci)}`, 11, t.muted, 550);
     out += `<circle cx="${x + cardWidth - 19}" cy="${y + 20}" r="5" fill="${ciColor}"/>`;
-    if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 10, t.muted);
+    if (project.version) out += text(x + 14, y + 64, truncateText(project.version, 15), 11, t.muted);
     // A zero-star chip is noise, not signal — the corner stays empty until there is a count worth showing.
-    if (Number.isFinite(project.stars) && (project.stars as number) > 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 10, t.muted, 500, "end");
+    if (Number.isFinite(project.stars) && (project.stars as number) > 0) out += text(x + cardWidth - 14, y + 64, `★ ${formatNumber(finite(project.stars))}`, 11, t.muted, 500, "end");
   });
   return out + `</g>` + svgEnd();
 }
@@ -1057,11 +1060,11 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
     const barHeight = Math.max(2, (share / chartMaxShare) * (baseline - chartTop));
     const isBusiest = busiestDays.includes(index);
     out += `<rect x="${x.toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="3" fill="${isBusiest ? t.accent : t.track}"/>`;
-    out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 8.5, isBusiest ? t.text : t.muted, 550, "middle", 0.04);
-    out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 8.5, t.muted, 550, "middle");
+    out += mono(x + barWidth / 2, baseline - barHeight - 7, `${share.toFixed(1).replace(/\.0$/, "")}%`, 10, isBusiest ? t.text : t.muted, 550, "middle", 0.04);
+    out += mono(x + barWidth / 2, baseline + 16, WEEKDAY_LABELS[index], 10, t.muted, 550, "middle");
   });
   const totalLabel = totalOverflowed ? "NORMALIZED FINITE COUNTS" : `${formatNumber(total)} CONTRIBUTIONS`;
-  out += mono(34, o.height - 26, `SHARE OF ${totalLabel} · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 7.5, t.muted, 550, "start", 0.08);
+  out += mono(34, o.height - 26, `SHARE OF ${totalLabel} · UTC DAY BOUNDARIES · WINDOW-SCOPED`, 9.5, t.muted, 550, "start", 0.08);
   return out + `</g>` + svgEnd();
 }
 
@@ -1141,22 +1144,22 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
       absentCount > 0 ? `${absentCount} OF ${observed} OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE` : null,
       unavailableCount > 0 ? `${unavailableCount} OF ${total} RELEASE LOOKUPS UNAVAILABLE` : null,
     ].filter((part): part is string => part !== null).join(" · ");
-    if (footer) out += mono(34, o.height - 28, footer, 7.5, t.muted, 550, "start", 0.08);
+    if (footer) out += mono(34, o.height - 28, width < 560 ? truncateText(footer, 54) : footer, 9.5, t.muted, 550, "start", 0.08);
     return out + `</g>` + svgEnd();
   }
   if (releases.length < valid.length) out += text(width - 34, 50, `${releases.length} of ${valid.length} shown`, 11, t.muted, 500, "end");
   releases.forEach((release, index) => {
     const y = 88 + index * 34;
     if (index > 0) out += `<line x1="34" y1="${y - 22}" x2="${width - 34}" y2="${y - 22}" stroke="${t.border}"/>`;
-    out += mono(34, y, release.publishedAt.slice(0, 10), 9.5, t.muted, 500, "start", 0.04);
+    out += mono(34, y, release.publishedAt.slice(0, 10), 10, t.muted, 500, "start", 0.04);
     out += text(128, y, truncateText(release.project, width < 560 ? 16 : 30), 13.5, t.text, 700);
-    out += mono(width - 34, y, truncateText(release.tag, width < 560 ? 12 : 18), 10.5, t.accent, 600, "end", 0.04);
+    out += mono(width - 34, y, truncateText(release.tag, width < 560 ? 12 : 18), 11, t.accent, 600, "end", 0.04);
   });
   const footer = [
     absentCount > 0 ? `${absentCount} OF ${observed} OBSERVED PROJECTS HAVE NO PUBLISHED RELEASE` : null,
     unavailableCount > 0 ? `${unavailableCount} OF ${total} RELEASE LOOKUPS UNAVAILABLE` : null,
   ].filter((part): part is string => part !== null).join(" · ");
-  if (footer) out += mono(34, o.height - 28, footer, 7.5, t.muted, 550, "start", 0.08);
+  if (footer) out += mono(34, o.height - 28, width < 560 ? truncateText(footer, 54) : footer, 9.5, t.muted, 550, "start", 0.08);
   return out + `</g>` + svgEnd();
 }
 
@@ -1236,7 +1239,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const columns = grid.columns;
   const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
   const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
-  out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t);
+  out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
   out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   grid.cells.forEach(({ day, column, row }) => {
@@ -1269,7 +1272,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Issues", data.breakdown.issues],
   ] as const;
   const breakdownMax = Math.max(1, ...breakdown.map(([, value]) => finite(value)));
-  out += numeral(breakdownX, breakdownY, 2, data.breakdownBasis === "public-profile-percentages" ? "PROFILE MIX · NOT WINDOW-SCOPED" : "CONTRIBUTION MIX", t);
+  out += numeral(breakdownX, breakdownY, 2, data.breakdownBasis === "public-profile-percentages" ? "PROFILE MIX · NOT WINDOW-SCOPED" : "CONTRIBUTION MIX", t, 9);
   breakdown.forEach(([label, value], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);
