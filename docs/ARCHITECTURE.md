@@ -132,6 +132,23 @@ upload, deploy, or receive `GITHUB_TOKEN`. A consumer workflow owns publication 
 last known-good committed cards when refresh fails. See
 [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md) for the exact contract.
 
+## Optional Developer Lens research bridge
+
+The landing page has one deliberately separate cross-repository input: a versioned
+`DeveloperLensMethodTrialSummary.v1` artifact produced by Developer Lens. CommitAtlas vendors one
+JSON instance under `research-contracts/`, pins its producer commit in source, validates both schema
+and verdict semantics at build/test time, and renders it as an optional explainer inside the design
+lab. There is no runtime request to Developer Lens and no dependency in the GitHub evidence or SVG
+generation path.
+
+The frozen C0 artifact compares an offline Gaussian BOCPD candidate with the retained rolling
+median/MAD baseline on invented weekly system data. Its contract requires the displayed limitations
+and unsupported-claim codes, equal measured detection, worse candidate false alerts, and the
+nonviable selection outcome. It cannot be used as GitHub profile evidence, a developer score,
+real-repository validation, or production monitoring. A future method trial must publish a new
+versioned producer artifact and update the pinned consumer deliberately; silent semantic drift
+fails closed.
+
 ## Project configuration
 
 ```json
