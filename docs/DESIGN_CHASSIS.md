@@ -145,16 +145,16 @@ Two hard rules, and everything else follows from them:
 **Everything is readable at frame zero.** Traces are pre-drawn beneath the animated stroke at 22%
 opacity, and every value is printed as text beside its instrument.
 
-**Every keyframe declares only a start state.** The inline value *is* the final state, so removing
-the animation leaves the element exactly where it was always going to end up. That is why the
-reduced-motion path needs no JavaScript gate: a single media query removes all animation and the
-result is a complete page, not a degraded one.
+**Motion never carries the fact.** The inline value *is* the final state. One-shot reveals begin
+from a transient state, while looping effects only add emphasis to geometry and intensity already
+present. That is why the reduced-motion path needs no JavaScript gate: a single media query removes
+all animation and the result is a complete page, not a degraded one.
 
 | Ref | What | Spec |
 | --- | --- | --- |
-| M1 | Plotter | bright trace draws over a 22% pre-drawn path, pen dot rides `offset-path`; 9s cycle, `cubic-bezier(.4,0,.2,1)` |
-| M2 | Rhythm needle | −90° → overshoot 47° → 36° → settle at the reading; 2.2s, `cubic-bezier(.33,1,.68,1)`, once, transform-only |
-| M3 | Density fill | columns brighten in date order, 400ms ease-out, 14ms stagger; `from { opacity: .14 }` only |
+| M1 | Plotter | bright trace and soft bloom draw over a 22% pre-drawn future; a pulsing telemetry head rides `offset-path`; 9s cycle, `cubic-bezier(.4,0,.2,1)` |
+| M2 | Rhythm boot | arc charges in 1.25s, seven ticks wake in sequence, then the needle moves −90° → overshoot 47° → 36° → settle at the reading; transform/opacity/stroke-dash only |
+| M3 | Density wave | columns first brighten in date order (400ms, 14ms stagger), then a 5.6s luminosity wave travels along the date axis without changing the cells' activity hue |
 | M4 | Iris breathe | reticle scales 1 → 1.045, 4.5s ease-in-out, transform-only |
 | M5 | Signal lamp | 2.4s opacity pulse, `pending` only |
 | M6 | Survey beam | 70px gradient sweeps the flagship plate, 7s linear; the card beneath never moves |

@@ -118,6 +118,18 @@ test("prints every instrument reading as text, so the page is readable at frame 
   assert.match(html, /shown dark, never green/i);
 });
 
+test("renders the layered instrument motion without making animation the data source", async () => {
+  const html = await (await render()).text();
+
+  assert.match(html, /class="m1-ghost"/);
+  assert.match(html, /class="m1-bloom"/);
+  assert.match(html, /class="m1-dot m1-dot-halo"/);
+  assert.match(html, /class="m2-charge"/);
+  assert.equal((html.match(/class="m2-tick"/g) ?? []).length, 7);
+  assert.match(html, /--column-delay:/);
+  assert.match(html, /--wave-delay:/);
+});
+
 test("teaches all six health states, with the unknowns leading", async () => {
   const html = await (await render()).text();
   for (const word of ["UNAVAILABLE", "UNCONFIGURED", "STALE", "PASSING", "FAILING", "PENDING"]) {
