@@ -649,6 +649,41 @@ test("rhythm card shows bounded streak semantics and honest trend states", () =>
   assert.match(throughYesterday, /Current streak: at least 3 days · OPEN through 2026-03-30/);
 });
 
+function renderedTextSizes(output) {
+  return [...output.matchAll(/<text\b[^>]*\bfont-size="([\d.]+)"/g)].map((match) => Number(match[1]));
+}
+
+test("standalone cards keep meaningful visible text above the readability floor at compact widths", () => {
+  const cards = [
+    renderProfileCard({ name: "Ada Lovelace", login: "ada", repositories: 3, followers: 5 }, { width: 420, height: 190 }),
+    renderStreakCard({ current: 4, longest: 12, lastActive: "2026-08-28" }, { width: 420, height: 150 }),
+    renderActivityCard({ days: [{ date: "2026-08-28", count: 4 }] }, { width: 420 }),
+    renderContributionBreakdownCard({
+      window: { from: "2026-01-01", to: "2026-08-28", days: 240 },
+      breakdown: { commits: 7, issues: 2, pullRequests: 1, reviews: 0 },
+      basis: "exact-counts",
+    }, { width: 420 }),
+    renderRhythmCard(rhythmFixture(), { width: 480 }),
+    renderLanguagesCard({ languages: [{ name: "TypeScript", percentage: 100 }] }, { width: 420 }),
+    renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", version: "v1.2.3", stars: 4 }] }, { width: 420 }),
+    renderCadenceCard({ days: [{ date: "2026-08-24", count: 4 }, { date: "2026-08-28", count: 2 }] }, { width: 420 }),
+    renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.2.3", publishedAt: "2026-08-28T12:00:00Z" }] }, { width: 420 }),
+  ];
+  for (const output of cards) {
+    assertSafeSvg(output);
+    const sizes = renderedTextSizes(output);
+    assert.ok(sizes.length > 0, "expected visible text in representative card");
+    assert.ok(Math.min(...sizes) >= 9.5, `visible text fell below 9.5px: ${sizes.join(", ")}`);
+  }
+
+  const compactRhythm = renderRhythmCard(rhythmFixture(), { width: 480, height: 1 });
+  assert.match(compactRhythm, /viewBox="0 0 480 300"/);
+  const compactCadence = renderCadenceCard({ days: [{ date: "2026-08-24", count: 4 }] }, { width: 420, height: 1 });
+  assert.match(compactCadence, /viewBox="0 0 420 190"/);
+  const compactReleases = renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.2.3", publishedAt: "2026-08-28T12:00:00Z" }] }, { width: 420, height: 1 });
+  assert.match(compactReleases, /viewBox="0 0 420 156"/);
+});
+
 /** A lone surrogate is not a legal XML character; truncation must never split an astral pair. */
 function assertNoLoneSurrogate(output) {
   assert.doesNotMatch(
@@ -1039,6 +1074,20 @@ test("cadence card computes Monday-first weekday shares and names the busiest da
   // Exactly one bar carries the accent ink: the busiest weekday.
   const accents = output.match(new RegExp(`<rect[^>]*rx="3" fill="${themes.aurora.accent}"`, "g")) ?? [];
   assert.equal(accents.length, 1);
+});
+
+test("cadence footer stays inside the panel at the supported 420px width", () => {
+  const output = renderCadenceCard({ days: [{ date: "2026-02-25", count: 10 }] }, { width: 420 });
+  assertSafeSvg(output);
+  assert.match(output, /SHARE OF 10 CONTRIBUTIONS · UTC · WINDOW-SCOPED/);
+  assert.doesNotMatch(output, /UTC DAY BOUNDARIES/);
+  const footer = output.match(/<text x="34" y="198"[^>]*font-size="9\.5"[^>]*letter-spacing="0\.76"[^>]*>([^<]+)<\/text>/);
+  assert.ok(footer, "expected the compact cadence footer text");
+  // The mono stack's conservative 0.6em advance plus letter spacing must remain inside
+  // the panel's right edge (420 - 16); the old 62-character footer estimated beyond it.
+  const characters = [...footer[1]];
+  const estimatedRight = 34 + characters.length * 9.5 * 0.6 + Math.max(0, characters.length - 1) * 0.76;
+  assert.ok(estimatedRight <= 404, `cadence footer extends past panel: ${estimatedRight}`);
 });
 
 test("cadence card accents every tied busiest day and names the tie", () => {
