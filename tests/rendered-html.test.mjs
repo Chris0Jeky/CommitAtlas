@@ -61,12 +61,32 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.match(html, /byte\/SHA-256 manifest/);
   assert.match(html, /Cadence<\/em> and <em>Releases<\/em>, which are static-only/);
   assert.match(html, /design lab below is optional/);
+  const normalized = html.replaceAll("<!-- -->", "");
+  assert.match(normalized, /05 \/\/ Research bridge · C0 invented evidence/);
+  assert.match(normalized, /75% \/ 75%/);
+  assert.match(normalized, /2\.97 \/ 4\.2/);
+  assert.match(normalized, /Both nonviable/);
+  assert.match(normalized, /candidate is rejected because both selections are nonviable/);
+  assert.match(normalized, /not GitHub profile evidence and not production monitoring/);
+  assert.match(normalized, /real-repository validity/);
+  assert.match(normalized, /person-level inference/);
+  assert.match(normalized, /promote a model/);
+  assert.match(normalized, /online PELT performance/);
+  assert.match(normalized, /Open the public method trial/);
+  assert.match(normalized, /no runtime fetch/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%/);
   assert.doesNotMatch(html, /northstar-api|signal-canvas|archive-kit|Illustrative 90-day activity|Portfolio status/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
   // developer-lens is the other station on the shared chassis and lives in another repository.
   // None of its vocabulary may leak onto this surface.
   assert.doesNotMatch(html, /Force Multiplier|effective repositories|Method Trial|orchestration-hypothesis/);
+});
+
+test("gives the research bridge readable body and result text", async () => {
+  const css = await (await import("node:fs/promises")).readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.research-bridge-lede[^}]*font-size:\s*16px/);
+  assert.match(css, /\.research-bridge-outcome p[^}]*font-size:\s*16px/);
+  assert.match(css, /\.research-bridge-metrics span, \.research-bridge-metrics small[^}]*font-size:\s*14px/);
 });
 
 test("prints every instrument reading as text, so the page is readable at frame zero", async () => {
