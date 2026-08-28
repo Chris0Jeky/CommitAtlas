@@ -361,15 +361,23 @@ button, input, select, textarea { font: inherit; }
 
    Hard rule: everything is readable at frame zero. Traces are pre-drawn beneath
    at low opacity, values are always printed as text, and every keyframe declares
-   only a *start* state so the inline final state is what the element rests at.
-   Reduced motion therefore needs no JavaScript gate: removing the animations
-   leaves a complete page.
+   a transient *start* state so the inline final state is what the element rests
+   at. Looping effects only add emphasis. Reduced motion therefore needs no
+   JavaScript gate: removing the animations leaves a complete page.
    ========================================================================== */
 
 @keyframes penDraw { 0% { stroke-dashoffset: 100; } 61% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
 @keyframes penMove { 0% { offset-distance: 0%; } 61% { offset-distance: 100%; } 100% { offset-distance: 100%; } }
+@keyframes penAura { 0%, 100% { opacity: 0.28; transform: scale(0.78); } 45% { opacity: 0.8; transform: scale(1.18); } }
+@keyframes gaugeCharge { from { stroke-dasharray: 0 100; } }
+@keyframes tickWake { from { opacity: 0.16; } }
 @keyframes needleSettle { 0% { transform: rotate(-90deg); } 62% { transform: rotate(47deg); } 80% { transform: rotate(36deg); } 100% { transform: rotate(var(--needle)); } }
 @keyframes cellIn { from { opacity: 0.14; } }
+@keyframes densityScan {
+  0% { transform: translateX(0); opacity: 0; }
+  15%, 85% { opacity: 1; }
+  100% { transform: translateX(var(--density-travel)); opacity: 0; }
+}
 @keyframes sigPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes irisBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
 @keyframes scanSweep { 0% { transform: translateX(-90px); } 100% { transform: translateX(var(--beam-travel, 950px)); } }
@@ -377,15 +385,22 @@ button, input, select, textarea { font: inherit; }
 @keyframes drawerRise { from { transform: translateY(12px); opacity: 0; } }
 @keyframes surveyDrift { to { transform: translateY(calc(var(--pitch) * -1)); } }
 
-/* M1 — plotter. The faint path underneath is the same geometry, always visible. */
-.m1-pen { animation: penDraw 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+/* M1 — plotter. Bloom and telemetry head move over the same always-visible geometry. */
+.m1-bloom, .m1-pen { animation: penDraw 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 .m1-dot { offset-path: var(--pen-path); offset-distance: 100%; animation: penMove 9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.m1-dot-halo { transform-box: fill-box; transform-origin: center; animation: penMove 9s cubic-bezier(0.4, 0, 0.2, 1) infinite, penAura 1.15s ease-in-out infinite; }
+.m1-dot-core { filter: drop-shadow(0 0 3px var(--chrome)); }
 
-/* M2 — rhythm needle. Transform-only; rests at its inline final rotation. */
+/* M2 — rhythm boot. Arc, ticks, then needle; every part rests at its inline final state. */
+.m2-charge { animation: gaugeCharge 1.25s cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both; }
+.m2-tick { animation: tickWake 420ms ease-out var(--tick-delay) both; }
 .m2-needle { transform: rotate(var(--needle)); animation: needleSettle 2.2s cubic-bezier(0.33, 1, 0.68, 1) 0.3s both; }
 
-/* M3 — density fill, staggered by week column so the wipe follows date order. */
-.m3-column { animation: cellIn 400ms ease-out both; }
+/* M3 — density survey. Date-order reveal, then a slow luminosity wave along the week columns. */
+.m3-column {
+  animation: cellIn 400ms ease-out var(--column-delay) both;
+}
+.m3-scan { animation: densityScan 5.6s ease-in-out 900ms infinite; }
 
 /* M4 — iris breathe on the reticle ring. */
 .m4-iris { animation: irisBreathe 4.5s ease-in-out infinite; }
