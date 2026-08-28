@@ -6,6 +6,7 @@ import { DensitySurvey, MomentumPlotter, PortfolioReticle, RhythmGauge } from ".
 import { EvidenceProvider, Ev } from "./chassis/evidence-ui";
 import { EvidenceLayer } from "./chassis/evidence-layer";
 import { HealthRack } from "./chassis/health-rack";
+import { ResearchBridge } from "./chassis/research-bridge";
 import { SpecimenTray } from "./chassis/specimen-tray";
 import { WorkflowMap } from "./chassis/workflow-map";
 import { buildEvidence } from "@/lib/evidence";
@@ -236,6 +237,7 @@ export default async function Home() {
 
           <HealthRack reading={reading} />
           <EvidenceLayer evidence={evidence} />
+          <ResearchBridge />
             </div>
           </details>
 
