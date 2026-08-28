@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-28 (local implementation and focused verification in progress)
+Last verified: 2026-08-28 (v0.4.0 release candidate, production and profile evidence current)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -11,6 +11,37 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md).
 
 ## Public checkpoint
+
+- **v0.4.0 release candidate is implementation-complete.** The private root package version is
+  `0.4.0`; the workspace packages remain `0.1.0` because they are still source-installed and their
+  standalone public API versions did not move. Reliability, contribution fidelity, cadence and
+  releases, one-snapshot theme variants, product clarity, the bounded Developer Lens bridge, and
+  the standalone-card readability floor are all on `main`. The GitHub release, final tagged deploy
+  probe, and release-state closeout are post-merge steps and are not claimed by this candidate.
+- **The current executable checkpoint is `5b6b38c`.** Main CI run
+  [33130509941](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33130509941)
+  passed, Deploy run
+  [33130572513](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33130572513)
+  published that exact commit and passed its 17 deterministic probes, and browser inspection
+  confirmed the landing workflow map, optional research bridge, and corrected research-panel theme
+  styling on the Workers origin.
+- **The real profile consumes the final readable renderer.** Profile PR
+  [#9](https://github.com/Chris0Jeky/Chris0Jeky/pull/9) merged at `d9b6f23`, pins the single
+  CommitAtlas invocation to `5b6b38c`, and refresh run
+  [33130748322](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/33130748322)
+  generated bot commit `9107b81`. Both 13-artifact manifests have the same
+  `2026-08-28T00:45:58.115Z` generation time and `2025-08-29..2026-08-28` window; every SVG theme
+  hash differs while the two catalogs are identical. The live Atlas reports 29,313 public
+  contributions, 201 active days, and a 38-day current streak, matching GitHub's logged-out public
+  total at inspection. Breakdown, Rhythm, Cadence, and Releases were opened on the rendered profile;
+  their larger text is readable and the cadence footer is not clipped.
+- **Developer Lens is integrated as a research source, not as an inflated feature claim.** Producer
+  PR [#303](https://github.com/Chris0Jeky/developer-lens/pull/303) owns the versioned summary at
+  `425708e`; CommitAtlas PR [#101](https://github.com/Chris0Jeky/CommitAtlas/pull/101) vendors and
+  semantically validates one pinned C0 artifact without a runtime fetch. The page says exactly what
+  the invented offline trial supports: equal measured detection, higher candidate false alerts,
+  both selections nonviable, reject BOCPD, retain rolling median/MAD. It also prints the unsupported
+  real-repository, person-level, model-promotion, and online-PELT claims.
 
 - **Hosted public snapshots now fail honestly and retain confirmed last-good evidence.** PR #86
   added a public-only, seven-day Workers KV fallback for validated canonical JSON/SVG responses;
@@ -132,14 +163,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   request, so the four-clause `if` that checks `head_repository.full_name` has never been exercised
   by a real fork event. It is reviewed, not demonstrated.
 - The preceding Sites checkpoint was `1cdabfa37981866cfedad5571fb2221e9cb9d67e` on `main`.
-- Latest executable/static-producer checkpoint: `e17e8664588f50418ac99b09b74ba13c52bd98c4` (PR #77,
-  first bullet above), which changed `packages/svg` and `packages/static` and was proven by hosted
-  CI, Deploy, and the profile refresh run it feeds. The earlier checkpoint here was
-  `ff9a836cb80f51a98c0f5a28b63c5c36d4e4da4d`, whose exact-head hosted
-  [Quality gate run 32429814147](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/32429814147)
-  passed. At the time, that follow-up changed only the generated project-catalog label and Action
-  bundle, so the then-current Sites deployment stayed correctly bound to the preceding application
-  source. This is a historical note; Sites is no longer the canonical host.
+- Latest executable/static-producer checkpoint: `5b6b38cd6b1c8d60260f86dcfbbd0c4e6199c39a`
+  (PR #104), proven by main CI, Workers deployment, the profile consumer test/refresh chain,
+  manifest reconciliation, and live browser inspection recorded in the current checkpoint above.
+  The older `e17e866` and `ff9a836` checkpoints are superseded historical evidence.
 - **Production: [commit-atlas.commit-atlas.workers.dev](https://commit-atlas.commit-atlas.workers.dev),
   including the [interactive Studio](https://commit-atlas.commit-atlas.workers.dev/studio).**
   Cloudflare Workers, free plan. Configuration is reproducible from
@@ -150,9 +177,8 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `sha256:1a01930041b32ee65f2347cd47f85fbfcf10ffaad3f0f3c1c48c084e9d40d3bb`) still answers but is
   **no longer canonical**. It is not reproducible from this repository. The dated QA records name it
   because that is the origin those observations were actually made against.
-- Public profile repository head: `ce59d76` — the bot commit produced by freshness-fix refresh
-  [run 33119356827](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/33119356827) recorded in
-  the current checkpoint above.
+- Public profile repository head: `9107b81` — the bot commit produced by final-renderer refresh
+  [33130748322](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/33130748322).
 - The preceding checkpoints, both superseded the same day: paired-theme bot head `d9f03f1` from
   [run 32758988123](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/32758988123) (both
   generation passes, both bundle validations, catalog, commit, and push all passing), and before
@@ -253,9 +279,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   Taskdeck, the Project radar, and the marker-bounded six-project catalog. Breakdown, Rhythm,
   Cadence, and Releases remain available as full-width focused views under one collapsed,
   purpose-labelled disclosure; Profile, Streak, Activity, and Languages are omitted from the README
-  because the Atlas already carries those signals. Its daily workflow runs one generation pass per
-  colour scheme and validates 13 payload artifacts and every manifest hash in each bundle before
-  updating README/assets.
+  because the Atlas already carries those signals. Its daily workflow invokes CommitAtlas once;
+  that one snapshot renders the primary and opposite-scheme variant directories, then the consumer
+  validates 13 payload artifacts, matching manifest time/windows, and every hash before updating
+  README/assets. A failed refresh leaves the previous committed assets intact.
 
 ## Verified
 
@@ -368,7 +395,7 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   generator and profile consumer. Static tests pass 9/9, Action tests 2/2, TypeScript and ESLint pass,
   and the public profile DOM exposes the corrected label.
 
-## NOT verified or released
+## NOT verified or published
 
 - Every individual Tab keypress, observed as a keypress. The extension's synthetic Tab does not
   produce native focus traversal in this browser, so the sequence itself is unobserved. What was
@@ -377,6 +404,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   recorded as what it is.
 - Token-backed private contribution history. The service and profile intentionally use public
   evidence and never request private repository details.
+- A formal cold-load Core Web Vitals trace. Direct browser, keyboard, responsive, contrast, and
+  visual checks are recorded, but this environment did not expose the Chrome DevTools performance
+  connector needed for a reproducible LCP/INP/CLS trace.
 - npm registry publication or GitHub Marketplace listing. Packages and the Action are built and
   used from immutable commits, but registry and Marketplace availability are not claimed.
 
@@ -426,9 +456,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   with HTTP 200 carrying both `data.user: null` and a `NOT_FOUND` entry in `errors`, so the generic
   payload-error path claimed it as an outage first. GraphQL now classifies its own payload and
   emits the shared not-found contract, proven with a fixture matching that live shape.
-- One reviewed 403 conflation is deliberately left alone and tracked separately: a genuine
-  non-rate-limit 403, such as a blocked repository or an organisation restriction, is still
-  reported as `github_rate_limited`. That predates this slice on every required lookup.
+- The previous 403 conflation is closed by PR #88. GitHub `403` responses are classified as rate
+  limits only when retry/reset headers or an explicit rate-limit/abuse message support that meaning;
+  other 403s remain unavailable, and optional release/workflow evidence cannot become observed
+  absence or healthy state through that path.
 - That slice renames one public JSON field. `ProjectSnapshot.openIssues` and the generated
   `projects.json` entry key are now `openIssuesAndPullRequests`, because GitHub REST
   `open_issues_count` counts pull requests too; `projects.md` already said `open issues/PRs` and is
@@ -440,8 +471,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   #60 is closed, and refresh run 33119356827 proves the producer/consumer contract end to end.
 - Operational resilience and response-boundary follow-ups #85, #62, #58, and #82 are complete.
   The static dark/light fetch duplication tracked by #78 is addressed by the config-level theme
-  variants described above; the profile consumer can now move to that atomic bundle. npm publication,
-  Marketplace listing, and a patch release remain separate owner decisions.
+  variants described above, and profile PR #7 completed the atomic consumer migration. npm
+  publication and Marketplace listing remain separate owner decisions; v0.4.0 is the active release
+  path tracked by #102.
 
 ## Clean resume commands
 

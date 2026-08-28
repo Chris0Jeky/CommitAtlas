@@ -28,6 +28,23 @@ live portfolio Studio.
 > **npm publication is still not claimed.** The packages are built and pack-verified but are not on
 > the registry, and the README will not say otherwise until a registry lookup succeeds.
 
+## What changed in v0.4.0
+
+- **Freshness that fails honestly.** Public hosted responses can retain a validated last-good
+  representation for seven days and mark it stale during a supported GitHub quota or availability
+  failure. Cold, expired, token-backed, synthetic, and mismatched requests never borrow it.
+- **Contribution fidelity.** The calendar follows GitHub's Sunday-row geometry and supplied
+  intensity levels; an open final UTC day no longer erases a continuing streak.
+- **One snapshot, both schemes.** The static generator and Action can produce dark and light output
+  directories from one fetch, with independent hash manifests carrying the same generation time
+  and window.
+- **A clearer, more readable product.** The landing page distinguishes the eight hosted routes,
+  ten static cards, Studio, and optional design lab. Standalone card text has a tested readability
+  floor, including constrained-width clipping guards.
+- **A bounded research bridge.** An optional landing-page panel consumes a pinned Developer Lens C0
+  method-trial summary. It reports the baseline/candidate result and its limitations; it is not a
+  profile score, real-repository validation, or monitoring service.
+
 ## The complete operating picture
 
 The primary Atlas condenses a full year of public activity into one `860 × 380` SVG:
@@ -186,6 +203,11 @@ come from calendar-year profile views and are labelled as public-profile percent
 scoped to the requested contribution window; only an explicitly exact source is rendered as
 window-scoped counts. A percentage is never presented as a count.
 
+A signed-in owner can see a different contribution total or daily calendar on GitHub when private
+activity is enabled. That does not make the public CommitAtlas snapshot stale or incorrect: the two
+views have different evidence boundaries. Compare CommitAtlas with a logged-out profile view when
+checking public parity.
+
 Hosted requests may optionally use a server-side classic public-only token, but the client requires
 positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data
 credentials. Never place a token in a URL, browser setting, config, generated file, or committed fixture.
@@ -194,6 +216,7 @@ credentials. Never place a token in a URL, browser setting, config, generated fi
 
 - [Architecture and security boundaries](docs/ARCHITECTURE.md)
 - [Competitive research and product gap](docs/RESEARCH.md)
+- [Pinned Developer Lens method trial](https://chris0jeky.github.io/developer-lens/?view=method-trial)
 - [Complete demonstration guide](docs/DEMO_GUIDE.md)
 - [Static generator and Action contract](docs/STATIC_GENERATOR_PLAN.md)
 - [Studio production QA](docs/STUDIO_QA_2026-08-20.md)
@@ -203,6 +226,10 @@ credentials. Never place a token in a URL, browser setting, config, generated fi
 CommitAtlas does not invent a global developer rank, language proficiency, CI result, lifecycle,
 release, or download URL. It shows source-backed facts, explicitly configured intent, source
 availability, and freshness.
+
+The Developer Lens bridge follows the same rule. Its vendored summary is an invented offline C0
+experiment with explicit unsupported claims; CommitAtlas performs no runtime cross-site fetch and
+does not turn the experiment into a person-level signal.
 
 ## License
 
