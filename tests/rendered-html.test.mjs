@@ -55,6 +55,12 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.match(html, /Open SVG/);
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
+  assert.match(html, /From evidence to embed/);
+  assert.match(html, /eight-route SVG URL/);
+  assert.match(html, /static CLI or pinned Action/);
+  assert.match(html, /byte\/SHA-256 manifest/);
+  assert.match(html, /Cadence<\/em> and <em>Releases<\/em>, which are static-only/);
+  assert.match(html, /design lab below is optional/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%/);
   assert.doesNotMatch(html, /northstar-api|signal-canvas|archive-kit|Illustrative 90-day activity|Portfolio status/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
@@ -169,6 +175,11 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /Declare lifecycle yourself/);
   assert.match(html, /Open links below/);
   assert.match(html, /README Markdown/);
+  assert.match(html, /The path to an embed/);
+  assert.match(html, /aria-label="Project 1 repository"/);
+  assert.match(html, /aria-label="Project 2 repository"/);
+  assert.match(html, /aria-label="Remove project 1: Hello-World"/);
+  assert.match(html, /aria-label="Remove project 2: Spoon-Knife"/);
   assert.match(html, /<span>Breakdown<\/span>/);
   assert.match(html, /<span>Rhythm<\/span>/);
   assert.match(html, /2<!-- --> preview<!-- -->s/);

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
+import { WorkflowMap } from "../chassis/workflow-map";
 import {
   isStudioCardAvailable,
   resolveStudioLiveEvidence,
@@ -389,6 +390,7 @@ export default function StudioClient() {
         <h1>Build the signal layer<br /><em>your work deserves.</em></h1>
         <p>Configure only what you can support with evidence. Preview the result, inspect provenance, and copy portable README Markdown.</p>
       </header>
+      <WorkflowMap compact />
 
       <form className="studio-workspace shell" onSubmit={preview} id="configure" tabIndex={-1}>
         <aside className="config-panel" aria-labelledby="config-title">
@@ -442,20 +444,20 @@ export default function StudioClient() {
             )}
           </fieldset>
 
-          <div className="project-config-heading"><div><span>02</span><h2>Projects</h2></div><button type="button" onClick={() => projects.length < 6 && setProjects((current) => [...current, { id: nextProjectId++, repo: "", lifecycle: "planned", workflow: "", docs: "", install: "", download: "" }])} disabled={projects.length >= 6}>+ Add</button></div>
+          <div className="project-config-heading"><div><span>02</span><h2>Projects</h2></div><button type="button" aria-label={`Add project (${projects.length} of 6 configured)`} onClick={() => projects.length < 6 && setProjects((current) => [...current, { id: nextProjectId++, repo: "", lifecycle: "planned", workflow: "", docs: "", install: "", download: "" }])} disabled={projects.length >= 6}>+ Add</button></div>
           <p className="field-help">Declare lifecycle yourself. CommitAtlas never guesses it from commit recency.</p>
           <div className="project-config-list">
             {projects.map((project, index) => (
               <details key={project.id} open={index === 0}>
                 <summary><span>{String(index + 1).padStart(2, "0")}</span><strong>{project.repo || "New project"}</strong><small>{project.lifecycle}</small></summary>
                 <div className="project-fields">
-                  <label>Repository<input value={project.repo} onChange={(event) => updateProject(project.id, { repo: event.target.value })} maxLength={100} placeholder="repository-name" /></label>
-                  <label>Lifecycle<select value={project.lifecycle} onChange={(event) => updateProject(project.id, { lifecycle: event.target.value as Lifecycle })}><option value="planned">Planned</option><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="paused">Paused</option><option value="archived">Archived</option></select></label>
-                  <label>Workflow (optional)<input value={project.workflow} onChange={(event) => updateProject(project.id, { workflow: event.target.value })} maxLength={120} placeholder="ci.yml" /></label>
-                  <label>Docs URL (optional)<input type="url" value={project.docs} onChange={(event) => updateProject(project.id, { docs: event.target.value })} maxLength={500} placeholder="https://…" /></label>
-                  <label>Install URL (optional)<input type="url" value={project.install} onChange={(event) => updateProject(project.id, { install: event.target.value })} maxLength={500} placeholder="https://…" /></label>
-                  <label>Download URL (optional)<input type="url" value={project.download} onChange={(event) => updateProject(project.id, { download: event.target.value })} maxLength={500} placeholder="https://…" /></label>
-                  <button className="remove-project" type="button" onClick={() => setProjects((current) => current.filter((item) => item.id !== project.id))}>Remove {project.repo || "project"}</button>
+                  <label>Repository<input aria-label={`Project ${index + 1} repository`} value={project.repo} onChange={(event) => updateProject(project.id, { repo: event.target.value })} maxLength={100} placeholder="repository-name" /></label>
+                  <label>Lifecycle<select aria-label={`Project ${index + 1} lifecycle`} value={project.lifecycle} onChange={(event) => updateProject(project.id, { lifecycle: event.target.value as Lifecycle })}><option value="planned">Planned</option><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="paused">Paused</option><option value="archived">Archived</option></select></label>
+                  <label>Workflow (optional)<input aria-label={`Project ${index + 1} workflow (optional)`} value={project.workflow} onChange={(event) => updateProject(project.id, { workflow: event.target.value })} maxLength={120} placeholder="ci.yml" /></label>
+                  <label>Docs URL (optional)<input aria-label={`Project ${index + 1} docs URL (optional)`} type="url" value={project.docs} onChange={(event) => updateProject(project.id, { docs: event.target.value })} maxLength={500} placeholder="https://…" /></label>
+                  <label>Install URL (optional)<input aria-label={`Project ${index + 1} install URL (optional)`} type="url" value={project.install} onChange={(event) => updateProject(project.id, { install: event.target.value })} maxLength={500} placeholder="https://…" /></label>
+                  <label>Download URL (optional)<input aria-label={`Project ${index + 1} download URL (optional)`} type="url" value={project.download} onChange={(event) => updateProject(project.id, { download: event.target.value })} maxLength={500} placeholder="https://…" /></label>
+                  <button className="remove-project" type="button" aria-label={`Remove project ${index + 1}: ${project.repo || "new project"}`} onClick={() => setProjects((current) => current.filter((item) => item.id !== project.id))}>Remove {project.repo || "project"}</button>
                 </div>
               </details>
             ))}
