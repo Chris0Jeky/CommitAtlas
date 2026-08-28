@@ -87,6 +87,15 @@ test("gives the research bridge readable body and result text", async () => {
   assert.match(css, /\.research-bridge-lede[^}]*font-size:\s*16px/);
   assert.match(css, /\.research-bridge-outcome p[^}]*font-size:\s*16px/);
   assert.match(css, /\.research-bridge-metrics span, \.research-bridge-metrics small[^}]*font-size:\s*14px/);
+
+  const bridgeRules = [...css.matchAll(/\.research-bridge[^}]*}/g)].map(([rule]) => rule).join("\n");
+  const definedProperties = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((match) => match[1]));
+  const externalProperties = new Set(["--font-geist-mono"]);
+  const undefinedProperties = [...new Set([...bridgeRules.matchAll(/var\((--[a-z0-9-]+)/gi)].map((match) => match[1]))]
+    .filter((property) => !definedProperties.has(property) && !externalProperties.has(property));
+  assert.deepEqual(undefinedProperties, [], `research bridge references undefined CSS properties: ${undefinedProperties.join(", ")}`);
+  assert.match(bridgeRules, /color-mix\(in srgb, var\(--cool-ink\) 48%, var\(--line\)\)/);
+  assert.match(bridgeRules, /color:\s*var\(--warm-ink\)/);
 });
 
 test("prints every instrument reading as text, so the page is readable at frame zero", async () => {
