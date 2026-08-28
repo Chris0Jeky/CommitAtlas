@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-28 (v0.4.0 release candidate, production and profile evidence current)
+Last verified: 2026-08-28 (v0.4.0 released, production and profile evidence current)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -12,19 +12,20 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
-- **v0.4.0 release candidate is implementation-complete.** The private root package version is
-  `0.4.0`; the workspace packages remain `0.1.0` because they are still source-installed and their
-  standalone public API versions did not move. Reliability, contribution fidelity, cadence and
-  releases, one-snapshot theme variants, product clarity, the bounded Developer Lens bridge, and
-  the standalone-card readability floor are all on `main`. The GitHub release, final tagged deploy
-  probe, and release-state closeout are post-merge steps and are not claimed by this candidate.
-- **The current executable checkpoint is `5b6b38c`.** Main CI run
-  [33130509941](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33130509941)
+- **Released: [v0.4.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.4.0).** The
+  release is tagged at merge `87bc329`, marked latest, and is neither a draft nor a prerelease. The
+  private root package version is `0.4.0`; the workspace packages remain `0.1.0` because they are
+  still source-installed and their standalone public API versions did not move. Reliability,
+  contribution fidelity, cadence and releases, one-snapshot theme variants, product clarity, the
+  bounded Developer Lens bridge, and the standalone-card readability floor are all included. npm
+  registry and GitHub Marketplace publication remain explicitly outside this release.
+- **The current released executable checkpoint is `87bc329`.** Main CI run
+  [33131396554](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33131396554)
   passed, Deploy run
-  [33130572513](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33130572513)
-  published that exact commit and passed its 17 deterministic probes, and browser inspection
-  confirmed the landing workflow map, optional research bridge, and corrected research-panel theme
-  styling on the Workers origin.
+  [33131465188](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33131465188)
+  published that exact merge and passed its 17 deterministic probes, and the same 17/17 verifier
+  passed independently from this checkout. Browser inspection confirmed the landing workflow map,
+  Studio entry point, and the optional research bridge on the Workers origin after deployment.
 - **The real profile consumes the final readable renderer.** Profile PR
   [#9](https://github.com/Chris0Jeky/Chris0Jeky/pull/9) merged at `d9b6f23`, pins the single
   CommitAtlas invocation to `5b6b38c`, and refresh run
@@ -472,8 +473,8 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Operational resilience and response-boundary follow-ups #85, #62, #58, and #82 are complete.
   The static dark/light fetch duplication tracked by #78 is addressed by the config-level theme
   variants described above, and profile PR #7 completed the atomic consumer migration. npm
-  publication and Marketplace listing remain separate owner decisions; v0.4.0 is the active release
-  path tracked by #102.
+  publication and Marketplace listing remain separate owner decisions. v0.4.0 is released and the
+  release path tracked by #102 is complete.
 
 ## Clean resume commands
 
