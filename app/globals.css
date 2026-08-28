@@ -400,7 +400,7 @@ button, input, select, textarea { font: inherit; }
 .m3-column {
   animation: cellIn 400ms ease-out var(--column-delay) both;
 }
-.m3-scan { animation: densityScan 5.6s ease-in-out 900ms infinite; }
+.m3-scan { animation: densityScan 5.6s steps(var(--density-steps), end) 900ms infinite; }
 
 /* M4 — iris breathe on the reticle ring. */
 .m4-iris { animation: irisBreathe 4.5s ease-in-out infinite; }

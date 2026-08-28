@@ -189,23 +189,21 @@ export function DensitySurvey({
     <>
       <div className="bay-instrument">
         <svg viewBox={grid.viewBox} role="img" aria-label={label} preserveAspectRatio="xMinYMid meet">
-          <defs>
-            <linearGradient id="density-scan-gradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="var(--chrome)" stopOpacity="0" />
-              <stop offset="0.5" stopColor="var(--chrome)" stopOpacity="0.28" />
-              <stop offset="1" stopColor="var(--chrome)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <rect
-            className="m3-scan"
-            x={-12}
-            y={-2}
-            width={12}
-            height={38}
-            fill="url(#density-scan-gradient)"
-            opacity={0}
-            style={{ "--density-travel": `${grid.columns * 5 + 12}px` } as CSSProperties}
-          />
+          {grid.columns > 1 ? (
+            <rect
+              className="m3-scan"
+              x={4}
+              y={0}
+              width={1}
+              height={34}
+              fill="var(--chrome)"
+              opacity={0}
+              style={{
+                "--density-travel": `${(grid.columns - 1) * 5}px`,
+                "--density-steps": grid.columns - 1,
+              } as CSSProperties}
+            />
+          ) : null}
           <g fill="var(--warm-line)">
             {columns.map((column, index) => (
               // Staggered by week column, so the fill sweeps in date order rather than at random.
