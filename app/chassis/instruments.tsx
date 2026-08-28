@@ -136,7 +136,6 @@ export function RhythmGauge({ score, caption }: { score: number; caption: ReactN
             d={gauge.arc}
             pathLength={100}
             strokeDasharray={gauge.dash}
-            style={{ strokeDashoffset: 0 }}
             fill="none"
             stroke="var(--chrome)"
             strokeOpacity="0.85"
@@ -190,6 +189,23 @@ export function DensitySurvey({
     <>
       <div className="bay-instrument">
         <svg viewBox={grid.viewBox} role="img" aria-label={label} preserveAspectRatio="xMinYMid meet">
+          <defs>
+            <linearGradient id="density-scan-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="var(--chrome)" stopOpacity="0" />
+              <stop offset="0.5" stopColor="var(--chrome)" stopOpacity="0.28" />
+              <stop offset="1" stopColor="var(--chrome)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <rect
+            className="m3-scan"
+            x={-12}
+            y={-2}
+            width={12}
+            height={38}
+            fill="url(#density-scan-gradient)"
+            opacity={0}
+            style={{ "--density-travel": `${grid.columns * 5 + 12}px` } as CSSProperties}
+          />
           <g fill="var(--warm-line)">
             {columns.map((column, index) => (
               // Staggered by week column, so the fill sweeps in date order rather than at random.
@@ -199,7 +215,6 @@ export function DensitySurvey({
                 className="m3-column"
                 style={{
                   "--column-delay": `${index * 14}ms`,
-                  "--wave-delay": `${index * -85}ms`,
                 } as CSSProperties}
               >
                 {column.map((cell) => isEmptyDensityCell(cell.level, cell.count) ? (

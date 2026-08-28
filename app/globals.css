@@ -369,11 +369,15 @@ button, input, select, textarea { font: inherit; }
 @keyframes penDraw { 0% { stroke-dashoffset: 100; } 61% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
 @keyframes penMove { 0% { offset-distance: 0%; } 61% { offset-distance: 100%; } 100% { offset-distance: 100%; } }
 @keyframes penAura { 0%, 100% { opacity: 0.28; transform: scale(0.78); } 45% { opacity: 0.8; transform: scale(1.18); } }
-@keyframes gaugeCharge { from { stroke-dashoffset: 100; } }
+@keyframes gaugeCharge { from { stroke-dasharray: 0 100; } }
 @keyframes tickWake { from { opacity: 0.16; } }
 @keyframes needleSettle { 0% { transform: rotate(-90deg); } 62% { transform: rotate(47deg); } 80% { transform: rotate(36deg); } 100% { transform: rotate(var(--needle)); } }
 @keyframes cellIn { from { opacity: 0.14; } }
-@keyframes densityWave { 0%, 100% { filter: brightness(0.82); } 48% { filter: brightness(1.42); } }
+@keyframes densityScan {
+  0% { transform: translateX(0); opacity: 0; }
+  15%, 85% { opacity: 1; }
+  100% { transform: translateX(var(--density-travel)); opacity: 0; }
+}
 @keyframes sigPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes irisBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
 @keyframes scanSweep { 0% { transform: translateX(-90px); } 100% { transform: translateX(var(--beam-travel, 950px)); } }
@@ -394,10 +398,9 @@ button, input, select, textarea { font: inherit; }
 
 /* M3 — density survey. Date-order reveal, then a slow luminosity wave along the week columns. */
 .m3-column {
-  animation:
-    cellIn 400ms ease-out var(--column-delay) both,
-    densityWave 5.6s ease-in-out calc(900ms + var(--wave-delay)) infinite;
+  animation: cellIn 400ms ease-out var(--column-delay) both;
 }
+.m3-scan { animation: densityScan 5.6s ease-in-out 900ms infinite; }
 
 /* M4 — iris breathe on the reticle ring. */
 .m4-iris { animation: irisBreathe 4.5s ease-in-out infinite; }

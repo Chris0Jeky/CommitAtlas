@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render(pathname = "/") {
@@ -127,7 +128,16 @@ test("renders the layered instrument motion without making animation the data so
   assert.match(html, /class="m2-charge"/);
   assert.equal((html.match(/class="m2-tick"/g) ?? []).length, 7);
   assert.match(html, /--column-delay:/);
-  assert.match(html, /--wave-delay:/);
+  assert.match(html, /class="m3-scan"/);
+  assert.match(html, /opacity="0" style="--density-travel:/);
+});
+
+test("keeps motion emphasis separate from the gauge and density encodings", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(css, /@keyframes gaugeCharge\s*\{\s*from\s*\{\s*stroke-dasharray:\s*0 100;/);
+  assert.match(css, /\.m3-scan\s*\{\s*animation:\s*densityScan/);
+  assert.doesNotMatch(css, /densityWave|\.m3-column[^}]*filter|filter:\s*brightness/);
 });
 
 test("teaches all six health states, with the unknowns leading", async () => {

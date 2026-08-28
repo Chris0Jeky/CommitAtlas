@@ -154,7 +154,7 @@ all animation and the result is a complete page, not a degraded one.
 | --- | --- | --- |
 | M1 | Plotter | bright trace and soft bloom draw over a 22% pre-drawn future; a pulsing telemetry head rides `offset-path`; 9s cycle, `cubic-bezier(.4,0,.2,1)` |
 | M2 | Rhythm boot | arc charges in 1.25s, seven ticks wake in sequence, then the needle moves −90° → overshoot 47° → 36° → settle at the reading; transform/opacity/stroke-dash only |
-| M3 | Density wave | columns first brighten in date order (400ms, 14ms stagger), then a 5.6s luminosity wave travels along the date axis without changing the cells' activity hue |
+| M3 | Density scan | columns first brighten in date order (400ms, 14ms stagger), then a separate 5.6s background beam travels along the date axis without changing cell colour, opacity, or the neutral sockets |
 | M4 | Iris breathe | reticle scales 1 → 1.045, 4.5s ease-in-out, transform-only |
 | M5 | Signal lamp | 2.4s opacity pulse, `pending` only |
 | M6 | Survey beam | 70px gradient sweeps the flagship plate, 7s linear; the card beneath never moves |
