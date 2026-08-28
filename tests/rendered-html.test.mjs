@@ -129,14 +129,15 @@ test("renders the layered instrument motion without making animation the data so
   assert.equal((html.match(/class="m2-tick"/g) ?? []).length, 7);
   assert.match(html, /--column-delay:/);
   assert.match(html, /class="m3-scan"/);
-  assert.match(html, /opacity="0" style="--density-travel:/);
+  assert.match(html, /class="m3-scan" x="4" y="0" width="1" height="34"/);
+  assert.match(html, /opacity="0" style="--density-travel:[^;]+;--density-steps:/);
 });
 
 test("keeps motion emphasis separate from the gauge and density encodings", async () => {
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(css, /@keyframes gaugeCharge\s*\{\s*from\s*\{\s*stroke-dasharray:\s*0 100;/);
-  assert.match(css, /\.m3-scan\s*\{\s*animation:\s*densityScan/);
+  assert.match(css, /\.m3-scan\s*\{\s*animation:\s*densityScan 5\.6s steps\(var\(--density-steps\), end\)/);
   assert.doesNotMatch(css, /densityWave|\.m3-column[^}]*filter|filter:\s*brightness/);
 });
 
