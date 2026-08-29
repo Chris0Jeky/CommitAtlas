@@ -10,7 +10,7 @@
  */
 import { createServer } from "node:http";
 import { inflateSync } from "node:zlib";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -20,7 +20,8 @@ const probes = [
   "smil-transform", "smil-plot", "smil-animate-motion", "css-offset-path",
 ];
 const embeds = ["img", "picture"];
-const frameTimes = [0, 500, 2_000, 5_000];
+// A 250 ms frame sits inside the shipped CSS-enter effect (60 ms delay + 380 ms duration).
+const frameTimes = [0, 250, 500, 2_000, 5_000];
 const motionPixelThreshold = { changedPixels: 16, totalChannelDelta: 1_000 };
 const fixtureDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "motion-probes");
 const argumentsMap = new Map();
@@ -44,6 +45,12 @@ if (!selectedProbes.every((probe) => probes.includes(probe)) || !selectedEmbeds.
 }
 if (reducedMotion && (!playwrightEngine || !playwrightCli)) {
   throw new Error("--reduced-motion requires --playwright-engine and --playwright-cli so no dependency is installed");
+}
+if (playwrightCli) {
+  if (path.basename(playwrightCli).toLowerCase() !== "cli.js") {
+    throw new Error("--playwright-cli must be the Playwright package's cli.js, not a Windows .cmd launcher");
+  }
+  await access(playwrightCli);
 }
 const playwrightModule = playwrightCli && reducedMotion
   ? await import(pathToFileURL(path.join(path.dirname(playwrightCli), "index.js")).href)

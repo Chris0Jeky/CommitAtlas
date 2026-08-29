@@ -13,7 +13,9 @@ CSS enter, CSS breathe, CSS plot, the CSS `opacity: 0` / `fill-mode: both` contr
 SMIL plot, SMIL `animateMotion`, or CSS `offset-path`. `index.html` mounts each asset both as a
 plain `<img>` and as a `<picture>` with colour-scheme and reduced-motion `<source>` elements.
 
-Capture at 0, 500, 2,000, and 5,000 ms. Decode each PNG to RGBA, then compare adjacent frames;
+Capture at 0, 250, 500, 2,000, and 5,000 ms. The 250 ms sample sits inside the shipped CSS-enter
+effect (60 ms delay plus 380 ms duration), so a fresh-page run can observe it rather than jumping
+past the effect. Decode each PNG to RGBA, then compare adjacent frames;
 the pair notation below is `changed pixels / total channel delta`. A cell is `animates` only when
 at least one pair has at least 16 changed pixels **and** a total channel delta of at least 1,000.
 This discards the 3-pixel / 90-delta Firefox and 25-pixel / 964-delta WebKit capture noise rather
@@ -28,9 +30,10 @@ node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\A
 `--out` must name a new directory; the harness refuses to replace prior capture evidence.
 
 The cached Playwright 1.57.0 runner can instead be passed through `--playwright-engine` and
-`--playwright-cli`; it permits Firefox/WebKit capture and `--reduced-motion` without changing
-`package.json` or `package-lock.json`. Capture artifacts are deliberately untracked; their compact,
-dated pixel evidence is committed in
+`--playwright-cli`. On Windows, `--playwright-cli` must name the package's `cli.js`, never its
+`.cmd` launcher; the harness rejects the latter before starting a browser. This permits
+Firefox/WebKit capture and `--reduced-motion` without changing `package.json` or `package-lock.json`.
+Capture artifacts are deliberately untracked; their compact, dated pixel evidence is committed in
 [`2026-08-29-local-direct.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-local-direct.json).
 
 ## Measured local-direct results — 2026-08-29
@@ -38,17 +41,17 @@ dated pixel evidence is committed in
 The host was a loopback static fixture server. These rows do not test GitHub, Camo, a Worker, CSP,
 or the GitHub sanitizer.
 
-| Probe | Embed | Engine | Result | Pixel-pair evidence (0→500, 500→2000, 2000→5000 ms) |
+| Probe | Embed | Engine | Result | Pixel-pair evidence (0→250, 250→500, 500→2000, 2000→5000 ms) |
 | --- | --- | --- | --- | --- |
-| CSS breathe | `<img>` | Chromium 143.0.7499.4 | animates | 5367/748141, 5367/748191, 6733/1613328 |
-| CSS breathe | `<picture>` | Chromium 143.0.7499.4 | animates | 5396/743627, 5396/743727, 6730/1613316 |
-| CSS enter | `<img>` | Firefox 144.0.2 | frozen at frame zero | 3/90, 0/0, 0/0 |
-| CSS enter | `<picture>` | Firefox 144.0.2 | frozen at frame zero | 0/0, 0/0, 0/0 |
-| CSS enter | `<img>` | WebKit 26.0 | frozen at frame zero | 25/964, 0/0, 0/0 |
-| CSS enter | `<picture>` | WebKit 26.0 | frozen at frame zero | 0/0, 0/0, 0/0 |
+| CSS breathe | `<img>` | Chromium 143.0.7499.4 | animates | 3673/204086, 4830/723774, 5410/748139, 6736/1618072 |
+| CSS breathe | `<picture>` | Chromium 143.0.7499.4 | animates | 3606/177357, 4800/704335, 5339/728839, 6735/1617883 |
+| CSS enter | `<img>` | Firefox 144.0.2 | animates | 7299/2973800, 7299/2973800, 0/0, 0/0 |
+| CSS enter | `<picture>` | Firefox 144.0.2 | animates | 7780/3206916, 7780/3206916, 0/0, 0/0 |
+| CSS enter | `<img>` | WebKit 26.0 | animates | 9005/3828905, 9005/3828905, 0/0, 0/0 |
+| CSS enter | `<picture>` | WebKit 26.0 | animates | 9351/3872870, 9351/3872870, 0/0, 0/0 |
 
 Reduced-motion picture selection was separately measured in Chromium: the static gold control
-source was selected (`59,173` exact `#ffd166` pixels) and all three capture pairs were `0/0`.
+source was selected (`59,173` exact `#ffd166` pixels) and all four capture pairs were `0/0`.
 That establishes the local fixture and runner path only; it does not answer whether GitHub retains
 the same `<source media="(prefers-reduced-motion: reduce)">` element.
 
@@ -69,8 +72,10 @@ in `lib/http.ts`.
 
 ## Interpretation and next decision
 
-The earlier PR #77 three-rect result remains a lead, not a replacement for this matrix. These local
-rows demonstrate that engine and delivery path matter, and the readable static base in every probe
-means a frozen outcome is still inspectable. They do **not** reconcile PR #77 or justify a default
-CSS or SMIL backend for `github-readme`, `web`, or `studio`; #125 must choose those defaults only
-after the hosted GitHub/Camo and Worker rows are complete.
+The earlier PR #77 three-rect result remains a lead, not a replacement for this matrix. Current
+coverage is incomplete and confounded: each engine/embed conclusion comes from one probe, and the
+host is only the loopback fixture server. It therefore cannot establish either engine or embed path
+as the cause of a result. The readable static base in every probe only makes a frozen outcome
+inspectable. These rows do **not** reconcile PR #77 or justify a default CSS or SMIL backend for
+`github-readme`, `web`, or `studio`; #125 must choose those defaults only after the hosted
+GitHub/Camo and Worker rows are complete.

@@ -4,7 +4,7 @@
   "runner": {
     "playwrightVersion": "1.57.0",
     "capture": "tests/motion-probes/capture.mjs",
-    "framesMs": [0, 500, 2000, 5000],
+    "framesMs": [0, 250, 500, 2000, 5000],
     "motionThreshold": { "changedPixels": 16, "totalChannelDelta": 1000 }
   },
   "results": [
@@ -13,7 +13,7 @@
       "probe": "css-breathe",
       "embed": "img",
       "reducedMotion": false,
-      "pairs": [[5367, 748141], [5367, 748191], [6733, 1613328]],
+      "pairs": [[3673, 204086], [4830, 723774], [5410, 748139], [6736, 1618072]],
       "verdict": "animates"
     },
     {
@@ -21,7 +21,7 @@
       "probe": "css-breathe",
       "embed": "picture",
       "reducedMotion": false,
-      "pairs": [[5396, 743627], [5396, 743727], [6730, 1613316]],
+      "pairs": [[3606, 177357], [4800, 704335], [5339, 728839], [6735, 1617883]],
       "verdict": "animates"
     },
     {
@@ -29,7 +29,7 @@
       "probe": "css-breathe",
       "embed": "picture",
       "reducedMotion": true,
-      "pairs": [[0, 0], [0, 0], [0, 0]],
+      "pairs": [[0, 0], [0, 0], [0, 0], [0, 0]],
       "reducedMotionControlPixels": 59173,
       "verdict": "frozen at frame zero"
     },
@@ -38,32 +38,32 @@
       "probe": "css-enter",
       "embed": "img",
       "reducedMotion": false,
-      "pairs": [[3, 90], [0, 0], [0, 0]],
-      "verdict": "frozen at frame zero"
+      "pairs": [[7299, 2973800], [7299, 2973800], [0, 0], [0, 0]],
+      "verdict": "animates"
     },
     {
       "engine": "Firefox 144.0.2",
       "probe": "css-enter",
       "embed": "picture",
       "reducedMotion": false,
-      "pairs": [[0, 0], [0, 0], [0, 0]],
-      "verdict": "frozen at frame zero"
+      "pairs": [[7780, 3206916], [7780, 3206916], [0, 0], [0, 0]],
+      "verdict": "animates"
     },
     {
       "engine": "WebKit 26.0",
       "probe": "css-enter",
       "embed": "img",
       "reducedMotion": false,
-      "pairs": [[25, 964], [0, 0], [0, 0]],
-      "verdict": "frozen at frame zero"
+      "pairs": [[9005, 3828905], [9005, 3828905], [0, 0], [0, 0]],
+      "verdict": "animates"
     },
     {
       "engine": "WebKit 26.0",
       "probe": "css-enter",
       "embed": "picture",
       "reducedMotion": false,
-      "pairs": [[0, 0], [0, 0], [0, 0]],
-      "verdict": "frozen at frame zero"
+      "pairs": [[9351, 3872870], [9351, 3872870], [0, 0], [0, 0]],
+      "verdict": "animates"
     }
   ]
 }
