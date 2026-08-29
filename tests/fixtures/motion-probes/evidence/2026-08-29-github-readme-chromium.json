@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-29",
+  "scope": "GitHub-rendered public scratch-repository README structure, relative asset delivery, and reduced-motion source selection in Chrome; no animation pixel capture",
+  "scratchRepository": "Chris0Jeky/commitatlas-motion-probes",
+  "scratchCommit": "b61bfa70b9274a86816314d4ccd9f744e7d4d8b0",
+  "readmeUrl": "https://github.com/Chris0Jeky/commitatlas-motion-probes",
+  "browser": {
+    "family": "Chrome",
+    "installedVersion": "151.0.7922.174",
+    "connectedVersionExposed": false
+  },
+  "relativeImageDelivery": {
+    "domUrl": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/main/tests/fixtures/motion-probes/css-breathe.svg",
+    "redirectUrl": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/main/tests/fixtures/motion-probes/css-breathe.svg",
+    "throughCamo": false,
+    "status": 200,
+    "contentType": "image/svg+xml",
+    "contentLength": 1041,
+    "cacheControl": "max-age=300",
+    "contentSecurityPolicy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    "accessControlAllowOrigin": "*",
+    "etag": "\"9fba180e3e00916d9a6fa6f75d0c46f66a90b7f20175c02837960c823c05f7ef\""
+  },
+  "renderedReadme": {
+    "relativeImagesLoaded": 9,
+    "imageDimensions": "360x120",
+    "pictureSourcesRetained": [
+      "(prefers-reduced-motion: reduce)",
+      "(prefers-color-scheme: dark)"
+    ],
+    "reducedMotionCurrentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/main/tests/fixtures/motion-probes/reduced-motion-control.svg",
+    "noPreferenceCurrentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/main/tests/fixtures/motion-probes/smil-transform.svg"
+  },
+  "notMeasured": [
+    "animation pixel differences on github.com",
+    "Firefox or WebKit GitHub rendering",
+    "absolute Worker URL through Camo",
+    "direct Worker response",
+    "three-second recordings"
+  ]
+}

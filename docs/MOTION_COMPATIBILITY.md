@@ -4,7 +4,8 @@ Status: Phase 0 is in progress. This ledger records measured outcomes only; an u
 **not tested**, never a compatibility claim. The fixture set and local capture tool live in
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
 repository for the GitHub/Camo part of the protocol is
-[Chris0Jeky/commitatlas-motion-probes](https://github.com/Chris0Jeky/commitatlas-motion-probes).
+[Chris0Jeky/commitatlas-motion-probes](https://github.com/Chris0Jeky/commitatlas-motion-probes),
+currently pinned for this evidence at `b61bfa7`.
 
 ## Protocol
 
@@ -52,8 +53,23 @@ or the GitHub sanitizer.
 
 Reduced-motion picture selection was separately measured in Chromium: the static gold control
 source was selected (`59,173` exact `#ffd166` pixels) and all four capture pairs were `0/0`.
-That establishes the local fixture and runner path only; it does not answer whether GitHub retains
-the same `<source media="(prefers-reduced-motion: reduce)">` element.
+That establishes the local fixture and runner path only.
+
+## Measured GitHub README delivery and source selection — 2026-08-29
+
+GitHub's rendered scratch-repository README retained all nine relative SVG images and both
+`<picture>` sources. In Chrome, temporary `prefers-reduced-motion: reduce` emulation selected the
+relative static gold control; resetting to `no-preference` selected the dark-scheme SMIL fallback.
+The temporary browser emulation was reset after the observation. The compact evidence is in
+[`2026-08-29-github-readme-chromium.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-github-readme-chromium.json).
+
+The relative repository images are **not Camo-delivered**. The rendered DOM points at a
+`github.com/.../raw/main/...` URL, which redirects to `raw.githubusercontent.com`; the inspected
+response was `image/svg+xml` with
+`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`. Camo remains the
+delivery path to test for the absolute Worker URL embedded in the README. This observation proves
+sanitizer retention and source selection in Chrome, not animation: no GitHub-page pixel sequence
+or recording has been captured yet.
 
 ## Matrix still required
 
@@ -62,7 +78,7 @@ the same `<source media="(prefers-reduced-motion: reduce)">` element.
 | Local direct | partial rows above | partial rows above | local selection: yes | partial | partial | partial |
 | Direct hosted Worker SVG with production SVG CSP | not tested | not tested | not tested | not tested | not tested | not tested |
 | Worker SVG in GitHub README through Camo | not tested | not tested | not tested | not tested | not tested | not tested |
-| Relative scratch-repository SVG in GitHub README through Camo | not tested | not tested | not tested | not tested | not tested | not tested |
+| Relative scratch-repository SVG in GitHub README through GitHub raw | loaded; motion not tested | sources retained; motion not tested | selected static source in Chrome | structural/source-selection only | not tested | not tested |
 
 The remaining matrix must run every probe under every host/embed/engine combination, retain the
 four captures and a three-second recording, and record the source URL, response headers, browser
@@ -73,9 +89,10 @@ in `lib/http.ts`.
 ## Interpretation and next decision
 
 The earlier PR #77 three-rect result remains a lead, not a replacement for this matrix. Current
-coverage is incomplete and confounded: each engine/embed conclusion comes from one probe, and the
-host is only the loopback fixture server. It therefore cannot establish either engine or embed path
-as the cause of a result. The readable static base in every probe only makes a frozen outcome
-inspectable. These rows do **not** reconcile PR #77 or justify a default CSS or SMIL backend for
-`github-readme`, `web`, or `studio`; #125 must choose those defaults only after the hosted
-GitHub/Camo and Worker rows are complete.
+motion coverage is incomplete and confounded: each engine/embed conclusion comes from one probe,
+and motion has only been pixel-measured on the loopback fixture server. GitHub raw delivery and
+Chrome source selection are now observed, but GitHub-page animation is not. The evidence therefore
+cannot establish either engine or embed path as the cause of a motion result. The readable static
+base in every probe only makes a frozen outcome inspectable. These rows do **not** reconcile PR #77
+or justify a default CSS or SMIL backend for `github-readme`, `web`, or `studio`; #125 must choose
+those defaults only after the hosted GitHub/Camo and Worker rows are complete.
