@@ -127,7 +127,7 @@ mode and the scheduled static snapshot never need it.
 node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev
 ```
 
-Seventeen deterministic probes:
+Eighteen deterministic probes:
 
 - health, the landing page, and the Studio (matched on the title only `/studio` sets, so serving the
   landing page for that route fails rather than passes);
@@ -137,6 +137,10 @@ Seventeen deterministic probes:
   script-blocking `Content-Security-Policy`;
 - an out-of-range parameter value **and** an unknown parameter, both proving a bounded `400` with
   `no-store` and a JSON error envelope;
+- the fixed synthetic `/api/v1/probes/motion/css-enter.svg` route, whose SVG identity, headers, and
+  safety are asserted. This one newly deployed route may retry a received `404` for four bounded
+  delays (5, 10, 15, and 20 seconds); transport errors use the same five-attempt budget. Every
+  other received status is validated immediately, and a fifth `404` fails explicitly;
 - `robots.txt`, `sitemap.xml`, and the landing page's structured data.
 
 Every probe uses synthetic mode, so a failure means the deployment is wrong — not that GitHub was
