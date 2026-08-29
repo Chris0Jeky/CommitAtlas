@@ -31,7 +31,7 @@ document builds only on the corrected rows.
 
 | Claim | Finding | Evidence |
 | --- | --- | --- |
-| The Atlas already animates, but only a 5px one-shot rise over ~0.4s, so nobody sees it. | **Partly right, and it hides the real problem.** `atlasMotionStyle` emits `atlas-rise` (5px, .32–.55s, one-shot) and the standalone cards emit `card-enter` (4px, .38s). But PR #77 recorded an empirical probe in which Chromium held an `<img>`-delivered SVG at its keyframe `from` state, and the code now carries the comment "Chromium never runs CSS animations inside an SVG rendered through `<img>`". Public README widgets demonstrably do animate on github.com in Chromium. Both observations cannot be unconditionally true. | `packages/svg/src/index.ts` (`atlasMotionStyle`, `cardMotionStyle`); PROJECT_STATE "Post-release fix e17e866"; commit `16bc4e0` |
+| The Atlas already animates, but only a 5px one-shot rise over ~0.4s, so nobody sees it. | **Partly right, and it hides the real problem.** `atlasMotionStyle` emits `atlas-rise` (5px, .32–.55s, one-shot) and the standalone cards emit `card-enter` (4px, .38s). But PR #77 recorded an empirical probe in which Chromium held an `<img>`-delivered SVG at its keyframe `from` state, and the code now carries the comment "Chromium never runs CSS animations inside an SVG rendered through `<img>`". Public README widgets (typing banners, contribution snakes) are widely reported to animate on github.com in Chromium — a report this repository has not verified itself. Both observations cannot be unconditionally true. | `packages/svg/src/index.ts` (`atlasMotionStyle`, `cardMotionStyle`); PROJECT_STATE "Post-release fix e17e866"; commit `16bc4e0` |
 | The public motion model is only `none \| subtle`. | **True**, and it is enforced at four layers: `RenderOptions.motion`, `parseMotion`/`parseStandaloneMotion`, the static config schema, and Studio state. | `packages/svg/src/index.ts:108`, `lib/svg-routes.ts:179-189`, `packages/static/src/config.ts`, `app/studio/studio-client.tsx:146` |
 | Atlas defaults to `subtle`; standalone cards default to `none`. | **True.** | `parseMotion` vs `parseStandaloneMotion`; `studio-urls.ts:117,124` |
 | The web chassis already has richer motion (scan, plotter, breathe, beam, pulse, acquisition failure) that stops at the card boundary. | **True.** M1–M8 exist in `app/globals.css`; DESIGN_CHASSIS says "The card SVGs keep `motion=none\|subtle` … Nothing here changes them." | `app/globals.css:369-430`; DESIGN_CHASSIS "Motion" |
@@ -65,7 +65,7 @@ and each family has a fixed relationship to the evidence ladder in DESIGN_CHASSI
 | **Maps** | Large visualizations of relationships: terrain, lifecycle map, release train, chronograph | Geometry is `observed`; any band or threshold is printed as `hypothesis` |
 | **Signatures** | Interpretations imported from Developer Lens: DNA, archetype, craft ring, delivery loop | Always `derived`, always stamped `DERIVED SIGNATURE · not a productivity score`, always carrying the projection's coverage and privacy note |
 | **Scenes** | Aesthetic compositions that use observed data as a seed: nebula, city, reactor, river | Stamped `SCENE`; no numeric claim is printed unless it is also printed as an instrument reading beside it |
-| **Findings** | Research results from Developer Lens Lab via a product-owned projection | `C0`/`C1`/`C2` grade printed in the frame with limitations and unsupported claims, never as profile evidence |
+| **Findings** | Research results from Developer Lens Lab via a product-owned projection | Data class (`C0` invented synthetic, `C1` aggregated) printed in the frame with limitations and unsupported claims, never as profile evidence |
 
 Three **orthogonal axes** configure any output, and no axis may leak into another:
 
@@ -84,7 +84,11 @@ Invariants carried forward unchanged, because they are what make the product wor
 - Renderers are deterministic: identical input produces byte-identical SVG.
 - User text is schema-bounded and XML-escaped; no scripts, remote images, fonts, `foreignObject`,
   event attributes, or external CSS; outbound hosts stay GitHub-owned.
-- Private data and tokens never enter fixtures, logs, query strings, or tracked files.
+- Private data and tokens never enter fixtures, logs, query strings, or tracked files in this
+  repository. The one place the programme touches that line is the owner's redacted C1 lens
+  projection, which would live as a tracked file in the owner's *own* public profile repository:
+  that is an owner-directed publication, irreversible once pushed (git history keeps it), and it
+  is gated by Q-9 — never assumed, never a CommitAtlas fixture, never hosted.
 
 ## 4. Target architecture
 
@@ -131,7 +135,7 @@ Adapters stay where they are: `lib/svg-adapters.ts` for the hosted app and
 | Profile | Behaviour | Where allowed | Notes |
 | --- | --- | --- | --- |
 | `none` | No keyframes, no `<animate*>`, no `<style>` | everywhere | The reduced-motion twin of every other profile; byte-for-byte the geometry of frame zero |
-| `subtle` | One-shot entrance only, ≤ 0.6s, transform-only | everywhere | Today's behaviour, kept for compatibility; may gain opacity on decorative marks only |
+| `subtle` | One-shot entrance only, ≤ 0.6s, transform-only | everywhere | Today's behaviour, kept for compatibility, unchanged: the whole-render guard from commit `16bc4e0` (no `both`/`backwards`, no opacity or scale `from` states) stays exactly as it is for this profile |
 | `ambient` | Indefinitely repeating slow textures: breathe, scan, orbit, plotter glint, particle drift, pending pulse | hosted + static | The intended default for profile graphics once Phase 0 selects a backend |
 | `cinematic` | A 10–20s repeating sequence: acquisition → nodes appear → scan → plot → rest → reset | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments |
 
@@ -149,7 +153,8 @@ cache key, and CSP toggle all include the profile. Static config accepts all fou
 | `rotate` / `orbit` | continuous rotation about a point | `transform-origin` + rotate | `animateTransform type="rotate"` |
 | `plot` | stroke draws itself | `stroke-dashoffset` (M1) | `animate attributeName="stroke-dashoffset"` |
 | `flow` | a mark travels along a path | `offset-path` (poorly supported in SVG-as-image; expect `unsupported`) | `animateMotion` (the native, best-supported form) |
-| `twinkle` / `pulse` | opacity loop | M5; decorative marks only, never below 0.35 | `animate attributeName="opacity"` |
+| `pulse` | the signal-lamp idiom | M5 — `pending` lamps only; nothing else may pulse (chassis rule) | `animate attributeName="opacity"` |
+| `twinkle` | slow opacity loop on pure decoration | `scene`-family decoration only (particles, stars); never on a lamp, socket, reading, or label; floor 0.35 so nothing vanishes at any frame | `animate attributeName="opacity"` |
 | `acquisitionFailure` | needle hunts and falls back | M7 | `animateTransform` values list |
 
 Rules the compiler enforces rather than documents:
@@ -158,8 +163,13 @@ Rules the compiler enforces rather than documents:
   it is omitted — never approximated with a different effect.
 - A primitive that changes opacity or scale may only be attached to elements marked *decorative*;
   elements carrying text or a reading may only translate, and their `from` state must be the
-  finished geometry (the existing test that rejects `both`/`backwards` and opacity/scale keyframes
-  on card content stays and is generalized).
+  finished geometry. The existing guard (`packages/svg/tests/svg.test.mjs`, a whole-render regex
+  rejecting `both`/`backwards` and any opacity/scale `from` state, added in `16bc4e0` after the
+  invisible-header defect on the live profile) is **not** loosened: it keeps applying verbatim to
+  every instrument card under `subtle`. For `ambient`/`cinematic` output the compiler enforces the
+  same intent structurally — opacity/scale keyframes may exist only in the `<style>`/`<animate*>`
+  blocks it emitted for elements it marked decorative, never with a `from` below the 0.35 floor —
+  and a test proves that stripping those blocks yields the `none` render (the frame-zero test).
 - Every generated id, class, and keyframe name is namespaced per scene and per render so two
   scenes inlined on one page cannot collide.
 - Reduced motion: the CSS backend emits the `prefers-reduced-motion: reduce` override. SMIL cannot
@@ -173,7 +183,8 @@ Rules the compiler enforces rather than documents:
 
 One focal animation, one ambient texture, at most six concurrently looping groups, readable at
 frame zero, reduced-motion path, no fact carried only by movement. The chassis's M-series stays
-the reference vocabulary; scenes may add new refs (M9+) only through DESIGN_CHASSIS.
+the reference vocabulary (M1–M9, where M9 is the survey parallax `app/globals.css` already
+defines); scenes may add new refs (M10 onward) only through DESIGN_CHASSIS.
 
 ### 5.4 Budgets (hypothesis until Phase 0 measures)
 
@@ -266,7 +277,7 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
-| `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; motion and labels branch on `decision.outcome` — `reject`: the candidate trace fades while the retained baseline stays lit, `BASELINE RETAINED`; `revise_once`: both traces stay lit with a dashed revision marker, `REVISE ONCE`; `benchmarked`: both stay lit, `BENCHMARKED · research evidence, not promotion` | Grade, decision, limitations, and unsupported claims in the frame; frame zero already prints the outcome word |
+| `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; motion and labels branch on `decision.outcome` — `reject`: the candidate trace fades while the retained baseline stays lit, `BASELINE RETAINED`; `revise_once`: both traces stay lit with a dashed revision marker, `REVISE ONCE`; `benchmarked`: both stay lit, `BENCHMARKED · research evidence, not promotion` | Data class, decision, limitations, and unsupported claims in the frame; frame zero already prints the outcome word |
 | `nebula` | scene | contribution days, repositories, languages, releases; seed | twinkle on decorative stars only | Positions from the seed; changes only when the snapshot changes |
 | `spectrogram` | scene | per-project weekly commit series (new fetch, Q-7) plus daily totals | thin scan line | Bands per project, interference where projects overlap in a week; **parked** until Q-7 — the current snapshot has daily totals and category aggregates only, so no cross-project band can be observed today |
 | `system-weather` | signature | derived from snapshot trends (and `lens` if present) | atmosphere drift | Every line stamped `hypothesis`; it is a metaphor, not a measurement |
@@ -394,14 +405,14 @@ Decisions taken in this document (reversible unless stated):
 | D-04 | Scene engine lives in `packages/svg` | Law 8: no package until a second consumer exists | extract later |
 | D-05 | Scene pack ids `orbital`, `survey`, `spectral`, `terminal`; default `survey` | Avoids colliding with the `Observatory` web theme | rename before any pack ships |
 | D-06 | Hosted scenes under `/api/v1/scenes/<id>.svg`, additive within v1 | Nothing existing breaks | move to v2 if a breaking change appears |
-| D-07 | Lens projection is an owner-run, acknowledged Developer Lens export, committed as a tracked file; the Action only reads it | Developer Lens's sink contract and roadmap | none — this is the producer's boundary |
+| D-07 | Lens projection is an owner-run, acknowledged Developer Lens export, committed by the owner as a tracked file in the owner's profile repository; the Action only reads it | Developer Lens's sink contract and roadmap | the *mechanism* follows from the producer's boundary; the *publication* is irreversible (git history) and is therefore not decided here — Q-9 |
 | D-08 | Findings are vendored C0 fixtures referenced by id in config (`findings: ["wbc1"]`) | Same path as the existing bridge; no path input to validate in v1 | add a `path` form later |
 | D-09 | GIF export deferred and gated on Phase 0 | No rasterizer today; may be unnecessary | reopen if the matrix shows SVG motion is unreliable |
 | D-10 | Capture harness is Playwright, nightly + labelled PRs, outside `npm run check` | Keeps the proving gate fast | fold into `check` when it is fast enough |
 | D-11 | `identity` text is static-config only | A query string is an injection and caching surface | allow bounded hosted text after the sanitizer is tested |
 | D-12 | Existing `DeveloperLensMethodTrialSummary.v1` bridge stays until the finding projection is vendored, then is retired in the same PR | No double-rendering window | keep both if a consumer needs it |
-| D-13 | A published projection schema version is frozen; additions are a new version, never an in-place extension | Consumers reject unknown fields, so "additive" would break every pinned consumer | none — it follows from strictness |
-| D-14 | Data class (`C0`/`C1`, what an artifact contains) and evidence grade (`C0`/`C1`/`C2`, the Lab's ladder) are separate fields | A C2-grade finding must still be a C0/C1 data artifact to cross the boundary | none |
+| D-13 | CommitAtlas pins one exact published schema (producer commit + fixture hash) per seam and re-pins deliberately; an additive change the producer makes under the same version is rejected until re-pinned | CommitAtlas's reader is strict; the Lab's CONTRACTS.md allows additive changes within a major, and that is the producer's policy to keep | re-pin |
+| D-14 | One C-axis only: `classification`/`dataClass` is the sibling repositories' data class (C0 invented, C1 aggregated); there is no separate "evidence grade", and C2 (local identifiers and provenance) can never appear in an exported artifact | Both siblings define exactly one C-axis and mark C2 local-only; an invented second axis would let an agent print "C2" on a public profile | none — it matches the producers' policy |
 
 Open questions for the owner (each has a `needs-decision` issue):
 
@@ -415,6 +426,7 @@ Open questions for the owner (each has a `needs-decision` issue):
 | Q-6 | Raise the static project cap above six for the lifecycle map and constellation? | Constellation reads the projection (up to 12); the config cap stays six |
 | Q-7 | Fetch per-project weekly commit series (GitHub `stats/commit_activity`, public, cold responses return 202) for the spectrogram? | No; the scene stays parked |
 | Q-8 | Fetch the latest run's jobs for each declared workflow (`actions/runs/{id}/jobs`) for pipeline telemetry? | No; the scene stays parked and its fallback is the single observed state |
+| Q-9 | Publish an owner-reviewed, redacted C1 Developer Lens projection as a tracked file in the public profile repository? (Irreversible once pushed; aliases are not anonymity.) | No; lens scenes render only from the C0 showcase fixture, and the profile shows none of them |
 
 ## 15. Agent operating notes
 

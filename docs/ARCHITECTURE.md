@@ -157,7 +157,7 @@ by a backend chosen from measured github.com behaviour; a scene engine in `@comm
 (primitives, seeded determinism, budgets, a per-scene contract test harness) feeding new
 `/api/v1/scenes/<id>.svg` routes and `scene-<id>.svg` static artifacts; and two validated,
 fail-closed projections — `PublicLensProjection.v1` from Developer Lens and
-`ResearchFindingProjection.v1` from Developer Lens Lab — specified in
+`ResearchFindingProjection.v1` exported by Developer Lens Lab into a Developer Lens-owned schema — specified in
 [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md). Until a slice ships, everything above this
 heading remains the complete description of the product.
 

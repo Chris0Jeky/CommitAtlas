@@ -480,7 +480,7 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 - **2026-08-29: the expansion programme is documented and seeded.** [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)
   reconciles the owner's brief against the code, fixes the motion model, scene engine, delivery
-  path, and cross-project projection seams, and records twelve decisions plus six owner questions.
+  path, and cross-project projection seams, and records fourteen decisions plus nine owner questions.
   [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) is the consumer-side specification of
   `PublicLensProjection.v1` and `ResearchFindingProjection.v1`. Tracking issue
   [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111) holds the dependency-ordered issue

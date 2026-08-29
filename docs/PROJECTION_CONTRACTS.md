@@ -19,24 +19,34 @@ commit; both schema and semantics validated at build/test time; no runtime reque
 | `PublicLensProjection.v1` | Developer Lens: `research-contracts/lens-projection/v1/{schema.json, showcase.fixture.json, README.md}` | Developer Lens `export-profile` (headless, through the export sink) | CommitAtlas `packages/static` (tracked file), `lib/` + Studio (vendored C0 fixture only) | v1 is frozen once published (see "Versioning"); unknown `schemaVersion` fails closed at both ends |
 | `ResearchFindingProjection.v1` | Developer Lens: `research-contracts/research-finding/v1/{schema.json, wbc1.fixture.json, README.md}` | Developer Lens Lab `dllab export finding <run-id>` | CommitAtlas `research-contracts/research-finding/v1/` (vendored, pinned) + `lib/research-bridge.ts` | v1 is frozen once published; the method-trial summary bridge is retired in the PR that vendors the first finding |
 
-**Versioning.** Because every object rejects unknown properties, "additive" changes are not
-backward-compatible for a pinned consumer. A published v1 schema is therefore frozen: any new
-field, enum value, or loosened bound is `v2` with its own directory, and a consumer pins exactly
-one version per seam. Until the producer publishes, this document is a draft and may change freely.
+**Versioning.** Because every object rejects unknown properties, an "additive" change is not
+backward-compatible for a pinned strict consumer. This is CommitAtlas's consumer posture, not a
+rule imposed on the producers: CommitAtlas pins one exact published schema (by producer commit and
+fixture hash) per seam and re-pins deliberately. The Lab's own CONTRACTS.md allows additive
+changes within a major version; if a producer adds a field under the same `schemaVersion`,
+CommitAtlas's reader rejects the new artifact until it re-pins — never silently accepting it. Until
+the producer publishes, this document is a draft and may change freely.
+
+**Casing.** The lens seam follows `PortableExportPayload` and is camelCase; the finding seam
+follows the existing research contracts (`DeveloperLensMethodTrialSummary.v1`) and is snake_case.
+One convention per schema, never mixed.
 
 Neither seam treats commit or checksum provenance as a cross-repository identity key or as
 promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
 
 ## Shared rules
 
-- **Data classes.** Every artifact carries a `dataClass` of C0 (invented synthetic) or C1
-  (low-identifiability aggregates after suppression); nothing else may appear. Developer Lens's
-  `public` sink permits C0 only, so anything CommitAtlas hosts or vendors for the Studio is C0; the
-  owner's personal projection is C1 and is committed by the owner to the profile repository, never
-  to CommitAtlas. The research seam's *evidence grade* (`C0`/`C1`/`C2`, the Lab's ladder) is a
-  different axis and is carried in a separate field; a C2-grade finding is still a C0 or C1 data
-  artifact.
-- **Canonical hash.** `projectionHash` and `bundleHash` are SHA-256 over the artifact serialized
+- **Data classes.** Both sibling repositories define exactly one C-axis — the field/data class of
+  Developer Lens's data charter and the Lab's data policy: C0 invented synthetic, C1
+  low-identifiability aggregates after suppression, C2 local identifiers and provenance
+  (local-only, never exported), C3/C4/X never leave a process. There is no separate "evidence
+  grade". Every artifact on both seams carries one `data_class`/`dataClass` field whose value is
+  C0 or C1 and which describes both the artifact and the evidence it summarizes; C2 and above can
+  never appear. Developer Lens's `public` sink permits C0 only, so anything CommitAtlas hosts or
+  vendors for the Studio is C0. An owner's personal lens projection is C1; whether it may be
+  published at all is the owner's decision (EXPANSION_PLAN Q-9), it is never committed to
+  CommitAtlas, and it is never a fixture.
+- **Canonical hash.** `projectionHash` and `bundle_hash` are SHA-256 over the artifact serialized
   with [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785) (sorted
   keys, shortest round-trip numbers, no insignificant whitespace, UTF-8, no BOM) with the hash
   field itself removed from `provenance` before serialization. Producers and consumers implement
@@ -102,12 +112,13 @@ interface PublicLensProjectionV1 {
 
   themes: Array<{                                   // ≤ 9, keys unique, shares sum ≤ 1.0001
     key: "feat" | "fix" | "docs" | "test" | "refactor" | "chore" | "perf" | "revert" | "other";
-    share: number;
-  }>;
+    share: number;                                  // the PRODUCER folds every other conventional-commit type
+  }>;                                               // (style, wip, deps, …) into "other" before export, because
+                                                    // ThemeMetric.key is an open string in Developer Lens
 
-  delivery?: {                                      // optional block; absent means not exported
-    mergedSamples: number;                          // integer
-    medianHoursToMerge: number | null;              // null = unavailable, never 0
+  delivery?: {                                      // NEW producer-computed block, not in PortableExportPayload today;
+    mergedSamples: number;                          // integer — absent block = not exported, never zeros
+    medianMergeHours: number | null;                // follows summary.medianMergeHours; null = unavailable, never 0
     openAtRangeEnd: number;                         // integer
     censored: boolean;                              // true when open work is excluded from the median
   };
@@ -119,10 +130,11 @@ interface PublicLensProjectionV1 {
     limitation: string;                             // ≤ 200
   }>;
 
-  coverage: {
-    score: number;                                  // 0..1
-    warnings: Array<{ code: CoverageWarningCode; display_text: string }>; // ≤ 8, closed registry
-  };
+  coverage: {                                       // counts follow PortableExportPayload.coverage
+    complete: number; partial: number; unavailable: number; total: number;   // integers
+    score: number;                                  // 0..1, from summary.coverageScore
+    warnings: Array<{ code: CoverageWarningCode; display_text: string }>; // ≤ 8, closed registry; the producer
+  };                                                // maps its free-text DashboardMeta.warnings onto codes
 
   provenance: {
     producer: "developer-lens";
@@ -146,10 +158,12 @@ label matches Developer Lens's alias pattern and is not a real repository name t
 lists; `dna` keys are exactly the six; sums; `narratives` contain no URL, `@handle`, or `#number`;
 `generatedAt` is not in the future relative to the snapshot's `generatedAt`.
 
-Producer command shape (Developer Lens decides the exact CLI):
+Producer command shape (Developer Lens decides the exact CLI; today's headless entry point is
+`npm run export:artifacts`, and a local export already requires `--source local` together with
+`--acknowledge-redaction`):
 
 ```powershell
-npm run export:profile -- --range 12m --repository-redaction private-aliases --acknowledge-redaction --out .commitatlas/lens-profile.v1.json
+npm run export:artifacts -- --source local --acknowledge-redaction --range 12m --repository-redaction private-aliases --artifact lens-projection --out .commitatlas
 ```
 
 The producer runs the same post-write privacy scan its headless export runs today and refuses to
@@ -169,11 +183,10 @@ hand-written schema. The vocabulary is the Lab's: a decision is `reject`, `revis
 
 ```ts
 interface ResearchFindingProjectionV1 {
-  schemaVersion: "ResearchFindingProjection.v1";
-  dataClass: "C0" | "C1";                           // what the artifact contains (shared rule)
-  evidenceGrade: "C0" | "C1" | "C2";                // the Lab's evidence ladder; producers emit C0 only until the Lab's activation preconditions hold
-  subjectClass: "software-system" | "repository" | "instrument" | "aggregate-window";
-  generatedAt: string;                              // UTC, "Z"
+  schema_version: "ResearchFindingProjection.v1";
+  classification: "C0" | "C1";                      // the single data-class axis, as in the existing summary; C0 only until the Lab's activation preconditions hold
+  subject_class: "software-system" | "repository" | "instrument" | "aggregate-window";
+  generated_at: string;                             // UTC, "Z"
 
   finding: {
     id: string;                                     // ≤ 40, e.g. "wbc1"
@@ -182,13 +195,13 @@ interface ResearchFindingProjectionV1 {
   };
 
   methods: {                                        // codes from the closed MethodCode registry; display_name is the registry's text
-    baseline: { code: MethodCode; display_name: string };
-    candidate: { code: MethodCode; display_name: string };
+    baseline: { method_code: MethodCode; display_name: string };
+    candidate: { method_code: MethodCode; display_name: string };
   };
 
   decision: {
     outcome: "reject" | "revise_once" | "benchmarked";
-    retainedFallback: MethodCode | null;            // must equal methods.baseline.code when outcome is "reject"
+    retained_fallback: MethodCode | null;           // must equal methods.baseline.method_code when outcome is "reject"
     summary: string;                                // ≤ 240
   };
 
@@ -196,7 +209,7 @@ interface ResearchFindingProjectionV1 {
     key: MetricCode;
     label: string;                                  // the registry's text
     unit: "rate" | "count_per_year" | "hours" | "count" | "ratio";
-    betterWhen: "lower" | "higher";
+    better_when: "lower" | "higher";
     baseline: { status: "measured"; value: number } | { status: "unavailable" };
     candidate: { status: "measured"; value: number } | { status: "unavailable" };
   }>;                                               // value bounds by unit: rate/ratio 0..1; count 0..1_000_000 integer;
@@ -204,15 +217,15 @@ interface ResearchFindingProjectionV1 {
 
   gates?: Array<{ code: GateCode; label: string; passed: boolean | null }>; // ≤ 8, ordered, closed registry; null = not evaluated
 
-  limitations: Array<{ code: LimitationCode; display_text: string }>;          // 1..8, closed registry
-  unsupportedClaims: Array<{ code: UnsupportedClaimCode; display_text: string }>; // 1..8, closed registry
+  limitations: Array<{ code: LimitationCode; display_text: string }>;           // 1..8, closed registry
+  unsupported_claims: Array<{ code: UnsupportedClaimCode; display_text: string }>; // 1..8, closed registry
 
   provenance: {
     producer: "developer-lens-lab";
-    labCommit: string;                              // 40 hex
-    productContractCommit: string;                  // 40 hex
-    bundleHash: string;                             // "sha256:" + 64 hex
-    publicReportUrl?: string;                       // allowlisted literal host only (the Developer Lens Pages origin)
+    source_lab_commit: string;                      // 40 hex
+    source_product_contract_commit: string;         // 40 hex
+    bundle_hash: string;                            // "sha256:" + 64 hex
+    public_url?: string;                            // allowlisted literal host only (the Developer Lens Pages origin)
   };
 }
 ```
@@ -224,7 +237,7 @@ gates), `LimitationCode` and `UnsupportedClaimCode` (the four-plus-four the curr
 carries). Registries grow only by schema version. Consumer semantic checks: every display text
 equals the registry text for its code; an `outcome` of `reject` requires at least one metric where
 the candidate is measurably worse under `betterWhen` or at least one gate with `passed: false`;
-`retainedFallback` equals the baseline code on `reject` and is `null` otherwise; `benchmarked`
+`retained_fallback` equals the baseline code on `reject` and is `null` otherwise; `benchmarked`
 never renders the word "promoted"; an `unavailable` metric renders as `NOT MEASURED`, never as
 zero; the renderer branches its labels and motion on `outcome` (EXPANSION_PLAN §7).
 
@@ -266,7 +279,12 @@ against; if the two disagree, the producer's schema wins and the consumer re-ven
 - Developer Lens may choose different field names when it publishes; this document follows its
   existing payload names to minimize that, and the consumer is written against the published
   schema, not this file.
-- The Lab's WB-C1 gates and metrics are currently literal in the CommitAtlas validator; loosening
-  them to bounded enums must not drop the semantic cross-checks that make a `reject` verifiable.
-- The owner's C1 projection is a public artifact once committed to the profile repository. Aliases
-  reduce identification but are not anonymity; the `privacyNote` is rendered, not hidden.
+- The WB-C1 metrics are currently literal in the CommitAtlas validator (the seven gates exist
+  only in the Lab's `DeveloperLensMethodTrialView.v1`, which CommitAtlas does not vendor);
+  loosening the literals to bounded enums must not drop the semantic cross-checks that make a
+  `reject` verifiable.
+- The owner's C1 projection is a public artifact once committed to the profile repository, and
+  git history retains it after removal. Aliases reduce identification but are not anonymity; the
+  `privacyNote` is rendered, not hidden. That publication is the one irreversible step in the
+  programme and is gated by the owner's answer to EXPANSION_PLAN Q-9; until then the lens scenes
+  render only from the C0 showcase fixture.
