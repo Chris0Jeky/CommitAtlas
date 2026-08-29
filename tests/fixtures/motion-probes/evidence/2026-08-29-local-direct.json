@@ -1,0 +1,69 @@
+{
+  "date": "2026-08-29",
+  "scope": "synthetic fixture server only; no GitHub, Camo, Worker, or deployed URL was contacted",
+  "runner": {
+    "playwrightVersion": "1.57.0",
+    "capture": "tests/motion-probes/capture.mjs",
+    "framesMs": [0, 500, 2000, 5000],
+    "motionThreshold": { "changedPixels": 16, "totalChannelDelta": 1000 }
+  },
+  "results": [
+    {
+      "engine": "Chromium 143.0.7499.4",
+      "probe": "css-breathe",
+      "embed": "img",
+      "reducedMotion": false,
+      "pairs": [[5367, 748141], [5367, 748191], [6733, 1613328]],
+      "verdict": "animates"
+    },
+    {
+      "engine": "Chromium 143.0.7499.4",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "reducedMotion": false,
+      "pairs": [[5396, 743627], [5396, 743727], [6730, 1613316]],
+      "verdict": "animates"
+    },
+    {
+      "engine": "Chromium 143.0.7499.4",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "reducedMotion": true,
+      "pairs": [[0, 0], [0, 0], [0, 0]],
+      "reducedMotionControlPixels": 59173,
+      "verdict": "frozen at frame zero"
+    },
+    {
+      "engine": "Firefox 144.0.2",
+      "probe": "css-enter",
+      "embed": "img",
+      "reducedMotion": false,
+      "pairs": [[3, 90], [0, 0], [0, 0]],
+      "verdict": "frozen at frame zero"
+    },
+    {
+      "engine": "Firefox 144.0.2",
+      "probe": "css-enter",
+      "embed": "picture",
+      "reducedMotion": false,
+      "pairs": [[0, 0], [0, 0], [0, 0]],
+      "verdict": "frozen at frame zero"
+    },
+    {
+      "engine": "WebKit 26.0",
+      "probe": "css-enter",
+      "embed": "img",
+      "reducedMotion": false,
+      "pairs": [[25, 964], [0, 0], [0, 0]],
+      "verdict": "frozen at frame zero"
+    },
+    {
+      "engine": "WebKit 26.0",
+      "probe": "css-enter",
+      "embed": "picture",
+      "reducedMotion": false,
+      "pairs": [[0, 0], [0, 0], [0, 0]],
+      "verdict": "frozen at frame zero"
+    }
+  ]
+}

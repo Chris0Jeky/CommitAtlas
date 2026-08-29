@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CommitAtlas motion probe</title>
+  <style>
+    html { background: #292923; color: #edf0e2; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 18px; }
+    main { max-width: 720px; margin: 0 auto; }
+    .meta { color: #c6cbb9; font-size: 13px; margin: 0 0 12px; }
+    img { display: block; width: 100%; height: auto; background: #11110f; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="meta" id="meta"></p>
+    <div id="mount"></div>
+  </main>
+  <script>
+    const probes = new Set([
+      "css-enter", "css-breathe", "css-plot", "css-from-state-control",
+      "smil-transform", "smil-plot", "smil-animate-motion", "css-offset-path",
+    ]);
+    const parameters = new URLSearchParams(location.search);
+    const [pathEmbed, pathProbe] = location.pathname.split("/").filter(Boolean);
+    const probe = pathProbe || parameters.get("probe") || "css-enter";
+    const embed = pathEmbed || parameters.get("embed") || "img";
+    const assetBase = parameters.get("assetBase") || "/";
+    if (!probes.has(probe) || !["img", "picture"].includes(embed)) throw new Error("Invalid probe query");
+    const source = new URL(`${probe}.svg`, new URL(assetBase, location.href)).href;
+    const mount = document.querySelector("#mount");
+    document.querySelector("#meta").textContent = `${probe} · ${embed} · ${source}`;
+    if (embed === "img") {
+      mount.innerHTML = `<img src="${source}" alt="${probe} motion probe">`;
+    } else {
+      // The reduced-motion source is deliberately present for the GitHub-sanitizer measurement.
+      // All variants name the same synthetic asset so this local fixture isolates the embed path.
+      const reducedSource = new URL("reduced-motion-control.svg", new URL(assetBase, location.href)).href;
+      mount.innerHTML = `<picture><source media="(prefers-reduced-motion: reduce)" srcset="${reducedSource}"><source media="(prefers-color-scheme: dark)" srcset="${source}"><img src="${source}" alt="${probe} motion probe"></picture>`;
+    }
+  </script>
+</body>
+</html>
