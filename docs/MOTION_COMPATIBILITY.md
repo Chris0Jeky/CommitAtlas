@@ -1,12 +1,33 @@
 # Motion compatibility evidence
 
-Status: Phase 0 is in progress. This ledger records measured outcomes only; an unfilled cell is
-**not tested**, never a compatibility claim. The fixture set and local capture tool live in
+Status: Phase 0 issue #113 is parked at the three-attempt ceiling on the WebKit hosted-discovery
+blocker tracked in [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). This ledger records
+measured outcomes only; an unfilled cell is **not tested**, never a compatibility claim. The fixture
+set and local capture tool live in
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
 repository for the GitHub/Camo part of the protocol is
 [Chris0Jeky/commitatlas-motion-probes](https://github.com/Chris0Jeky/commitatlas-motion-probes),
 currently pinned for the complete hosted capture at
 `039a0370b1a52fb6135e4414e04a11bff7ba21d0`.
+
+## Answer first — 2026-08-29 checkpoint
+
+- Direct Worker evidence is complete for this checkpoint: all 48 normal-motion rows and all three
+  reduced-motion controls have five frames and a continuous WebM with more than three seconds of
+  measured visible browser time. The compact recording ledger is
+  [`2026-08-29-worker-recordings.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-worker-recordings.json).
+- The pinned GitHub diagnostic completed 14 rows: Chromium and Firefox each measured raw and Camo
+  `css-enter` through both `<img>` and `<picture>`, both reduced-motion sources, and the known
+  positive control. `css-enter` and the positive control animate; both reduced sources are frozen
+  at frame zero. The compact partial ledger is
+  [`2026-08-29-github-hosted-diagnostic.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-github-hosted-diagnostic.json).
+- WebKit hosted delivery is **not tested**. Discovery stopped before any WebKit row because the
+  pinned raw SVG decoded as `400x133` rather than the harness's exact `360x120` identity guard.
+  Issue #180 owns the one bounded identity-versus-intrinsic-sizing observation and one seven-row
+  WebKit retry. If that passes, resume #113 at the unfiltered three-engine raw/Camo matrix.
+- No final backend is selected. Provisional only: `web` prefers CSS with an explicit SMIL override
+  for `offset-path`; Studio keeps CSS and SMIL selectable; `github-readme` remains `none` / unselected
+  until #113 completes.
 
 ## Protocol
 
@@ -124,9 +145,12 @@ pixel pair. The reports were captured with Playwright 1.57.0 (Chromium 143.0.749
 cache, CSP, CORS, CORP, and `nosniff` headers; their exact response values and hashes are in the
 ledger.
 
-The required three-second recordings were **not** captured. Therefore #113 remains open, the
-GitHub Camo matrix is still pending, and these five-frame results do not justify a CSS or SMIL
-backend default yet.
+The matching recording ledger adds one WebM for each of those 48 normal rows and for one
+reduced-motion `<picture>` row per engine. All 51 files have the WebM EBML marker, a recorded byte
+size and SHA-256, and more than three seconds of measured visible browser time. Raw PNG and WebM
+artifacts remain preserved outside the repository; the tracked ledger contains no binary or
+absolute machine path. The harness does not parse container duration, so it makes no media-duration
+claim beyond that measured browser interval.
 
 ## Direct Worker matrix — 2026-08-29
 
@@ -134,47 +158,65 @@ backend default yet.
 | --- | --- | --- | --- | --- | --- | --- |
 | Direct hosted Worker SVG with production SVG CSP | CSS/SMIL animate; `css-offset-path` frozen | CSS/SMIL animate; `css-offset-path` frozen | static control selected | complete | complete | complete |
 
-The five-frame matrix above is complete for the direct Worker host only. The required three-second
-recordings remain outstanding, so the hosted result is evidence, not release authorization.
+The five-frame and recording matrix above is complete for the direct Worker host only. It is
+evidence for that delivery target, not release authorization for GitHub README delivery.
 
-## Measured GitHub README delivery and source selection — 2026-08-29
+## Measured GitHub README diagnostic — 2026-08-29
 
-GitHub's rendered scratch-repository README retained all nine relative SVG images and both
-`<picture>` sources. In Chrome, temporary `prefers-reduced-motion: reduce` emulation selected the
-relative static gold control; resetting to `no-preference` selected the dark-scheme SMIL fallback.
-The temporary browser emulation was reset after the observation. The compact evidence is in
+The measured page is the exact synthetic scratch commit
+`039a0370b1a52fb6135e4414e04a11bff7ba21d0`, not a moving branch. The bounded diagnostic selected
+seven rows per engine: raw and Camo `css-enter` in `<img>` and `<picture>`, one reduced-motion
+`<picture>` for each host, and one known-animating public widget as a positive control. Chromium
+143.0.7499.4 and Firefox 144.0.2 completed all 14 rows with five load-relative frames and a WebM
+measuring more than three seconds of visible browser time for every row.
+
+In both engines, raw and Camo `css-enter` animates in both embed forms, the positive control
+animates, and both reduced-motion sources are frozen at frame zero. Each raw URL retained the full
+scratch commit pin and redirected to a final `200 image/svg+xml` response; each Worker embed was
+selected through `camo.githubusercontent.com` while retaining the Worker URL as its canonical
+identity. The partial compact ledger records those identities, final response body hashes, request
+gate counts and timings, frame hashes and differences, verdicts, and WebM metadata.
+
+WebKit 26.0 failed closed during discovery before a target request was armed or any frame was
+accepted. Its pinned raw `css-enter` image reported natural dimensions `400x133`, while the harness
+required the fixture's exact `360x120`; therefore the ledger marks WebKit **not tested**, not frozen
+or unsupported. Issue [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180) separates content
+identity from intrinsic presentation sizing before one bounded WebKit retry.
+
+An earlier Chrome-only structural observation remains in
 [`2026-08-29-github-readme-chromium.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-github-readme-chromium.json).
+It established README sanitizer retention and reduced-source selection against an older scratch
+pin; the new pinned diagnostic supersedes its “no pixel sequence or recording” limitation for the
+14 rows above.
 
-The relative repository images are **not Camo-delivered**. The rendered DOM points at a
-`github.com/.../raw/main/...` URL, which redirects to `raw.githubusercontent.com`; the inspected
-response was `image/svg+xml` with
-`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`. Camo remains the
-delivery path to test for the absolute Worker URL embedded in the README. This observation proves
-sanitizer retention and source selection in Chrome, not animation: no GitHub-page pixel sequence
-or recording has been captured yet.
+## Matrix checkpoint and exact resume
 
-## Matrix still required
-
-| Host | Plain `<img>` | `<picture>` / colour scheme | Reduced-motion source retained | Chromium | Firefox | WebKit |
+| Host | Plain `<img>` | `<picture>` / colour scheme | Reduced-motion source | Chromium | Firefox | WebKit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Local direct | partial rows above | partial rows above | local selection: yes | partial | partial | partial |
-| Worker SVG in GitHub README through Camo | not tested | not tested | not tested | not tested | not tested | not tested |
-| Relative scratch-repository SVG in GitHub README through GitHub raw | loaded; motion not tested | sources retained; motion not tested | selected static source in Chrome | structural/source-selection only | not tested | not tested |
+| Direct hosted Worker SVG with production SVG CSP | all probes measured | all probes measured | static control frozen | complete | complete | complete |
+| Worker SVG in GitHub README through Camo | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | **not tested** |
+| Relative scratch SVG through GitHub raw | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | **not tested** |
 
-The remaining matrix must run every probe under every host/embed/engine combination, retain the
-five-frame captures and a three-second recording, and record the source URL, response headers,
-browser version, capture hashes, and pixel-pair results. The scratch repository is public and
-synthetic; the Worker test uses the same SVG CSP behaviour as
-`svgResponse(..., { inlineStyles: true })` in `lib/http.ts`. The Worker five-frame capture is
-complete; only its three-second recording and the GitHub Camo matrix remain here.
+The full hosted plan is still 35 rows per engine (105 total): every probe under both hosted paths
+and embed forms, two reduced-motion controls, and the positive control. After #180 proves identity
+independently of WebKit intrinsic sizing, rerun only its seven-row diagnostic once. If green, resume
+#113 at that unfiltered three-engine raw/Camo plan. The direct Worker matrix does not need rerunning.
 
-## Interpretation and next decision
+## PR #77 reconciliation and provisional selection
 
-The earlier PR #77 three-rect result remains a lead, not a replacement for this matrix. Current
-motion coverage is still incomplete for release: direct Worker motion has now been pixel-measured
-across all engines and embed forms, but its required three-second recordings and the GitHub/Camo
-matrix are absent. GitHub raw delivery and Chrome source selection are observed, but GitHub-page
-animation is not. The readable static base in every probe only makes a frozen outcome inspectable.
-These rows do **not** reconcile PR #77 or justify a default CSS or SMIL backend for `github-readme`,
-`web`, or `studio`; #125 must choose those defaults only after the recording and hosted
-GitHub/Camo rows are complete.
+PR #77's Chrome observation remains valid only for its exact minimal three-rect CSS-translation
+probe. Its record did not pin a browser build, request URL or headers, load-relative timestamps,
+captures, or a GitHub/Camo delivery path. It supports the existing readable-frame-zero and
+fill-`none` delay guards, but cannot establish that Chromium or GitHub universally freezes CSS
+animation.
+
+The new direct-Worker recordings show motion for every tested CSS and SMIL probe in Chromium
+143.0.7499.4, Firefox 144.0.2, and WebKit 26.0 except `css-offset-path`, which is frozen in all
+three. The partial hosted run shows raw and Camo `css-enter` motion in Chromium and Firefox for
+both `<img>` and `<picture>`. Because WebKit hosted identity and sizing is blocked by #180 and the
+full 105-row matrix has not run, the `github-readme` backend remains unselected.
+
+The only responsible interim guidance is provisional: `web` prefers CSS with an explicit SMIL
+override for `offset-path`; Studio keeps both backends selectable; `github-readme` remains
+`none` / unselected until #113 completes. This checkpoint does not change executable motion
+defaults. Issue #125 owns that choice after the final evidence.

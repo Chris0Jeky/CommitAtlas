@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -20,6 +21,15 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDirectory = path.join(testDirectory, "fixtures", "motion-probes");
+const evidenceDirectory = path.join(fixtureDirectory, "evidence");
+const sha256Pattern = /^[a-f0-9]{64}$/u;
+const readEvidence = async (name) => JSON.parse(await readFile(path.join(evidenceDirectory, name), "utf8"));
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const verdictCounts = (rows) => Object.fromEntries(
+  [...new Set(rows.map((row) => row.verdict))]
+    .sort()
+    .map((verdict) => [verdict, rows.filter((row) => row.verdict === verdict).length]),
+);
 const probes = {
   "css-enter.svg": ["@keyframes enter", "animation: enter", "READABLE AT ZERO"],
   "css-breathe.svg": ["@keyframes breathe", "animation: breathe", "72"],
@@ -293,4 +303,159 @@ test("completed GitHub output requires every frame, measured verdict, and record
   assert.doesNotThrow(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }));
   rows[0] = { ...rows[0], video: { ...rows[0].video, measuredVisibleDurationMs: 2_999 } };
   assert.throws(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }), /at least three seconds/);
+});
+
+test("direct Worker recording ledger pins all 51 synthetic WebMs", async () => {
+  const ledger = await readEvidence("2026-08-29-worker-recordings.json");
+  const versions = {
+    chromium: "143.0.7499.4",
+    firefox: "144.0.2",
+    webkit: "26.0",
+  };
+  const expectedReportHashes = [
+    "e4022d47bc41ddc46da412abd2451d2beb5d5fccf71d89e823e34bff25b688a9",
+    "a3cd06cf9f104f249ac64c4b85501ba987a40cc9b8bb0c8e5efa8fe42908e6ab",
+    "f2d7b2202c5fe941c849814696035c9622f3329d7944a513589d8e4dd471cbd7",
+    "f19f62f7e3f50d418425af7d795c648017a1c837ef7de999e79ecdbfafa974a3",
+    "9196d39274e8ff2d849e7bc99b3fd1e9bbec1e583227765c21f4ea29b017188a",
+    "4ede16374670ce2b684f678e6fa8155fbc6af7809b66e770d9d44d06469266e9",
+  ];
+
+  assert.equal(ledger.status, "complete-direct-worker-recording-ledger");
+  assert.doesNotMatch(JSON.stringify(ledger), /C:[\\/]+Users[\\/]/ui);
+  assert.equal(ledger.rowCount, 51);
+  assert.equal(ledger.rows.length, 51);
+  assert.equal(ledger.rows.filter((row) => row.media === "no-preference").length, 48);
+  assert.equal(ledger.rows.filter((row) => row.media === "reduce").length, 3);
+  assert.equal(ledger.reports.length, 6);
+  assert.deepEqual(ledger.reports.map((report) => report.sha256), expectedReportHashes);
+  assert.equal(new Set(ledger.reports.map((report) => report.relativeArtifact)).size, 6);
+  assert.equal(new Set(ledger.rows.map((row) => row.relativeArtifact)).size, 51);
+  assert.equal(new Set(ledger.rows.map((row) => row.sha256)).size, 51);
+  const identities = new Set(ledger.rows.map((row) => [
+    row.engine, row.probe, row.embed, row.media,
+  ].join("|")));
+  const normalProbes = [
+    "css-enter", "css-breathe", "css-plot", "css-from-state-control",
+    "smil-transform", "smil-plot", "smil-animate-motion", "css-offset-path",
+  ];
+  const expectedIdentities = Object.keys(versions).flatMap((engine) => [
+    ...normalProbes.flatMap((probe) => ["img", "picture"].map(
+      (embed) => [engine, probe, embed, "no-preference"].join("|"),
+    )),
+    [engine, "css-breathe", "picture", "reduce"].join("|"),
+  ]).sort();
+  assert.equal(identities.size, 51);
+  assert.deepEqual([...identities].sort(), expectedIdentities);
+
+  for (const row of ledger.rows) {
+    assert.equal(row.version, versions[row.engine]);
+    assert.ok(["img", "picture"].includes(row.embed));
+    assert.ok(["no-preference", "reduce"].includes(row.media));
+    assert.ok(["animates", "frozen at frame zero", "frozen at from-state"].includes(row.verdict));
+    assert.ok(row.measuredVisibleDurationMs > 3_000);
+    assert.equal(row.magicHex, "1a45dfa3");
+    assert.ok(row.fileSizeBytes > 0);
+    assert.match(row.sha256, sha256Pattern);
+    assert.equal(path.isAbsolute(row.relativeArtifact), false);
+    assert.doesNotMatch(row.relativeArtifact, /^[A-Za-z]:/u);
+  }
+
+  for (const aggregate of ledger.engineAggregates) {
+    const engineRows = ledger.rows.filter((row) => row.engine === aggregate.engine);
+    const lines = engineRows.map((row) => [
+      row.engine, row.version, row.probe, row.embed, row.media, row.relativeArtifact, row.sha256,
+    ].join("\t") + "\n").sort().join("");
+    assert.equal(aggregate.version, versions[aggregate.engine]);
+    assert.equal(aggregate.rowCount, 17);
+    assert.deepEqual(aggregate.verdictCounts, { animates: 14, "frozen at frame zero": 3 });
+    assert.equal(aggregate.recordingAggregateSha256, sha256(lines));
+  }
+});
+
+test("hosted diagnostic ledger keeps WebKit explicitly outside the evidence", async () => {
+  const ledger = await readEvidence("2026-08-29-github-hosted-diagnostic.json");
+  const expectedPin = "039a0370b1a52fb6135e4414e04a11bff7ba21d0";
+  assert.equal(ledger.status, "partial");
+  assert.doesNotMatch(JSON.stringify(ledger), /C:[\\/]+Users[\\/]/ui);
+  assert.equal(ledger.scratchCommit, expectedPin);
+  assert.equal(ledger.page, `https://github.com/Chris0Jeky/commitatlas-motion-probes/blob/${expectedPin}/README.md`);
+  assert.deepEqual(ledger.frameTimesMs, [0, 250, 500, 2_000, 5_000]);
+  assert.deepEqual(ledger.selectedEngines, ["chromium", "firefox", "webkit"]);
+  assert.deepEqual(ledger.browserVersions, { chromium: "143.0.7499.4", firefox: "144.0.2" });
+  assert.equal(ledger.plan.length, 7);
+  assert.equal(ledger.rows.length, 14);
+  assert.equal(ledger.rawPartialReport.completedRowCount, 14);
+  assert.equal(
+    ledger.rawPartialReport.sha256,
+    "a39ee42176336c3bee1104d22d156a4006133193501cd88c940b61761b134247",
+  );
+  assert.equal(new Set(ledger.rows.map((row) => row.identity)).size, 14);
+  assert.equal(new Set(ledger.rows.map((row) => row.video.relativeArtifact)).size, 14);
+  assert.equal(new Set(ledger.rows.map((row) => row.video.sha256)).size, 14);
+  const expectedIdentitySuffixes = [
+    "github-raw-relative|css-enter|img|no-preference",
+    "github-raw-relative|css-enter|picture|no-preference",
+    "github-raw-relative|css-breathe|picture|reduce",
+    "worker-camo|css-enter|img|no-preference",
+    "worker-camo|css-enter|picture|no-preference",
+    "worker-camo|css-breathe|picture|reduce",
+    "known-positive-control|positive-control|img|no-preference",
+  ];
+  assert.deepEqual(
+    ledger.rows.map((row) => row.identity).sort(),
+    ["chromium", "firefox"].flatMap(
+      (engine) => expectedIdentitySuffixes.map((suffix) => `${engine}|${suffix}`),
+    ).sort(),
+  );
+
+  for (const engine of ["chromium", "firefox"]) {
+    assert.deepEqual(
+      verdictCounts(ledger.rows.filter((row) => row.engine === engine)),
+      { animates: 5, "frozen at frame zero": 2 },
+    );
+  }
+
+  for (const row of ledger.rows) {
+    assert.ok(["chromium", "firefox"].includes(row.engine));
+    assert.equal(row.version, ledger.browserVersions[row.engine]);
+    assert.ok(["animates", "frozen at frame zero", "frozen at from-state"].includes(row.verdict));
+    assert.doesNotThrow(() => new URL(row.currentSource));
+    assert.doesNotThrow(() => new URL(row.canonicalSource));
+    assert.equal(row.finalResponse.status, 200);
+    assert.match(row.finalResponse.contentType, /^image\/svg\+xml(?:;|$)/u);
+    assert.match(row.finalResponse.bodySha256, sha256Pattern);
+    assert.equal(row.requestGate.interceptionCount, 1);
+    for (const timing of [
+      row.requestGate.loadTimestampMs,
+      row.requestGate.loadToFirstFrameMs,
+      row.requestGate.loadToFirstFrameCompleteMs,
+    ]) assert.ok(Number.isFinite(timing) && timing >= 0);
+    assert.deepEqual(row.frames.map((frame) => frame.targetTimeMs), [0, 250, 500, 2_000, 5_000]);
+    assert.equal(row.frames.length, 5);
+    for (const frame of row.frames) assert.match(frame.sha256, sha256Pattern);
+    assert.equal(row.differences.length, 4);
+    assert.ok(row.video.measuredVisibleDurationMs > 3_000);
+    assert.equal(row.video.magicHex, "1a45dfa3");
+    assert.ok(row.video.fileSizeBytes > 0);
+    assert.match(row.video.sha256, sha256Pattern);
+    assert.equal(path.isAbsolute(row.video.relativeArtifact), false);
+  }
+
+  const aggregateLines = ledger.rows.map((row) => [
+    row.identity,
+    row.finalResponse.bodySha256,
+    ...row.frames.map((frame) => frame.sha256),
+    row.video.sha256,
+  ].join("\t") + "\n").sort().join("");
+  assert.equal(ledger.artifactAggregateSha256, sha256(aggregateLines));
+  assert.equal(ledger.failure.engine, "webkit");
+  assert.equal(ledger.failure.version, "26.0");
+  assert.equal(ledger.failure.status, "not-tested");
+  assert.equal(ledger.failure.phase, "discovery");
+  assert.deepEqual(ledger.failure.expectedNaturalDimensions, [360, 120]);
+  assert.deepEqual(ledger.failure.actualNaturalDimensions, [400, 133]);
+  assert.equal(ledger.failure.trackingIssue, "#180");
+  assert.match(ledger.failure.message, /must decode the synthetic 360x120 fixture/u);
+  assert.equal(ledger.rows.some((row) => row.engine === "webkit"), false);
 });
