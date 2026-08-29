@@ -5,7 +5,8 @@ Status: Phase 0 is in progress. This ledger records measured outcomes only; an u
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
 repository for the GitHub/Camo part of the protocol is
 [Chris0Jeky/commitatlas-motion-probes](https://github.com/Chris0Jeky/commitatlas-motion-probes),
-currently pinned for this evidence at `b61bfa7`.
+currently pinned for the complete hosted capture at
+`039a0370b1a52fb6135e4414e04a11bff7ba21d0`.
 
 ## Protocol
 
@@ -48,6 +49,30 @@ The cached Playwright 1.57.0 runner can instead be passed through `--playwright-
 Firefox/WebKit capture and `--reduced-motion` without changing `package.json` or `package-lock.json`.
 Capture artifacts are deliberately untracked; their compact, dated pixel evidence is committed in
 [`2026-08-29-local-direct.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-local-direct.json).
+
+Add `--record-video` to make each direct row one continuous Playwright context with a five-second
+WebM as well as the five PNG deadlines. Recording requires the supplied Playwright API path and an
+engine; the non-recording browser and CLI workflows above remain unchanged:
+
+```powershell
+$playwrightCli = 'C:\Users\jekyt\AppData\Local\npm-cache\_npx\0b9ff77863cb6e9f\node_modules\playwright\cli.js'
+node tests/motion-probes/capture.mjs --playwright-cli $playwrightCli --playwright-engine chromium --record-video --asset-base 'https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/' --host-label worker-direct --out C:\temp\commitatlas-motion-worker-recorded
+```
+
+The pinned GitHub-page harness measures both repository-relative GitHub-raw images and absolute
+Worker images rewritten through Camo. It launches each selected engine once, but gives every row a
+fresh context with service workers blocked, records a continuous WebM, and takes element PNGs at
+absolute 0, 250, 500, 2,000, and 5,000 ms deadlines after image decoding. It writes
+`report.partial.json` after every completed row and creates `report.json` only after the entire
+selected-engine plan succeeds:
+
+```powershell
+node tests/motion-probes/capture-github.mjs --playwright-cli $playwrightCli --playwright-engine chromium --out C:\temp\commitatlas-motion-github-chromium
+```
+
+Use a new output directory for every engine/run. Raw reports retain browser-observed response
+headers for reproducibility and must remain untracked; only reviewed, synthetic-safe compact
+evidence belongs in the repository.
 
 ## Measured local-direct results — 2026-08-29
 
