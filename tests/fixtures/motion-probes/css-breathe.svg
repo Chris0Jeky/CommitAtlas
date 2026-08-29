@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">CSS breathe probe</title>
+  <desc id="desc">A permanent reading with a looping CSS emphasis ring.</desc>
+  <style>
+    @keyframes breathe { 0%,100% { transform: scale(1); opacity: .05; } 50% { transform: scale(1.18); opacity: 1; } }
+    .ring { transform-box: fill-box; transform-origin: center; animation: breathe 2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .ring { animation: none !important; } }
+  </style>
+  <rect width="360" height="120" fill="#11110f"/>
+  <text x="24" y="28" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="15">CSS BREATHE · loop</text>
+  <circle cx="180" cy="73" r="26" fill="#58e6be"/>
+  <circle class="ring" cx="180" cy="73" r="37" fill="none" stroke="#58e6be" stroke-width="4"/>
+  <text x="180" y="78" fill="#11110f" font-family="system-ui,sans-serif" font-size="17" font-weight="700" text-anchor="middle">72</text>
+</svg>

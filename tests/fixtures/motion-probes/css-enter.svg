@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">CSS enter probe</title>
+  <desc id="desc">A readable baseline and a labelled panel that enters upward after a short delay.</desc>
+  <style>
+    @keyframes enter { from { transform: translateY(12px); } to { transform: translateY(0); } }
+    .enter { transform-box: fill-box; transform-origin: center; animation: enter 380ms ease-out 60ms; }
+    @media (prefers-reduced-motion: reduce) { .enter { animation: none !important; } }
+  </style>
+  <rect width="360" height="120" fill="#11110f"/>
+  <path d="M24 94H336" stroke="#7d836f" stroke-width="2"/>
+  <text x="24" y="28" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="15">CSS ENTER · fill none + delay</text>
+  <g class="enter">
+    <rect x="86" y="46" width="188" height="36" rx="4" fill="#d9ff4a"/>
+    <text x="180" y="69" fill="#11110f" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="middle">READABLE AT ZERO</text>
+  </g>
+</svg>

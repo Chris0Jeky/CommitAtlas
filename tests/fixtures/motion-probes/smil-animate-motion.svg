@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">SMIL animateMotion probe</title>
+  <desc id="desc">A readable route with a moving SMIL marker.</desc>
+  <rect width="360" height="120" fill="#11110f"/>
+  <text x="24" y="25" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="15">SMIL animateMotion</text>
+  <path d="M35 84C105 36 244 36 325 84" fill="none" stroke="#58e6be" stroke-opacity=".4" stroke-width="4"/>
+  <circle r="8" fill="#ffd166">
+    <animateMotion dur="2s" repeatCount="indefinite" path="M35 84C105 36 244 36 325 84"/>
+  </circle>
+  <text x="180" y="109" fill="#a9c1d5" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">ROUTE IS PRESENT AT ZERO</text>
+</svg>
