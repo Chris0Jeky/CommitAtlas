@@ -484,13 +484,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   It was merged in PR #112 as `680886d`, with successful main CI run
   [33261722057](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33261722057) and successful
   Deploy run [33261802287](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33261802287).
+  Eighteen accepted post-merge review corrections then landed in PR #173 as `1da5fde`, with
+  successful main CI run
+  [33264954687](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33264954687) and successful
+  Deploy run [33265011752](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33265011752).
   [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) is the consumer-side specification of
   `PublicLensProjection.v1` and `ResearchFindingProjection.v1`. Tracking issue
   [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111) holds the dependency-ordered issue
   map across four milestones (P0 ground truth → P1 alive → P2 lens projections → P3 scenes,
-  findings, packs). The first executable slice is the Phase 0 measurement of animated SVG through
-  `<img>` on github.com, because this file's PR #77 record and public README widgets disagree
-  about whether CSS animation runs there. No code from the programme is on `main`.
+  findings, packs). The first executable support slice is #174's fixed synthetic Worker/CSP probe
+  route; #113 then measures animated SVG through `<img>` on github.com, because this file's PR #77
+  record and public README widgets disagree about whether CSS animation runs there. No motion
+  behaviour from the programme is on `main`.
 
 ## Clean resume commands (from checkout root)
 
