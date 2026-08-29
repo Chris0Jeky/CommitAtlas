@@ -27,6 +27,10 @@ live portfolio Studio.
 >
 > **npm publication is still not claimed.** The packages are built and pack-verified but are not on
 > the registry, and the README will not say otherwise until a registry lookup succeeds.
+>
+> **What comes next** — ambient and cinematic motion, a scene engine, and Developer Lens / Lab
+> projections — is planned in [docs/EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md) and tracked in
+> [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111). None of it is shipped yet.
 
 ## What changed in v0.4.0
 

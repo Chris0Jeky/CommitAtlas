@@ -19,6 +19,9 @@ tokens must never enter rendered fixtures, logs, query strings, or tracked files
 - `worker/`: Cloudflare/Sites entry point and runtime bindings.
 - `tests/`: built-output smoke tests; focused unit fixtures arrive beside the first data module.
 - `docs/PROJECT_STATE.md`: live shipped/next/blocked state; read it before implementation.
+- `docs/EXPANSION_PLAN.md`: the accepted programme (motion system, scene engine, projections) and
+  its issue map; read it before touching motion, scenes, or a cross-project seam.
+- `docs/PROJECTION_CONTRACTS.md`: consumer-side spec for the Developer Lens and Lab projections.
 
 ## Product invariants
 

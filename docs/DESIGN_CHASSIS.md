@@ -160,9 +160,15 @@ all animation and the result is a complete page, not a degraded one.
 | M6 | Survey beam | 70px gradient sweeps the flagship plate, 7s linear; the card beneath never moves |
 | M7 | Acquisition failure | needle hunts, stutters, falls back to −90°; the lamp never lights and the plate reads NO SIGNAL from frame zero |
 | M8 | Evidence drawer | up 12px and settle, 260ms, `cubic-bezier(.2,.9,.3,1)`; ESC or click outside closes |
-| — | Survey parallax | the grid drifts at 0.85× scroll via a scroll-driven CSS timeline, off below 768px. Browsers without `scroll()` timelines get a static grid, which is the reduced-motion state anyway |
+| M9 | Survey parallax | the grid drifts at 0.85× scroll via a scroll-driven CSS timeline, off below 768px. Browsers without `scroll()` timelines get a static grid, which is the reduced-motion state anyway. (`globals.css` heads its motion block "M1…M9"; this is the ninth) |
 
 The card SVGs keep `motion=none|subtle` and stay transform-only. Nothing here changes them.
+
+The [expansion programme](./EXPANSION_PLAN.md) plans to move that boundary — `ambient` and
+`cinematic` profiles, the M-series ported into the cards through a CSS/SMIL motion compiler — only
+after Phase 0 has measured how github.com actually renders animated SVG through `<img>`. Until a
+slice ships, the sentence above stays true, and any new motion ref a scene introduces is recorded
+in the table here as M10 onward.
 
 ## Where this departs from the handoff
 
