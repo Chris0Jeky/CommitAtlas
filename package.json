@@ -59,7 +59,7 @@
     "pack:static": "npm --prefix packages/static run pack:dry-run",
     "test:packaging": "node --test tests/package-packaging.test.mjs",
     "test:action": "npm run build:action && node --test action/action.test.mjs && git diff --exit-code -- action/dist",
-    "test:deploy-tooling": "node --test tests/deployed-origin.test.mjs",
+    "test:deploy-tooling": "node --test tests/deployed-origin.test.mjs tests/deployment-verification.test.mjs",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs tests/discoverability.test.mjs",
     "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
