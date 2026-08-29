@@ -476,6 +476,19 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   publication and Marketplace listing remain separate owner decisions. v0.4.0 is released and the
   release path tracked by #102 is complete.
 
+## Next programme (planned, not shipped)
+
+- **2026-08-29: the expansion programme is documented and seeded.** [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)
+  reconciles the owner's brief against the code, fixes the motion model, scene engine, delivery
+  path, and cross-project projection seams, and records twelve decisions plus six owner questions.
+  [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) is the consumer-side specification of
+  `PublicLensProjection.v1` and `ResearchFindingProjection.v1`. Tracking issue
+  [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111) holds the dependency-ordered issue
+  map across four milestones (P0 ground truth → P1 alive → P2 lens projections → P3 scenes,
+  findings, packs). The first executable slice is the Phase 0 measurement of animated SVG through
+  `<img>` on github.com, because this file's PR #77 record and public README widgets disagree
+  about whether CSS animation runs there. No code from the programme is on `main`.
+
 ## Clean resume commands
 
 ```powershell

@@ -164,6 +164,12 @@ all animation and the result is a complete page, not a degraded one.
 
 The card SVGs keep `motion=none|subtle` and stay transform-only. Nothing here changes them.
 
+The [expansion programme](./EXPANSION_PLAN.md) plans to move that boundary — `ambient` and
+`cinematic` profiles, the M-series ported into the cards through a CSS/SMIL motion compiler — only
+after Phase 0 has measured how github.com actually renders animated SVG through `<img>`. Until a
+slice ships, the sentence above stays true, and any new motion ref a scene introduces is recorded
+in the table here as M9 onward.
+
 ## Where this departs from the handoff
 
 Both deliberate, both recorded so the next reader does not "fix" them back:

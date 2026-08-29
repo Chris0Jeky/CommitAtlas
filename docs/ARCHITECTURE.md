@@ -149,6 +149,18 @@ real-repository validation, or production monitoring. A future method trial must
 versioned producer artifact and update the pinned consumer deliberately; silent semantic drift
 fails closed.
 
+## Planned expansion (not shipped)
+
+The accepted programme in [EXPANSION_PLAN.md](./EXPANSION_PLAN.md) extends this architecture in
+three additive steps: a `none | subtle | ambient | cinematic` motion model compiled to CSS or SMIL
+by a backend chosen from measured github.com behaviour; a scene engine in `@commit-atlas/svg`
+(primitives, seeded determinism, budgets, a per-scene contract test harness) feeding new
+`/api/v1/scenes/<id>.svg` routes and `scene-<id>.svg` static artifacts; and two validated,
+fail-closed projections — `PublicLensProjection.v1` from Developer Lens and
+`ResearchFindingProjection.v1` from Developer Lens Lab — specified in
+[PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md). Until a slice ships, everything above this
+heading remains the complete description of the product.
+
 ## Project configuration
 
 ```json
