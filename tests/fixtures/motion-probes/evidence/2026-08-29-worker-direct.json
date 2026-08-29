@@ -1,0 +1,1461 @@
+{
+  "date": "2026-08-29",
+  "scope": "direct deployed Worker only; fixed synthetic motion fixtures; no private or user data",
+  "deployment": {
+    "baseUrl": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/",
+    "mergeCommit": "f3d192f",
+    "observedAt": "2026-08-29"
+  },
+  "runner": {
+    "playwrightVersion": "1.57.0",
+    "browsers": {
+      "chromium": "Chromium 143.0.7499.4",
+      "firefox": "Firefox 144.0.2",
+      "webkit": "WebKit 26.0"
+    },
+    "framesMs": [
+      0,
+      250,
+      500,
+      2000,
+      5000
+    ],
+    "motionThreshold": {
+      "changedPixels": 16,
+      "totalChannelDelta": 1000
+    },
+    "pairNotation": "changed pixels / total channel delta"
+  },
+  "rawReports": [
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-chromium",
+      "engine": "Chromium 143.0.7499.4",
+      "reducedMotion": false,
+      "reportJsonSha256": "74647e391d665cfbad80da600216948d4c9aedc62fcf57faffc64b3688f28690",
+      "reportPartialJsonSha256": "74647e391d665cfbad80da600216948d4c9aedc62fcf57faffc64b3688f28690",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 80,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "9e3987c859e2a008939c4539d9d8a0d99bed156e52ce26e975f0cf538ff0fff3"
+      }
+    },
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-chromium-reduced",
+      "engine": "Chromium 143.0.7499.4",
+      "reducedMotion": true,
+      "reportJsonSha256": "82c17f4d8f55f6f05a7a0eb01b7a6e02ebe155614328d3979bd1ce7101163645",
+      "reportPartialJsonSha256": "82c17f4d8f55f6f05a7a0eb01b7a6e02ebe155614328d3979bd1ce7101163645",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 5,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "19f7f27171308a99a1a8379f4a6c5baa571dd8303c37923fea649fcd54d20280"
+      }
+    },
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-firefox",
+      "engine": "Firefox 144.0.2",
+      "reducedMotion": false,
+      "reportJsonSha256": "ef95170329e7e27267168dd8e519f1385b30d22cb460a569433de3c3bb15bf57",
+      "reportPartialJsonSha256": "ef95170329e7e27267168dd8e519f1385b30d22cb460a569433de3c3bb15bf57",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 80,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "3e711cd531f2d425ed4dd39f8b1e326cf75de2dba0ad3d89822d428e239825dc"
+      }
+    },
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-firefox-reduced",
+      "engine": "Firefox 144.0.2",
+      "reducedMotion": true,
+      "reportJsonSha256": "92374250cc3a16b700d3c8413e9fa840701763e7a27b5b935e0be8c211274779",
+      "reportPartialJsonSha256": "92374250cc3a16b700d3c8413e9fa840701763e7a27b5b935e0be8c211274779",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 5,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "149ee6eddf62f4469887fb1cf1346e6c94f2cc183c4c32adbd178c8985a900ff"
+      }
+    },
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-webkit",
+      "engine": "WebKit 26.0",
+      "reducedMotion": false,
+      "reportJsonSha256": "e2fd35bc033663db324282f8156703f57f280b6804666600e6413e24442d4818",
+      "reportPartialJsonSha256": "e2fd35bc033663db324282f8156703f57f280b6804666600e6413e24442d4818",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 80,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "4a15d3a60ce2a407e8042dde8a7aeac8dcf5f0267b8714a91eb3e109181a4fb4"
+      }
+    },
+    {
+      "directory": "evidence/CommitAtlas/issue-113/2026-08-29-worker-webkit-reduced",
+      "engine": "WebKit 26.0",
+      "reducedMotion": true,
+      "reportJsonSha256": "99b88e38351b26a72c354442d26c7a4dc74cf55fdade18e494962f12fc9adbe0",
+      "reportPartialJsonSha256": "99b88e38351b26a72c354442d26c7a4dc74cf55fdade18e494962f12fc9adbe0",
+      "pngAggregate": {
+        "algorithm": "sha256",
+        "count": 5,
+        "format": "UTF-8 lines: <relative POSIX PNG path> SP <PNG SHA-256> LF, sorted lexicographically",
+        "rootSha256": "43c2345a5008022b38857d65ebe76c918b4aa0e7e5804441bae529bc8988f44b"
+      }
+    }
+  ],
+  "pixelMatrix": {
+    "rowCount": 48,
+    "results": [
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-enter",
+        "embed": "img",
+        "pairs": [
+          [
+            14496,
+            6279634
+          ],
+          [
+            8863,
+            3522746
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-enter",
+        "embed": "picture",
+        "pairs": [
+          [
+            8968,
+            3560618
+          ],
+          [
+            8968,
+            3560618
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-breathe",
+        "embed": "img",
+        "pairs": [
+          [
+            3653,
+            200216
+          ],
+          [
+            4843,
+            726193
+          ],
+          [
+            5412,
+            748408
+          ],
+          [
+            6736,
+            1617941
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-breathe",
+        "embed": "picture",
+        "pairs": [
+          [
+            3613,
+            183404
+          ],
+          [
+            4945,
+            770849
+          ],
+          [
+            5492,
+            784130
+          ],
+          [
+            6738,
+            1617989
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1090,
+            328065
+          ],
+          [
+            1103,
+            324279
+          ],
+          [
+            2133,
+            652575
+          ],
+          [
+            4244,
+            1306228
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1052,
+            316845
+          ],
+          [
+            1171,
+            346975
+          ],
+          [
+            2202,
+            677859
+          ],
+          [
+            4339,
+            1338744
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-from-state-control",
+        "embed": "img",
+        "pairs": [
+          [
+            14215,
+            803522
+          ],
+          [
+            14212,
+            1243610
+          ],
+          [
+            14216,
+            2245314
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-from-state-control",
+        "embed": "picture",
+        "pairs": [
+          [
+            14215,
+            827145
+          ],
+          [
+            14212,
+            1205182
+          ],
+          [
+            14216,
+            2260119
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-transform",
+        "embed": "img",
+        "pairs": [
+          [
+            1102,
+            429340
+          ],
+          [
+            1121,
+            431159
+          ],
+          [
+            1213,
+            439597
+          ],
+          [
+            1260,
+            474024
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-transform",
+        "embed": "picture",
+        "pairs": [
+          [
+            1136,
+            433064
+          ],
+          [
+            1111,
+            427861
+          ],
+          [
+            1206,
+            436918
+          ],
+          [
+            1260,
+            468367
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1090,
+            329466
+          ],
+          [
+            1101,
+            324082
+          ],
+          [
+            2163,
+            664997
+          ],
+          [
+            4295,
+            1323702
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1029,
+            308425
+          ],
+          [
+            1167,
+            346130
+          ],
+          [
+            2182,
+            668773
+          ],
+          [
+            4255,
+            1309749
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-animate-motion",
+        "embed": "img",
+        "pairs": [
+          [
+            1562,
+            678542
+          ],
+          [
+            1557,
+            661388
+          ],
+          [
+            1558,
+            674875
+          ],
+          [
+            1562,
+            679790
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "smil-animate-motion",
+        "embed": "picture",
+        "pairs": [
+          [
+            1567,
+            686305
+          ],
+          [
+            1570,
+            665946
+          ],
+          [
+            1571,
+            680092
+          ],
+          [
+            1563,
+            681132
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-offset-path",
+        "embed": "img",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      },
+      {
+        "engine": "Chromium 143.0.7499.4",
+        "probe": "css-offset-path",
+        "embed": "picture",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-enter",
+        "embed": "img",
+        "pairs": [
+          [
+            7307,
+            3063134
+          ],
+          [
+            7307,
+            3063134
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-enter",
+        "embed": "picture",
+        "pairs": [
+          [
+            7651,
+            3105368
+          ],
+          [
+            7651,
+            3105368
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-breathe",
+        "embed": "img",
+        "pairs": [
+          [
+            3703,
+            215035
+          ],
+          [
+            4991,
+            809947
+          ],
+          [
+            5622,
+            827433
+          ],
+          [
+            6695,
+            1598361
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-breathe",
+        "embed": "picture",
+        "pairs": [
+          [
+            3711,
+            226059
+          ],
+          [
+            5011,
+            818669
+          ],
+          [
+            5657,
+            831805
+          ],
+          [
+            6682,
+            1591102
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1090,
+            324017
+          ],
+          [
+            1139,
+            335606
+          ],
+          [
+            2158,
+            656128
+          ],
+          [
+            4351,
+            1335500
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1027,
+            300199
+          ],
+          [
+            1214,
+            358364
+          ],
+          [
+            2225,
+            676105
+          ],
+          [
+            4253,
+            1305834
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-from-state-control",
+        "embed": "img",
+        "pairs": [
+          [
+            14227,
+            909823
+          ],
+          [
+            14216,
+            1195507
+          ],
+          [
+            14216,
+            2197951
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-from-state-control",
+        "embed": "picture",
+        "pairs": [
+          [
+            14216,
+            843398
+          ],
+          [
+            14216,
+            1299467
+          ],
+          [
+            14216,
+            2159887
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-transform",
+        "embed": "img",
+        "pairs": [
+          [
+            1116,
+            443950
+          ],
+          [
+            1100,
+            437850
+          ],
+          [
+            1217,
+            459503
+          ],
+          [
+            1260,
+            487631
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-transform",
+        "embed": "picture",
+        "pairs": [
+          [
+            1107,
+            438859
+          ],
+          [
+            1116,
+            447311
+          ],
+          [
+            1205,
+            467413
+          ],
+          [
+            1250,
+            495390
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1048,
+            309026
+          ],
+          [
+            1169,
+            341728
+          ],
+          [
+            2228,
+            679220
+          ],
+          [
+            4285,
+            1318321
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1075,
+            318791
+          ],
+          [
+            1131,
+            330842
+          ],
+          [
+            2138,
+            648609
+          ],
+          [
+            4300,
+            1317899
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-animate-motion",
+        "embed": "img",
+        "pairs": [
+          [
+            1547,
+            665380
+          ],
+          [
+            1546,
+            656984
+          ],
+          [
+            1552,
+            671617
+          ],
+          [
+            1556,
+            675168
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "smil-animate-motion",
+        "embed": "picture",
+        "pairs": [
+          [
+            1558,
+            669918
+          ],
+          [
+            1565,
+            664975
+          ],
+          [
+            1563,
+            672619
+          ],
+          [
+            1556,
+            672367
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-offset-path",
+        "embed": "img",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      },
+      {
+        "engine": "Firefox 144.0.2",
+        "probe": "css-offset-path",
+        "embed": "picture",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-enter",
+        "embed": "img",
+        "pairs": [
+          [
+            9351,
+            3872870
+          ],
+          [
+            9351,
+            3872870
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-enter",
+        "embed": "picture",
+        "pairs": [
+          [
+            9000,
+            3784536
+          ],
+          [
+            9000,
+            3784536
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-breathe",
+        "embed": "img",
+        "pairs": [
+          [
+            3681,
+            200172
+          ],
+          [
+            4964,
+            765891
+          ],
+          [
+            5538,
+            782723
+          ],
+          [
+            6774,
+            1635127
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-breathe",
+        "embed": "picture",
+        "pairs": [
+          [
+            3673,
+            193596
+          ],
+          [
+            4985,
+            779144
+          ],
+          [
+            5549,
+            794160
+          ],
+          [
+            6768,
+            1630426
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1077,
+            326800
+          ],
+          [
+            1129,
+            333157
+          ],
+          [
+            2164,
+            662405
+          ],
+          [
+            4340,
+            1332446
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1102,
+            331079
+          ],
+          [
+            1044,
+            304386
+          ],
+          [
+            2118,
+            645095
+          ],
+          [
+            4252,
+            1302064
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-from-state-control",
+        "embed": "img",
+        "pairs": [
+          [
+            14126,
+            863572
+          ],
+          [
+            14126,
+            1164300
+          ],
+          [
+            14216,
+            2310498
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-from-state-control",
+        "embed": "picture",
+        "pairs": [
+          [
+            14126,
+            791718
+          ],
+          [
+            14126,
+            1236154
+          ],
+          [
+            14216,
+            2310498
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-transform",
+        "embed": "img",
+        "pairs": [
+          [
+            1094,
+            423757
+          ],
+          [
+            1130,
+            437673
+          ],
+          [
+            1207,
+            437694
+          ],
+          [
+            1269,
+            470216
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-transform",
+        "embed": "picture",
+        "pairs": [
+          [
+            1140,
+            431708
+          ],
+          [
+            1105,
+            422810
+          ],
+          [
+            1219,
+            433999
+          ],
+          [
+            1276,
+            460598
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-plot",
+        "embed": "img",
+        "pairs": [
+          [
+            1134,
+            347836
+          ],
+          [
+            1126,
+            330686
+          ],
+          [
+            2179,
+            666604
+          ],
+          [
+            4311,
+            1322890
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-plot",
+        "embed": "picture",
+        "pairs": [
+          [
+            1028,
+            315202
+          ],
+          [
+            1098,
+            327741
+          ],
+          [
+            5137,
+            1558154
+          ],
+          [
+            3012,
+            901056
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-animate-motion",
+        "embed": "img",
+        "pairs": [
+          [
+            1567,
+            684695
+          ],
+          [
+            1558,
+            663808
+          ],
+          [
+            1558,
+            679715
+          ],
+          [
+            1562,
+            682606
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "smil-animate-motion",
+        "embed": "picture",
+        "pairs": [
+          [
+            1568,
+            682666
+          ],
+          [
+            1563,
+            664295
+          ],
+          [
+            1569,
+            688033
+          ],
+          [
+            1568,
+            688304
+          ]
+        ],
+        "verdict": "animates"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-offset-path",
+        "embed": "img",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      },
+      {
+        "engine": "WebKit 26.0",
+        "probe": "css-offset-path",
+        "embed": "picture",
+        "pairs": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "verdict": "frozen at frame zero"
+      }
+    ],
+    "reducedMotion": {
+      "rowCount": 3,
+      "results": [
+        {
+          "engine": "Chromium 143.0.7499.4",
+          "probe": "smil-transform",
+          "embed": "picture",
+          "pairs": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "verdict": "frozen at frame zero",
+          "reducedMotionControlPixels": 59173
+        },
+        {
+          "engine": "Firefox 144.0.2",
+          "probe": "smil-transform",
+          "embed": "picture",
+          "pairs": [
+            [
+              1,
+              32
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "verdict": "frozen at frame zero",
+          "reducedMotionControlPixels": 59596
+        },
+        {
+          "engine": "WebKit 26.0",
+          "probe": "smil-transform",
+          "embed": "picture",
+          "pairs": [
+            [
+              8,
+              259
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "verdict": "frozen at frame zero",
+          "reducedMotionControlPixels": 59256
+        }
+      ]
+    }
+  },
+  "httpResponses": [
+    {
+      "probe": "css-enter",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "css-breathe",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-breathe.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"e0429e237bfe003d631e9159660c75e158070b0edcb81fac29607638d8fb1cf9\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "css-plot",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-plot.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"c533e9e5d94560e75a300032740c2243d7ccc7ac51553743474eea4827b62fad\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "css-from-state-control",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-from-state-control.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"1bee73ac9b77632bb22051d1af4a7ebc096b86cfbe9df9e991d5b4e3f6e93e24\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "smil-transform",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/smil-transform.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"5d52d03fa68a61f829f6999cbbdf7d61ddfd50252f84a02435617e8f4a3608f7\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "smil-plot",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/smil-plot.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"bb1789a596a7f906b292089264e7d0173275d384a721e874986719e8fe79238a\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "smil-animate-motion",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/smil-animate-motion.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"4c9098bfe2e36e1344e5e54e578c3ba9eadb43e8244fe6a86310923f302b7fd4\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "css-offset-path",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-offset-path.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"321996180fe4bc3a7177d392697f971d6608011f473d2aaffe4281bba9ac08e9\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    },
+    {
+      "probe": "reduced-motion-control",
+      "url": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/reduced-motion-control.svg",
+      "status": 200,
+      "contentType": "image/svg+xml; charset=utf-8",
+      "cacheControl": "public, max-age=60, s-maxage=300",
+      "etag": "W/\"b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55\"",
+      "contentSecurityPolicy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; sandbox",
+      "accessControlAllowOrigin": "*",
+      "crossOriginResourcePolicy": "cross-origin",
+      "xContentTypeOptions": "nosniff"
+    }
+  ],
+  "notMeasured": [
+    "required three-second recordings",
+    "GitHub Camo delivery matrix",
+    "animation pixel sequence on github.com README"
+  ]
+}

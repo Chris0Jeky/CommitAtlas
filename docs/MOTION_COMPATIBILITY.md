@@ -67,6 +67,38 @@ Reduced-motion picture selection was separately measured in Chromium: the static
 source was selected (`59,173` exact `#ffd166` pixels) and all four capture pairs were `0/0`.
 That establishes the local fixture and runner path only.
 
+## Measured direct Worker delivery — 2026-08-29
+
+Answer first: through the deployed Worker SVG CSP, every CSS and SMIL probe animates in both
+`<img>` and `<picture>` embeds in Chromium 143.0.7499.4, Firefox 144.0.2, and WebKit 26.0.
+The sole exception is `css-offset-path`, which is frozen in all six normal-motion rows. With
+`prefers-reduced-motion: reduce`, the `<picture>` source selects the static control in all three
+engines; its four frame pairs are `0/0` (Chromium: 59,173 control pixels; Firefox: 59,596;
+WebKit: 59,256).
+
+The complete five-frame direct-Worker pixel matrix is recorded in
+[`2026-08-29-worker-direct.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-worker-direct.json):
+all 48 normal rows include the `0, 250, 500, 2,000, and 5,000 ms` captures and each adjacent
+pixel pair. The reports were captured with Playwright 1.57.0 (Chromium 143.0.7499.4, Firefox
+144.0.2, WebKit 26.0) against
+`https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/`, deployed from merge
+`f3d192f`. All nine fixed URLs returned `200 image/svg+xml; charset=utf-8` with the production
+cache, CSP, CORS, CORP, and `nosniff` headers; their exact response values and hashes are in the
+ledger.
+
+The required three-second recordings were **not** captured. Therefore #113 remains open, the
+GitHub Camo matrix is still pending, and these five-frame results do not justify a CSS or SMIL
+backend default yet.
+
+## Direct Worker matrix — 2026-08-29
+
+| Host | Plain `<img>` | `<picture>` / colour scheme | Reduced-motion source retained | Chromium | Firefox | WebKit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Direct hosted Worker SVG with production SVG CSP | CSS/SMIL animate; `css-offset-path` frozen | CSS/SMIL animate; `css-offset-path` frozen | static control selected | complete | complete | complete |
+
+The five-frame matrix above is complete for the direct Worker host only. The required three-second
+recordings remain outstanding, so the hosted result is evidence, not release authorization.
+
 ## Measured GitHub README delivery and source selection — 2026-08-29
 
 GitHub's rendered scratch-repository README retained all nine relative SVG images and both
@@ -88,23 +120,23 @@ or recording has been captured yet.
 | Host | Plain `<img>` | `<picture>` / colour scheme | Reduced-motion source retained | Chromium | Firefox | WebKit |
 | --- | --- | --- | --- | --- | --- | --- |
 | Local direct | partial rows above | partial rows above | local selection: yes | partial | partial | partial |
-| Direct hosted Worker SVG with production SVG CSP | not tested | not tested | not tested | not tested | not tested | not tested |
 | Worker SVG in GitHub README through Camo | not tested | not tested | not tested | not tested | not tested | not tested |
 | Relative scratch-repository SVG in GitHub README through GitHub raw | loaded; motion not tested | sources retained; motion not tested | selected static source in Chrome | structural/source-selection only | not tested | not tested |
 
 The remaining matrix must run every probe under every host/embed/engine combination, retain the
-four captures and a three-second recording, and record the source URL, response headers, browser
-version, capture hashes, and pixel-pair results. The scratch repository is public and synthetic;
-the Worker test must use the same SVG CSP behaviour as `svgResponse(..., { inlineStyles: true })`
-in `lib/http.ts`.
+five-frame captures and a three-second recording, and record the source URL, response headers,
+browser version, capture hashes, and pixel-pair results. The scratch repository is public and
+synthetic; the Worker test uses the same SVG CSP behaviour as
+`svgResponse(..., { inlineStyles: true })` in `lib/http.ts`. The Worker five-frame capture is
+complete; only its three-second recording and the GitHub Camo matrix remain here.
 
 ## Interpretation and next decision
 
 The earlier PR #77 three-rect result remains a lead, not a replacement for this matrix. Current
-motion coverage is incomplete and confounded: each engine/embed conclusion comes from one probe,
-and motion has only been pixel-measured on the loopback fixture server. GitHub raw delivery and
-Chrome source selection are now observed, but GitHub-page animation is not. The evidence therefore
-cannot establish either engine or embed path as the cause of a motion result. The readable static
-base in every probe only makes a frozen outcome inspectable. These rows do **not** reconcile PR #77
-or justify a default CSS or SMIL backend for `github-readme`, `web`, or `studio`; #125 must choose
-those defaults only after the hosted GitHub/Camo and Worker rows are complete.
+motion coverage is still incomplete for release: direct Worker motion has now been pixel-measured
+across all engines and embed forms, but its required three-second recordings and the GitHub/Camo
+matrix are absent. GitHub raw delivery and Chrome source selection are observed, but GitHub-page
+animation is not. The readable static base in every probe only makes a frozen outcome inspectable.
+These rows do **not** reconcile PR #77 or justify a default CSS or SMIL backend for `github-readme`,
+`web`, or `studio`; #125 must choose those defaults only after the recording and hosted
+GitHub/Camo rows are complete.
