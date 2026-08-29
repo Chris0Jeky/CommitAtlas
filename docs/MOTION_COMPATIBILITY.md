@@ -75,10 +75,11 @@ Add `--record-video` to make each direct row one continuous Playwright context w
 WebM as well as the five PNG deadlines. Recording requires the supplied Playwright API path and an
 engine; the non-recording browser and CLI workflows above remain unchanged. The report verifies
 WebM magic, byte size, and SHA-256. `measuredVisibleDurationMs` is browser time, not a parsed media
-duration, and the report states that boundary explicitly:
+duration, and the report states that boundary explicitly. Set
+`COMMITATLAS_PLAYWRIGHT_CLI` to the pinned Playwright package's absolute `cli.js` path, then run:
 
 ```powershell
-$playwrightCli = 'C:\Users\jekyt\AppData\Local\npm-cache\_npx\0b9ff77863cb6e9f\node_modules\playwright\cli.js'
+$playwrightCli = $env:COMMITATLAS_PLAYWRIGHT_CLI
 node tests/motion-probes/capture.mjs --playwright-cli $playwrightCli --playwright-engine chromium --record-video --asset-base 'https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/' --host-label worker-direct --out C:\temp\commitatlas-motion-worker-recorded
 ```
 
