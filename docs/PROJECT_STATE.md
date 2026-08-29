@@ -1,6 +1,6 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-28 (v0.4.0 released, production and profile evidence current)
+Last verified: 2026-08-29 (v0.4.0 released, production and profile evidence current)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
@@ -481,6 +481,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - **2026-08-29: the expansion programme is documented and seeded.** [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)
   reconciles the owner's brief against the code, fixes the motion model, scene engine, delivery
   path, and cross-project projection seams, and records fourteen decisions plus nine owner questions.
+  It was merged in PR #112 as `680886d`, with successful main CI run
+  [33261722057](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33261722057) and successful
+  Deploy run [33261802287](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/33261802287).
   [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) is the consumer-side specification of
   `PublicLensProjection.v1` and `ResearchFindingProjection.v1`. Tracking issue
   [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111) holds the dependency-ordered issue
@@ -489,10 +492,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `<img>` on github.com, because this file's PR #77 record and public README widgets disagree
   about whether CSS animation runs there. No code from the programme is on `main`.
 
-## Clean resume commands
+## Clean resume commands (from checkout root)
 
 ```powershell
-Set-Location 'C:\Users\Cristian3\OneDrive - Middlesex University\Desktop\repos\CommitAtlas'
 git fetch --all --prune
 git status --short --branch
 git rev-parse HEAD
