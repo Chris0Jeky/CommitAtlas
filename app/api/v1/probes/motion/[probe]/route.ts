@@ -9,6 +9,8 @@ export async function GET(
   context: { params: Promise<{ probe: string }> },
 ): Promise<Response> {
   try {
+    if (new URL(request.url).search) throw new InputError("motion probes do not accept query parameters");
+
     const { probe } = await context.params;
     if (!probe.endsWith(".svg")) throw new InputError("unknown motion probe");
 

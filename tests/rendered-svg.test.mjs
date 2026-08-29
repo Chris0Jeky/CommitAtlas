@@ -55,6 +55,14 @@ test("routes fixed motion probe filenames through the built Worker", async () =>
   assert.equal(extensionless.headers.get("cache-control"), "no-store");
 });
 
+test("rejects query variants for built motion probes as bounded JSON", async () => {
+  const response = await request("/api/v1/probes/motion/css-enter.svg?cachebust=1");
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.equal((await response.json()).error.code, "invalid_input");
+});
+
 test("keeps SVG security headers and ETag values identical for a matching 304", async () => {
   const path = "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none";
   const first = await request(path);
