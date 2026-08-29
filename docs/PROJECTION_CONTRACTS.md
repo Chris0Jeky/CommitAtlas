@@ -40,8 +40,9 @@ promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
   Developer Lens's data charter and the Lab's data policy: C0 invented synthetic, C1
   low-identifiability aggregates after suppression, C2 local identifiers and provenance
   (local-only, never exported), C3/C4/X never leave a process. There is no separate "evidence
-  grade". Every artifact on both seams carries one `data_class`/`dataClass` field whose value is
-  C0 or C1 and which describes both the artifact and the evidence it summarizes; C2 and above can
+  grade". Lens artifacts carry `dataClass`; finding artifacts carry `classification`; neither
+  seam uses `data_class`. Each value is C0 or C1 and describes both the artifact and the evidence
+  it summarizes; C2 and above can
   never appear. Developer Lens's `public` sink permits C0 only, so anything CommitAtlas hosts or
   vendors for the Studio is C0. An owner's personal lens projection is C1; whether it may be
   published at all is the owner's decision (EXPANSION_PLAN Q-9), it is never committed to
@@ -59,7 +60,7 @@ promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
   its display text (as the method-trial summary does today), so a producer cannot change a label
   without a schema change and a consumer cannot render text it has not reviewed.
 - **Bounds.** Every string has a maximum length; every number is finite and bounded; every array
-  has a maximum length; shares sum to at most `1.0001`.
+  has a maximum length; each share is finite and in `0..1`, and shares sum to at most `1.0001`.
 - **Freshness.** `generatedAt` is a canonical UTC `Z` timestamp and is mandatory on both seams.
   The age policy in EXPANSION_PLAN §8 applies to the lens seam only, because a lens projection
   describes a moving window of the owner's activity. A research finding is immutable pinned
@@ -110,13 +111,14 @@ interface PublicLensProjectionV1 {
     reviews: number;                                // integer
   }>;
 
-  themes: Array<{                                   // ≤ 9, keys unique, shares sum ≤ 1.0001
+  themes: Array<{                                   // ≤ 9, keys unique, each share 0..1, sum ≤ 1.0001
     key: "feat" | "fix" | "docs" | "test" | "refactor" | "chore" | "perf" | "revert" | "other";
-    share: number;                                  // the PRODUCER folds every other conventional-commit type
+    share: number;                                  // finite 0..1; the PRODUCER folds every other conventional-commit type
   }>;                                               // (style, wip, deps, …) into "other" before export, because
                                                     // ThemeMetric.key is an open string in Developer Lens
 
   delivery?: {                                      // NEW producer-computed block, not in PortableExportPayload today;
+                                                    // observed aggregate only: no per-stage or release evidence
     mergedSamples: number;                          // integer — absent block = not exported, never zeros
     medianMergeHours: number | null;                // follows summary.medianMergeHours; null = unavailable, never 0
     openAtRangeEnd: number;                         // integer
@@ -132,7 +134,7 @@ interface PublicLensProjectionV1 {
 
   coverage: {                                       // counts follow PortableExportPayload.coverage
     complete: number; partial: number; unavailable: number; total: number;   // integers
-    score: number;                                  // 0..1, from summary.coverageScore
+    score: number;                                  // producer-owned scale; current main serializes rounded 0..100
     warnings: Array<{ code: CoverageWarningCode; display_text: string }>; // ≤ 8, closed registry; the producer
   };                                                // maps its free-text DashboardMeta.warnings onto codes
 
@@ -151,11 +153,18 @@ interface PublicLensProjectionV1 {
 schema (for example `local_git_unavailable`, `private_activity_aggregated`, `line_changes_partial`,
 `range_truncated`); each code has exactly one display text and consumers render only that text.
 
+`coverage.score` is producer-owned. Developer Lens main currently serializes `coverageScore` as a
+rounded `0..100` value, while an earlier CommitAtlas draft described `0..1`; CommitAtlas must not
+invent a conversion or count formula. Developer Lens issue #304 must publish the canonical scale,
+semantics, and fixture vectors. Until that contract is pinned and resolved, CommitAtlas rejects the
+artifact rather than treating either scale as interchangeable.
+
 Consumer semantic checks beyond the schema: `dataClass`/`scope` agree; `dataClass: "C0"` implies
 `repositoryRedaction: "synthetic"` and every repository `disclosure` is `synthetic` (a C0 artifact
 may carry no real name and no alias of a real repository); a `private-alias` or `masked-alias`
 label matches Developer Lens's alias pattern and is not a real repository name the snapshot also
-lists; `dna` keys are exactly the six; sums; `narratives` contain no URL, `@handle`, or `#number`;
+lists; `dna` keys are exactly the six; every `themes[].share` is finite and in `0..1` and their
+sums are bounded; `narratives` contain no URL, `@handle`, or `#number`;
 `generatedAt` is not in the future relative to the snapshot's `generatedAt`.
 
 Producer command shape (Developer Lens decides the exact CLI; today's headless entry point is
@@ -197,7 +206,7 @@ interface ResearchFindingProjectionV1 {
   methods: {                                        // codes from the closed MethodCode registry; display_name is the registry's text
     baseline: { method_code: MethodCode; display_name: string };
     candidate: { method_code: MethodCode; display_name: string };
-  };
+  };                                                // baseline and candidate codes must be distinct
 
   decision: {
     outcome: "reject" | "revise_once" | "benchmarked";
@@ -207,9 +216,9 @@ interface ResearchFindingProjectionV1 {
 
   metrics: Array<{                                  // 1..6, keys unique, from the closed MetricCode registry
     key: MetricCode;
-    label: string;                                  // the registry's text
-    unit: "rate" | "count_per_year" | "hours" | "count" | "ratio";
-    better_when: "lower" | "higher";
+    label: string;                                  // exactly the registry's label for key
+    unit: "rate" | "count_per_year" | "hours" | "count" | "ratio"; // exactly the registry's unit
+    better_when: "lower" | "higher";              // exactly the registry's direction
     baseline: { status: "measured"; value: number } | { status: "unavailable" };
     candidate: { status: "measured"; value: number } | { status: "unavailable" };
   }>;                                               // value bounds by unit: rate/ratio 0..1; count 0..1_000_000 integer;
@@ -234,12 +243,21 @@ Every code is a closed registry published in the schema README with exactly one 
 `MethodCode` (starting from `rolling_median_mad`, `bocpd_gaussian`, `pelt_offline`), `MetricCode`
 (starting from `detection_rate`, `false_alerts_per_year`), `GateCode` (the Lab's seven ordered
 gates), `LimitationCode` and `UnsupportedClaimCode` (the four-plus-four the current summary
-carries). Registries grow only by schema version. Consumer semantic checks: every display text
-equals the registry text for its code; an `outcome` of `reject` requires at least one metric where
-the candidate is measurably worse under `betterWhen` or at least one gate with `passed: false`;
-`retained_fallback` equals the baseline code on `reject` and is `null` otherwise; `benchmarked`
-never renders the word "promoted"; an `unavailable` metric renders as `NOT MEASURED`, never as
-zero; the renderer branches its labels and motion on `outcome` (EXPANSION_PLAN §7).
+carries). Registries grow only by schema version. The initial `MetricCode` registry binds all
+three semantic fields, not just the code:
+
+| MetricCode | `label` | `unit` | `better_when` |
+| --- | --- | --- | --- |
+| `detection_rate` | `Detection rate` | `rate` | `higher` |
+| `false_alerts_per_year` | `False alerts per year` | `count_per_year` | `lower` |
+
+Consumer semantic checks reject a finding whose metric `label`, `unit`, or `better_when` differs
+from its registry entry, and reject equal baseline and candidate `method_code` values. Every
+display text equals the registry text for its code; an `outcome` of `reject` requires at least one
+metric where the candidate is measurably worse under `better_when` or at least one gate with
+`passed: false`; `retained_fallback` equals the baseline code on `reject` and is `null` otherwise;
+`benchmarked` never renders the word "promoted"; an `unavailable` metric renders as `NOT MEASURED`,
+never as zero; the renderer branches its labels and motion on `outcome` (EXPANSION_PLAN §7).
 
 Consumer configuration (`.commitatlas.json`, additive to version 1, ids only in v1 — see
 EXPANSION_PLAN D-08):
@@ -255,7 +273,9 @@ EXPANSION_PLAN D-08):
 | Producer | round-trip: build → serialize → parse against the published schema → deep-equal | C0 showcase / WB-C1 smoke |
 | Producer | privacy scan on the written file; denied-content fixtures are rejected | invented |
 | Consumer | golden: vendored fixture parses and renders byte-identically (snapshot test) | C0 |
-| Consumer | rejection: unknown field, unknown code, out-of-range value, stale `generatedAt`, over-size file, untracked or escaping path | invented |
+| Consumer | rejection: unknown field, unknown code, out-of-range value, over-size file, untracked or escaping path | invented |
+| Consumer (lens) | freshness: stale `generatedAt` follows the age policy and is rejected after the hard limit | invented |
+| Consumer (finding) | `generated_at` is immutable pinned evidence and is not rejected for age; replacement requires deliberate re-vendoring | C0 |
 | Both | contract canary: the consumer's vendored fixture hash equals the producer's published fixture hash at the pinned commit | C0 |
 
 ## Merge order
@@ -270,9 +290,12 @@ EXPANSION_PLAN D-08):
 5. Profile repository: owner runs the export, reviews it, commits it beside the config, extends the
    workflow's expected-artifact list.
 
-A consumer PR that lands before its producer's schema is published must vendor a fixture marked
-`"dataClass": "C0"` and `"scope": "public-demo"` that the producer's later schema is tested
-against; if the two disagree, the producer's schema wins and the consumer re-vendors.
+A lens consumer PR that lands before the `PublicLensProjection.v1` schema is published must vendor
+a fixture marked `"dataClass": "C0"` and `"scope": "public-demo"` that the producer's later
+schema is tested against. This pre-schema marker rule is lens-only. A finding consumer that lands
+before the `ResearchFindingProjection.v1` schema is published instead uses the finding shape with
+`"classification": "C0"`; it must not invent a `scope` field. If either published schema and its
+fixture disagree, the producer's schema wins and the consumer re-vendors.
 
 ## Compatibility risks
 

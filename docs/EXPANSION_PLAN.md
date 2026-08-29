@@ -136,8 +136,8 @@ Adapters stay where they are: `lib/svg-adapters.ts` for the hosted app and
 | --- | --- | --- | --- |
 | `none` | No keyframes, no `<animate*>`, no `<style>` | everywhere | The reduced-motion twin of every other profile; byte-for-byte the geometry of frame zero |
 | `subtle` | One-shot entrance only, ≤ 0.6s, transform-only | everywhere | Today's behaviour, kept for compatibility, unchanged: the whole-render guard from commit `16bc4e0` (no `both`/`backwards`, no opacity or scale `from` states) stays exactly as it is for this profile |
-| `ambient` | Indefinitely repeating slow textures: breathe, scan, orbit, plotter glint, particle drift, pending pulse | hosted + static | The intended default for profile graphics once Phase 0 selects a backend |
-| `cinematic` | A 10–20s repeating sequence: acquisition → nodes appear → scan → plot → rest → reset | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments |
+| `ambient` | Indefinitely repeating slow textures: breathe, scan, orbit, plotter glint, particle drift, pending pulse | hosted + static | Web and Studio may loop indefinitely; the `github-readme` target uses the bounded interval in D-15 |
+| `cinematic` | A 10–20s repeating sequence: acquisition → nodes appear → scan → plot → rest → reset | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments; the `github-readme` target uses the bounded interval in D-15 |
 
 Hosted routes accept `none|subtle|ambient` after Phase 1; the canonical query, ETag, last-good
 cache key, and CSP toggle all include the profile. Static config accepts all four.
@@ -146,7 +146,7 @@ cache key, and CSP toggle all include the profile. Static config accepts all fou
 
 | Primitive | Meaning | CSS encoding | SMIL encoding |
 | --- | --- | --- | --- |
-| `enter` | one-shot translate into place | keyframes, `fill-mode: none`, delay ≥ 60ms (the PR #77 lesson) | `animateTransform` with `begin` offset, `fill="remove"` |
+| `enter` | one-shot translate into place | offset entrance keyframe; final underlying/base geometry during delay; `fill-mode: none`, delay ≥ 60ms (the PR #77 lesson) | `animateTransform` with `begin` offset, `fill="remove"` |
 | `stagger` | index-based delay | `animation-delay` per class | `begin` offsets |
 | `breathe` | scale 1 → 1.045 loop | M4 | `animateTransform type="scale"` |
 | `scan` / `sweep` | marker or gradient traverses a field | M3 / M6 | `animateTransform type="translate"` or `animate` on `x` |
@@ -162,16 +162,19 @@ Rules the compiler enforces rather than documents:
 - Every primitive has both encodings or declares itself `unsupported` for a backend, in which case
   it is omitted — never approximated with a different effect.
 - A primitive that changes opacity or scale may only be attached to elements marked *decorative*;
-  elements carrying text or a reading may only translate, and their `from` state must be the
-  finished geometry. The existing guard (`packages/svg/tests/svg.test.mjs`, a whole-render regex
+  elements carrying text or a reading may only translate. For `enter`, the element's underlying or
+  base state remains the finished geometry during the delay; the offset entrance keyframe starts
+  only after that delay, with no `backwards` or `both` fill. The existing guard
+  (`packages/svg/tests/svg.test.mjs`, a whole-render regex
   rejecting `both`/`backwards` and any opacity/scale `from` state, added in `16bc4e0` after the
   invisible-header defect on the live profile) is **not** loosened: it keeps applying verbatim to
   every instrument card under `subtle`. For `ambient`/`cinematic` output the compiler enforces the
   same intent structurally — opacity/scale keyframes may exist only in the `<style>`/`<animate*>`
   blocks it emitted for elements it marked decorative, never with a `from` below the 0.35 floor —
   and a test proves that stripping those blocks yields the `none` render (the frame-zero test).
-- Every generated id, class, and keyframe name is namespaced per scene and per render so two
-  scenes inlined on one page cannot collide.
+- Every generated id, class, and keyframe name is prefixed by the validated caller-supplied
+  `instanceNamespace` and the scene id so two instances inlined on one page cannot collide; the
+  composition supplies stable, distinct namespaces for its scene slots.
 - Reduced motion: the CSS backend emits the `prefers-reduced-motion: reduce` override. SMIL cannot
   read a media query, so for the SMIL backend the reduced-motion answer is the `none` twin, and the
   Studio Markdown offers it through `<picture><source media="(prefers-reduced-motion: reduce)">`
@@ -185,6 +188,13 @@ One focal animation, one ambient texture, at most six concurrently looping group
 frame zero, reduced-motion path, no fact carried only by movement. The chassis's M-series stays
 the reference vocabulary (M1–M9, where M9 is the survey parallax `app/globals.css` already
 defines); scenes may add new refs (M10 onward) only through DESIGN_CHASSIS.
+
+Target behavior is explicit: web and Studio previews may keep their loops indefinite and expose
+the available replay/pause controls. A `github-readme` embed is an `<img>` with no pause/stop
+control, so D-15 bounds `ambient` and `cinematic` to a default 45-second interval, encoded with
+CSS `animation-iteration-count` and SMIL `repeatDur`; after the interval, the animation stops and
+the fill-none/base state leaves the output at frame zero. The reduced-motion twin remains the
+immediate static path for readers who request it.
 
 ### 5.4 Budgets (hypothesis until Phase 0 measures)
 
@@ -214,6 +224,7 @@ interface RenderContext {
   readonly motion: MotionProfile;                     // "none" | "subtle" | "ambient" | "cinematic"
   readonly backend: MotionBackend;                    // "css" | "smil", chosen per target from the matrix
   readonly layout: "wide" | "compact";
+  readonly instanceNamespace: string;                 // caller-supplied XML-safe namespace, e.g. [A-Za-z][A-Za-z0-9_-]{0,31}
   readonly seed: string;                              // sha256 of the canonical model JSON
 }
 
@@ -229,17 +240,26 @@ interface SceneDefinition<Model> {
 }
 ```
 
+Every `signature` scene requires a validated `lens` input and must carry the common
+`lens.coverage` and `lens.privacyNote` fields into its model and rendered frame, even when its
+scene-specific data uses only a subset of the projection. The accessibility contract covers every
+nondecorative data encoding — printed text and readings, geometry, colour, position, stroke, and
+motion state — not only the values printed as readings.
+
 Contract tests every scene must pass, written once in a shared harness and run per scene:
 
-1. Two renders of the same input are byte-identical; a one-field change in the model changes the
-   seed and the output.
+1. Two renders of the same model and `RenderContext` are byte-identical; a one-field change in the
+   model changes the seed and the output. A composition supplies stable, distinct
+   `instanceNamespace` slots to each scene instance.
 2. `motion: "none"` output equals the `ambient`/`cinematic` output with `<style>` and `<animate*>`
    nodes removed — the frame-zero guarantee, checked structurally.
 3. Well-formed XML; the shared injection fixture in every text field; no `script`, `foreignObject`,
-   `on*`, `href` to non-allowlisted hosts, `@import`, or `url(` references.
+   `on*`, `href` to non-allowlisted hosts, `@import`, or external/unknown references. The only
+   permitted `url(#...)` references are generated, validated targets in the same SVG and the same
+   `instanceNamespace`; all other URL references are rejected.
 4. Byte, animated-element, and looping-group budgets for the scene's class.
-5. `<title>` and `<desc>` carry every printed reading; the description of an unavailable state
-   says so.
+5. `<title>` and `<desc>` carry every nondecorative data encoding; the description of an
+   unavailable state says so.
 6. An "everything unavailable" fixture renders the explicit unavailable composition, not a blank
    or a healthy default.
 7. No `Date.now`, `Math.random`, or `crypto.randomUUID` in `packages/svg/src` — an ESLint
@@ -269,7 +289,7 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 | `constellation` | signature | `lens.repositories` (attention, activeWeeks, momentum, disclosure, language) | slow orbital rotation; a survey beam crosses the selected body | One lens per render (`attention`, `flow`, `continuity`), top 8–12 bodies; private aliases are dashed bodies; "attention ≠ impact" is printed |
 | `signature` | signature | `lens.dna`, `lens.archetype`, `lens.coverage` | radar draws itself; calibration ring turns | `DERIVED SIGNATURE · not a productivity score · coverage NN%` |
 | `craft-ring` | signature | `lens.themes` | segmented iris; segment glint | building / repairing / explaining / proving / refining / maintaining / optimising / reverting, plus an explicit `other` segment so a supplied share is never discarded or redistributed |
-| `delivery-loop` | signature | `lens.delivery`, `lens.summary` | particles traverse proposal → review → revision → merge → release | Censored and open work stay visibly incomplete |
+| `delivery-loop` | signature | `lens.delivery`, `lens.summary` | particles show the observed merged sample and its open/censored state; proposal, review, revision, and release are unobserved sockets | Censored and open work stay visibly incomplete; no stage or release evidence is inferred |
 | `narrative` | signature | `lens.narratives` | plotter underline; nothing else | Up to three bounded, evidence-bearing statements with their limitation line |
 | *(coverage, lens extension)* | instrument | `lens.coverage.warnings` | as Phase 1 | Adds the projection's own warnings and age to `evidence-coverage` |
 
@@ -280,7 +300,7 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 | `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; motion and labels branch on `decision.outcome` — `reject`: the candidate trace fades while the retained baseline stays lit, `BASELINE RETAINED`; `revise_once`: both traces stay lit with a dashed revision marker, `REVISE ONCE`; `benchmarked`: both stay lit, `BENCHMARKED · research evidence, not promotion` | Data class, decision, limitations, and unsupported claims in the frame; frame zero already prints the outcome word |
 | `nebula` | scene | contribution days, repositories, languages, releases; seed | twinkle on decorative stars only | Positions from the seed; changes only when the snapshot changes |
 | `spectrogram` | scene | per-project weekly commit series (new fetch, Q-7) plus daily totals | thin scan line | Bands per project, interference where projects overlap in a week; **parked** until Q-7 — the current snapshot has daily totals and category aggregates only, so no cross-project band can be observed today |
-| `system-weather` | signature | derived from snapshot trends (and `lens` if present) | atmosphere drift | Every line stamped `hypothesis`; it is a metaphor, not a measurement |
+| `system-weather` | scene | derived from snapshot trends (and `lens` if present) | atmosphere drift | Trends seed a metaphor only; every line is stamped `hypothesis`, never presented as a signature or measurement |
 | `pipeline-telemetry` | map | named-workflow CI plus its latest run's jobs (new fetch, Q-8) | packets through the observed job sequence; a failed job gets M7 | **Parked** until Q-8 — the snapshot records one overall workflow state, so stages cannot be drawn from it; the fallback composition is the single observed state, never invented stages |
 | `branch-river` | scene | needs branch/merge evidence CommitAtlas does not fetch today | flow particles | Blocked on a data decision (§14 Q-5) |
 | `contribution-city` | scene | projects, contribution days, releases, CI | windows light on active days; a beacon per release | Flagship spectacle; parallax only in `cinematic` |
@@ -293,11 +313,12 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 | --- | --- | --- |
 | `survey` | bone-white plates, graphite grid, hazard-orange markers, cold-cyan telemetry, plotter traces | scan, plot, beam |
 | `orbital` | deep ground, orbital rings, constellations, reticles | orbit, breathe, twinkle |
-| `spectral` | near-black ground, violet/cyan luminous gradients | flow, breathe |
+| `spectral` | near-black ground, theme-token-mapped luminous-gradient roles (no literal palette) | flow, breathe |
 | `terminal` | monospace, pixel structures, diagnostic displays | stagger, pulse, scan |
 
 A pack never introduces a colour that fails the chassis contrast floors for the active theme; the
-pack supplies geometry and motion defaults, the theme supplies ink.
+pack supplies geometry and motion defaults, the theme supplies ink. In particular, `spectral`
+gradient roles resolve through the active theme tokens; a pack cannot embed a literal palette.
 
 ## 8. Cross-project projections
 
@@ -341,12 +362,16 @@ the reduced-motion source when supported; dark/light embedding preview; mobile w
 Windows machine) that loads each scene through an `<img>` on a fixture page, captures at
 ≈500ms, 5s, 10s and under `prefers-reduced-motion: reduce`, and asserts (a) frames differ when
 motion is on — animation actually occurs, (b) the reduced-motion capture equals the `none` render
-— information survives without motion. The embedded SVG's clock starts when the image loads and
-cannot be paused from outside, so a visual "t = 0" capture is not a reliable assertion; the
-frame-zero guarantee is proven structurally instead (§6 test 2: the `none` render equals the
-animated render with animation nodes removed), and the harness's earliest capture is only
-evidence that nothing hides content, never a pass/fail gate. It runs nightly and on PRs labelled
-`motion` or `scene`, not inside `npm run check`, so the proving gate stays fast.
+— information survives without motion. For CSS, the reduced-motion capture exercises the
+`prefers-reduced-motion` override. SMIL cannot read a media query, so the SMIL branch must load
+the `none` twin through the `<picture>` selection (or an equivalent backend-specific fixture
+branch) before making the same equality assertion; a directly loaded SMIL image is not expected
+to honor the preference. The embedded SVG's clock starts when the image loads and cannot be
+paused from outside, so a visual "t = 0" capture is not a reliable assertion; the frame-zero
+guarantee is proven structurally instead (§6 test 2: the `none` render equals the animated render
+with animation nodes removed), and the harness's earliest capture is only evidence that nothing
+hides content, never a pass/fail gate. It runs nightly and on PRs labelled `motion` or `scene`,
+not inside `npm run check`, so the proving gate stays fast.
 
 ## 11. Security and truth invariants added by this programme
 
@@ -413,6 +438,7 @@ Decisions taken in this document (reversible unless stated):
 | D-12 | Existing `DeveloperLensMethodTrialSummary.v1` bridge stays until the finding projection is vendored, then is retired in the same PR | No double-rendering window | keep both if a consumer needs it |
 | D-13 | CommitAtlas pins one exact published schema (producer commit + fixture hash) per seam and re-pins deliberately; an additive change the producer makes under the same version is rejected until re-pinned | CommitAtlas's reader is strict; the Lab's CONTRACTS.md allows additive changes within a major, and that is the producer's policy to keep | re-pin |
 | D-14 | One C-axis only: `classification`/`dataClass` is the sibling repositories' data class (C0 invented, C1 aggregated); there is no separate "evidence grade", and C2 (local identifiers and provenance) can never appear in an exported artifact | Both siblings define exactly one C-axis and mark C2 local-only; an invented second axis would let an agent print "C2" on a public profile | none — it matches the producers' policy |
+| D-15 | `github-readme` `ambient` and `cinematic` motion runs for a bounded default 45-second interval, then rests at frame zero; web and Studio keep indefinite loops with controls | A README `<img>` has no pause/stop control, and a reduced-motion twin serves only readers whose system preference requests it | change the target timing policy after measuring README behavior |
 
 Open questions for the owner (each has a `needs-decision` issue):
 
