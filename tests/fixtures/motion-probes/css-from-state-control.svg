@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">CSS from-state control</title>
+  <desc id="desc">A readable static baseline with an opacity-from-zero CSS animation using fill mode both.</desc>
+  <style>
+    @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+    .control { animation: reveal 1.2s ease-out 120ms both; }
+    @media (prefers-reduced-motion: reduce) { .control { animation: none !important; } }
+  </style>
+  <rect width="360" height="120" fill="#11110f"/>
+  <text x="24" y="28" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="15">CONTROL · opacity 0 + fill both</text>
+  <rect x="24" y="52" width="312" height="38" rx="4" fill="#2a2c24"/>
+  <text x="180" y="77" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle">STATIC BASELINE IS READABLE</text>
+  <g class="control">
+    <rect x="111" y="57" width="138" height="28" rx="3" fill="#ff7a45"/>
+    <text x="180" y="77" fill="#11110f" font-family="system-ui,sans-serif" font-size="13" font-weight="700" text-anchor="middle">ANIMATED LAYER</text>
+  </g>
+</svg>

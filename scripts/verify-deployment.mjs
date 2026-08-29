@@ -179,6 +179,26 @@ const checks = [
       assert(/style-src\s+'none'/.test(csp), `expected motion=none to block inline style, got "${csp}"`);
     },
   },
+  {
+    name: "the fixed synthetic motion probe uses the production SVG response contract",
+    async run(get) {
+      const response = await get("/api/v1/probes/motion/css-enter.svg");
+      assert(response.status === 200, `expected 200, got ${response.status}`);
+      assert(
+        response.headers.get("content-type") === "image/svg+xml; charset=utf-8",
+        `expected SVG content type, got "${response.headers.get("content-type")}"`,
+      );
+      assert(
+        response.headers.get("cache-control") === "public, max-age=60, s-maxage=300",
+        `expected public probe cache, got "${response.headers.get("cache-control")}"`,
+      );
+      assert(/^W\/"[a-f\d]{64}"$/.test(response.headers.get("etag") ?? ""), "probe is missing its weak ETag");
+      const csp = response.headers.get("content-security-policy") ?? "";
+      assert(/script-src\s+'none'/.test(csp), `expected a script-blocking CSP, got "${csp}"`);
+      assert(/style-src\s+'unsafe-inline'/.test(csp), `expected inline-style CSP for CSS probe, got "${csp}"`);
+      assertSafeSvgMarkup(await response.text());
+    },
+  },
 ];
 
 async function assertBoundedRejection(get, path) {

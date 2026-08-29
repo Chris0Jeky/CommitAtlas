@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">CSS offset path probe</title>
+  <desc id="desc">A readable route with a CSS offset-path marker.</desc>
+  <style>
+    @keyframes flow { to { offset-distance: 100%; } }
+    .marker { offset-path: path('M 35 84 C 105 36 244 36 325 84'); offset-rotate: 0deg; animation: flow 2s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .marker { animation: none !important; } }
+  </style>
+  <rect width="360" height="120" fill="#11110f"/>
+  <text x="24" y="25" fill="#edf0e2" font-family="system-ui,sans-serif" font-size="15">CSS offset-path</text>
+  <path d="M35 84C105 36 244 36 325 84" fill="none" stroke="#58e6be" stroke-opacity=".4" stroke-width="4"/>
+  <circle class="marker" cx="35" cy="84" r="8" fill="#ffd166"/>
+  <text x="180" y="109" fill="#a9c1d5" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">ROUTE IS PRESENT AT ZERO</text>
+</svg>
