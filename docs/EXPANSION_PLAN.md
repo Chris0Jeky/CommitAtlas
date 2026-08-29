@@ -190,7 +190,8 @@ the reference vocabulary (M1–M9, where M9 is the survey parallax `app/globals.
 defines); scenes may add new refs (M10 onward) only through DESIGN_CHASSIS.
 
 Target behavior is explicit: web and Studio previews may keep their loops indefinite and expose
-the available replay/pause controls. A `github-readme` embed is an `<img>` with no pause/stop
+replay and, where the embedding surface supports it, pause/resume controls. A `github-readme`
+embed is an `<img>` with no pause/stop
 control, so D-15 bounds `ambient` and `cinematic` to a default 45-second interval, encoded with
 CSS `animation-iteration-count` and SMIL `repeatDur`; after the interval, the animation stops and
 the fill-none/base state leaves the output at frame zero. The reduced-motion twin remains the
@@ -313,7 +314,7 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 | --- | --- | --- |
 | `survey` | bone-white plates, graphite grid, hazard-orange markers, cold-cyan telemetry, plotter traces | scan, plot, beam |
 | `orbital` | deep ground, orbital rings, constellations, reticles | orbit, breathe, twinkle |
-| `spectral` | near-black ground, theme-token-mapped luminous-gradient roles (no literal palette) | flow, breathe |
+| `spectral` | theme-resolved ground and luminous-gradient roles (no literal palette) | flow, breathe |
 | `terminal` | monospace, pixel structures, diagnostic displays | stagger, pulse, scan |
 
 A pack never introduces a colour that fails the chassis contrast floors for the active theme; the
@@ -354,6 +355,7 @@ and its description must survive every scene and motion profile.
 ## 10. Studio motion lab and verification harness
 
 **Studio (a person's tool):** motion profile and pack selectors; replay (re-mount the preview);
+pause/resume when the selected preview backend and embedding surface support it;
 reduced-motion preview (renders the `none` twin); frame-zero view; byte size, animated-element and
 looping-group counts read from the rendered SVG; a `<picture>`/single-`<img>` Markdown choice with
 the reduced-motion source when supported; dark/light embedding preview; mobile width.
@@ -438,7 +440,7 @@ Decisions taken in this document (reversible unless stated):
 | D-12 | Existing `DeveloperLensMethodTrialSummary.v1` bridge stays until the finding projection is vendored, then is retired in the same PR | No double-rendering window | keep both if a consumer needs it |
 | D-13 | CommitAtlas pins one exact published schema (producer commit + fixture hash) per seam and re-pins deliberately; an additive change the producer makes under the same version is rejected until re-pinned | CommitAtlas's reader is strict; the Lab's CONTRACTS.md allows additive changes within a major, and that is the producer's policy to keep | re-pin |
 | D-14 | One C-axis only: `classification`/`dataClass` is the sibling repositories' data class (C0 invented, C1 aggregated); there is no separate "evidence grade", and C2 (local identifiers and provenance) can never appear in an exported artifact | Both siblings define exactly one C-axis and mark C2 local-only; an invented second axis would let an agent print "C2" on a public profile | none — it matches the producers' policy |
-| D-15 | `github-readme` `ambient` and `cinematic` motion runs for a bounded default 45-second interval, then rests at frame zero; web and Studio keep indefinite loops with controls | A README `<img>` has no pause/stop control, and a reduced-motion twin serves only readers whose system preference requests it | change the target timing policy after measuring README behavior |
+| D-15 | `github-readme` `ambient` and `cinematic` motion runs for a bounded default 45-second interval, then rests at frame zero; web and Studio keep indefinite loops with replay and, where supported, pause/resume controls | A README `<img>` has no pause/stop control, and a reduced-motion twin serves only readers whose system preference requests it | change the target timing policy after measuring README behavior |
 
 Open questions for the owner (each has a `needs-decision` issue):
 
