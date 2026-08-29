@@ -44,7 +44,7 @@
     "typecheck:worker": "wrangler types worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime=false --check",
     "typecheck": "tsc --noEmit",
     "test:core": "vitest run --config packages/core/vitest.config.ts",
-    "test:github": "tsx --test app/api/v1/health/route.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
+    "test:github": "tsx --test app/api/v1/health/route.test.ts tests/motion-probe-route.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
     "test:chassis": "tsx --test lib/chassis.test.ts lib/health.test.ts lib/instruments.test.ts lib/evidence.test.ts lib/research-bridge.test.ts",
     "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-refresh-lifecycle.test.ts app/studio/studio-urls.test.ts",
     "test:svg": "npm --prefix packages/svg test",

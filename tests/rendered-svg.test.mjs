@@ -43,6 +43,18 @@ test("serves all seven synthetic SVG cards with their planned public cache windo
   }
 });
 
+test("routes fixed motion probe filenames through the built Worker", async () => {
+  const response = await request("/api/v1/probes/motion/css-enter.svg");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/svg+xml; charset=utf-8");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  assert.match(await response.text(), /<title id="title">CSS enter probe<\/title>/);
+
+  const extensionless = await request("/api/v1/probes/motion/css-enter");
+  assert.equal(extensionless.status, 400);
+  assert.equal(extensionless.headers.get("cache-control"), "no-store");
+});
+
 test("keeps SVG security headers and ETag values identical for a matching 304", async () => {
   const path = "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none";
   const first = await request(path);

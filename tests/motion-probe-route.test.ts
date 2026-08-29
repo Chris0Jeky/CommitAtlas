@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { GET, OPTIONS } from "@/app/api/v1/probes/motion/[probe].svg/route";
+import { GET, OPTIONS } from "@/app/api/v1/probes/motion/[probe]/route";
 
 const fixtureDirectory = path.resolve("tests/fixtures/motion-probes");
 const probeIds = [
@@ -23,7 +23,7 @@ test("serves each canonical motion fixture byte-for-byte through the SVG respons
     const expected = await readFile(path.join(fixtureDirectory, `${probe}.svg`));
     const response = await GET(
       new Request(`https://example.test/api/v1/probes/motion/${probe}.svg`),
-      { params: Promise.resolve({ probe }) },
+      { params: Promise.resolve({ probe: `${probe}.svg` }) },
     );
     const actual = Buffer.from(await response.arrayBuffer());
 
@@ -45,9 +45,18 @@ test("serves each canonical motion fixture byte-for-byte through the SVG respons
 });
 
 test("returns a bounded uncached error for unknown and path-like probe ids", async () => {
-  for (const probe of ["unknown", "constructor", "toString", "../css-breathe", "css-breathe%2F..%2Fother", "css-breathe?x=<svg>"]) {
+  for (const probe of [
+    "unknown.svg",
+    "constructor.svg",
+    "toString.svg",
+    "../css-breathe.svg",
+    "css-breathe%2F..%2Fother.svg",
+    "css-breathe",
+    "css-breathe.svg/other",
+    "css-breathe.svg?x=<svg>",
+  ]) {
     const response = await GET(
-      new Request(`https://example.test/api/v1/probes/motion/${probe}.svg`),
+      new Request(`https://example.test/api/v1/probes/motion/${probe}`),
       { params: Promise.resolve({ probe }) },
     );
     assert.equal(response.status, 400, probe);

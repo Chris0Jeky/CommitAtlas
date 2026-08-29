@@ -10,8 +10,14 @@ export async function GET(
 ): Promise<Response> {
   try {
     const { probe } = await context.params;
-    const body = MOTION_PROBES[probe as keyof typeof MOTION_PROBES];
-    if (typeof body !== "string") throw new InputError("unknown motion probe");
+    if (!probe.endsWith(".svg")) throw new InputError("unknown motion probe");
+
+    const probeId = probe.slice(0, -4);
+    if (!Object.prototype.hasOwnProperty.call(MOTION_PROBES, probeId)) {
+      throw new InputError("unknown motion probe");
+    }
+
+    const body = MOTION_PROBES[probeId as keyof typeof MOTION_PROBES];
     return svgResponse(request, body, { edgeSeconds: 300, publicData: true, inlineStyles: true });
   } catch (error) {
     return apiErrorResponse(error);
