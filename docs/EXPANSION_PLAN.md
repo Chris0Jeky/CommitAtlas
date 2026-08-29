@@ -257,7 +257,7 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 | --- | --- | --- | --- | --- |
 | `constellation` | signature | `lens.repositories` (attention, activeWeeks, momentum, disclosure, language) | slow orbital rotation; a survey beam crosses the selected body | One lens per render (`attention`, `flow`, `continuity`), top 8–12 bodies; private aliases are dashed bodies; "attention ≠ impact" is printed |
 | `signature` | signature | `lens.dna`, `lens.archetype`, `lens.coverage` | radar draws itself; calibration ring turns | `DERIVED SIGNATURE · not a productivity score · coverage NN%` |
-| `craft-ring` | signature | `lens.themes` | segmented iris; segment glint | building / repairing / explaining / proving / refining / maintaining / optimising / reverting |
+| `craft-ring` | signature | `lens.themes` | segmented iris; segment glint | building / repairing / explaining / proving / refining / maintaining / optimising / reverting, plus an explicit `other` segment so a supplied share is never discarded or redistributed |
 | `delivery-loop` | signature | `lens.delivery`, `lens.summary` | particles traverse proposal → review → revision → merge → release | Censored and open work stay visibly incomplete |
 | `narrative` | signature | `lens.narratives` | plotter underline; nothing else | Up to three bounded, evidence-bearing statements with their limitation line |
 | *(coverage, lens extension)* | instrument | `lens.coverage.warnings` | as Phase 1 | Adds the projection's own warnings and age to `evidence-coverage` |
@@ -266,11 +266,11 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
-| `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; the rejected candidate fades while the retained baseline stays lit | Grade, decision, limitations, and unsupported claims in the frame |
+| `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; motion and labels branch on `decision.outcome` — `reject`: the candidate trace fades while the retained baseline stays lit, `BASELINE RETAINED`; `revise_once`: both traces stay lit with a dashed revision marker, `REVISE ONCE`; `benchmarked`: both stay lit, `BENCHMARKED · research evidence, not promotion` | Grade, decision, limitations, and unsupported claims in the frame; frame zero already prints the outcome word |
 | `nebula` | scene | contribution days, repositories, languages, releases; seed | twinkle on decorative stars only | Positions from the seed; changes only when the snapshot changes |
-| `spectrogram` | scene | contribution mix over time | thin scan line | Interference where activity crosses projects |
+| `spectrogram` | scene | per-project weekly commit series (new fetch, Q-7) plus daily totals | thin scan line | Bands per project, interference where projects overlap in a week; **parked** until Q-7 — the current snapshot has daily totals and category aggregates only, so no cross-project band can be observed today |
 | `system-weather` | signature | derived from snapshot trends (and `lens` if present) | atmosphere drift | Every line stamped `hypothesis`; it is a metaphor, not a measurement |
-| `pipeline-telemetry` | map | named-workflow CI and jobs | packets through source → test → build → release; a failed stage gets M7 | Stages come only from the declared workflow |
+| `pipeline-telemetry` | map | named-workflow CI plus its latest run's jobs (new fetch, Q-8) | packets through the observed job sequence; a failed job gets M7 | **Parked** until Q-8 — the snapshot records one overall workflow state, so stages cannot be drawn from it; the fallback composition is the single observed state, never invented stages |
 | `branch-river` | scene | needs branch/merge evidence CommitAtlas does not fetch today | flow particles | Blocked on a data decision (§14 Q-5) |
 | `contribution-city` | scene | projects, contribution days, releases, CI | windows light on active days; a beacon per release | Flagship spectacle; parallax only in `cinematic` |
 | `reactor` | scene | projects, languages, releases, CI | particles converge; a controlled flare per release | Spectacle with data-controlled composition |
@@ -301,6 +301,8 @@ Freshness is a first-class part of the lens seam: a projection carries `generate
 `lens.maxAgeDays` (default 45) renders every lens scene with a `STALE PROJECTION` strip and the age
 in the description; older than twice that refuses the lens scenes and renders their explicit
 unavailable composition. The GitHub-only cards are never affected by a projection in any state.
+Findings are the opposite kind of artifact — immutable pinned evidence that prints its
+`generatedAt` and producer commit and never ages; it is replaced only by vendoring a new one.
 
 Field shapes, bounds, denied content, fixtures, tests, and the required merge order are in
 [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md).
@@ -326,9 +328,13 @@ the reduced-motion source when supported; dark/light embedding preview; mobile w
 
 **CI (a machine's proof):** a Playwright harness (Chromium, Firefox, WebKit; two workers on this
 Windows machine) that loads each scene through an `<img>` on a fixture page, captures at
-t = 0, 500ms, 5s, 10s and under `prefers-reduced-motion: reduce`, and asserts (a) frames differ
-when motion is on — animation actually occurs, (b) frame zero and the reduced-motion capture equal
-the `none` render — information survives without motion. It runs nightly and on PRs labelled
+≈500ms, 5s, 10s and under `prefers-reduced-motion: reduce`, and asserts (a) frames differ when
+motion is on — animation actually occurs, (b) the reduced-motion capture equals the `none` render
+— information survives without motion. The embedded SVG's clock starts when the image loads and
+cannot be paused from outside, so a visual "t = 0" capture is not a reliable assertion; the
+frame-zero guarantee is proven structurally instead (§6 test 2: the `none` render equals the
+animated render with animation nodes removed), and the harness's earliest capture is only
+evidence that nothing hides content, never a pass/fail gate. It runs nightly and on PRs labelled
 `motion` or `scene`, not inside `npm run check`, so the proving gate stays fast.
 
 ## 11. Security and truth invariants added by this programme
@@ -345,15 +351,17 @@ the `none` render — information survives without motion. It runs nightly and o
   two nothing-observed states carry no colour of their own.
 - Hosted last-good keys include pack, motion, and scene id so variants cannot cross-serve.
 
-## 12. The owner's profile after Phase 2
+## 12. The owner's profile at the end of the programme
 
-Four flagship compositions replace "every card on the page"; the written project sections stay:
+Five flagship compositions replace "every card on the page"; the written project sections stay.
+The phase in which each becomes available is stated so the profile consumer never expects an
+artifact before it exists:
 
-1. **Identity Beacon** — name, tagline, three current systems, survey beam, `ambient`.
-2. **Developer Atlas** — the existing Atlas under `ambient` (density scan, beam, breathe).
-3. **Project Constellation + Lifecycle Map** — the ecosystem story.
-4. **Developer Signature + Craft Ring** — the derived pair, labelled as derived.
-5. **Research Instrument** — one Lab-backed finding: `BASELINE RETAINED · C0 · reproducible`.
+1. **Identity Beacon** (P1) — name, tagline, three current systems, survey beam, `ambient`.
+2. **Developer Atlas** (P1) — the existing Atlas under `ambient` (density scan, beam, breathe).
+3. **Project Constellation + Lifecycle Map** (P2; the lifecycle map alone is P1) — the ecosystem story.
+4. **Developer Signature + Craft Ring** (P2) — the derived pair, labelled as derived.
+5. **Research Instrument** (P3) — one Lab-backed finding: `BASELINE RETAINED · C0 · reproducible`.
 
 Evidence Coverage sits under the Atlas as the honesty strip. Everything else stays available in the
 Studio and in the "More public signals" disclosure.
@@ -392,6 +400,8 @@ Decisions taken in this document (reversible unless stated):
 | D-10 | Capture harness is Playwright, nightly + labelled PRs, outside `npm run check` | Keeps the proving gate fast | fold into `check` when it is fast enough |
 | D-11 | `identity` text is static-config only | A query string is an injection and caching surface | allow bounded hosted text after the sanitizer is tested |
 | D-12 | Existing `DeveloperLensMethodTrialSummary.v1` bridge stays until the finding projection is vendored, then is retired in the same PR | No double-rendering window | keep both if a consumer needs it |
+| D-13 | A published projection schema version is frozen; additions are a new version, never an in-place extension | Consumers reject unknown fields, so "additive" would break every pinned consumer | none — it follows from strictness |
+| D-14 | Data class (`C0`/`C1`, what an artifact contains) and evidence grade (`C0`/`C1`/`C2`, the Lab's ladder) are separate fields | A C2-grade finding must still be a C0/C1 data artifact to cross the boundary | none |
 
 Open questions for the owner (each has a `needs-decision` issue):
 
@@ -403,6 +413,8 @@ Open questions for the owner (each has a `needs-decision` issue):
 | Q-4 | Accept a GIF rasterizer dependency if Phase 0 shows SVG motion is unreliable? | Decide after Phase 0; static SVG twin is the fallback meanwhile |
 | Q-5 | Fetch branch/merge evidence for Branch River (branches list + merged PR counts)? | No; the scene stays parked |
 | Q-6 | Raise the static project cap above six for the lifecycle map and constellation? | Constellation reads the projection (up to 12); the config cap stays six |
+| Q-7 | Fetch per-project weekly commit series (GitHub `stats/commit_activity`, public, cold responses return 202) for the spectrogram? | No; the scene stays parked |
+| Q-8 | Fetch the latest run's jobs for each declared workflow (`actions/runs/{id}/jobs`) for pipeline telemetry? | No; the scene stays parked and its fallback is the single observed state |
 
 ## 15. Agent operating notes
 

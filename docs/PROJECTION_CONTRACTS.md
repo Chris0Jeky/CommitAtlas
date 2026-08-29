@@ -16,18 +16,31 @@ commit; both schema and semantics validated at build/test time; no runtime reque
 
 | Seam | Producer / schema authority | Exporter | Consumer | Compatibility window |
 | --- | --- | --- | --- | --- |
-| `PublicLensProjection.v1` | Developer Lens: `research-contracts/lens-projection/v1/{schema.json, showcase.fixture.json, README.md}` | Developer Lens `export-profile` (headless, through the export sink) | CommitAtlas `packages/static` (tracked file), `lib/` + Studio (vendored C0 fixture only) | v1 additive only; unknown `schemaVersion` fails closed at both ends |
-| `ResearchFindingProjection.v1` | Developer Lens: `research-contracts/research-finding/v1/{schema.json, wbc1.fixture.json, README.md}` | Developer Lens Lab `dllab export finding <run-id>` | CommitAtlas `research-contracts/research-finding/v1/` (vendored, pinned) + `lib/research-bridge.ts` | v1 additive only; the method-trial summary bridge is retired in the PR that vendors the first finding |
+| `PublicLensProjection.v1` | Developer Lens: `research-contracts/lens-projection/v1/{schema.json, showcase.fixture.json, README.md}` | Developer Lens `export-profile` (headless, through the export sink) | CommitAtlas `packages/static` (tracked file), `lib/` + Studio (vendored C0 fixture only) | v1 is frozen once published (see "Versioning"); unknown `schemaVersion` fails closed at both ends |
+| `ResearchFindingProjection.v1` | Developer Lens: `research-contracts/research-finding/v1/{schema.json, wbc1.fixture.json, README.md}` | Developer Lens Lab `dllab export finding <run-id>` | CommitAtlas `research-contracts/research-finding/v1/` (vendored, pinned) + `lib/research-bridge.ts` | v1 is frozen once published; the method-trial summary bridge is retired in the PR that vendors the first finding |
+
+**Versioning.** Because every object rejects unknown properties, "additive" changes are not
+backward-compatible for a pinned consumer. A published v1 schema is therefore frozen: any new
+field, enum value, or loosened bound is `v2` with its own directory, and a consumer pins exactly
+one version per seam. Until the producer publishes, this document is a draft and may change freely.
 
 Neither seam treats commit or checksum provenance as a cross-repository identity key or as
 promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
 
 ## Shared rules
 
-- **Data classes.** Only C0 (invented synthetic) and C1 (low-identifiability aggregates after
-  suppression) may appear. Developer Lens's `public` sink permits C0 only, so anything CommitAtlas
-  hosts or vendors for the Studio is C0; the owner's personal projection is C1 and is committed by
-  the owner to the profile repository, never to CommitAtlas.
+- **Data classes.** Every artifact carries a `dataClass` of C0 (invented synthetic) or C1
+  (low-identifiability aggregates after suppression); nothing else may appear. Developer Lens's
+  `public` sink permits C0 only, so anything CommitAtlas hosts or vendors for the Studio is C0; the
+  owner's personal projection is C1 and is committed by the owner to the profile repository, never
+  to CommitAtlas. The research seam's *evidence grade* (`C0`/`C1`/`C2`, the Lab's ladder) is a
+  different axis and is carried in a separate field; a C2-grade finding is still a C0 or C1 data
+  artifact.
+- **Canonical hash.** `projectionHash` and `bundleHash` are SHA-256 over the artifact serialized
+  with [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785) (sorted
+  keys, shortest round-trip numbers, no insignificant whitespace, UTF-8, no BOM) with the hash
+  field itself removed from `provenance` before serialization. Producers and consumers implement
+  the same algorithm and test it against one published vector in the schema README.
 - **Denied content, both seams:** repository names for non-public repositories, URLs other than
   the literal allowlisted provenance hosts, exact dates other than `generatedAt`, pull-request or
   issue titles, commit subjects, raw events, weekly series with absolute dates, person identifiers,
@@ -37,8 +50,11 @@ promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
   without a schema change and a consumer cannot render text it has not reviewed.
 - **Bounds.** Every string has a maximum length; every number is finite and bounded; every array
   has a maximum length; shares sum to at most `1.0001`.
-- **Freshness.** `generatedAt` is a canonical UTC `Z` timestamp and is mandatory. Consumers enforce
-  the age policy in EXPANSION_PLAN §8.
+- **Freshness.** `generatedAt` is a canonical UTC `Z` timestamp and is mandatory on both seams.
+  The age policy in EXPANSION_PLAN §8 applies to the lens seam only, because a lens projection
+  describes a moving window of the owner's activity. A research finding is immutable pinned
+  evidence: it never becomes stale, it prints its `generatedAt` and pinned producer commit in the
+  frame, and it is replaced only by vendoring a new artifact deliberately.
 - **Never fetched.** CommitAtlas reads projections from a tracked, contained, ≤ 256 KiB file or
   from its own vendored fixture. There is no URL form.
 - **Fixtures are synthetic.** Producer round-trip tests and consumer golden tests use the C0
@@ -53,7 +69,7 @@ projection, not a re-computation.
 ```ts
 interface PublicLensProjectionV1 {
   schemaVersion: "PublicLensProjection.v1";
-  classification: "C0" | "C1";
+  dataClass: "C0" | "C1";
   scope: "public-demo" | "redacted-local";          // C0 ⇔ public-demo; C1 ⇔ redacted-local
   generatedAt: string;                              // UTC, "Z"
   range: "6m" | "12m";
@@ -123,10 +139,12 @@ interface PublicLensProjectionV1 {
 schema (for example `local_git_unavailable`, `private_activity_aggregated`, `line_changes_partial`,
 `range_truncated`); each code has exactly one display text and consumers render only that text.
 
-Consumer semantic checks beyond the schema: `classification`/`scope` agree; a `private-alias` or
-`masked-alias` label matches Developer Lens's alias pattern and is not a real repository name the
-snapshot also lists; `dna` keys are exactly the six; sums; `narratives` contain no URL, `@handle`,
-or `#number`; `generatedAt` is not in the future relative to the snapshot's `generatedAt`.
+Consumer semantic checks beyond the schema: `dataClass`/`scope` agree; `dataClass: "C0"` implies
+`repositoryRedaction: "synthetic"` and every repository `disclosure` is `synthetic` (a C0 artifact
+may carry no real name and no alias of a real repository); a `private-alias` or `masked-alias`
+label matches Developer Lens's alias pattern and is not a real repository name the snapshot also
+lists; `dna` keys are exactly the six; sums; `narratives` contain no URL, `@handle`, or `#number`;
+`generatedAt` is not in the future relative to the snapshot's `generatedAt`.
 
 Producer command shape (Developer Lens decides the exact CLI):
 
@@ -152,7 +170,8 @@ hand-written schema. The vocabulary is the Lab's: a decision is `reject`, `revis
 ```ts
 interface ResearchFindingProjectionV1 {
   schemaVersion: "ResearchFindingProjection.v1";
-  classification: "C0" | "C1" | "C2";               // evidence grade; producers emit C0 only until the Lab's activation preconditions hold
+  dataClass: "C0" | "C1";                           // what the artifact contains (shared rule)
+  evidenceGrade: "C0" | "C1" | "C2";                // the Lab's evidence ladder; producers emit C0 only until the Lab's activation preconditions hold
   subjectClass: "software-system" | "repository" | "instrument" | "aggregate-window";
   generatedAt: string;                              // UTC, "Z"
 
@@ -162,27 +181,28 @@ interface ResearchFindingProjectionV1 {
     question: string;                               // ≤ 240
   };
 
-  methods: {
-    baseline: { code: string; displayName: string };   // ≤ 40, ≤ 60
-    candidate: { code: string; displayName: string };
+  methods: {                                        // codes from the closed MethodCode registry; display_name is the registry's text
+    baseline: { code: MethodCode; display_name: string };
+    candidate: { code: MethodCode; display_name: string };
   };
 
   decision: {
     outcome: "reject" | "revise_once" | "benchmarked";
-    retainedFallback: string | null;                // must equal methods.baseline.code when outcome is "reject"
+    retainedFallback: MethodCode | null;            // must equal methods.baseline.code when outcome is "reject"
     summary: string;                                // ≤ 240
   };
 
-  metrics: Array<{                                  // 1..6, keys unique
-    key: string;                                    // ≤ 40
-    label: string;                                  // ≤ 40
+  metrics: Array<{                                  // 1..6, keys unique, from the closed MetricCode registry
+    key: MetricCode;
+    label: string;                                  // the registry's text
     unit: "rate" | "count_per_year" | "hours" | "count" | "ratio";
     betterWhen: "lower" | "higher";
     baseline: { status: "measured"; value: number } | { status: "unavailable" };
     candidate: { status: "measured"; value: number } | { status: "unavailable" };
-  }>;
+  }>;                                               // value bounds by unit: rate/ratio 0..1; count 0..1_000_000 integer;
+                                                    // count_per_year 0..10_000; hours 0..100_000; all finite
 
-  gates?: Array<{ code: string; label: string; passed: boolean | null }>; // ≤ 8, ordered; null = not evaluated
+  gates?: Array<{ code: GateCode; label: string; passed: boolean | null }>; // ≤ 8, ordered, closed registry; null = not evaluated
 
   limitations: Array<{ code: LimitationCode; display_text: string }>;          // 1..8, closed registry
   unsupportedClaims: Array<{ code: UnsupportedClaimCode; display_text: string }>; // 1..8, closed registry
@@ -197,12 +217,16 @@ interface ResearchFindingProjectionV1 {
 }
 ```
 
-The limitation and unsupported-claim registries start from the four-plus-four codes the current
-summary already carries and grow only by schema change. Consumer semantic checks: an `outcome` of
-`reject` requires at least one metric where the candidate is measurably worse under `betterWhen`
-or at least one gate with `passed: false`; `retainedFallback` equals the baseline code on
-`reject`; `benchmarked` never renders the word "promoted"; an `unavailable` metric renders as
-`NOT MEASURED`, never as zero.
+Every code is a closed registry published in the schema README with exactly one display text:
+`MethodCode` (starting from `rolling_median_mad`, `bocpd_gaussian`, `pelt_offline`), `MetricCode`
+(starting from `detection_rate`, `false_alerts_per_year`), `GateCode` (the Lab's seven ordered
+gates), `LimitationCode` and `UnsupportedClaimCode` (the four-plus-four the current summary
+carries). Registries grow only by schema version. Consumer semantic checks: every display text
+equals the registry text for its code; an `outcome` of `reject` requires at least one metric where
+the candidate is measurably worse under `betterWhen` or at least one gate with `passed: false`;
+`retainedFallback` equals the baseline code on `reject` and is `null` otherwise; `benchmarked`
+never renders the word "promoted"; an `unavailable` metric renders as `NOT MEASURED`, never as
+zero; the renderer branches its labels and motion on `outcome` (EXPANSION_PLAN §7).
 
 Consumer configuration (`.commitatlas.json`, additive to version 1, ids only in v1 — see
 EXPANSION_PLAN D-08):
@@ -234,7 +258,7 @@ EXPANSION_PLAN D-08):
    workflow's expected-artifact list.
 
 A consumer PR that lands before its producer's schema is published must vendor a fixture marked
-`"classification": "C0"` and `"scope": "public-demo"` that the producer's later schema is tested
+`"dataClass": "C0"` and `"scope": "public-demo"` that the producer's later schema is tested
 against; if the two disagree, the producer's schema wins and the consumer re-vendors.
 
 ## Compatibility risks
