@@ -29,6 +29,18 @@ node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\A
 ```
 
 `--out` must name a new directory; the harness refuses to replace prior capture evidence.
+For a deployed Worker (or another authorized public synthetic host), pass its bare HTTPS asset
+directory and a short host label. The page remains the local wrapper, while each image source is
+resolved against the encoded `assetBase` query value; the report repeats the exact `assetBase` and
+`hostLabel` values in its top-level metadata and rows:
+
+```powershell
+node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\Application\chrome.exe' --asset-base 'https://example.invalid/api/v1/probes/motion/' --host-label worker-direct --out C:\temp\commitatlas-motion-worker
+```
+
+`--asset-base` must be an absolute HTTPS URL ending in `/` with no credentials, query, or fragment.
+`--host-label` is an ASCII label of at most 64 letters, numbers, `.`, `_`, or `-`; it defaults to
+`local-direct`. Do not pass private URLs, tokens, or user data.
 
 The cached Playwright 1.57.0 runner can instead be passed through `--playwright-engine` and
 `--playwright-cli`. On Windows, `--playwright-cli` must name the package's `cli.js`, never its

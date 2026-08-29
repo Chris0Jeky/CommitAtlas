@@ -7,6 +7,7 @@
  *
  * Example:
  *   node tests/motion-probes/capture.mjs --browser "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --out C:\\temp\\commitatlas-motion
+ *   node tests/motion-probes/capture.mjs --browser "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --asset-base https://example.invalid/probes/ --host-label worker-direct --out C:\\temp\\commitatlas-motion
  */
 import { createServer } from "node:http";
 import { inflateSync } from "node:zlib";
@@ -24,40 +25,93 @@ const embeds = ["img", "picture"];
 const frameTimes = [0, 250, 500, 2_000, 5_000];
 const motionPixelThreshold = { changedPixels: 16, totalChannelDelta: 1_000 };
 const fixtureDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "motion-probes");
-const argumentsMap = new Map();
-for (let index = 2; index < process.argv.length; index += 1) {
-  const argument = process.argv[index];
-  if (argument === "--reduced-motion") argumentsMap.set(argument, "true");
-  else argumentsMap.set(argument, process.argv[++index]);
+const maxHostLabelLength = 64;
+
+export function parseAssetBase(value) {
+  if (value === undefined) return null;
+  if (typeof value !== "string" || value.length === 0) throw new Error("--asset-base must be a non-empty absolute HTTPS base URL");
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("--asset-base must be a non-empty absolute HTTPS base URL");
+  }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash || !parsed.pathname.endsWith("/")) {
+    throw new Error("--asset-base must be a bare HTTPS base URL ending in /, without credentials, query, or fragment");
+  }
+  return value;
 }
-const browser = argumentsMap.get("--browser");
-const playwrightEngine = argumentsMap.get("--playwright-engine");
-const playwrightCli = argumentsMap.get("--playwright-cli");
-const reducedMotion = argumentsMap.has("--reduced-motion");
-const outputDirectory = argumentsMap.get("--out");
-if ((!browser && !playwrightEngine) || !outputDirectory || (browser && playwrightEngine)) {
-  throw new Error("Usage: node tests/motion-probes/capture.mjs (--browser <chromium-exe> | --playwright-engine <chromium|firefox|webkit>) --out <absolute-output-directory>");
+
+export function parseHostLabel(value) {
+  if (value === undefined) return "local-direct";
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value) || value.length > maxHostLabelLength) {
+    throw new Error(`--host-label must be 1-${maxHostLabelLength} ASCII letters, numbers, ., _, or -`);
+  }
+  return value;
 }
-const selectedProbes = argumentsMap.has("--probe") ? argumentsMap.get("--probe").split(",") : probes;
-const selectedEmbeds = argumentsMap.has("--embed") ? argumentsMap.get("--embed").split(",") : embeds;
-if (!selectedProbes.every((probe) => probes.includes(probe)) || !selectedEmbeds.every((embed) => embeds.includes(embed))) {
-  throw new Error("--probe and --embed must name an included fixture");
+
+export function buildPageUrl(origin, embed, probe, assetBase) {
+  const page = new URL(`${embed}/${probe}`, origin);
+  if (assetBase) page.searchParams.set("assetBase", assetBase);
+  return page.href;
 }
-if (reducedMotion && (!playwrightEngine || !playwrightCli)) {
-  throw new Error("--reduced-motion requires --playwright-engine and --playwright-cli so no dependency is installed");
-}
-if (playwrightCli) {
-  if (path.basename(playwrightCli).toLowerCase() !== "cli.js") {
+
+export function parseCaptureOptions(argv) {
+  const argumentsMap = new Map();
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--reduced-motion") argumentsMap.set(argument, "true");
+    else argumentsMap.set(argument, argv[++index]);
+  }
+  const browser = argumentsMap.get("--browser");
+  const playwrightEngine = argumentsMap.get("--playwright-engine");
+  const playwrightCli = argumentsMap.get("--playwright-cli");
+  const reducedMotion = argumentsMap.has("--reduced-motion");
+  const outputDirectory = argumentsMap.get("--out");
+  if ((!browser && !playwrightEngine) || !outputDirectory || (browser && playwrightEngine)) {
+    throw new Error("Usage: node tests/motion-probes/capture.mjs (--browser <chromium-exe> | --playwright-engine <chromium|firefox|webkit>) --out <absolute-output-directory>");
+  }
+  const selectedProbes = argumentsMap.has("--probe") ? argumentsMap.get("--probe").split(",") : probes;
+  const selectedEmbeds = argumentsMap.has("--embed") ? argumentsMap.get("--embed").split(",") : embeds;
+  if (!selectedProbes.every((probe) => probes.includes(probe)) || !selectedEmbeds.every((embed) => embeds.includes(embed))) {
+    throw new Error("--probe and --embed must name an included fixture");
+  }
+  if (reducedMotion && (!playwrightEngine || !playwrightCli)) {
+    throw new Error("--reduced-motion requires --playwright-engine and --playwright-cli so no dependency is installed");
+  }
+  if (playwrightCli && path.basename(playwrightCli).toLowerCase() !== "cli.js") {
     throw new Error("--playwright-cli must be the Playwright package's cli.js, not a Windows .cmd launcher");
   }
-  await access(playwrightCli);
+  const assetBaseArgument = argumentsMap.get("--asset-base");
+  const hostLabelArgument = argumentsMap.get("--host-label");
+  if (argumentsMap.has("--asset-base") && assetBaseArgument === undefined) {
+    throw new Error("--asset-base must be a non-empty absolute HTTPS base URL");
+  }
+  if (argumentsMap.has("--host-label") && hostLabelArgument === undefined) {
+    throw new Error(`--host-label must be 1-${maxHostLabelLength} ASCII letters, numbers, ., _, or -`);
+  }
+  return {
+    browser,
+    playwrightEngine,
+    playwrightCli,
+    reducedMotion,
+    outputDirectory,
+    selectedProbes,
+    selectedEmbeds,
+    assetBase: parseAssetBase(assetBaseArgument),
+    hostLabel: parseHostLabel(hostLabelArgument),
+  };
 }
-const playwrightModule = playwrightCli && reducedMotion
-  ? await import(pathToFileURL(path.join(path.dirname(playwrightCli), "index.js")).href)
-  : null;
-const playwright = playwrightModule?.default ?? playwrightModule;
 
-const server = createServer(async (request, response) => {
+async function capture(options) {
+  const { browser, playwrightEngine, playwrightCli, reducedMotion, outputDirectory, selectedProbes, selectedEmbeds, assetBase, hostLabel } = options;
+  if (playwrightCli) await access(playwrightCli);
+  const playwrightModule = playwrightCli && reducedMotion
+    ? await import(pathToFileURL(path.join(path.dirname(playwrightCli), "index.js")).href)
+    : null;
+  const playwright = playwrightModule?.default ?? playwrightModule;
+
+  const server = createServer(async (request, response) => {
   const requestPath = new URL(request.url ?? "/", "http://localhost").pathname;
   const relative = requestPath === "/" || /^\/(?:img|picture)\/[^/]+$/.test(requestPath)
     ? "index.html"
@@ -76,14 +130,14 @@ const server = createServer(async (request, response) => {
   } catch {
     response.writeHead(404).end("missing fixture");
   }
-});
+  });
 
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const address = server.address();
-if (!address || typeof address === "string") throw new Error("fixture server did not bind a TCP port");
-const origin = `http://127.0.0.1:${address.port}/`;
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("fixture server did not bind a TCP port");
+  const origin = `http://127.0.0.1:${address.port}/`;
 
-try {
+  try {
   // Never replace an evidence directory. A caller must select a fresh, explicit output path.
   await mkdir(outputDirectory);
   const report = {
@@ -93,6 +147,8 @@ try {
     frameTimesMs: frameTimes,
     motionPixelThreshold,
     reducedMotion,
+    assetBase,
+    hostLabel,
     rows: [],
   };
   for (const probe of selectedProbes) {
@@ -103,7 +159,7 @@ try {
       const captures = [];
       for (const timeMs of frameTimes) {
         const file = path.join(directory, `${timeMs}.png`);
-        const page = `${origin}${embed}/${probe}`;
+        const page = buildPageUrl(origin, embed, probe, assetBase);
         if (playwrightEngine) {
           const playwrightArgs = [
             "screenshot", "--browser", playwrightEngine,
@@ -142,7 +198,8 @@ try {
       }));
       report.rows.push({
         probe,
-        host: "local-direct",
+        host: hostLabel,
+        assetBase,
         embed,
         engine: playwrightEngine ? `playwright-${playwrightEngine}` : "chromium-headless",
         captures,
@@ -158,8 +215,13 @@ try {
   }
   await writeFile(path.join(outputDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-} finally {
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+}
+
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  await capture(parseCaptureOptions(process.argv.slice(2)));
 }
 
 function run(command, args) {

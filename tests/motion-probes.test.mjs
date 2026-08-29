@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { buildPageUrl, parseAssetBase, parseCaptureOptions, parseHostLabel } from "./motion-probes/capture.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDirectory = path.join(testDirectory, "fixtures", "motion-probes");
@@ -34,4 +35,40 @@ test("fixture index supports both image embedding paths and declares the reduced
   assert.match(index, /<picture>/);
   assert.match(index, /prefers-color-scheme: dark/);
   assert.match(index, /prefers-reduced-motion: reduce/);
+});
+
+test("capture options accept an explicit HTTPS asset base and bounded host label", () => {
+  const assetBase = "https://motion.example.test/probes/";
+  const options = parseCaptureOptions([
+    "--browser", "browser.exe", "--out", "C:/temp/motion",
+    "--asset-base", assetBase, "--host-label", "worker-direct",
+  ]);
+  assert.equal(options.assetBase, assetBase);
+  assert.equal(options.hostLabel, "worker-direct");
+  assert.equal(parseAssetBase(undefined), null);
+  assert.equal(parseHostLabel(undefined), "local-direct");
+});
+
+test("capture page URL carries the asset base as an encoded query value", () => {
+  const assetBase = "https://motion.example.test/probes/";
+  const page = buildPageUrl("http://127.0.0.1:4321/", "picture", "css-enter", assetBase);
+  assert.equal(new URL(page).searchParams.get("assetBase"), assetBase);
+  assert.match(page, /assetBase=https%3A%2F%2Fmotion\.example\.test%2Fprobes%2F/);
+});
+
+test("capture options reject non-bare asset bases and unbounded labels", () => {
+  for (const value of [
+    "http://motion.example.test/probes/",
+    "https://user:pass@motion.example.test/probes/",
+    "https://motion.example.test/probes/?token=private",
+    "https://motion.example.test/probes/#fragment",
+    "https://motion.example.test/probes",
+  ]) {
+    assert.throws(() => parseAssetBase(value), /asset-base/);
+  }
+  assert.throws(() => parseHostLabel(""), /host-label/);
+  assert.throws(() => parseHostLabel("x".repeat(65)), /host-label/);
+  assert.throws(() => parseHostLabel("worker/direct"), /host-label/);
+  assert.throws(() => parseCaptureOptions(["--browser", "browser.exe", "--out", "C:/temp/motion", "--asset-base"]), /asset-base/);
+  assert.throws(() => parseCaptureOptions(["--browser", "browser.exe", "--out", "C:/temp/motion", "--host-label"]), /host-label/);
 });
