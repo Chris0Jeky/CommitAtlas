@@ -209,16 +209,20 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
 
   const reducedRow = plan.find((row) => row.kind === "reduced-motion-control" && row.host === "github-raw-relative");
   const reducedUrl = rawUrl.replace("css-enter.svg", "reduced-motion-control.svg");
+  const rootRelativeReduced = `/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/tests/fixtures/motion-probes/reduced-motion-control.svg`;
+  const rootRelativeBreathe = rootRelativeReduced.replace("reduced-motion-control.svg", "css-breathe.svg");
+  const rawSources = [
+    { media: "(prefers-reduced-motion: reduce)", matches: true, srcset: rootRelativeReduced, canonicalSrcset: null },
+    { media: "(prefers-color-scheme: dark)", matches: true, srcset: rootRelativeBreathe, canonicalSrcset: null },
+  ];
   assert.doesNotThrow(() => validateTargetMetadata(reducedRow, {
     src: rawUrl.replace("css-enter.svg", "css-breathe.svg"),
     currentSrc: reducedUrl,
     canonical: reducedUrl,
-    sources: [
-      { media: "(prefers-reduced-motion: reduce)", matches: true, srcset: reducedUrl, canonicalSrcset: null },
-      { media: "(prefers-color-scheme: dark)", matches: true, srcset: rawUrl.replace("css-enter.svg", "css-breathe.svg"), canonicalSrcset: null },
-    ],
+    sources: rawSources,
     naturalWidth: 360, naturalHeight: 120,
   }, { currentSrc: reducedUrl }));
+  assert.equal(rawSources[0].srcset, rootRelativeReduced, "validation must retain the literal root-relative source value");
 
   assert.doesNotThrow(() => validateResponseChain(rawRow, rawUrl, [
     { url: rawUrl, status: 302 },

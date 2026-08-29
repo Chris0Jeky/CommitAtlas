@@ -170,7 +170,7 @@ function firstUrl(srcset) {
 }
 
 function assertRawUrl(url) {
-  const parsed = new URL(url);
+  const parsed = new URL(url, githubPageUrl);
   assert.equal(parsed.hostname, "github.com", "relative probe currentSrc must remain on github.com");
   assert.ok(parsed.pathname.includes(`/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/`), "relative probe URL must contain the full raw commit pin");
 }
@@ -184,7 +184,7 @@ function expectedAssetName(row) {
 }
 
 function assertExactAsset(url, row, label) {
-  const parsed = new URL(url);
+  const parsed = new URL(url, githubPageUrl);
   assert.ok(parsed.pathname.endsWith(`/${expectedAssetName(row)}`), `${row.selector} ${label} must select ${expectedAssetName(row)}`);
 }
 
