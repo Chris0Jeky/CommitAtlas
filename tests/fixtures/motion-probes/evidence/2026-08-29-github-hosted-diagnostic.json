@@ -1,0 +1,1508 @@
+{
+  "date": "2026-08-29",
+  "status": "partial",
+  "evidenceStatus": "Chromium and Firefox diagnostic evidence only; WebKit is explicitly not tested",
+  "scope": "Synthetic pinned GitHub README diagnostic for css-enter, reduced-motion source selection, and a known-positive control",
+  "page": "https://github.com/Chris0Jeky/commitatlas-motion-probes/blob/039a0370b1a52fb6135e4414e04a11bff7ba21d0/README.md",
+  "scratchCommit": "039a0370b1a52fb6135e4414e04a11bff7ba21d0",
+  "frameTimesMs": [
+    0,
+    250,
+    500,
+    2000,
+    5000
+  ],
+  "minimumVideoDurationMs": 3000,
+  "selectedEngines": [
+    "chromium",
+    "firefox",
+    "webkit"
+  ],
+  "diagnostic": true,
+  "plan": [
+    {
+      "kind": "probe",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "alt": "css-enter",
+      "selector": "img[alt=\"css-enter\"]"
+    },
+    {
+      "kind": "probe",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "alt": "raw-picture-css-enter",
+      "selector": "img[alt=\"raw-picture-css-enter\"]"
+    },
+    {
+      "kind": "reduced-motion-control",
+      "host": "github-raw-relative",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "alt": "raw-picture-css-breathe",
+      "selector": "img[alt=\"raw-picture-css-breathe\"]",
+      "controlAlt": "reduced-motion-control",
+      "controlSelector": "img[alt=\"reduced-motion-control\"]"
+    },
+    {
+      "kind": "probe",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "alt": "worker-css-enter",
+      "selector": "img[alt=\"worker-css-enter\"]"
+    },
+    {
+      "kind": "probe",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "alt": "worker-picture-css-enter",
+      "selector": "img[alt=\"worker-picture-css-enter\"]"
+    },
+    {
+      "kind": "reduced-motion-control",
+      "host": "worker-camo",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "alt": "worker-picture-css-breathe",
+      "selector": "img[alt=\"worker-picture-css-breathe\"]",
+      "controlAlt": "worker-reduced-motion-control",
+      "controlSelector": "img[alt=\"worker-reduced-motion-control\"]"
+    },
+    {
+      "kind": "positive-control",
+      "host": "known-positive-control",
+      "probe": "positive-control",
+      "embed": "img",
+      "media": "no-preference",
+      "alt": "positive control animation",
+      "selector": "img[alt=\"positive control animation\"]"
+    }
+  ],
+  "browserVersions": {
+    "chromium": "143.0.7499.4",
+    "firefox": "144.0.2"
+  },
+  "rawPartialReport": {
+    "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/report.partial.json",
+    "sha256": "a39ee42176336c3bee1104d22d156a4006133193501cd88c940b61761b134247",
+    "completedRowCount": 14
+  },
+  "aggregateAlgorithm": "SHA-256 over identity-sorted UTF-8 lines: identity TAB finalBodySha256 TAB fiveFrameSha256 values TAB videoSha256 LF",
+  "artifactAggregateSha256": "80f6effdbea0f7d4a1e40abbc5afa27b4bf53394ed1b244fc80cfc17617fe177",
+  "rows": [
+    {
+      "identity": "chromium|github-raw-relative|css-enter|img|no-preference",
+      "kind": "probe",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"css-enter\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1813.3,
+        "loadToFirstFrameMs": 22.6,
+        "loadToFirstFrameCompleteMs": 88.7
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 22.6,
+          "completedTimeMs": 88.7,
+          "sha256": "c6417f1bbf071fbbc542d504037ec5c1fcf2f1cc3d428014ff8237938b83ea2e"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 261.5,
+          "completedTimeMs": 340.2,
+          "sha256": "451e582e15b428718c8e91bc1c346166a0a9ff561afedb3724cd0e10c6397358"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 512,
+          "completedTimeMs": 571.9,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2009,
+          "completedTimeMs": 2089.5,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5004.7,
+          "completedTimeMs": 5072.6,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 22.6,
+          "toActualMs": 261.5,
+          "changedPixels": 7256,
+          "totalChannelDelta": 3055176
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 261.5,
+          "toActualMs": 512,
+          "changedPixels": 2445,
+          "totalChannelDelta": 787106
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 512,
+          "toActualMs": 2009,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2009,
+          "toActualMs": 5004.7,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5074.7,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/github-raw-relative--img--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 289823,
+        "magicHex": "1a45dfa3",
+        "sha256": "6936e78dcb676da2e3909a11e0ef36c298b692ee928606dec129af3f3304eebe"
+      }
+    },
+    {
+      "identity": "chromium|github-raw-relative|css-enter|picture|no-preference",
+      "kind": "probe",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "selector": "img[alt=\"raw-picture-css-enter\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1466.2,
+        "loadToFirstFrameMs": 14.4,
+        "loadToFirstFrameCompleteMs": 101.9
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 14.4,
+          "completedTimeMs": 101.9,
+          "sha256": "ace34f7813a811fd94e5ebe9e1f20defc3145fa0a6c66a05bf6aa08f82a23203"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 256.4,
+          "completedTimeMs": 338.6,
+          "sha256": "325e6c8e5fbd576c70442fe401775175ef8f38fc0b9e42455167f2b73193472a"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 501.6,
+          "completedTimeMs": 570.5,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2011.2,
+          "completedTimeMs": 2084.9,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5001.6,
+          "completedTimeMs": 5085.7,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 14.4,
+          "toActualMs": 256.4,
+          "changedPixels": 6356,
+          "totalChannelDelta": 2705678
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 256.4,
+          "toActualMs": 501.6,
+          "changedPixels": 2589,
+          "totalChannelDelta": 950561
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 501.6,
+          "toActualMs": 2011.2,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2011.2,
+          "toActualMs": 5001.6,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5088.2,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/github-raw-relative--picture--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 351528,
+        "magicHex": "1a45dfa3",
+        "sha256": "0a32e23a0b5aac0cfd8d0d5dfc642f5c5d48bc371a2ab9af90aa62bef1298c4c"
+      }
+    },
+    {
+      "identity": "chromium|github-raw-relative|css-breathe|picture|reduce",
+      "kind": "reduced-motion-control",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "github-raw-relative",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "selector": "img[alt=\"raw-picture-css-breathe\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1794.5,
+        "loadToFirstFrameMs": 32.8,
+        "loadToFirstFrameCompleteMs": 107.3
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 32.8,
+          "completedTimeMs": 107.3,
+          "sha256": "9c5985405d95a3868701eb6337dba55ab3e70140ad72b9c44ce28bbd12147d2f"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 266.1,
+          "completedTimeMs": 358.5,
+          "sha256": "9c5985405d95a3868701eb6337dba55ab3e70140ad72b9c44ce28bbd12147d2f"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 515.6,
+          "completedTimeMs": 594.2,
+          "sha256": "9c5985405d95a3868701eb6337dba55ab3e70140ad72b9c44ce28bbd12147d2f"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2007.1,
+          "completedTimeMs": 2073.5,
+          "sha256": "9c5985405d95a3868701eb6337dba55ab3e70140ad72b9c44ce28bbd12147d2f"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5010.5,
+          "completedTimeMs": 5090.9,
+          "sha256": "9c5985405d95a3868701eb6337dba55ab3e70140ad72b9c44ce28bbd12147d2f"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 32.8,
+          "toActualMs": 266.1,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 266.1,
+          "toActualMs": 515.6,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 515.6,
+          "toActualMs": 2007.1,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2007.1,
+          "toActualMs": 5010.5,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "frozen at frame zero",
+      "video": {
+        "measuredVisibleDurationMs": 5092.7,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/github-raw-relative--picture--css-breathe--reduce/motion.webm",
+        "fileSizeBytes": 179668,
+        "magicHex": "1a45dfa3",
+        "sha256": "ef5a61067f21a3ce8d6a3ed3bcdf66791cb4b90434109759635cdda0068aaf98"
+      }
+    },
+    {
+      "identity": "chromium|worker-camo|css-enter|img|no-preference",
+      "kind": "probe",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"worker-css-enter\"]",
+      "currentSource": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1373.5,
+        "loadToFirstFrameMs": 16.3,
+        "loadToFirstFrameCompleteMs": 96.8
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 16.3,
+          "completedTimeMs": 96.8,
+          "sha256": "f3370345b964d9ea43ab35747f234d99e531509bdce23e60e34d048497f45c02"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 262.9,
+          "completedTimeMs": 331.2,
+          "sha256": "e9971bc4a1f02a9a7692a823f5b799c52aa56f338dd96428ddef8810c92675d5"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 511.4,
+          "completedTimeMs": 578,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2009.3,
+          "completedTimeMs": 2081.3,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5009.5,
+          "completedTimeMs": 5080.6,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 16.3,
+          "toActualMs": 262.9,
+          "changedPixels": 7050,
+          "totalChannelDelta": 2937143
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 262.9,
+          "toActualMs": 511.4,
+          "changedPixels": 2449,
+          "totalChannelDelta": 838781
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 511.4,
+          "toActualMs": 2009.3,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2009.3,
+          "toActualMs": 5009.5,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5082.7,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/worker-camo--img--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 308786,
+        "magicHex": "1a45dfa3",
+        "sha256": "de0254544dd0a5fd5ce825d2cd03d9c628acb9eb2aecf46cbd4d5801be2f5a0e"
+      }
+    },
+    {
+      "identity": "chromium|worker-camo|css-enter|picture|no-preference",
+      "kind": "probe",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "selector": "img[alt=\"worker-picture-css-enter\"]",
+      "currentSource": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1547.5,
+        "loadToFirstFrameMs": 23.1,
+        "loadToFirstFrameCompleteMs": 103.1
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 23.1,
+          "completedTimeMs": 103.1,
+          "sha256": "df87fc7f55a25cdb21451ce9b060d20b7533d889a6787ebdd1359faf6f66114f"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 251.6,
+          "completedTimeMs": 319.9,
+          "sha256": "119024edefc05ad976fbe3e09d714ff47088e3794af396930d2e2112cc708f63"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 506.8,
+          "completedTimeMs": 568.6,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2002.6,
+          "completedTimeMs": 2071.3,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5004.5,
+          "completedTimeMs": 5069.6,
+          "sha256": "e9a7d0e41a14a2308dddc48660dc20e5e1198c99a333f25f2d81aa6686102ce6"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 23.1,
+          "toActualMs": 251.6,
+          "changedPixels": 6150,
+          "totalChannelDelta": 2629697
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 251.6,
+          "toActualMs": 506.8,
+          "changedPixels": 2793,
+          "totalChannelDelta": 1000568
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 506.8,
+          "toActualMs": 2002.6,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2002.6,
+          "toActualMs": 5004.5,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5072.1,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/worker-camo--picture--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 375993,
+        "magicHex": "1a45dfa3",
+        "sha256": "04464407a404299d85c0094715da243613d94937d2e5078e9966253aa622ab46"
+      }
+    },
+    {
+      "identity": "chromium|worker-camo|css-breathe|picture|reduce",
+      "kind": "reduced-motion-control",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "worker-camo",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "selector": "img[alt=\"worker-picture-css-breathe\"]",
+      "currentSource": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/reduced-motion-control.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 3478.1,
+        "loadToFirstFrameMs": 14.5,
+        "loadToFirstFrameCompleteMs": 88.6
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 14.5,
+          "completedTimeMs": 88.6,
+          "sha256": "716d81fa5c42316201b35f98cb5d273aad0b21676894085e0ccde9826ac72fc2"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 267.5,
+          "completedTimeMs": 337.4,
+          "sha256": "716d81fa5c42316201b35f98cb5d273aad0b21676894085e0ccde9826ac72fc2"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 502.5,
+          "completedTimeMs": 570.3,
+          "sha256": "716d81fa5c42316201b35f98cb5d273aad0b21676894085e0ccde9826ac72fc2"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2005.2,
+          "completedTimeMs": 2069.4,
+          "sha256": "716d81fa5c42316201b35f98cb5d273aad0b21676894085e0ccde9826ac72fc2"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5011.9,
+          "completedTimeMs": 5086.3,
+          "sha256": "716d81fa5c42316201b35f98cb5d273aad0b21676894085e0ccde9826ac72fc2"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 14.5,
+          "toActualMs": 267.5,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 267.5,
+          "toActualMs": 502.5,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 502.5,
+          "toActualMs": 2005.2,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2005.2,
+          "toActualMs": 5011.9,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "frozen at frame zero",
+      "video": {
+        "measuredVisibleDurationMs": 5087.7,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/worker-camo--picture--css-breathe--reduce/motion.webm",
+        "fileSizeBytes": 292123,
+        "magicHex": "1a45dfa3",
+        "sha256": "6adc35d272b09038c034964b15705c305565e222c7c72da7b39ef83e2a7c9651"
+      }
+    },
+    {
+      "identity": "chromium|known-positive-control|positive-control|img|no-preference",
+      "kind": "positive-control",
+      "engine": "chromium",
+      "version": "143.0.7499.4",
+      "host": "known-positive-control",
+      "probe": "positive-control",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"positive control animation\"]",
+      "currentSource": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+      "canonicalSource": "https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2500&pause=500&color=22C55E&width=435&lines=CommitAtlas%20motion%20probe%20control",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "902151da19608bb321916fe09cfaee67a53528ed714ff936b8dae63f5770f5bd"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1988.7,
+        "loadToFirstFrameMs": 27.6,
+        "loadToFirstFrameCompleteMs": 93.4
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 27.6,
+          "completedTimeMs": 93.4,
+          "sha256": "c7c65cd4b5f11914234f6de665655ed5a3b5d710230ef91afb58e1e4c10d1a0a"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 260.4,
+          "completedTimeMs": 328.7,
+          "sha256": "a9cdf6f68376b72a3fe9aad510a11a6ffc7cb597407bf78747d2ef91d9331ae9"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 505.9,
+          "completedTimeMs": 576.4,
+          "sha256": "42c281de13bc41ef66514fc8817aded4320a92573ee48f0c820c5ae3ae4ea36a"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2002.5,
+          "completedTimeMs": 2076.9,
+          "sha256": "17b65faf733825a5d52ff11287507e1967f43de6035ae8b070eae30aa2e6a002"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5009.1,
+          "completedTimeMs": 5078.5,
+          "sha256": "17b65faf733825a5d52ff11287507e1967f43de6035ae8b070eae30aa2e6a002"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 27.6,
+          "toActualMs": 260.4,
+          "changedPixels": 433,
+          "totalChannelDelta": 67719
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 260.4,
+          "toActualMs": 505.9,
+          "changedPixels": 302,
+          "totalChannelDelta": 50217
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 505.9,
+          "toActualMs": 2002.5,
+          "changedPixels": 1452,
+          "totalChannelDelta": 238481
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2002.5,
+          "toActualMs": 5009.1,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5080.4,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/chromium/known-positive-control--img--positive-control--no-preference/motion.webm",
+        "fileSizeBytes": 344873,
+        "magicHex": "1a45dfa3",
+        "sha256": "2908db84d02f37ae9d69c3af81846475d323cb51f186d815bcba087c9316364a"
+      }
+    },
+    {
+      "identity": "firefox|github-raw-relative|css-enter|img|no-preference",
+      "kind": "probe",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"css-enter\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1949,
+        "loadToFirstFrameMs": 42,
+        "loadToFirstFrameCompleteMs": 116
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 42,
+          "completedTimeMs": 116,
+          "sha256": "355e0e5639bda19dd41d05e8b93ed27885e8b12a46f99b17bf8de0e42b1fc1b4"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 254,
+          "completedTimeMs": 322,
+          "sha256": "8096403f1f0555d498a78903e84918bf7e93f4192955db441e85bc4ad2493f03"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 515,
+          "completedTimeMs": 560,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2012,
+          "completedTimeMs": 2045,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5010,
+          "completedTimeMs": 5044,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 42,
+          "toActualMs": 254,
+          "changedPixels": 5949,
+          "totalChannelDelta": 2515241
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 254,
+          "toActualMs": 515,
+          "changedPixels": 2418,
+          "totalChannelDelta": 926508
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 515,
+          "toActualMs": 2012,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2012,
+          "toActualMs": 5010,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5045,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/github-raw-relative--img--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 242854,
+        "magicHex": "1a45dfa3",
+        "sha256": "35c87e28ddce2d6d10cd678bfc3db331e3740cfdfd258d0c60b0bef83dfbb47a"
+      }
+    },
+    {
+      "identity": "firefox|github-raw-relative|css-enter|picture|no-preference",
+      "kind": "probe",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "github-raw-relative",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "selector": "img[alt=\"raw-picture-css-enter\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 2192,
+        "loadToFirstFrameMs": 58,
+        "loadToFirstFrameCompleteMs": 102
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 58,
+          "completedTimeMs": 102,
+          "sha256": "21c875827f07cc934d4bdbf0e2ad8c9bb9536600036266db0026a1bff0d2b954"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 256,
+          "completedTimeMs": 302,
+          "sha256": "e9dcb4f815243de1838aad261da78e95e7c85e28d164840984ca8b41f57e6c4c"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 503,
+          "completedTimeMs": 570,
+          "sha256": "24cc4d030a3ee30c513fb897f395bd4a9dc5dff297a4c84270987a0e34ae6197"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2005,
+          "completedTimeMs": 2046,
+          "sha256": "24cc4d030a3ee30c513fb897f395bd4a9dc5dff297a4c84270987a0e34ae6197"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5004,
+          "completedTimeMs": 5049,
+          "sha256": "24cc4d030a3ee30c513fb897f395bd4a9dc5dff297a4c84270987a0e34ae6197"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 58,
+          "toActualMs": 256,
+          "changedPixels": 5477,
+          "totalChannelDelta": 2488829
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 256,
+          "toActualMs": 503,
+          "changedPixels": 2701,
+          "totalChannelDelta": 1106117
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 503,
+          "toActualMs": 2005,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2005,
+          "toActualMs": 5004,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5051,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/github-raw-relative--picture--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 268593,
+        "magicHex": "1a45dfa3",
+        "sha256": "55d1789232f818309a2a5cfdb38648c26b657c44b9a846211ad9715c0f906d85"
+      }
+    },
+    {
+      "identity": "firefox|github-raw-relative|css-breathe|picture|reduce",
+      "kind": "reduced-motion-control",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "github-raw-relative",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "selector": "img[alt=\"raw-picture-css-breathe\"]",
+      "currentSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "canonicalSource": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 2048,
+        "loadToFirstFrameMs": 28,
+        "loadToFirstFrameCompleteMs": 70
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 28,
+          "completedTimeMs": 70,
+          "sha256": "e68011d6401f5c7ba15efd606a94d78f4ff50fedc93f7b2514fadca467fd850c"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 254,
+          "completedTimeMs": 295,
+          "sha256": "e68011d6401f5c7ba15efd606a94d78f4ff50fedc93f7b2514fadca467fd850c"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 504,
+          "completedTimeMs": 546,
+          "sha256": "e68011d6401f5c7ba15efd606a94d78f4ff50fedc93f7b2514fadca467fd850c"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2016,
+          "completedTimeMs": 2055,
+          "sha256": "e68011d6401f5c7ba15efd606a94d78f4ff50fedc93f7b2514fadca467fd850c"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5018,
+          "completedTimeMs": 5069,
+          "sha256": "e68011d6401f5c7ba15efd606a94d78f4ff50fedc93f7b2514fadca467fd850c"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 28,
+          "toActualMs": 254,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 254,
+          "toActualMs": 504,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 504,
+          "toActualMs": 2016,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2016,
+          "toActualMs": 5018,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "frozen at frame zero",
+      "video": {
+        "measuredVisibleDurationMs": 5072,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/github-raw-relative--picture--css-breathe--reduce/motion.webm",
+        "fileSizeBytes": 234078,
+        "magicHex": "1a45dfa3",
+        "sha256": "b5c1dbcb2590935510030d037400a77382f64295922be7a6a91168060c3768cb"
+      }
+    },
+    {
+      "identity": "firefox|worker-camo|css-enter|img|no-preference",
+      "kind": "probe",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"worker-css-enter\"]",
+      "currentSource": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1677,
+        "loadToFirstFrameMs": 55,
+        "loadToFirstFrameCompleteMs": 101
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 55,
+          "completedTimeMs": 101,
+          "sha256": "0ae6b0932c986b8c853917d816b62a2fd53152843db7b9b17538bd8999fb6a3c"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 266,
+          "completedTimeMs": 306,
+          "sha256": "69cd6846d961df952156c3bb98e5ff93c66d1298e1f536185ba621a146b62b72"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 515,
+          "completedTimeMs": 550,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2004,
+          "completedTimeMs": 2037,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5013,
+          "completedTimeMs": 5055,
+          "sha256": "99b7e71b49e43fb0e8fedf49c10dd6473e689515515e6a746569270eb82da0e5"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 55,
+          "toActualMs": 266,
+          "changedPixels": 5961,
+          "totalChannelDelta": 2568459
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 266,
+          "toActualMs": 515,
+          "changedPixels": 2429,
+          "totalChannelDelta": 1003674
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 515,
+          "toActualMs": 2004,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2004,
+          "toActualMs": 5013,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5059,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/worker-camo--img--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 243100,
+        "magicHex": "1a45dfa3",
+        "sha256": "1e9737e49bb075a2db0bc4baa57b57c1d300ae3dbccafde00b4c7370f25748c2"
+      }
+    },
+    {
+      "identity": "firefox|worker-camo|css-enter|picture|no-preference",
+      "kind": "probe",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "worker-camo",
+      "probe": "css-enter",
+      "embed": "picture",
+      "media": "no-preference",
+      "selector": "img[alt=\"worker-picture-css-enter\"]",
+      "currentSource": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1852,
+        "loadToFirstFrameMs": 39,
+        "loadToFirstFrameCompleteMs": 91
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 39,
+          "completedTimeMs": 91,
+          "sha256": "bb7d7f13a50bdfadcee84553a7ba6e9c8b52cca82a13daa40ec6611153c2096c"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 255,
+          "completedTimeMs": 297,
+          "sha256": "47e30221ebf79890a586c4fc751541cf20c9a3d758376e3626cc877c6adb7249"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 504,
+          "completedTimeMs": 558,
+          "sha256": "265dd5173a93627fd218ac53708bc31425cb4a6abf51ba2d1cce734d3d5286b4"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2012,
+          "completedTimeMs": 2053,
+          "sha256": "265dd5173a93627fd218ac53708bc31425cb4a6abf51ba2d1cce734d3d5286b4"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5018,
+          "completedTimeMs": 5050,
+          "sha256": "265dd5173a93627fd218ac53708bc31425cb4a6abf51ba2d1cce734d3d5286b4"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 39,
+          "toActualMs": 255,
+          "changedPixels": 6497,
+          "totalChannelDelta": 2684099
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 255,
+          "toActualMs": 504,
+          "changedPixels": 2843,
+          "totalChannelDelta": 1108354
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 504,
+          "toActualMs": 2012,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2012,
+          "toActualMs": 5018,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5052,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/worker-camo--picture--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 267027,
+        "magicHex": "1a45dfa3",
+        "sha256": "e0afb7cbb3e70dd7ebe1e55907cf951ed9be957c44ceab5fbc1facf7bb1a3f08"
+      }
+    },
+    {
+      "identity": "firefox|worker-camo|css-breathe|picture|reduce",
+      "kind": "reduced-motion-control",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "worker-camo",
+      "probe": "css-breathe",
+      "embed": "picture",
+      "media": "reduce",
+      "selector": "img[alt=\"worker-picture-css-breathe\"]",
+      "currentSource": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+      "canonicalSource": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/reduced-motion-control.svg",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1678,
+        "loadToFirstFrameMs": 23,
+        "loadToFirstFrameCompleteMs": 97
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 23,
+          "completedTimeMs": 97,
+          "sha256": "665da47fa5cbda264273d5726c2b3578d39ec5e8d8aad015b1065b5e07eeeefc"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 261,
+          "completedTimeMs": 301,
+          "sha256": "665da47fa5cbda264273d5726c2b3578d39ec5e8d8aad015b1065b5e07eeeefc"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 513,
+          "completedTimeMs": 552,
+          "sha256": "665da47fa5cbda264273d5726c2b3578d39ec5e8d8aad015b1065b5e07eeeefc"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2016,
+          "completedTimeMs": 2055,
+          "sha256": "665da47fa5cbda264273d5726c2b3578d39ec5e8d8aad015b1065b5e07eeeefc"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5006,
+          "completedTimeMs": 5054,
+          "sha256": "665da47fa5cbda264273d5726c2b3578d39ec5e8d8aad015b1065b5e07eeeefc"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 23,
+          "toActualMs": 261,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 261,
+          "toActualMs": 513,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 513,
+          "toActualMs": 2016,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2016,
+          "toActualMs": 5006,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "frozen at frame zero",
+      "video": {
+        "measuredVisibleDurationMs": 5056,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/worker-camo--picture--css-breathe--reduce/motion.webm",
+        "fileSizeBytes": 248176,
+        "magicHex": "1a45dfa3",
+        "sha256": "77ded9b00dd4f56a9c3d200270e05e160fbf38675ab3d4656a0651a40b4e47ec"
+      }
+    },
+    {
+      "identity": "firefox|known-positive-control|positive-control|img|no-preference",
+      "kind": "positive-control",
+      "engine": "firefox",
+      "version": "144.0.2",
+      "host": "known-positive-control",
+      "probe": "positive-control",
+      "embed": "img",
+      "media": "no-preference",
+      "selector": "img[alt=\"positive control animation\"]",
+      "currentSource": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+      "canonicalSource": "https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2500&pause=500&color=22C55E&width=435&lines=CommitAtlas%20motion%20probe%20control",
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "902151da19608bb321916fe09cfaee67a53528ed714ff936b8dae63f5770f5bd"
+      },
+      "requestGate": {
+        "interceptionCount": 1,
+        "loadTimestampMs": 1377,
+        "loadToFirstFrameMs": 43,
+        "loadToFirstFrameCompleteMs": 88
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 43,
+          "completedTimeMs": 88,
+          "sha256": "556dc826220142f16f5978bc355b97d5ebb1bc963d51453ec8b2c88c053f9ba5"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 253,
+          "completedTimeMs": 289,
+          "sha256": "760916a68b629e120ecaecc0f53d8b01016bfb2eb4c59aacecab4005f82a7278"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 515,
+          "completedTimeMs": 554,
+          "sha256": "cd0f5080d8709b189ffe8cc17213006a19383a86caab618e2d0c821cf0e4d85a"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2010,
+          "completedTimeMs": 2052,
+          "sha256": "945e42f439876fb925a277809e150d34635e2ce53567e4c3b15aa9b60f15e3b1"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5009,
+          "completedTimeMs": 5039,
+          "sha256": "945e42f439876fb925a277809e150d34635e2ce53567e4c3b15aa9b60f15e3b1"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 43,
+          "toActualMs": 253,
+          "changedPixels": 283,
+          "totalChannelDelta": 55349
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 253,
+          "toActualMs": 515,
+          "changedPixels": 310,
+          "totalChannelDelta": 60083
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 515,
+          "toActualMs": 2010,
+          "changedPixels": 1221,
+          "totalChannelDelta": 237552
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2010,
+          "toActualMs": 5009,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5042,
+        "relativeArtifact": "2026-08-29-github-smoke-r3-9adf323-all/firefox/known-positive-control--img--positive-control--no-preference/motion.webm",
+        "fileSizeBytes": 240788,
+        "magicHex": "1a45dfa3",
+        "sha256": "946b7d7a698f77089615b010e395aca07961f270e8cf1aa9a809c5cb8c567d67"
+      }
+    }
+  ],
+  "failure": {
+    "engine": "webkit",
+    "version": "26.0",
+    "status": "not-tested",
+    "phase": "discovery",
+    "selector": "img[alt=\"css-enter\"]",
+    "message": "img[alt=\"css-enter\"] must decode the synthetic 360x120 fixture\n+ actual - expected\n\n  [\n+   400,\n+   133\n-   360,\n-   120\n  ]\n",
+    "expectedNaturalDimensions": [
+      360,
+      120
+    ],
+    "actualNaturalDimensions": [
+      400,
+      133
+    ],
+    "trackingIssue": "#180",
+    "resume": "Resolve asset identity versus WebKit intrinsic sizing in #180, rerun the seven-row WebKit diagnostic once, then resume #113 at the unfiltered three-engine raw/Camo matrix"
+  }
+}

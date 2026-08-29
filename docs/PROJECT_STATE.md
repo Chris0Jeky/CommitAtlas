@@ -492,10 +492,14 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `PublicLensProjection.v1` and `ResearchFindingProjection.v1`. Tracking issue
   [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111) holds the dependency-ordered issue
   map across four milestones (P0 ground truth → P1 alive → P2 lens projections → P3 scenes,
-  findings, packs). The next support slice is open issue #174; its fixed synthetic Worker/CSP probe
-  route is not implemented or deployed yet. After it lands, #113 measures animated SVG through
-  `<img>` on github.com, because this file's PR #77 record and public README widgets disagree about
-  whether CSS animation runs there. No motion behaviour from the programme is on `main`.
+  findings, packs). Issue #174's fixed synthetic Worker/CSP probe route is merged and deployed.
+  The #113 checkpoint now retains five-frame captures and recordings for all 51 direct-Worker rows,
+  plus 14 completed Chromium/Firefox GitHub-raw and Camo diagnostic rows. WebKit hosted delivery is
+  explicitly not tested: discovery stopped on a `400x133` versus `360x120` intrinsic-size guard, so
+  #113 is parked at the three-attempt ceiling on [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180).
+  Resume by proving WebKit asset identity independently of presentation size, rerunning its
+  seven-row diagnostic once, then running #113's unfiltered three-engine raw/Camo matrix. The owner
+  gates in #115–#122 and #170 remain open, and no motion behaviour from the programme is on `main`.
 
 ## Clean resume commands (from checkout root)
 
