@@ -74,6 +74,21 @@ test("returns a bounded uncached error for unknown and path-like probe ids", asy
   }
 });
 
+test("rejects query variants before serving a canonical probe", async () => {
+  for (const query of ["?", "?&", "?&&", "?cachebust=1", "?x=", "?x=%3Csvg%3E"]) {
+    const response = await GET(
+      new Request(`https://example.test/api/v1/probes/motion/css-enter.svg${query}`),
+      { params: Promise.resolve({ probe: "css-enter.svg" }) },
+    );
+    assert.equal(response.status, 400, query);
+    assert.equal(response.headers.get("cache-control"), "no-store", query);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/, query);
+    const body = await response.json() as { status?: string; error?: { code?: string } };
+    assert.equal(body.status, "error", query);
+    assert.equal(body.error?.code, "invalid_input", query);
+  }
+});
+
 test("keeps the standard CORS and CSP headers on OPTIONS", () => {
   const response = OPTIONS();
   assert.equal(response.status, 204);
