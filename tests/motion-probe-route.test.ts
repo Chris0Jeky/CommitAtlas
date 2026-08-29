@@ -20,7 +20,13 @@ const probeIds = [
 
 test("serves each canonical motion fixture byte-for-byte through the SVG response contract", async () => {
   for (const probe of probeIds) {
-    const expected = await readFile(path.join(fixtureDirectory, `${probe}.svg`));
+    // Git can materialize a pre-existing Windows worktree with CRLF before the
+    // fixture-specific eol=lf attribute is present. The committed probe bytes
+    // are canonical LF, so normalize only that checkout representation here.
+    const expected = Buffer.from(
+      (await readFile(path.join(fixtureDirectory, `${probe}.svg`), "utf8")).replaceAll("\r\n", "\n"),
+      "utf8",
+    );
     const response = await GET(
       new Request(`https://example.test/api/v1/probes/motion/${probe}.svg`),
       { params: Promise.resolve({ probe: `${probe}.svg` }) },
