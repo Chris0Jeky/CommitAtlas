@@ -52,7 +52,9 @@ Capture artifacts are deliberately untracked; their compact, dated pixel evidenc
 
 Add `--record-video` to make each direct row one continuous Playwright context with a five-second
 WebM as well as the five PNG deadlines. Recording requires the supplied Playwright API path and an
-engine; the non-recording browser and CLI workflows above remain unchanged:
+engine; the non-recording browser and CLI workflows above remain unchanged. The report verifies
+WebM magic, byte size, and SHA-256. `measuredVisibleDurationMs` is browser time, not a parsed media
+duration, and the report states that boundary explicitly:
 
 ```powershell
 $playwrightCli = 'C:\Users\jekyt\AppData\Local\npm-cache\_npx\0b9ff77863cb6e9f\node_modules\playwright\cli.js'
@@ -60,9 +62,11 @@ node tests/motion-probes/capture.mjs --playwright-cli $playwrightCli --playwrigh
 ```
 
 The pinned GitHub-page harness measures both repository-relative GitHub-raw images and absolute
-Worker images rewritten through Camo. It launches each selected engine once, but gives every row a
-fresh context with service workers blocked, records a continuous WebM, and takes element PNGs at
-absolute 0, 250, 500, 2,000, and 5,000 ms deadlines after image decoding. It writes
+Worker images rewritten through Camo. It first discovers the exact selected URL for each
+engine/media/selector. Every measured row then gets a fresh context with service workers blocked;
+the harness gates that exact request until the target load timestamp is armed, records a continuous
+WebM, and takes element PNGs at absolute 0, 250, 500, 2,000, and 5,000 ms deadlines from image load.
+Response body hashing happens after those timing-critical frames. It writes
 `report.partial.json` after every completed row and creates `report.json` only after the entire
 selected-engine plan succeeds:
 
@@ -73,6 +77,15 @@ node tests/motion-probes/capture-github.mjs --playwright-cli $playwrightCli --pl
 Use a new output directory for every engine/run. Raw reports retain browser-observed response
 headers for reproducibility and must remain untracked; only reviewed, synthetic-safe compact
 evidence belongs in the repository.
+
+For a bounded diagnostic run, `--host`, `--probe`, and `--embed` accept comma-separated allowlisted
+values. Controls are omitted from a filtered plan unless explicitly requested with
+`--include-positive-control` or `--include-reduced-controls`; an unfiltered run still requires all
+35 rows per engine:
+
+```powershell
+node tests/motion-probes/capture-github.mjs --playwright-cli $playwrightCli --playwright-engine chromium --host github-raw-relative --probe css-enter --embed img --include-positive-control --out C:\temp\commitatlas-motion-github-smoke
+```
 
 ## Measured local-direct results — 2026-08-29
 

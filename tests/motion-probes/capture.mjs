@@ -192,10 +192,10 @@ async function capture(options) {
           for (const targetTimeMs of frameTimes) {
             const beforeWait = await browserPage.evaluate(() => performance.now());
             await browserPage.waitForTimeout(Math.max(0, targetTimeMs - (beforeWait - startedAt)));
-            const actualTimeMs = await browserPage.evaluate(() => performance.now() - startedAt);
+            const actualTimeMs = await browserPage.evaluate((anchor) => performance.now() - anchor, startedAt);
             const file = path.join(directory, `${targetTimeMs}.png`);
             await browserPage.screenshot({ path: file, animations: "allow" });
-            const completedTimeMs = await browserPage.evaluate(() => performance.now() - startedAt);
+            const completedTimeMs = await browserPage.evaluate((anchor) => performance.now() - anchor, startedAt);
             if (probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
               throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
             }
@@ -208,7 +208,7 @@ async function capture(options) {
               sha256: await sha256File(file),
             });
           }
-          const measuredVisibleDurationMs = await browserPage.evaluate(() => performance.now() - startedAt);
+          const measuredVisibleDurationMs = await browserPage.evaluate((anchor) => performance.now() - anchor, startedAt);
           if (measuredVisibleDurationMs < 3_000) throw new Error(`recorded row was visible for only ${measuredVisibleDurationMs.toFixed(1)} ms`);
           video = { measuredVisibleDurationMs: Math.round(measuredVisibleDurationMs * 10) / 10 };
         } finally {
@@ -217,7 +217,7 @@ async function capture(options) {
         const videoFile = path.join(directory, "motion.webm");
         await rename(await videoHandle.path(), videoFile);
         video.path = path.relative(outputDirectory, videoFile).replaceAll("\\", "/");
-        video.sha256 = await sha256File(videoFile);
+        Object.assign(video, await inspectWebmFile(videoFile));
       } else for (const timeMs of frameTimes) {
         const file = path.join(directory, `${timeMs}.png`);
         const page = buildPageUrl(origin, embed, probe, assetBase);
@@ -400,4 +400,20 @@ export function sha256(buffer) {
 
 export async function sha256File(file) {
   return sha256(await readFile(file));
+}
+
+export function inspectWebmBuffer(buffer) {
+  const magicHex = buffer.subarray(0, 4).toString("hex");
+  if (magicHex !== "1a45dfa3") throw new Error(`recorded video is not a WebM EBML container (${magicHex || "empty"})`);
+  return {
+    fileSizeBytes: buffer.length,
+    magicHex,
+    actualDurationVerified: false,
+    durationBoundary: "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+    sha256: sha256(buffer),
+  };
+}
+
+export async function inspectWebmFile(file) {
+  return inspectWebmBuffer(await readFile(file));
 }

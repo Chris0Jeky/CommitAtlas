@@ -3,15 +3,18 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { buildPageUrl, classifyMotion, frameTimes, parseAssetBase, parseCaptureOptions, parseHostLabel } from "./motion-probes/capture.mjs";
+import { buildPageUrl, classifyMotion, frameTimes, inspectWebmBuffer, parseAssetBase, parseCaptureOptions, parseHostLabel } from "./motion-probes/capture.mjs";
 import {
   buildGithubCapturePlan,
   githubCommit,
   githubPageUrl,
   parseGithubCaptureOptions,
+  positiveControlUrl,
+  resolveCanonical,
   selectorForAlt,
   validateCompletedReport,
   validatePinnedPage,
+  validateResponseChain,
   validateTargetMetadata,
 } from "./motion-probes/capture-github.mjs";
 
@@ -95,6 +98,21 @@ test("direct capture video mode is bounded to the supplied Playwright API", () =
   );
 });
 
+test("direct video timing passes the Node anchor into the browser evaluation", async () => {
+  const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
+  assert.doesNotMatch(source, /evaluate\(\(\) => performance\.now\(\) - startedAt\)/u);
+  assert.match(source, /evaluate\(\(anchor\) => performance\.now\(\) - anchor, startedAt\)/u);
+});
+
+test("recorded video metadata verifies WebM identity without claiming parsed duration", () => {
+  const metadata = inspectWebmBuffer(Buffer.from("1a45dfa300010203", "hex"));
+  assert.equal(metadata.magicHex, "1a45dfa3");
+  assert.equal(metadata.fileSizeBytes, 8);
+  assert.equal(metadata.actualDurationVerified, false);
+  assert.match(metadata.durationBoundary, /not parsed/);
+  assert.throws(() => inspectWebmBuffer(Buffer.from("00010203", "hex")), /not a WebM/);
+});
+
 test("GitHub capture options require a fresh absolute output path and unique supported engines", () => {
   const options = parseGithubCaptureOptions([
     "--playwright-cli", "C:/playwright/cli.js",
@@ -103,6 +121,7 @@ test("GitHub capture options require a fresh absolute output path and unique sup
   ]);
   assert.deepEqual(options.selectedEngines, ["chromium", "webkit"]);
   assert.equal(options.outputDirectory, "C:/temp/github-motion");
+  assert.equal(buildGithubCapturePlan(options.planFilters).length, 35);
   assert.throws(() => parseGithubCaptureOptions([
     "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "relative",
   ]), /absolute/);
@@ -112,6 +131,23 @@ test("GitHub capture options require a fresh absolute output path and unique sup
   assert.throws(() => parseGithubCaptureOptions([
     "--playwright-cli", "C:/playwright/playwright.cmd", "--playwright-engine", "chromium", "--out", "C:/temp/out",
   ]), /cli\.js/);
+  assert.throws(() => parseGithubCaptureOptions([
+    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "C:/temp/out", "--host", "unknown",
+  ]), /--host/);
+});
+
+test("GitHub diagnostic filters are bounded and controls are explicit", () => {
+  const base = [
+    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "C:/temp/out",
+    "--host", "worker-camo", "--probe", "css-enter", "--embed", "picture",
+  ];
+  const diagnostic = parseGithubCaptureOptions(base);
+  assert.equal(diagnostic.diagnostic, true);
+  assert.deepEqual(buildGithubCapturePlan(diagnostic.planFilters).map((row) => row.kind), ["probe"]);
+  const withControls = parseGithubCaptureOptions([...base, "--include-positive-control", "--include-reduced-controls"]);
+  assert.deepEqual(buildGithubCapturePlan(withControls.planFilters).map((row) => row.kind), [
+    "probe", "reduced-motion-control", "positive-control",
+  ]);
 });
 
 test("GitHub capture plan covers each probe, host, embed, reduced source, and positive control", () => {
@@ -130,7 +166,15 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
   const plan = buildGithubCapturePlan();
   const rawRow = plan.find((row) => row.host === "github-raw-relative" && row.probe === "css-enter" && row.embed === "img");
   const camoRow = plan.find((row) => row.host === "worker-camo" && row.probe === "css-enter" && row.embed === "img");
+  const positiveRow = plan.find((row) => row.kind === "positive-control");
   const rawUrl = `https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`;
+  const resolvedRaw = resolveCanonical(rawRow, {
+    currentSrc: rawUrl,
+    selectedSourceCanonical: null,
+    imageCanonical: null,
+    anchorHref: githubPageUrl,
+  });
+  assert.equal(resolvedRaw.canonical, rawUrl, "raw canonical must ignore the surrounding README link");
   assert.doesNotThrow(() => validateTargetMetadata(rawRow, {
     src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
     naturalWidth: 360, naturalHeight: 120,
@@ -144,6 +188,24 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
     src: rawUrl, currentSrc: rawUrl.replace(githubCommit, "main"), canonical: rawUrl, sources: [],
     naturalWidth: 360, naturalHeight: 120,
   }), /full raw commit pin/);
+  const wrongProbeUrl = rawUrl.replace("css-enter.svg", "css-breathe.svg");
+  assert.throws(() => validateTargetMetadata(rawRow, {
+    src: wrongProbeUrl, currentSrc: wrongProbeUrl, canonical: wrongProbeUrl, sources: [],
+    naturalWidth: 360, naturalHeight: 120,
+  }), /must select css-enter\.svg/);
+  assert.throws(() => validateTargetMetadata(camoRow, {
+    src: "https://camo.githubusercontent.com/hash", currentSrc: "https://camo.githubusercontent.com/hash",
+    canonical: "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-breathe.svg",
+    sources: [], naturalWidth: 360, naturalHeight: 120,
+  }), /must select css-enter\.svg/);
+  assert.doesNotThrow(() => validateTargetMetadata(positiveRow, {
+    src: "https://camo.githubusercontent.com/control", currentSrc: "https://camo.githubusercontent.com/control",
+    canonical: positiveControlUrl, sources: [], naturalWidth: 435, naturalHeight: 50,
+  }));
+  assert.throws(() => validateTargetMetadata(positiveRow, {
+    src: "https://camo.githubusercontent.com/control", currentSrc: "https://camo.githubusercontent.com/control",
+    canonical: positiveControlUrl.replace("duration=2500", "duration=5000"), sources: [], naturalWidth: 435, naturalHeight: 50,
+  }), /exact configured/);
 
   const reducedRow = plan.find((row) => row.kind === "reduced-motion-control" && row.host === "github-raw-relative");
   const reducedUrl = rawUrl.replace("css-enter.svg", "reduced-motion-control.svg");
@@ -152,11 +214,23 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
     currentSrc: reducedUrl,
     canonical: reducedUrl,
     sources: [
-      { media: "(prefers-reduced-motion: reduce)", srcset: reducedUrl, canonicalSrcset: null },
-      { media: "(prefers-color-scheme: dark)", srcset: rawUrl.replace("css-enter.svg", "css-breathe.svg"), canonicalSrcset: null },
+      { media: "(prefers-reduced-motion: reduce)", matches: true, srcset: reducedUrl, canonicalSrcset: null },
+      { media: "(prefers-color-scheme: dark)", matches: true, srcset: rawUrl.replace("css-enter.svg", "css-breathe.svg"), canonicalSrcset: null },
     ],
     naturalWidth: 360, naturalHeight: 120,
   }, { currentSrc: reducedUrl }));
+
+  assert.doesNotThrow(() => validateResponseChain(rawRow, rawUrl, [
+    { url: rawUrl, status: 302 },
+    {
+      url: `https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`,
+      status: 200,
+      headersArray: [{ name: "content-type", value: "image/svg+xml" }],
+      bodySha256: "c".repeat(64),
+      bodyError: null,
+    },
+  ]));
+  assert.throws(() => validateResponseChain(rawRow, rawUrl, [{ url: rawUrl, status: 200 }]), /redirect chain/);
 });
 
 test("frozen from-state is reserved for the opacity-from control", () => {
@@ -168,23 +242,51 @@ test("frozen from-state is reserved for the opacity-from control", () => {
 
 test("completed GitHub output requires every frame, measured verdict, and recorded video", () => {
   const selectedEngines = ["chromium"];
-  const rows = buildGithubCapturePlan().map((row) => ({
+  const plan = buildGithubCapturePlan({
+    hosts: ["github-raw-relative"], probes: ["css-enter"], embeds: ["img"],
+    includeReducedControls: false, includePositiveControl: false,
+  });
+  const discoveries = plan.map((row) => ({
+    engine: "chromium", media: row.media, selector: row.selector,
+  }));
+  const currentSrc = `https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`;
+  const rows = plan.map((row) => ({
     ...row,
     engine: "chromium",
     version: "1.0",
     page: githubPageUrl,
     commit: githubCommit,
-    currentSrc: "https://example.test/current",
+    currentSrc,
     canonical: "https://example.test/canonical",
-    responseObservation: { chain: [{ status: 200 }] },
+    requestGate: {
+      targetUrl: currentSrc, interceptionCount: 1,
+      loadTimestampMs: 100, loadToFirstFrameMs: 1, loadToFirstFrameCompleteMs: 2,
+    },
+    responseObservation: { chain: [
+      { url: currentSrc, status: 302 },
+      {
+        url: `https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`,
+        status: 200,
+        headersArray: [{ name: "content-type", value: "image/svg+xml; charset=utf-8" }],
+        bodySha256: "c".repeat(64),
+        bodyError: null,
+      },
+    ] },
     frames: frameTimes.map((targetTimeMs) => ({
       targetTimeMs, actualTimeMs: targetTimeMs, completedTimeMs: targetTimeMs + 1,
       path: `${targetTimeMs}.png`, sha256: "b".repeat(64),
     })),
     verdict: row.kind === "positive-control" ? "animates" : "frozen at frame zero",
-    video: { measuredVisibleDurationMs: 5_000, sha256: "a".repeat(64) },
+    video: {
+      measuredVisibleDurationMs: 5_000,
+      sha256: "a".repeat(64),
+      fileSizeBytes: 8,
+      magicHex: "1a45dfa3",
+      actualDurationVerified: false,
+      durationBoundary: "measuredVisibleDurationMs is browser performance time; WebM container duration is not parsed",
+    },
   }));
-  assert.doesNotThrow(() => validateCompletedReport({ selectedEngines, rows }));
+  assert.doesNotThrow(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }));
   rows[0] = { ...rows[0], video: { ...rows[0].video, measuredVisibleDurationMs: 2_999 } };
-  assert.throws(() => validateCompletedReport({ selectedEngines, rows }), /at least three seconds/);
+  assert.throws(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }), /at least three seconds/);
 });
