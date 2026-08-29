@@ -56,11 +56,13 @@ test("routes fixed motion probe filenames through the built Worker", async () =>
 });
 
 test("rejects query variants for built motion probes as bounded JSON", async () => {
-  const response = await request("/api/v1/probes/motion/css-enter.svg?cachebust=1");
-  assert.equal(response.status, 400);
-  assert.equal(response.headers.get("cache-control"), "no-store");
-  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
-  assert.equal((await response.json()).error.code, "invalid_input");
+  for (const query of ["?", "?&", "?&&", "?cachebust=1"]) {
+    const response = await request(`/api/v1/probes/motion/css-enter.svg${query}`);
+    assert.equal(response.status, 400, query);
+    assert.equal(response.headers.get("cache-control"), "no-store", query);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json/, query);
+    assert.equal((await response.json()).error.code, "invalid_input", query);
+  }
 });
 
 test("keeps SVG security headers and ETag values identical for a matching 304", async () => {
