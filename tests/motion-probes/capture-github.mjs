@@ -474,7 +474,7 @@ export async function discoverTargets(browser, engine, browserVersion, plan) {
       for (const row of plan.filter((candidate) => candidate.media === media)) {
         const locator = page.locator(row.selector);
         assert.equal(await locator.count(), 1, `${row.selector} must match exactly one image during discovery`);
-        await locator.scrollIntoViewIfNeeded();
+        await locator.evaluate((image) => image.scrollIntoView({ block: "center" }));
         await locator.evaluate((image) => image.decode());
         const { metadata } = await readRowMetadata(page, row, locator);
         const responses = await responseChain(responseByUrl, metadata.currentSrc);
