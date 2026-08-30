@@ -50,7 +50,9 @@ Run a local direct measurement without adding a repository dependency:
 node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\Application\chrome.exe' --out C:\temp\commitatlas-motion
 ```
 
-`--out` must name a new directory; the harness refuses to replace prior capture evidence.
+`--out` must name a new directory; the harness refuses to replace prior capture evidence. Both
+capture CLIs require a platform-native absolute path and reject an existing directory before
+launching a browser or creating screenshots, recordings, or browser profiles.
 For a deployed Worker (or another authorized public synthetic host), pass its bare HTTPS asset
 directory and a short host label. The page remains the local wrapper, while each image source is
 resolved against the encoded `assetBase` query value; the report repeats the exact `assetBase` and
@@ -100,6 +102,13 @@ Use a new output directory for every engine/run. Raw reports retain browser-obse
 headers for reproducibility and must remain untracked; only reviewed, synthetic-safe compact
 evidence belongs in the repository.
 
+Direct hosted capture also fetches every selected synthetic asset before browser launch and requires
+`200 image/svg+xml`, the local fixture's exact SHA-256, and declared `360x120` bounds. A direct report
+without an exact browser version is marked ineligible as compatibility evidence; it remains useful
+only as a structural observation. When adjacent frames stay below the motion threshold, the harness
+uses `frozen at frame zero` only with a verified frame-zero reference and otherwise records the
+neutral verdict `no motion detected`.
+
 For a bounded diagnostic run, `--host`, `--probe`, and `--embed` accept comma-separated allowlisted
 values. Controls are omitted from a filtered plan unless explicitly requested with
 `--include-positive-control` or `--include-reduced-controls`; an unfiltered run still requires all
@@ -133,8 +142,10 @@ Answer first: through the deployed Worker SVG CSP, every CSS and SMIL probe anim
 `<img>` and `<picture>` embeds in Chromium 143.0.7499.4, Firefox 144.0.2, and WebKit 26.0.
 The sole exception is `css-offset-path`, which is frozen in all six normal-motion rows. With
 `prefers-reduced-motion: reduce`, the `<picture>` source selects the static control in all three
-engines; its four frame pairs are `0/0` (Chromium: 59,173 control pixels; Firefox: 59,596;
-WebKit: 59,256).
+engines. Chromium's four pairs are `0/0`; Firefox observed a sub-threshold `1/32` first pair and
+WebKit a sub-threshold `8/259` first pair, with their remaining pairs `0/0`. These are capture noise,
+not motion, under the declared `16 changed pixels / 1,000 channel delta` threshold (control pixels:
+Chromium 59,173; Firefox 59,596; WebKit 59,256).
 
 The complete five-frame direct-Worker pixel matrix is recorded in
 [`2026-08-29-worker-direct.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-worker-direct.json):
@@ -145,6 +156,10 @@ pixel pair. The reports were captured with Playwright 1.57.0 (Chromium 143.0.749
 `f3d192f`. All nine fixed URLs returned `200 image/svg+xml; charset=utf-8` with the production
 cache, CSP, CORS, CORP, and `nosniff` headers; their exact response values and hashes are in the
 ledger.
+
+The normal gate validates this older ledger's complete 48-row identity matrix, three reduced-motion
+controls, thresholds, raw-report hashes, and all nine response ETags against the tracked fixture
+SHA-256 values. It remains authoritative for its dated direct-Worker checkpoint only.
 
 The matching recording ledger adds one WebM for each of those 48 normal rows and for one
 reduced-motion `<picture>` row per engine. All 51 files have the WebM EBML marker, a recorded byte
@@ -186,9 +201,11 @@ identity from intrinsic presentation sizing before one bounded WebKit retry.
 
 An earlier Chrome-only structural observation remains in
 [`2026-08-29-github-readme-chromium.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-github-readme-chromium.json).
-It established README sanitizer retention and reduced-source selection against an older scratch
-pin; the new pinned diagnostic supersedes its “no pixel sequence or recording” limitation for the
-14 rows above.
+It established README sanitizer retention and reduced-source selection while the rendered image
+URLs still used `/raw/main/`. The scratch commit recorded nearby does not pin those moving-head
+assets, so this is moving-head structural evidence, not pinned compatibility evidence. The new
+pinned diagnostic supersedes its earlier lack of a pixel sequence or recording for the 14 rows
+above.
 
 ## Matrix checkpoint and exact resume
 

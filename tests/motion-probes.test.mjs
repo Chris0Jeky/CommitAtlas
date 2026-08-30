@@ -4,9 +4,22 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { buildPageUrl, classifyMotion, frameTimes, inspectWebmBuffer, parseAssetBase, parseCaptureOptions, parseHostLabel } from "./motion-probes/capture.mjs";
+import {
+  buildPageUrl,
+  capture,
+  classifyMotion,
+  compatibilityEvidenceStatus,
+  createFreshOutputDirectory,
+  frameTimes,
+  inspectWebmBuffer,
+  parseAssetBase,
+  parseCaptureOptions,
+  parseHostLabel,
+  validateHostedAssetResponse,
+} from "./motion-probes/capture.mjs";
 import {
   buildGithubCapturePlan,
+  captureGithub,
   githubCommit,
   githubPageUrl,
   parseGithubCaptureOptions,
@@ -22,6 +35,9 @@ import {
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDirectory = path.join(testDirectory, "fixtures", "motion-probes");
 const evidenceDirectory = path.join(fixtureDirectory, "evidence");
+const testOutputDirectory = path.resolve(testDirectory, ".test-output");
+const testBrowser = path.resolve(testDirectory, ".test-tools", "browser.exe");
+const testPlaywrightCli = path.resolve(testDirectory, ".test-tools", "playwright", "cli.js");
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const readEvidence = async (name) => JSON.parse(await readFile(path.join(evidenceDirectory, name), "utf8"));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
@@ -63,7 +79,7 @@ test("fixture index supports both image embedding paths and declares the reduced
 test("capture options accept an explicit HTTPS asset base and bounded host label", () => {
   const assetBase = "https://motion.example.test/probes/";
   const options = parseCaptureOptions([
-    "--browser", "browser.exe", "--out", "C:/temp/motion",
+    "--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"),
     "--asset-base", assetBase, "--host-label", "worker-direct",
   ]);
   assert.equal(options.assetBase, assetBase);
@@ -92,20 +108,68 @@ test("capture options reject non-bare asset bases and unbounded labels", () => {
   assert.throws(() => parseHostLabel(""), /host-label/);
   assert.throws(() => parseHostLabel("x".repeat(65)), /host-label/);
   assert.throws(() => parseHostLabel("worker/direct"), /host-label/);
-  assert.throws(() => parseCaptureOptions(["--browser", "browser.exe", "--out", "C:/temp/motion", "--asset-base"]), /asset-base/);
-  assert.throws(() => parseCaptureOptions(["--browser", "browser.exe", "--out", "C:/temp/motion", "--host-label"]), /host-label/);
+  assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--asset-base"]), /asset-base/);
+  assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--host-label"]), /host-label/);
+});
+
+test("direct capture parser rejects unknown, missing, duplicate, relative, and repeated selections", () => {
+  const base = ["--browser", testBrowser, "--out", path.join(testOutputDirectory, "direct")];
+  assert.throws(() => parseCaptureOptions([...base, "--unknown", "value"]), /unknown option/);
+  assert.throws(() => parseCaptureOptions([...base, "--probe"]), /requires a value/);
+  assert.throws(() => parseCaptureOptions([...base, "--out", path.join(testOutputDirectory, "again")]), /only once/);
+  assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", "relative"]), /Usage/);
+  assert.throws(() => parseCaptureOptions([...base, "--probe", "css-enter,css-enter"]), /unique/);
+  assert.throws(() => parseCaptureOptions([...base, "--record-video", "--record-video"]), /only once/);
+});
+
+test("fresh output preflight rejects an existing absolute directory", async () => {
+  await assert.rejects(createFreshOutputDirectory(testDirectory), /refusing to reuse/);
+  await assert.rejects(capture(parseCaptureOptions([
+    "--browser", testBrowser, "--out", testDirectory,
+  ])), /refusing to reuse/);
+  await assert.rejects(captureGithub(parseGithubCaptureOptions([
+    "--playwright-cli", testPlaywrightCli, "--playwright-engine", "chromium", "--out", testDirectory,
+  ])), /refusing to reuse/);
 });
 
 test("direct capture video mode is bounded to the supplied Playwright API", () => {
   const options = parseCaptureOptions([
-    "--playwright-engine", "firefox", "--playwright-cli", "C:/playwright/cli.js",
-    "--record-video", "--out", "C:/temp/motion",
+    "--playwright-engine", "firefox", "--playwright-cli", testPlaywrightCli,
+    "--record-video", "--out", path.join(testOutputDirectory, "motion"),
   ]);
   assert.equal(options.recordVideo, true);
   assert.throws(
-    () => parseCaptureOptions(["--browser", "browser.exe", "--record-video", "--out", "C:/temp/motion"]),
+    () => parseCaptureOptions(["--browser", testBrowser, "--record-video", "--out", path.join(testOutputDirectory, "motion")]),
     /record-video requires/,
   );
+});
+
+test("hosted direct capture validates status, MIME, fixture hash, and bounded dimensions", async () => {
+  const fixture = await readFile(path.join(fixtureDirectory, "css-enter.svg"));
+  const response = () => new Response(fixture, { status: 200, headers: { "content-type": "image/svg+xml; charset=utf-8" } });
+  const observation = await validateHostedAssetResponse("css-enter", response(), fixture);
+  assert.deepEqual([observation.width, observation.height], [360, 120]);
+  assert.match(observation.bodySha256, sha256Pattern);
+  await assert.rejects(
+    validateHostedAssetResponse("css-enter", new Response("unavailable", { status: 503 }), fixture),
+    /return 200/,
+  );
+  await assert.rejects(
+    validateHostedAssetResponse("css-enter", new Response(fixture, { status: 200, headers: { "content-type": "text/html" } }), fixture),
+    /image\/svg\+xml/,
+  );
+  await assert.rejects(
+    validateHostedAssetResponse("css-enter", new Response(fixture.subarray(0, -1), { status: 200, headers: { "content-type": "image/svg+xml" } }), fixture),
+    /fixture SHA-256/,
+  );
+});
+
+test("compatibility eligibility requires an exact browser version", () => {
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
+    eligible: true, browserVersion: "143.0.7499.4",
+  });
+  assert.equal(compatibilityEvidenceStatus(null).eligible, false);
+  assert.match(compatibilityEvidenceStatus(null).reason, /not compatibility evidence/);
 });
 
 test("direct video timing passes the Node anchor into the browser evaluation", async () => {
@@ -125,30 +189,30 @@ test("recorded video metadata verifies WebM identity without claiming parsed dur
 
 test("GitHub capture options require a fresh absolute output path and unique supported engines", () => {
   const options = parseGithubCaptureOptions([
-    "--playwright-cli", "C:/playwright/cli.js",
+    "--playwright-cli", testPlaywrightCli,
     "--playwright-engine", "chromium,webkit",
-    "--out", "C:/temp/github-motion",
+    "--out", path.join(testOutputDirectory, "github-motion"),
   ]);
   assert.deepEqual(options.selectedEngines, ["chromium", "webkit"]);
-  assert.equal(options.outputDirectory, "C:/temp/github-motion");
+  assert.equal(options.outputDirectory, path.join(testOutputDirectory, "github-motion"));
   assert.equal(buildGithubCapturePlan(options.planFilters).length, 35);
   assert.throws(() => parseGithubCaptureOptions([
-    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "relative",
+    "--playwright-cli", testPlaywrightCli, "--playwright-engine", "chromium", "--out", "relative",
   ]), /absolute/);
   assert.throws(() => parseGithubCaptureOptions([
-    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "webkit,webkit", "--out", "C:/temp/out",
+    "--playwright-cli", testPlaywrightCli, "--playwright-engine", "webkit,webkit", "--out", path.join(testOutputDirectory, "out"),
   ]), /unique/);
   assert.throws(() => parseGithubCaptureOptions([
-    "--playwright-cli", "C:/playwright/playwright.cmd", "--playwright-engine", "chromium", "--out", "C:/temp/out",
+    "--playwright-cli", path.join(path.dirname(testPlaywrightCli), "playwright.cmd"), "--playwright-engine", "chromium", "--out", path.join(testOutputDirectory, "out"),
   ]), /cli\.js/);
   assert.throws(() => parseGithubCaptureOptions([
-    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "C:/temp/out", "--host", "unknown",
+    "--playwright-cli", testPlaywrightCli, "--playwright-engine", "chromium", "--out", path.join(testOutputDirectory, "out"), "--host", "unknown",
   ]), /--host/);
 });
 
 test("GitHub diagnostic filters are bounded and controls are explicit", () => {
   const base = [
-    "--playwright-cli", "C:/playwright/cli.js", "--playwright-engine", "chromium", "--out", "C:/temp/out",
+    "--playwright-cli", testPlaywrightCli, "--playwright-engine", "chromium", "--out", path.join(testOutputDirectory, "out"),
     "--host", "worker-camo", "--probe", "css-enter", "--embed", "picture",
   ];
   const diagnostic = parseGithubCaptureOptions(base);
@@ -251,7 +315,11 @@ test("frozen from-state is reserved for the opacity-from control", () => {
   const transparentControl = { width: 1, height: 1, rgba: Buffer.from([0, 0, 0, 255]) };
   const differences = [{ changedPixels: 0, totalChannelDelta: 0 }];
   assert.equal(classifyMotion("css-from-state-control", [transparentControl], differences), "frozen at from-state");
-  assert.equal(classifyMotion("css-enter", [transparentControl], differences), "frozen at frame zero");
+  assert.equal(classifyMotion("css-enter", [transparentControl], differences), "no motion detected");
+  assert.equal(
+    classifyMotion("css-enter", [transparentControl], differences, { frameZeroReferenceVerified: true }),
+    "frozen at frame zero",
+  );
 });
 
 test("completed GitHub output requires every frame, measured verdict, and recorded video", () => {
@@ -370,6 +438,59 @@ test("direct Worker recording ledger pins all 51 synthetic WebMs", async () => {
     assert.equal(aggregate.rowCount, 17);
     assert.deepEqual(aggregate.verdictCounts, { animates: 14, "frozen at frame zero": 3 });
     assert.equal(aggregate.recordingAggregateSha256, sha256(lines));
+  }
+});
+
+test("legacy direct Worker pixel ledger retains complete identities, thresholds, controls, and fixture hashes", async () => {
+  const ledger = await readEvidence("2026-08-29-worker-direct.json");
+  assert.deepEqual(ledger.runner.framesMs, frameTimes);
+  assert.deepEqual(ledger.runner.motionThreshold, { changedPixels: 16, totalChannelDelta: 1_000 });
+  assert.equal(ledger.pixelMatrix.rowCount, 48);
+  assert.equal(ledger.pixelMatrix.results.length, 48);
+  assert.equal(ledger.pixelMatrix.reducedMotion.rowCount, 3);
+  assert.equal(ledger.pixelMatrix.reducedMotion.results.length, 3);
+
+  const normalProbes = [
+    "css-enter", "css-breathe", "css-plot", "css-from-state-control",
+    "smil-transform", "smil-plot", "smil-animate-motion", "css-offset-path",
+  ];
+  const engines = Object.values(ledger.runner.browsers);
+  const expectedNormal = engines.flatMap((engine) => normalProbes.flatMap((probe) => (
+    ["img", "picture"].map((embed) => `${engine}|${probe}|${embed}`)
+  ))).sort();
+  assert.deepEqual(
+    ledger.pixelMatrix.results.map((row) => `${row.engine}|${row.probe}|${row.embed}`).sort(),
+    expectedNormal,
+  );
+  for (const row of [...ledger.pixelMatrix.results, ...ledger.pixelMatrix.reducedMotion.results]) {
+    assert.equal(row.pairs.length, 4);
+    for (const pair of row.pairs) {
+      assert.equal(pair.length, 2);
+      assert.ok(pair.every((value) => Number.isInteger(value) && value >= 0));
+    }
+  }
+  assert.deepEqual(
+    ledger.pixelMatrix.reducedMotion.results.map((row) => [row.engine, row.probe, row.embed]),
+    engines.map((engine) => [engine, "smil-transform", "picture"]),
+  );
+  assert.ok(ledger.pixelMatrix.reducedMotion.results.every((row) => row.reducedMotionControlPixels > 0));
+
+  assert.equal(ledger.httpResponses.length, 9);
+  assert.deepEqual(
+    ledger.httpResponses.map((response) => response.probe).sort(),
+    [...normalProbes, "reduced-motion-control"].sort(),
+  );
+  for (const response of ledger.httpResponses) {
+    assert.equal(response.status, 200);
+    assert.match(response.contentType, /^image\/svg\+xml(?:;|$)/u);
+    const fixture = await readFile(path.join(fixtureDirectory, `${response.probe}.svg`));
+    assert.equal(response.etag, `W/"${sha256(fixture)}"`);
+  }
+  assert.equal(ledger.rawReports.length, 6);
+  for (const report of ledger.rawReports) {
+    assert.match(report.reportJsonSha256, sha256Pattern);
+    assert.match(report.reportPartialJsonSha256, sha256Pattern);
+    assert.match(report.pngAggregate.rootSha256, sha256Pattern);
   }
 });
 
