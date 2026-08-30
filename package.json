@@ -60,11 +60,12 @@
     "test:packaging": "node --test tests/package-packaging.test.mjs",
     "test:action": "npm run build:action && node --test action/action.test.mjs && git diff --exit-code -- action/dist",
     "test:deploy-tooling": "node --test tests/deployed-origin.test.mjs tests/deployment-verification.test.mjs",
+    "test:motion-probes": "node --test tests/motion-probes.test.mjs",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs tests/discoverability.test.mjs",
     "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
-    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:deploy-tooling && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
+    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
   },
   "dependencies": {
     "react": "^19.2.8",

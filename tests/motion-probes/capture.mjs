@@ -60,10 +60,24 @@ export function buildPageUrl(origin, embed, probe, assetBase) {
 
 export function parseCaptureOptions(argv) {
   const argumentsMap = new Map();
+  const valueOptions = new Set([
+    "--browser", "--playwright-engine", "--playwright-cli", "--out",
+    "--probe", "--embed", "--asset-base", "--host-label",
+  ]);
+  const flagOptions = new Set(["--reduced-motion", "--record-video"]);
   for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (["--reduced-motion", "--record-video"].includes(argument)) argumentsMap.set(argument, "true");
-    else argumentsMap.set(argument, argv[++index]);
+    const name = argv[index];
+    if (flagOptions.has(name)) {
+      if (argumentsMap.has(name)) throw new Error(`${name} may be supplied only once`);
+      argumentsMap.set(name, true);
+      continue;
+    }
+    const value = argv[index + 1];
+    if (!valueOptions.has(name)) throw new Error(`unknown option: ${name}`);
+    if (argumentsMap.has(name)) throw new Error(`${name} may be supplied only once`);
+    if (value === undefined || value.startsWith("--")) throw new Error(`${name} requires a value`);
+    argumentsMap.set(name, value);
+    index += 1;
   }
   const browser = argumentsMap.get("--browser");
   const playwrightEngine = argumentsMap.get("--playwright-engine");
@@ -71,13 +85,20 @@ export function parseCaptureOptions(argv) {
   const reducedMotion = argumentsMap.has("--reduced-motion");
   const recordVideo = argumentsMap.has("--record-video");
   const outputDirectory = argumentsMap.get("--out");
-  if ((!browser && !playwrightEngine) || !outputDirectory || (browser && playwrightEngine)) {
+  if ((!browser && !playwrightEngine) || !outputDirectory || !path.isAbsolute(outputDirectory) || (browser && playwrightEngine)) {
     throw new Error("Usage: node tests/motion-probes/capture.mjs (--browser <chromium-exe> | --playwright-engine <chromium|firefox|webkit>) --out <absolute-output-directory>");
   }
-  const selectedProbes = argumentsMap.has("--probe") ? argumentsMap.get("--probe").split(",") : probes;
-  const selectedEmbeds = argumentsMap.has("--embed") ? argumentsMap.get("--embed").split(",") : embeds;
-  if (!selectedProbes.every((probe) => probes.includes(probe)) || !selectedEmbeds.every((embed) => embeds.includes(embed))) {
-    throw new Error("--probe and --embed must name an included fixture");
+  const parseSelection = (name, allowed) => {
+    const selected = argumentsMap.has(name) ? argumentsMap.get(name).split(",").filter(Boolean) : allowed;
+    if (!selected.length || !selected.every((value) => allowed.includes(value)) || new Set(selected).size !== selected.length) {
+      throw new Error(`${name} must contain unique comma-separated values from: ${allowed.join(", ")}`);
+    }
+    return selected;
+  };
+  const selectedProbes = parseSelection("--probe", probes);
+  const selectedEmbeds = parseSelection("--embed", embeds);
+  if (playwrightCli && !playwrightEngine) {
+    throw new Error("--playwright-cli requires --playwright-engine");
   }
   if (reducedMotion && (!playwrightEngine || !playwrightCli)) {
     throw new Error("--reduced-motion requires --playwright-engine and --playwright-cli so no dependency is installed");
@@ -113,8 +134,61 @@ export function parseCaptureOptions(argv) {
   };
 }
 
-async function capture(options) {
+export async function createFreshOutputDirectory(outputDirectory) {
+  if (!path.isAbsolute(outputDirectory)) throw new Error("--out must be an absolute path to a new directory");
+  try {
+    await mkdir(outputDirectory);
+  } catch (error) {
+    if (error?.code === "EEXIST") throw new Error("--out must name a new directory; refusing to reuse existing output");
+    throw error;
+  }
+}
+
+export function compatibilityEvidenceStatus(browserVersion) {
+  return browserVersion
+    ? { eligible: true, browserVersion }
+    : {
+        eligible: false,
+        browserVersion: null,
+        reason: "exact browser version unavailable; report is a structural observation, not compatibility evidence",
+      };
+}
+
+function svgDimensions(body) {
+  const root = body.match(/^<svg\b[^>]*>/u)?.[0] ?? "";
+  const width = Number(root.match(/\bwidth="([0-9]+)"/u)?.[1]);
+  const height = Number(root.match(/\bheight="([0-9]+)"/u)?.[1]);
+  return { width, height };
+}
+
+export async function validateHostedAssetResponse(probe, response, expectedBody) {
+  if (!response.ok || response.status !== 200) throw new Error(`${probe} hosted asset must return 200`);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!/^image\/svg\+xml(?:;|$)/iu.test(contentType)) throw new Error(`${probe} hosted asset must be image/svg+xml`);
+  const body = Buffer.from(await response.arrayBuffer());
+  const expectedHash = sha256(expectedBody);
+  if (sha256(body) !== expectedHash) throw new Error(`${probe} hosted asset body must match the synthetic fixture SHA-256`);
+  const dimensions = svgDimensions(body.toString("utf8"));
+  if (dimensions.width !== 360 || dimensions.height !== 120) throw new Error(`${probe} hosted asset must declare bounded 360x120 dimensions`);
+  return { probe, status: response.status, contentType, bodySha256: expectedHash, ...dimensions };
+}
+
+export async function validateHostedAssets(assetBase, selectedProbes, reducedMotion, fetchImpl = fetch) {
+  if (!assetBase) return [];
+  const assetNames = [...new Set([...selectedProbes, ...(reducedMotion ? ["reduced-motion-control"] : [])])];
+  const observations = [];
+  for (const probe of assetNames) {
+    const expectedBody = await readFile(path.join(fixtureDirectory, `${probe}.svg`));
+    const response = await fetchImpl(new URL(`${probe}.svg`, assetBase), { redirect: "error" });
+    observations.push(await validateHostedAssetResponse(probe, response, expectedBody));
+  }
+  return observations;
+}
+
+export async function capture(options) {
   const { browser, playwrightEngine, playwrightCli, reducedMotion, recordVideo, outputDirectory, selectedProbes, selectedEmbeds, assetBase, hostLabel } = options;
+  await createFreshOutputDirectory(outputDirectory);
+  const hostedAssetObservations = await validateHostedAssets(assetBase, selectedProbes, reducedMotion);
   if (playwrightCli) await access(playwrightCli);
   const playwrightModule = playwrightCli && (reducedMotion || recordVideo)
     ? await import(pathToFileURL(path.join(path.dirname(playwrightCli), "index.js")).href)
@@ -149,20 +223,21 @@ async function capture(options) {
   const origin = `http://127.0.0.1:${address.port}/`;
 
   try {
-  // Never replace an evidence directory. A caller must select a fresh, explicit output path.
-  await mkdir(outputDirectory);
+  const browserVersion = recordedBrowser?.version() ?? null;
   const report = {
     protocol: recordVideo
       ? "one continuous recorded Playwright context per row; screenshots decoded to RGBA and compared pixel-for-pixel"
       : "independent browser screenshots decoded to RGBA and compared pixel-for-pixel",
     browser: browser ?? `Playwright ${playwrightEngine}`,
-    browserVersion: recordedBrowser?.version() ?? null,
+    browserVersion,
+    compatibilityEvidence: compatibilityEvidenceStatus(browserVersion),
     origin,
     frameTimesMs: frameTimes,
     motionPixelThreshold,
     reducedMotion,
     recordVideo,
     assetBase,
+    hostedAssetObservations,
     hostLabel,
     rows: [],
   };
@@ -257,6 +332,7 @@ async function capture(options) {
         toMs: frameTimes[index + 1],
         ...pixelDifference(images[index], image),
       }));
+      const reducedMotionControlPixels = reducedMotion ? countPixel(images[0], [255, 209, 102, 255]) : null;
       report.rows.push({
         probe,
         host: hostLabel,
@@ -266,8 +342,10 @@ async function capture(options) {
         captures,
         video,
         differences,
-        reducedMotionControlPixels: reducedMotion ? countPixel(images[0], [255, 209, 102, 255]) : null,
-        verdict: classifyMotion(probe, images, differences),
+        reducedMotionControlPixels,
+        verdict: classifyMotion(probe, images, differences, {
+          frameZeroReferenceVerified: reducedMotionControlPixels > 0,
+        }),
       });
       await writeFile(path.join(outputDirectory, "report.partial.json"), `${JSON.stringify(report, null, 2)}\n`);
     }
@@ -383,7 +461,7 @@ export function countPixel(image, expected) {
   return count;
 }
 
-export function classifyMotion(probe, images, differences) {
+export function classifyMotion(probe, images, differences, { frameZeroReferenceVerified = false } = {}) {
   if (differences.some((difference) => (
     difference.changedPixels >= motionPixelThreshold.changedPixels
     && difference.totalChannelDelta >= motionPixelThreshold.totalChannelDelta
@@ -391,7 +469,7 @@ export function classifyMotion(probe, images, differences) {
   if (probe === "css-from-state-control" && countPixel(images[0], [255, 122, 69, 255]) === 0) {
     return "frozen at from-state";
   }
-  return "frozen at frame zero";
+  return frameZeroReferenceVerified ? "frozen at frame zero" : "no motion detected";
 }
 
 export function sha256(buffer) {

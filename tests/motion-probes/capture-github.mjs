@@ -11,6 +11,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   classifyMotion,
+  createFreshOutputDirectory,
   decodePng,
   frameTimes,
   inspectWebmFile,
@@ -24,7 +25,7 @@ import {
 export const githubCommit = "039a0370b1a52fb6135e4414e04a11bff7ba21d0";
 export const githubPageUrl = `https://github.com/Chris0Jeky/commitatlas-motion-probes/blob/${githubCommit}/README.md`;
 export const positiveControlUrl = "https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2500&pause=500&color=22C55E&width=435&lines=CommitAtlas%20motion%20probe%20control";
-export const verdicts = ["animates", "frozen at frame zero", "frozen at from-state", "not tested"];
+export const verdicts = ["animates", "frozen at frame zero", "frozen at from-state", "no motion detected", "not tested"];
 
 const engines = ["chromium", "firefox", "webkit"];
 const embeds = ["img", "picture"];
@@ -566,7 +567,9 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       toActualMs: frames[index + 1].actualTimeMs,
       ...pixelDifference(images[index], image),
     }));
-    const verdict = classifyMotion(row.probe, images, differences);
+    const verdict = classifyMotion(row.probe, images, differences, {
+      frameZeroReferenceVerified: row.kind === "reduced-motion-control",
+    });
     if (row.kind === "positive-control") assert.equal(verdict, "animates", "known public positive control must animate");
     if (row.kind === "reduced-motion-control") assert.equal(verdict, "frozen at frame zero", "reduced-motion static source must remain frozen");
     assert.ok(verdicts.includes(verdict), `unexpected verdict ${verdict}`);
@@ -621,10 +624,10 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
 }
 
 export async function captureGithub(options) {
+  await createFreshOutputDirectory(options.outputDirectory);
   await access(options.playwrightCli);
   const playwrightModule = await import(pathToFileURL(path.join(path.dirname(options.playwrightCli), "index.js")).href);
   const playwright = playwrightModule.default ?? playwrightModule;
-  await mkdir(options.outputDirectory);
   const plan = buildGithubCapturePlan(options.planFilters);
   const partialFile = path.join(options.outputDirectory, "report.partial.json");
   const report = {
