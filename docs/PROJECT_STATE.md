@@ -504,9 +504,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   `400x133` natural size. Exact discovery subsequently passed all seven selected WebKit targets,
   including canonical URL, SVG MIME, applicable fixture body hashes, and bounded geometry. The
   bounded recording loop then exhausted three attempts on GitHub target replacement and screenshot
-  clipping without completing a row. Head `ef853c0` contains the unverified viewport-coordinate
-  correction; #180 remains parked, no WebKit animation claim was made, and #113's unfiltered matrix
-  remains locked.
+  clipping without completing a row. Head `f6b24dd` contains the unverified viewport-coordinate
+  correction and fails closed if the timed DOM node is replaced before or during capture; #180
+  remains parked, no WebKit animation claim was made, and #113's unfiltered matrix remains locked.
   The owner
   gates in #115–#122 and #170 remain open, and no motion behaviour from the programme is on `main`.
 

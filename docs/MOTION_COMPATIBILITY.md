@@ -234,10 +234,11 @@ The full hosted plan is still 35 rows per engine (105 total): every probe under 
 and embed forms, two reduced-motion controls, and the positive control. #180 proved body identity
 independently of intrinsic sizing, and exact discovery now passes all seven bounded WebKit targets.
 The recording loop then exhausted three genuinely different attempts on target replacement and
-screenshot clipping, with zero completed rows. Head `ef853c0` corrects the last observed coordinate
-error but is deliberately unverified: the next safe action is one fresh seven-row WebKit diagnostic
-in a new gate loop. Only a green result can unlock #113's unfiltered plan. The direct Worker matrix
-does not need rerunning.
+screenshot clipping, with zero completed rows. Head `f6b24dd` corrects the last observed coordinate
+error and fails closed if GitHub replaces the timed DOM node before or during any frame capture, but
+is deliberately runtime-unverified: the next safe action is one fresh seven-row WebKit diagnostic in
+a new gate loop. Only a green result can unlock #113's unfiltered plan. The direct Worker matrix does
+not need rerunning.
 
 ## PR #77 reconciliation and provisional selection
 

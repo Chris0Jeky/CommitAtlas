@@ -668,5 +668,6 @@ test("WebKit metadata observation separates pinned body identity from presentati
   }
   assert.equal(captureAttempts.animationEvidence, "none");
   assert.match(captureAttempts.unverifiedHead, /^[a-f0-9]{40}$/u);
+  assert.match(captureAttempts.unverifiedSafety, /fail-closed timed DOM-node identity/u);
   assert.match(captureAttempts.disposition, /three-attempt ceiling/);
 });

@@ -41,7 +41,8 @@
     }
   ],
   "animationEvidence": "none",
-  "unverifiedHead": "ef853c0049d8dbc36b4c4a5a29eb5404b48f6cbb",
+  "unverifiedHead": "f6b24ddf46f076a5dcc6b22ec4ec69357668f9e8",
+  "unverifiedSafety": "viewport-coordinate clipping plus fail-closed timed DOM-node identity before and after every frame",
   "nextAction": "run one fresh seven-row WebKit diagnostic on the viewport-coordinate page-clip fix in a new gate loop",
   "disposition": "parked at the three-attempt ceiling; #113 remains locked"
 }
