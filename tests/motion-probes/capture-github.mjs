@@ -593,8 +593,8 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       const clip = await locator.evaluate((image) => {
         const bounds = image.getBoundingClientRect();
         return {
-          x: bounds.x + window.scrollX,
-          y: bounds.y + window.scrollY,
+          x: bounds.x,
+          y: bounds.y,
           width: bounds.width,
           height: bounds.height,
         };
