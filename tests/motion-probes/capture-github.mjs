@@ -454,7 +454,7 @@ async function readRowMetadata(page, row, locator) {
   return { metadata, reducedControl };
 }
 
-async function discoverTargets(browser, engine, browserVersion, plan) {
+export async function discoverTargets(browser, engine, browserVersion, plan) {
   const discoveries = [];
   for (const media of new Set(plan.map((row) => row.media))) {
     const context = await browser.newContext({
