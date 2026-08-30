@@ -590,7 +590,17 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       await page.waitForTimeout(Math.max(0, targetTimeMs - (beforeWait - loadedAt)));
       const actualTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       const file = path.join(directory, `${targetTimeMs}.png`);
-      await locator.screenshot({ path: file, animations: "allow" });
+      const clip = await locator.evaluate((image) => {
+        const bounds = image.getBoundingClientRect();
+        return {
+          x: bounds.x + window.scrollX,
+          y: bounds.y + window.scrollY,
+          width: bounds.width,
+          height: bounds.height,
+        };
+      });
+      assert.ok(clip.width > 0 && clip.height > 0, `${row.selector} screenshot clip must have positive dimensions`);
+      await page.screenshot({ path: file, clip, animations: "allow" });
       const completedTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       if (row.probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
         throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
