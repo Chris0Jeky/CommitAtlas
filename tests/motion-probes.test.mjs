@@ -638,4 +638,22 @@ test("WebKit metadata observation separates pinned body identity from presentati
   assert.equal(attempt.animationEvidence, "none");
   assert.match(attempt.partialReportSha256, sha256Pattern);
   assert.match(attempt.disposition, /do not rerun/);
+
+  const captureAttempts = await readEvidence("2026-08-30-webkit-capture-attempts.json");
+  assert.equal(captureAttempts.scope, "bounded WebKit seven-row capture attempts after exact discovery; no completed rows or animation verdict");
+  assert.deepEqual(captureAttempts.browser, { engine: "webkit", version: "26.0", playwright: "1.57.0" });
+  assert.equal(captureAttempts.plannedRows, 7);
+  assert.equal(captureAttempts.exactDiscovery.status, "complete");
+  assert.equal(captureAttempts.exactDiscovery.completedDiscoveries, 7);
+  assert.deepEqual(captureAttempts.exactDiscovery.naturalDimensions, { width: 400, height: 133 });
+  assert.deepEqual(captureAttempts.exactDiscovery.renderedDimensions, { width: 400, height: 133.328125 });
+  assert.equal(captureAttempts.attempts.length, 3);
+  for (const captureAttempt of captureAttempts.attempts) {
+    assert.equal(captureAttempt.completedDiscoveries, 7);
+    assert.equal(captureAttempt.completedRows, 0);
+    assert.match(captureAttempt.partialReportSha256, sha256Pattern);
+  }
+  assert.equal(captureAttempts.animationEvidence, "none");
+  assert.match(captureAttempts.unverifiedHead, /^[a-f0-9]{40}$/u);
+  assert.match(captureAttempts.disposition, /three-attempt ceiling/);
 });

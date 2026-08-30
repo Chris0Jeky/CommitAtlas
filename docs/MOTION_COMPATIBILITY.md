@@ -1,7 +1,8 @@
 # Motion compatibility evidence
 
-Status: Phase 0 issue #113 is parked at the three-attempt ceiling on the WebKit hosted-discovery
-blocker tracked in [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). This ledger records
+Status: Phase 0 issue #113 is parked behind the WebKit hosted-capture blocker tracked in
+[#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). Exact discovery now passes, but the
+bounded recording loop ended at its three-attempt ceiling with zero completed rows. This ledger records
 measured outcomes only; an unfilled cell is **not tested**, never a compatibility claim. The fixture
 set and local capture tool live in
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
@@ -21,19 +22,23 @@ currently pinned for the complete hosted capture at
   positive control. `css-enter` and the positive control animate; both reduced sources are frozen
   at frame zero. The compact partial ledger is
   [`2026-08-29-github-hosted-diagnostic.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-github-hosted-diagnostic.json).
-- WebKit hosted delivery is **not tested**. Discovery stopped before any WebKit row because the
-  pinned raw SVG decoded as `400x133` rather than the harness's exact `360x120` identity guard.
-  Issue #180 owns the one bounded identity-versus-intrinsic-sizing observation and one seven-row
-  WebKit retry. If that passes, resume #113 at the unfiltered three-engine raw/Camo matrix.
+- WebKit hosted delivery is **not tested**. The original discovery stopped because the pinned raw
+  SVG decoded as `400x133` rather than the harness's exact `360x120` identity guard. Issue #180
+  separated body identity from presentation sizing and now owns the remaining capture seam. Only a
+  green seven-row WebKit diagnostic can resume #113 at the unfiltered three-engine raw/Camo matrix.
 - The #180 metadata-only observation proved that WebKit 26.0's `400x133` natural and
   `400x133.328125` rendered presentation is the same pinned SVG: the final raw response, tracked
   fixture, and matching Worker response all have SHA-256
   `85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945`. The compact observation is
   [`2026-08-30-webkit-metadata.json`](../tests/fixtures/motion-probes/evidence/2026-08-30-webkit-metadata.json).
-  The single seven-row retry at CommitAtlas head `6578f1d` still failed closed before any discovery
-  or row because its rendered-width bound rejected the live presentation. Its partial report hash
-  and zero-row disposition are recorded in
+  The first seven-row retry at CommitAtlas head `6578f1d` failed closed before any discovery or row
+  on its rendered-width bound. Its partial report hash and zero-row disposition are recorded in
   [`2026-08-30-webkit-diagnostic-attempt.json`](../tests/fixtures/motion-probes/evidence/2026-08-30-webkit-diagnostic-attempt.json).
+  A later exact discovery completed all seven identities at head `5e14613`, proving the bound itself
+  was sound and exposing WebKit/GitHub target-replacement races in the recording path. Three bounded
+  capture attempts each completed all seven discoveries but no row; their immutable report hashes,
+  failures, and unverified viewport-clip follow-up are recorded in
+  [`2026-08-30-webkit-capture-attempts.json`](../tests/fixtures/motion-probes/evidence/2026-08-30-webkit-capture-attempts.json).
   This is not animation evidence; #180 remains parked and the unfiltered matrix stays locked.
 - No final backend is selected. Provisional only: `web` prefers CSS with an explicit SMIL override
   for `offset-path`; Studio keeps CSS and SMIL selectable; `github-readme` remains `none` / unselected
@@ -227,11 +232,12 @@ above.
 
 The full hosted plan is still 35 rows per engine (105 total): every probe under both hosted paths
 and embed forms, two reduced-motion controls, and the positive control. #180 proved body identity
-independently of intrinsic sizing, but its one authorized seven-row retry failed before capture on
-the rendered-width guard. Do not rerun it without a new bounded authorization; the next useful step
-is a metadata-only measurement of the exact harness selector/layout that records the rejected value,
-followed by a reviewed bound change. Only a later green seven-row diagnostic can unlock #113's
-unfiltered plan. The direct Worker matrix does not need rerunning.
+independently of intrinsic sizing, and exact discovery now passes all seven bounded WebKit targets.
+The recording loop then exhausted three genuinely different attempts on target replacement and
+screenshot clipping, with zero completed rows. Head `ef853c0` corrects the last observed coordinate
+error but is deliberately unverified: the next safe action is one fresh seven-row WebKit diagnostic
+in a new gate loop. Only a green result can unlock #113's unfiltered plan. The direct Worker matrix
+does not need rerunning.
 
 ## PR #77 reconciliation and provisional selection
 

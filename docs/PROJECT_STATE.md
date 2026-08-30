@@ -496,14 +496,18 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   The #113 checkpoint now retains five-frame captures and recordings for all 51 direct-Worker rows,
   plus 14 completed Chromium/Firefox GitHub-raw and Camo diagnostic rows. WebKit hosted delivery is
   explicitly not tested: discovery stopped on a `400x133` versus `360x120` intrinsic-size guard, so
-  #113 is parked at the three-attempt ceiling on [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180).
+  #113 is parked behind [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180).
   Issue #183's browser-free hardening is complete: the normal gate runs the evidence tests, both
   capture CLIs fail closed on unsafe output and arguments, direct hosted assets require exact
   synthetic identity before capture, and static results require a verified frame-zero reference to
   claim `frozen at frame zero`. #180 then proved the pinned WebKit asset body independently of its
-  `400x133` natural size, but the single seven-row retry failed before any row on the new
-  rendered-width bound. #180 remains parked; no WebKit animation claim was made and #113's
-  unfiltered matrix remains locked. The owner
+  `400x133` natural size. Exact discovery subsequently passed all seven selected WebKit targets,
+  including canonical URL, SVG MIME, applicable fixture body hashes, and bounded geometry. The
+  bounded recording loop then exhausted three attempts on GitHub target replacement and screenshot
+  clipping without completing a row. Head `ef853c0` contains the unverified viewport-coordinate
+  correction; #180 remains parked, no WebKit animation claim was made, and #113's unfiltered matrix
+  remains locked.
+  The owner
   gates in #115–#122 and #170 remain open, and no motion behaviour from the programme is on `main`.
 
 ## Clean resume commands (from checkout root)
