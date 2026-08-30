@@ -403,6 +403,11 @@ export function validateResponseChain(row, currentSrc, chain, expectedBodySha256
   if (expectedBodySha256) assert.equal(finalResponse.bodySha256, expectedBodySha256, `${row.selector} final SVG body must match the pinned synthetic fixture`);
 }
 
+export function validateCaptureTargetClip(selector, clip) {
+  assert.equal(clip.sameTarget, true, `${selector} timed target must remain the same DOM node`);
+  assert.ok(clip.width > 0 && clip.height > 0, `${selector} screenshot clip must have positive dimensions`);
+}
+
 async function expectedBodySha256(row) {
   if (row.kind === "positive-control") return null;
   const asset = expectedAssetName(row);
@@ -568,6 +573,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     await gate.waitForInterception();
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once before release`);
     const wasComplete = await locator.evaluate((image) => {
+      image.__commitAtlasCaptureTarget = true;
       if (image.complete) return true;
       image.__commitAtlasLoad = new Promise((resolve) => {
         image.addEventListener("load", () => resolve({ loadedAt: performance.now(), error: null }), { once: true });
@@ -576,12 +582,19 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       return false;
     });
     assert.equal(wasComplete, false, `${row.selector} must remain unloaded while its exact request is gated`);
-    const loadResultPromise = locator.evaluate((image) => image.__commitAtlasLoad);
+    const loadResultPromise = locator.evaluate((image) => (
+      image.__commitAtlasCaptureTarget === true ? image.__commitAtlasLoad : null
+    ));
     gate.release();
     const loadResult = await withTimeout(loadResultPromise, responseWaitMs, `${row.selector} image load`);
     assert.ok(loadResult && typeof loadResult === "object", `${row.selector} load observation must return structured timing evidence`);
     assert.equal(loadResult.error, null, `${row.selector} must load successfully after gate release`);
-    await locator.evaluate((image) => image.decode());
+    const decodedTimedTarget = await locator.evaluate(async (image) => {
+      if (image.__commitAtlasCaptureTarget !== true) return false;
+      await image.decode();
+      return true;
+    });
+    assert.equal(decodedTimedTarget, true, `${row.selector} timed target must remain the same DOM node after load`);
 
     const loadedAt = loadResult.loadedAt;
     const frames = [];
@@ -593,14 +606,20 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       const clip = await locator.evaluate((image) => {
         const bounds = image.getBoundingClientRect();
         return {
+          sameTarget: image.__commitAtlasCaptureTarget === true,
           x: bounds.x,
           y: bounds.y,
           width: bounds.width,
           height: bounds.height,
         };
       });
-      assert.ok(clip.width > 0 && clip.height > 0, `${row.selector} screenshot clip must have positive dimensions`);
+      validateCaptureTargetClip(row.selector, clip);
       await page.screenshot({ path: file, clip, animations: "allow" });
+      assert.equal(
+        await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true),
+        true,
+        `${row.selector} timed target must remain the same DOM node through the ${targetTimeMs} ms capture`,
+      );
       const completedTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       if (row.probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
         throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
@@ -629,6 +648,11 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     if (row.kind === "positive-control") assert.equal(verdict, "animates", "known public positive control must animate");
     if (row.kind === "reduced-motion-control") assert.equal(verdict, "frozen at frame zero", "reduced-motion static source must remain frozen");
     assert.ok(verdicts.includes(verdict), `unexpected verdict ${verdict}`);
+    assert.equal(
+      await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true),
+      true,
+      `${row.selector} timed target must remain the same DOM node through final validation`,
+    );
     const { metadata } = await readRowMetadata(page, row, locator);
     assert.equal(metadata.currentSrc, discovery.currentSrc, `${row.selector} measured currentSrc must match engine/media discovery`);
     const responses = await responseChain(responseByUrl, metadata.currentSrc);

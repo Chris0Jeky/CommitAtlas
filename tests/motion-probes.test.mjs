@@ -27,6 +27,7 @@ import {
   resolveCanonical,
   selectorForAlt,
   validateCompletedReport,
+  validateCaptureTargetClip,
   validatePinnedPage,
   validateResponseChain,
   validateTargetMetadata,
@@ -609,6 +610,18 @@ test("hosted diagnostic ledger keeps WebKit explicitly outside the evidence", as
   assert.equal(ledger.failure.trackingIssue, "#180");
   assert.match(ledger.failure.message, /must decode the synthetic 360x120 fixture/u);
   assert.equal(ledger.rows.some((row) => row.engine === "webkit"), false);
+});
+
+test("GitHub capture fails closed when its timed DOM target is replaced", () => {
+  assert.doesNotThrow(() => validateCaptureTargetClip('img[alt="css-enter"]', {
+    sameTarget: true, width: 400, height: 133.328125,
+  }));
+  assert.throws(() => validateCaptureTargetClip('img[alt="css-enter"]', {
+    sameTarget: false, width: 400, height: 133.328125,
+  }), /same DOM node/u);
+  assert.throws(() => validateCaptureTargetClip('img[alt="css-enter"]', {
+    sameTarget: true, width: 0, height: 133.328125,
+  }), /positive dimensions/u);
 });
 
 test("WebKit metadata observation separates pinned body identity from presentation sizing", async () => {
