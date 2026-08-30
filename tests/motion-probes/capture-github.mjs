@@ -564,7 +564,6 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     validatePinnedPage(page.url());
     const locator = page.locator(row.selector);
     assert.equal(await locator.count(), 1, `${row.selector} must match exactly one image`);
-    await locator.scrollIntoViewIfNeeded();
     await locator.evaluate((image) => image.scrollIntoView({ block: "center", inline: "center" }));
     await gate.waitForInterception();
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once before release`);
@@ -580,6 +579,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     const loadResultPromise = locator.evaluate((image) => image.__commitAtlasLoad);
     gate.release();
     const loadResult = await withTimeout(loadResultPromise, responseWaitMs, `${row.selector} image load`);
+    assert.ok(loadResult && typeof loadResult === "object", `${row.selector} load observation must return structured timing evidence`);
     assert.equal(loadResult.error, null, `${row.selector} must load successfully after gate release`);
     await locator.evaluate((image) => image.decode());
 
