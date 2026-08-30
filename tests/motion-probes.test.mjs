@@ -628,4 +628,14 @@ test("WebKit metadata observation separates pinned body identity from presentati
   assert.deepEqual(observation.dimensions.natural, { width: 400, height: 133 });
   assert.deepEqual(observation.dimensions.rendered, { width: 400, height: 133.328125 });
   assert.match(observation.rawObservationSha256, sha256Pattern);
+
+  const attempt = await readEvidence("2026-08-30-webkit-diagnostic-attempt.json");
+  assert.equal(attempt.status, "failed-closed-during-discovery");
+  assert.equal(attempt.commitAtlasHead, "6578f1d96b289a23a3694d26b7db4957fe72e44e");
+  assert.equal(attempt.plannedRows, 7);
+  assert.equal(attempt.completedDiscoveries, 0);
+  assert.equal(attempt.completedRows, 0);
+  assert.equal(attempt.animationEvidence, "none");
+  assert.match(attempt.partialReportSha256, sha256Pattern);
+  assert.match(attempt.disposition, /do not rerun/);
 });

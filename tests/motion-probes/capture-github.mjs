@@ -202,7 +202,10 @@ export function validateTargetMetadata(row, metadata, reducedControl = null) {
       ["natural height", metadata.naturalHeight, videoViewport.height],
       ["rendered width", metadata.renderedWidth, videoViewport.width],
       ["rendered height", metadata.renderedHeight, videoViewport.height],
-    ]) assert.ok(Number.isFinite(value) && value > 0 && value <= limit, `${row.selector} ${name} must be positive and bounded`);
+    ]) assert.ok(
+      Number.isFinite(value) && value > 0 && value <= limit,
+      `${row.selector} ${name} must be positive and bounded (observed ${value}, limit ${limit})`,
+    );
     assert.ok(Math.abs(metadata.naturalWidth - metadata.naturalHeight * 3) <= 1, `${row.selector} natural dimensions must retain the declared 3:1 aspect within one decoded pixel`);
     assert.ok(Math.abs(metadata.renderedWidth - metadata.renderedHeight * 3) <= 1, `${row.selector} rendered dimensions must retain the declared 3:1 aspect within one rendered pixel`);
   }

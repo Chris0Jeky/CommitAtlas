@@ -1,0 +1,17 @@
+{
+  "attemptedAt": "2026-08-30T01:25:00Z",
+  "status": "failed-closed-during-discovery",
+  "commitAtlasHead": "6578f1d96b289a23a3694d26b7db4957fe72e44e",
+  "browser": {
+    "engine": "webkit",
+    "version": "26.0",
+    "playwright": "1.57.0"
+  },
+  "plannedRows": 7,
+  "completedDiscoveries": 0,
+  "completedRows": 0,
+  "failure": "img[alt=\"css-enter\"] rendered width must be positive and bounded",
+  "partialReportSha256": "89be2e489243dc713edec8843fea8b51254457c254cf02e6e0d2aed90ff65011",
+  "animationEvidence": "none",
+  "disposition": "parked; do not rerun the diagnostic without a new bounded authorization"
+}

@@ -500,8 +500,10 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   Issue #183's browser-free hardening is complete: the normal gate runs the evidence tests, both
   capture CLIs fail closed on unsafe output and arguments, direct hosted assets require exact
   synthetic identity before capture, and static results require a verified frame-zero reference to
-  claim `frozen at frame zero`. Resume with #180 by proving WebKit asset identity independently of presentation size, rerunning its
-  seven-row diagnostic once, then running #113's unfiltered three-engine raw/Camo matrix. The owner
+  claim `frozen at frame zero`. #180 then proved the pinned WebKit asset body independently of its
+  `400x133` natural size, but the single seven-row retry failed before any row on the new
+  rendered-width bound. #180 remains parked; no WebKit animation claim was made and #113's
+  unfiltered matrix remains locked. The owner
   gates in #115–#122 and #170 remain open, and no motion behaviour from the programme is on `main`.
 
 ## Clean resume commands (from checkout root)

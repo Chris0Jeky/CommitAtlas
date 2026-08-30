@@ -25,6 +25,16 @@ currently pinned for the complete hosted capture at
   pinned raw SVG decoded as `400x133` rather than the harness's exact `360x120` identity guard.
   Issue #180 owns the one bounded identity-versus-intrinsic-sizing observation and one seven-row
   WebKit retry. If that passes, resume #113 at the unfiltered three-engine raw/Camo matrix.
+- The #180 metadata-only observation proved that WebKit 26.0's `400x133` natural and
+  `400x133.328125` rendered presentation is the same pinned SVG: the final raw response, tracked
+  fixture, and matching Worker response all have SHA-256
+  `85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945`. The compact observation is
+  [`2026-08-30-webkit-metadata.json`](../tests/fixtures/motion-probes/evidence/2026-08-30-webkit-metadata.json).
+  The single seven-row retry at CommitAtlas head `6578f1d` still failed closed before any discovery
+  or row because its rendered-width bound rejected the live presentation. Its partial report hash
+  and zero-row disposition are recorded in
+  [`2026-08-30-webkit-diagnostic-attempt.json`](../tests/fixtures/motion-probes/evidence/2026-08-30-webkit-diagnostic-attempt.json).
+  This is not animation evidence; #180 remains parked and the unfiltered matrix stays locked.
 - No final backend is selected. Provisional only: `web` prefers CSS with an explicit SMIL override
   for `offset-path`; Studio keeps CSS and SMIL selectable; `github-readme` remains `none` / unselected
   until #113 completes.
@@ -216,9 +226,12 @@ above.
 | Relative scratch SVG through GitHub raw | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | **not tested** |
 
 The full hosted plan is still 35 rows per engine (105 total): every probe under both hosted paths
-and embed forms, two reduced-motion controls, and the positive control. After #180 proves identity
-independently of WebKit intrinsic sizing, rerun only its seven-row diagnostic once. If green, resume
-#113 at that unfiltered three-engine raw/Camo plan. The direct Worker matrix does not need rerunning.
+and embed forms, two reduced-motion controls, and the positive control. #180 proved body identity
+independently of intrinsic sizing, but its one authorized seven-row retry failed before capture on
+the rendered-width guard. Do not rerun it without a new bounded authorization; the next useful step
+is a metadata-only measurement of the exact harness selector/layout that records the rejected value,
+followed by a reviewed bound change. Only a later green seven-row diagnostic can unlock #113's
+unfiltered plan. The direct Worker matrix does not need rerunning.
 
 ## PR #77 reconciliation and provisional selection
 
