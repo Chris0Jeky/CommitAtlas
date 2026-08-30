@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   classifyMotion,
   createFreshOutputDirectory,
@@ -32,6 +32,8 @@ const embeds = ["img", "picture"];
 const videoViewport = { width: 720, height: 480 };
 const minimumVideoDurationMs = 3_000;
 const responseWaitMs = 15_000;
+const fixtureDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "motion-probes");
+const fixtureHashes = new Map();
 
 const hosts = {
   "github-raw-relative": {
@@ -195,7 +197,14 @@ export function validateTargetMetadata(row, metadata, reducedControl = null) {
   assert.ok(metadata.canonical, `${row.selector} must expose a canonical source`);
   assert.ok(metadata.naturalWidth > 0 && metadata.naturalHeight > 0, `${row.selector} must decode non-zero image dimensions`);
   if (row.kind !== "positive-control") {
-    assert.deepEqual([metadata.naturalWidth, metadata.naturalHeight], [360, 120], `${row.selector} must decode the synthetic 360x120 fixture`);
+    for (const [name, value, limit] of [
+      ["natural width", metadata.naturalWidth, videoViewport.width],
+      ["natural height", metadata.naturalHeight, videoViewport.height],
+      ["rendered width", metadata.renderedWidth, videoViewport.width],
+      ["rendered height", metadata.renderedHeight, videoViewport.height],
+    ]) assert.ok(Number.isFinite(value) && value > 0 && value <= limit, `${row.selector} ${name} must be positive and bounded`);
+    assert.ok(Math.abs(metadata.naturalWidth - metadata.naturalHeight * 3) <= 1, `${row.selector} natural dimensions must retain the declared 3:1 aspect within one decoded pixel`);
+    assert.ok(Math.abs(metadata.renderedWidth - metadata.renderedHeight * 3) <= 1, `${row.selector} rendered dimensions must retain the declared 3:1 aspect within one rendered pixel`);
   }
 
   if (row.host === "github-raw-relative") {
@@ -261,6 +270,16 @@ export function validateCompletedReport(report) {
   )));
   assert.equal(report.discoveries.length, expectedIdentities.size, "complete report must retain one discovery per planned engine/media/selector");
   assert.deepEqual(discoveryIdentities, expectedIdentities, "complete report discoveries must match the declared plan exactly");
+  for (const discovery of report.discoveries) {
+    assert.ok(discovery.version, `${discovery.engine}/${discovery.selector} discovery must identify the browser version`);
+    assert.ok(discovery.currentSrc && discovery.canonical, `${discovery.engine}/${discovery.selector} discovery must retain exact source identity`);
+    validateResponseChain(
+      discovery,
+      discovery.currentSrc,
+      discovery.responseObservation.chain,
+      discovery.expectedBodySha256,
+    );
+  }
   const identities = new Set();
   for (const row of report.rows) {
     assert.ok(report.selectedEngines.includes(row.engine), `report row has unselected engine ${row.engine}`);
@@ -362,7 +381,7 @@ async function responseChain(responseByUrl, currentSrc) {
   return chain;
 }
 
-export function validateResponseChain(row, currentSrc, chain) {
+export function validateResponseChain(row, currentSrc, chain, expectedBodySha256 = null) {
   assert.ok(chain.length > 0, `${row.selector} must retain an image response`);
   assert.equal(chain[0].url, currentSrc, `${row.selector} response chain must start at currentSrc`);
   if (row.host === "github-raw-relative") {
@@ -378,6 +397,14 @@ export function validateResponseChain(row, currentSrc, chain) {
   assert.match(contentType ?? "", /^image\/svg\+xml(?:;|$)/iu, `${row.selector} final response must be SVG`);
   assert.match(finalResponse.bodySha256 ?? "", /^[a-f0-9]{64}$/u, `${row.selector} final SVG body must have a SHA-256`);
   assert.equal(finalResponse.bodyError, null, `${row.selector} final SVG body hashing must succeed`);
+  if (expectedBodySha256) assert.equal(finalResponse.bodySha256, expectedBodySha256, `${row.selector} final SVG body must match the pinned synthetic fixture`);
+}
+
+async function expectedBodySha256(row) {
+  if (row.kind === "positive-control") return null;
+  const asset = expectedAssetName(row);
+  if (!fixtureHashes.has(asset)) fixtureHashes.set(asset, sha256(await readFile(path.join(fixtureDirectory, asset))));
+  return fixtureHashes.get(asset);
 }
 
 async function writeJsonAtomic(file, value) {
@@ -435,6 +462,10 @@ async function discoverTargets(browser, engine, browserVersion, plan) {
     });
     try {
       const page = await context.newPage();
+      const responseByUrl = new Map();
+      page.on("response", (response) => {
+        if (response.request().resourceType() === "image") responseByUrl.set(response.url(), response);
+      });
       await page.goto(githubPageUrl, { waitUntil: "domcontentloaded" });
       validatePinnedPage(page.url());
       for (const row of plan.filter((candidate) => candidate.media === media)) {
@@ -443,6 +474,9 @@ async function discoverTargets(browser, engine, browserVersion, plan) {
         await locator.scrollIntoViewIfNeeded();
         await locator.evaluate((image) => image.decode());
         const { metadata } = await readRowMetadata(page, row, locator);
+        const responses = await responseChain(responseByUrl, metadata.currentSrc);
+        const expectedHash = await expectedBodySha256(row);
+        validateResponseChain(row, metadata.currentSrc, responses, expectedHash);
         discoveries.push({
           engine,
           version: browserVersion,
@@ -455,6 +489,15 @@ async function discoverTargets(browser, engine, browserVersion, plan) {
           currentSrc: metadata.currentSrc,
           canonical: metadata.canonical,
           sources: metadata.sources,
+          dimensions: {
+            natural: { width: metadata.naturalWidth, height: metadata.naturalHeight },
+            rendered: { width: metadata.renderedWidth, height: metadata.renderedHeight },
+          },
+          expectedBodySha256: expectedHash,
+          responseObservation: {
+            kind: "discovery-time Playwright browser-observed headersArray and body hash",
+            chain: responses,
+          },
         });
       }
     } finally {
@@ -576,7 +619,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     const { metadata } = await readRowMetadata(page, row, locator);
     assert.equal(metadata.currentSrc, discovery.currentSrc, `${row.selector} measured currentSrc must match engine/media discovery`);
     const responses = await responseChain(responseByUrl, metadata.currentSrc);
-    validateResponseChain(row, metadata.currentSrc, responses);
+    validateResponseChain(row, metadata.currentSrc, responses, discovery.expectedBodySha256);
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once`);
     result = {
       ...row,

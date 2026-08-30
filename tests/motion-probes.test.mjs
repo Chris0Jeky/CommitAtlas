@@ -38,6 +38,9 @@ const evidenceDirectory = path.join(fixtureDirectory, "evidence");
 const testOutputDirectory = path.resolve(testDirectory, ".test-output");
 const testBrowser = path.resolve(testDirectory, ".test-tools", "browser.exe");
 const testPlaywrightCli = path.resolve(testDirectory, ".test-tools", "playwright", "cli.js");
+const syntheticDimensions = {
+  naturalWidth: 360, naturalHeight: 120, renderedWidth: 360, renderedHeight: 120,
+};
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const readEvidence = async (name) => JSON.parse(await readFile(path.join(evidenceDirectory, name), "utf8"));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
@@ -251,26 +254,26 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
   assert.equal(resolvedRaw.canonical, rawUrl, "raw canonical must ignore the surrounding README link");
   assert.doesNotThrow(() => validateTargetMetadata(rawRow, {
     src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }));
   assert.doesNotThrow(() => validateTargetMetadata(camoRow, {
     src: "https://camo.githubusercontent.com/hash", currentSrc: "https://camo.githubusercontent.com/hash",
     canonical: "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
-    sources: [], naturalWidth: 360, naturalHeight: 120,
+    sources: [], ...syntheticDimensions,
   }));
   assert.throws(() => validateTargetMetadata(rawRow, {
     src: rawUrl, currentSrc: rawUrl.replace(githubCommit, "main"), canonical: rawUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }), /full raw commit pin/);
   const wrongProbeUrl = rawUrl.replace("css-enter.svg", "css-breathe.svg");
   assert.throws(() => validateTargetMetadata(rawRow, {
     src: wrongProbeUrl, currentSrc: wrongProbeUrl, canonical: wrongProbeUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }), /must select css-enter\.svg/);
   assert.throws(() => validateTargetMetadata(camoRow, {
     src: "https://camo.githubusercontent.com/hash", currentSrc: "https://camo.githubusercontent.com/hash",
     canonical: "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-breathe.svg",
-    sources: [], naturalWidth: 360, naturalHeight: 120,
+    sources: [], ...syntheticDimensions,
   }), /must select css-enter\.svg/);
   assert.doesNotThrow(() => validateTargetMetadata(positiveRow, {
     src: "https://camo.githubusercontent.com/control", currentSrc: "https://camo.githubusercontent.com/control",
@@ -294,7 +297,7 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
     currentSrc: reducedUrl,
     canonical: reducedUrl,
     sources: rawSources,
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }, { currentSrc: reducedUrl }));
   assert.equal(rawSources[0].srcset, rootRelativeReduced, "validation must retain the literal root-relative source value");
 
@@ -308,7 +311,30 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
       bodyError: null,
     },
   ]));
+  assert.throws(() => validateResponseChain(rawRow, rawUrl, [
+    { url: rawUrl, status: 302 },
+    {
+      url: `https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`,
+      status: 200,
+      headersArray: [{ name: "content-type", value: "image/svg+xml" }],
+      bodySha256: "c".repeat(64),
+      bodyError: null,
+    },
+  ], "d".repeat(64)), /match the pinned synthetic fixture/);
   assert.throws(() => validateResponseChain(rawRow, rawUrl, [{ url: rawUrl, status: 200 }]), /redirect chain/);
+
+  assert.doesNotThrow(() => validateTargetMetadata(rawRow, {
+    src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
+    naturalWidth: 400, naturalHeight: 133, renderedWidth: 400, renderedHeight: 133.328125,
+  }));
+  assert.throws(() => validateTargetMetadata(rawRow, {
+    src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
+    naturalWidth: 400, naturalHeight: 120, renderedWidth: 400, renderedHeight: 120,
+  }), /3:1 aspect/);
+  assert.throws(() => validateTargetMetadata(rawRow, {
+    src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
+    naturalWidth: 1_200, naturalHeight: 400, renderedWidth: 400, renderedHeight: 133.328125,
+  }), /positive and bounded/);
 });
 
 test("frozen from-state is reserved for the opacity-from control", () => {
@@ -328,10 +354,23 @@ test("completed GitHub output requires every frame, measured verdict, and record
     hosts: ["github-raw-relative"], probes: ["css-enter"], embeds: ["img"],
     includeReducedControls: false, includePositiveControl: false,
   });
-  const discoveries = plan.map((row) => ({
-    engine: "chromium", media: row.media, selector: row.selector,
-  }));
   const currentSrc = `https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`;
+  const responseChain = [
+    { url: currentSrc, status: 302 },
+    {
+      url: `https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`,
+      status: 200,
+      headersArray: [{ name: "content-type", value: "image/svg+xml; charset=utf-8" }],
+      bodySha256: "c".repeat(64),
+      bodyError: null,
+    },
+  ];
+  const discoveries = plan.map((row) => ({
+    ...row,
+    engine: "chromium", version: "1.0", media: row.media, selector: row.selector,
+    currentSrc, canonical: currentSrc, expectedBodySha256: "c".repeat(64),
+    responseObservation: { chain: responseChain },
+  }));
   const rows = plan.map((row) => ({
     ...row,
     engine: "chromium",
@@ -344,16 +383,7 @@ test("completed GitHub output requires every frame, measured verdict, and record
       targetUrl: currentSrc, interceptionCount: 1,
       loadTimestampMs: 100, loadToFirstFrameMs: 1, loadToFirstFrameCompleteMs: 2,
     },
-    responseObservation: { chain: [
-      { url: currentSrc, status: 302 },
-      {
-        url: `https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`,
-        status: 200,
-        headersArray: [{ name: "content-type", value: "image/svg+xml; charset=utf-8" }],
-        bodySha256: "c".repeat(64),
-        bodyError: null,
-      },
-    ] },
+    responseObservation: { chain: responseChain },
     frames: frameTimes.map((targetTimeMs) => ({
       targetTimeMs, actualTimeMs: targetTimeMs, completedTimeMs: targetTimeMs + 1,
       path: `${targetTimeMs}.png`, sha256: "b".repeat(64),
@@ -579,4 +609,23 @@ test("hosted diagnostic ledger keeps WebKit explicitly outside the evidence", as
   assert.equal(ledger.failure.trackingIssue, "#180");
   assert.match(ledger.failure.message, /must decode the synthetic 360x120 fixture/u);
   assert.equal(ledger.rows.some((row) => row.engine === "webkit"), false);
+});
+
+test("WebKit metadata observation separates pinned body identity from presentation sizing", async () => {
+  const observation = await readEvidence("2026-08-30-webkit-metadata.json");
+  const expectedHash = sha256(await readFile(path.join(fixtureDirectory, "css-enter.svg")));
+  assert.equal(observation.scope, "metadata-only WebKit observation; no screenshots, recordings, or animation verdict");
+  assert.deepEqual(observation.browser, { engine: "webkit", version: "26.0", playwright: "1.57.0" });
+  assert.ok(observation.source.literal.includes(observation.scratchCommit));
+  assert.ok(observation.source.current.includes(observation.scratchCommit));
+  assert.ok(observation.source.final.includes(observation.scratchCommit));
+  assert.equal(observation.response.redirectStatus, 302);
+  assert.equal(observation.response.finalStatus, 200);
+  assert.match(observation.response.finalContentType, /^image\/svg\+xml(?:;|$)/u);
+  assert.equal(observation.response.finalBodySha256, expectedHash);
+  assert.equal(observation.response.fixtureBodySha256, expectedHash);
+  assert.equal(observation.response.workerBodySha256, expectedHash);
+  assert.deepEqual(observation.dimensions.natural, { width: 400, height: 133 });
+  assert.deepEqual(observation.dimensions.rendered, { width: 400, height: 133.328125 });
+  assert.match(observation.rawObservationSha256, sha256Pattern);
 });
