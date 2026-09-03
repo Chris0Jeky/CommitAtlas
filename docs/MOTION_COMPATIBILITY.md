@@ -108,7 +108,9 @@ without an exact browser version is marked ineligible as compatibility evidence;
 only as a structural observation. The direct harness also carries an explicit `status`: every
 `report.partial.json` written mid-run stays `partial` and ineligible, and only the completed
 `report.json` is marked `complete` and re-evaluated for eligibility, so an interrupted matrix can
-never present itself as compatibility evidence. When adjacent frames stay below the motion
+never present itself as compatibility evidence. A direct run's `report.partial.json` and
+`report.json` therefore never share a SHA-256; ledgers recording those two hashes as equal predate
+this gate. When adjacent frames stay below the motion
 threshold, the harness uses `frozen at frame zero` only with a verified frame-zero reference and
 otherwise records the neutral verdict `no motion detected`. That reference is verified from the
 source the browser actually selected (`reduced-motion-control.svg` in the row's recorded

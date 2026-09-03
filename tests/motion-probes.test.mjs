@@ -190,13 +190,17 @@ test("a partial direct report stays ineligible until the whole matrix completes"
   assert.match(source, /report\.status = "complete";/u);
   assert.match(source, /report\.compatibilityEvidence = compatibilityEvidenceStatus\(browserVersion, true\);/u);
   const completion = source.indexOf('report.status = "complete";');
+  const completedWrite = source.indexOf('writeFile(path.join(outputDirectory, "report.json")');
+  const lastPartialWrite = source.lastIndexOf('writeFile(path.join(outputDirectory, "report.partial.json")');
   assert.ok(completion > 0);
+  assert.ok(completedWrite > 0, "the completed report write must still be locatable");
+  assert.ok(lastPartialWrite > 0, "the partial report write must still be locatable");
   assert.ok(
-    completion < source.indexOf('writeFile(path.join(outputDirectory, "report.json")'),
+    completion < completedWrite,
     "report.json must only be written after the run is marked complete",
   );
   assert.ok(
-    completion > source.lastIndexOf('writeFile(path.join(outputDirectory, "report.partial.json")'),
+    completion > lastPartialWrite,
     "every partial write must happen while the report is still marked partial",
   );
 });
