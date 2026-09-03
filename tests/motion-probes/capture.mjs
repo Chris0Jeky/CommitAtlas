@@ -144,7 +144,14 @@ export async function createFreshOutputDirectory(outputDirectory) {
   }
 }
 
-export function compatibilityEvidenceStatus(browserVersion) {
+export function compatibilityEvidenceStatus(browserVersion, complete = true) {
+  if (!complete) {
+    return {
+      eligible: false,
+      browserVersion: browserVersion ?? null,
+      reason: "capture run is incomplete; a partial report is a structural observation, not compatibility evidence",
+    };
+  }
   return browserVersion
     ? { eligible: true, browserVersion }
     : {
@@ -152,6 +159,20 @@ export function compatibilityEvidenceStatus(browserVersion) {
         browserVersion: null,
         reason: "exact browser version unavailable; report is a structural observation, not compatibility evidence",
       };
+}
+
+// A plain <img> row can never select the reduced-motion source, and several probe fixtures paint
+// the control's own #ffd166. The frame-zero reference is therefore verified from the source the
+// browser actually selected, never from a colour count alone.
+export function reducedMotionControlSelected(selectedSource) {
+  if (typeof selectedSource !== "string" || selectedSource.length === 0) return false;
+  let parsed;
+  try {
+    parsed = new URL(selectedSource);
+  } catch {
+    return false;
+  }
+  return parsed.pathname.endsWith("/reduced-motion-control.svg");
 }
 
 function svgDimensions(body) {
@@ -225,12 +246,13 @@ export async function capture(options) {
   try {
   const browserVersion = recordedBrowser?.version() ?? null;
   const report = {
+    status: "partial",
     protocol: recordVideo
       ? "one continuous recorded Playwright context per row; screenshots decoded to RGBA and compared pixel-for-pixel"
       : "independent browser screenshots decoded to RGBA and compared pixel-for-pixel",
     browser: browser ?? `Playwright ${playwrightEngine}`,
     browserVersion,
-    compatibilityEvidence: compatibilityEvidenceStatus(browserVersion),
+    compatibilityEvidence: compatibilityEvidenceStatus(browserVersion, false),
     origin,
     frameTimesMs: frameTimes,
     motionPixelThreshold,
@@ -248,6 +270,7 @@ export async function capture(options) {
       await mkdir(directory, { recursive: true });
       const captures = [];
       let video = null;
+      let selectedSource = null;
       if (recordVideo) {
         const page = buildPageUrl(origin, embed, probe, assetBase);
         const context = await recordedBrowser.newContext({
@@ -263,6 +286,7 @@ export async function capture(options) {
           const image = browserPage.locator("img");
           if (await image.count() !== 1) throw new Error(`${probe}/${embed} must render exactly one image`);
           await image.evaluate((element) => element.decode());
+          selectedSource = await image.evaluate((element) => element.currentSrc);
           const startedAt = await browserPage.evaluate(() => performance.now());
           for (const targetTimeMs of frameTimes) {
             const beforeWait = await browserPage.evaluate(() => performance.now());
@@ -307,6 +331,11 @@ export async function capture(options) {
             const browserPage = await context.newPage();
             await browserPage.goto(page);
             await browserPage.waitForTimeout(timeMs);
+            if (timeMs === frameTimes[0]) {
+              const image = browserPage.locator("img");
+              if (await image.count() !== 1) throw new Error(`${probe}/${embed} must render exactly one image`);
+              selectedSource = await image.evaluate((element) => element.currentSrc);
+            }
             await browserPage.screenshot({ path: file });
             await instance.close();
           } else if (playwrightCli) {
@@ -333,6 +362,9 @@ export async function capture(options) {
         ...pixelDifference(images[index], image),
       }));
       const reducedMotionControlPixels = reducedMotion ? countPixel(images[0], [255, 209, 102, 255]) : null;
+      const reducedMotionControlVerified = reducedMotion
+        && reducedMotionControlSelected(selectedSource)
+        && reducedMotionControlPixels > 0;
       report.rows.push({
         probe,
         host: hostLabel,
@@ -342,14 +374,18 @@ export async function capture(options) {
         captures,
         video,
         differences,
+        selectedSource,
         reducedMotionControlPixels,
+        reducedMotionControlVerified,
         verdict: classifyMotion(probe, images, differences, {
-          frameZeroReferenceVerified: reducedMotionControlPixels > 0,
+          frameZeroReferenceVerified: reducedMotionControlVerified,
         }),
       });
       await writeFile(path.join(outputDirectory, "report.partial.json"), `${JSON.stringify(report, null, 2)}\n`);
     }
   }
+  report.status = "complete";
+  report.compatibilityEvidence = compatibilityEvidenceStatus(browserVersion, true);
   await writeFile(path.join(outputDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } finally {

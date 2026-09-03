@@ -105,9 +105,15 @@ evidence belongs in the repository.
 Direct hosted capture also fetches every selected synthetic asset before browser launch and requires
 `200 image/svg+xml`, the local fixture's exact SHA-256, and declared `360x120` bounds. A direct report
 without an exact browser version is marked ineligible as compatibility evidence; it remains useful
-only as a structural observation. When adjacent frames stay below the motion threshold, the harness
-uses `frozen at frame zero` only with a verified frame-zero reference and otherwise records the
-neutral verdict `no motion detected`.
+only as a structural observation. The direct harness also carries an explicit `status`: every
+`report.partial.json` written mid-run stays `partial` and ineligible, and only the completed
+`report.json` is marked `complete` and re-evaluated for eligibility, so an interrupted matrix can
+never present itself as compatibility evidence. When adjacent frames stay below the motion
+threshold, the harness uses `frozen at frame zero` only with a verified frame-zero reference and
+otherwise records the neutral verdict `no motion detected`. That reference is verified from the
+source the browser actually selected (`reduced-motion-control.svg` in the row's recorded
+`selectedSource`), not from the control colour alone — three probe fixtures paint the same
+`#ffd166`, and a plain `<img>` row can never select the reduced-motion source.
 
 For a bounded diagnostic run, `--host`, `--probe`, and `--embed` accept comma-separated allowlisted
 values. Controls are omitted from a filtered plan unless explicitly requested with
