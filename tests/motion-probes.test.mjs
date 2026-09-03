@@ -15,6 +15,7 @@ import {
   parseAssetBase,
   parseCaptureOptions,
   parseHostLabel,
+  reducedMotionControlSelected,
   validateHostedAssetResponse,
 } from "./motion-probes/capture.mjs";
 import {
@@ -164,12 +165,66 @@ test("hosted direct capture validates status, MIME, fixture hash, and bounded di
   );
 });
 
-test("compatibility eligibility requires an exact browser version", () => {
+test("compatibility eligibility requires an exact browser version and a completed run", () => {
   assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
     eligible: true, browserVersion: "143.0.7499.4",
   });
   assert.equal(compatibilityEvidenceStatus(null).eligible, false);
   assert.match(compatibilityEvidenceStatus(null).reason, /not compatibility evidence/);
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4", false), {
+    eligible: false,
+    browserVersion: "143.0.7499.4",
+    reason: "capture run is incomplete; a partial report is a structural observation, not compatibility evidence",
+  });
+  assert.equal(compatibilityEvidenceStatus(null, false).eligible, false);
+});
+
+test("a partial direct report stays ineligible until the whole matrix completes", async () => {
+  const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
+  assert.match(source, /status: "partial",/u, "the in-progress report must declare its partial status");
+  assert.match(
+    source,
+    /compatibilityEvidence: compatibilityEvidenceStatus\(browserVersion, false\)/u,
+    "rows written before completion must never carry eligible evidence",
+  );
+  assert.match(source, /report\.status = "complete";/u);
+  assert.match(source, /report\.compatibilityEvidence = compatibilityEvidenceStatus\(browserVersion, true\);/u);
+  const completion = source.indexOf('report.status = "complete";');
+  const completedWrite = source.indexOf('writeFile(path.join(outputDirectory, "report.json")');
+  const lastPartialWrite = source.lastIndexOf('writeFile(path.join(outputDirectory, "report.partial.json")');
+  assert.ok(completion > 0);
+  assert.ok(completedWrite > 0, "the completed report write must still be locatable");
+  assert.ok(lastPartialWrite > 0, "the partial report write must still be locatable");
+  assert.ok(
+    completion < completedWrite,
+    "report.json must only be written after the run is marked complete",
+  );
+  assert.ok(
+    completion > lastPartialWrite,
+    "every partial write must happen while the report is still marked partial",
+  );
+});
+
+test("frame-zero reference is verified from the selected source, not a fixture colour", async () => {
+  const base = "http://127.0.0.1:5000/";
+  assert.equal(reducedMotionControlSelected(`${base}reduced-motion-control.svg`), true);
+  assert.equal(reducedMotionControlSelected(`${base}probes/reduced-motion-control.svg`), true);
+  assert.equal(reducedMotionControlSelected(`${base}smil-transform.svg`), false);
+  assert.equal(reducedMotionControlSelected(`${base}not-reduced-motion-control.svg`), false);
+  assert.equal(reducedMotionControlSelected("reduced-motion-control.svg"), false);
+  assert.equal(reducedMotionControlSelected(""), false);
+  assert.equal(reducedMotionControlSelected(null), false);
+
+  // The colour count alone cannot carry the claim: probe fixtures paint the control's own #ffd166.
+  const collidingFixtures = ["smil-transform", "smil-animate-motion", "css-offset-path"];
+  for (const probe of collidingFixtures) {
+    const fixture = await readFile(path.join(fixtureDirectory, `${probe}.svg`), "utf8");
+    assert.match(fixture, /#ffd166/iu, `${probe} shares the reduced-motion control colour`);
+  }
+  const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
+  assert.doesNotMatch(source, /frameZeroReferenceVerified: reducedMotionControlPixels > 0/u);
+  assert.match(source, /frameZeroReferenceVerified: reducedMotionControlVerified/u);
+  assert.match(source, /reducedMotionControlSelected\(selectedSource\)/u);
 });
 
 test("direct video timing passes the Node anchor into the browser evaluation", async () => {
