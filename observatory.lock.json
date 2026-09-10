@@ -2,6 +2,6 @@
   "version": "0.1.0",
   "project": "commitatlas",
   "target": "public/observatory.js",
-  "sha256": "423b0e0acdd5ea1c3b1903e121ccc393bc26d5e1f32791389cf05b2b760bb370",
+  "sha256": "840f31a274d238b9ddf8000050a4783e16cc01748e80b0955a7e378a3809ae4d",
   "source": "Chris0Jeky/Pulseboard:observatory"
 }

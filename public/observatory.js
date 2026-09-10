@@ -5,8 +5,6 @@
 'use strict';
 /** Pulseboard Observatory 0.1.0. Content-free, closed event contract. */
 const VERSION = 1;
-const MAX_BYTES = 16384;
-const MAX_BATCH = 20;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FIELDS = ['v', 'id', 'session', 'seq', 'event', 'route', 'release', 'value'];
 function validateEvent(e, project) {
