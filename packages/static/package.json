@@ -30,6 +30,6 @@
     "@commit-atlas/core": "0.1.0",
     "@commit-atlas/github": "0.1.0",
     "@commit-atlas/svg": "0.1.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   }
 }
