@@ -478,6 +478,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Next programme (planned, not shipped)
 
+- **2026-09-10: the Observatory adapter is staged but inactive.** The local, hash-locked
+  `public/observatory.js` loads with an empty endpoint, so it creates no consent storage, timers,
+  or collector requests. Activation remains a separate reviewed slice requiring an isolated
+  collector, product notice and CSP review, regenerated endpoint-specific bytes, and consent,
+  withdrawal, failure, and offline verification. `observatory/README.md` holds that boundary;
+  `node observatory/check.mjs` is the focused inactive-artifact proof.
 - **2026-08-29: the expansion programme is documented and seeded.** [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)
   reconciles the owner's brief against the code, fixes the motion model, scene engine, delivery
   path, and cross-project projection seams, and records fourteen decisions plus nine owner questions.
