@@ -1,0 +1,10 @@
+{
+  "version": "0.1.0",
+  "source": "Chris0Jeky/Pulseboard:observatory",
+  "installs": {
+    "public/observatory.js": {
+      "project": "commitatlas",
+      "sha256": "27826d6cc4932f961b64cfb06d6ad2612bba10b774712a3ba09d44f4d1e6cde8"
+    }
+  }
+}

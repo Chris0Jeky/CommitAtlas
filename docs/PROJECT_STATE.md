@@ -478,6 +478,19 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Next programme (planned, not shipped)
 
+- **2026-09-10: hosting preparation is recorded but inactive.** [`.hosting/manifest.json`](../.hosting/manifest.json)
+  preserves the existing Worker, static assets, and `LAST_GOOD` KV boundary. The resumable queue is
+  CA1 (separate canonical and deployment-probe origins), CA2 (preserve the build-before-deploy
+  contract), and CA3 (retain public/private fallback boundaries and stable embed routes). CA1 is
+  blocked until a hostname is selected and ownership is verified; no task authorizes deployment,
+  activation, namespace deletion, credential publication, or replacement of the existing service.
+  Use [`.hosting/README.md`](../.hosting/README.md) for the bounded acceptance notes.
+- **2026-09-10: the Observatory adapter is staged but inactive.** The local, hash-locked
+  `public/observatory.js` loads with an empty endpoint, so it creates no consent storage, timers,
+  or collector requests. Activation remains a separate reviewed slice requiring an isolated
+  collector, product notice and CSP review, regenerated endpoint-specific bytes, and consent,
+  withdrawal, failure, and offline verification. `observatory/README.md` holds that boundary;
+  `node observatory/check.mjs` is the focused inactive-artifact proof.
 - **2026-08-29: the expansion programme is documented and seeded.** [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)
   reconciles the owner's brief against the code, fixes the motion model, scene engine, delivery
   path, and cross-project projection seams, and records fourteen decisions plus nine owner questions.
