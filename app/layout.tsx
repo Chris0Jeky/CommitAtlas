@@ -74,7 +74,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         */}
         <script dangerouslySetInnerHTML={{ __html: CHASSIS_THEME_BOOTSTRAP }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        {children}
+        <script defer src="/observatory.js" />
+      </body>
     </html>
   );
 }

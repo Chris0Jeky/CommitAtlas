@@ -1,1 +1,2 @@
 tests/fixtures/motion-probes/*.svg text eol=lf
+public/observatory.js text eol=lf
