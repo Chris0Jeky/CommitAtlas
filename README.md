@@ -159,9 +159,10 @@ Near-term work is evidence-gated:
 1. prove which SVG motion backend actually works through GitHub README `<img>` rendering before expanding the motion vocabulary;
 2. compile motion from one primitive model with frame-zero and reduced-motion invariants;
 3. add deterministic maps and scenes without letting aesthetics imply facts;
-4. accept only product-owned, schema-validated Developer Lens or Lab projections with visible coverage, privacy class, limitations, and expiry;
-5. keep hosted data public-only and keep any Observatory collection separately consented and inactive by default;
-6. extend static/profile publication only after artifact lists, manifests, budgets, and consumer workflows are updated together.
+4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;
+5. accept Lab research findings only through product-owned schemas with pinned provenance, decision vocabulary, limitations, and unsupported claims; do not invent coverage or expiry fields that the finding contract does not define;
+6. keep hosted data public-only and keep any Observatory collection separately consented and inactive by default;
+7. extend static/profile publication only after artifact lists, manifests, budgets, and consumer workflows are updated together.
 
 Read [PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) for the concise map and [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md) for implementation-level decisions and seeded work.
 
