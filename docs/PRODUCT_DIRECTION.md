@@ -86,9 +86,9 @@ Create reusable frames, readings, badges, evidence labels, coverage bars, paths,
 
 Theme, scene pack, and motion profile remain orthogonal. A colour choice must not change evidence semantics. A scene pack must not silently alter the source model.
 
-### 3. Add owner-reviewed Developer Lens projections
+### 3. Prepare owner-reviewed Developer Lens projections behind Q-9
 
-A projection is a tracked, schema-validated publication artifact—not a hosted fetch into the owner’s machine.
+Until Q-9 is answered, retain the C0 showcase-fixture default and do not publish C1 owner projections. If Q-9 later authorizes tracked publication, a projection is a schema-validated publication artifact—not a hosted fetch into the owner’s machine.
 
 The owner must explicitly:
 
@@ -144,7 +144,8 @@ Optional integrations remain separately governed:
 - successful refreshes without destructive side effects;
 - readability at real README sizes and both colour schemes;
 - accessibility and reduced-motion behavior;
-- projection rejection when privacy, coverage, schema, or freshness is insufficient;
+- Lens projection rejection when privacy, coverage, schema, or freshness is insufficient;
+- Lab finding rejection when provenance, schema, limitations, or unsupported-claim declarations are incomplete;
 - whether readers can distinguish observed, derived, configured, synthetic, and aesthetic content;
 - operating cost and failure behavior of hosted routes;
 - actual use of Studio, generated assets, and embeds—not raw endpoint traffic alone.
@@ -176,7 +177,7 @@ Land a measured motion backend, reusable primitives, deterministic maps, budgets
 
 ### H3 — reviewed signatures and findings
 
-Publish owner-controlled Developer Lens signatures and bounded Lab findings through explicit schemas and privacy/freshness gates.
+Keep owner projections at C0 until Q-9 authorizes tracked publication. When authorized, publish owner-controlled Developer Lens signatures and bounded Lab findings through their distinct schemas and evidence gates.
 
 ### H4 — generative visual identity
 
