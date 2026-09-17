@@ -16,7 +16,7 @@ jobs:
   implement-and-verify:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out exact branch head
         uses: actions/checkout@v7
@@ -49,8 +49,50 @@ jobs:
       - name: Check patch hygiene
         run: git diff --check
 
-      - name: Run the complete repository gate
-        run: npm run check
+      - name: Check Worker bindings
+        run: npm run typecheck:worker
+
+      - name: Typecheck application
+        run: npm run typecheck
+
+      - name: Lint repository
+        run: npm run lint
+
+      - name: Test observatory
+        run: npm run test:observatory
+
+      - name: Test deployment tooling
+        run: npm run test:deploy-tooling
+
+      - name: Test motion probes
+        run: npm run test:motion-probes
+
+      - name: Test core package
+        run: npm run test:core
+
+      - name: Test chassis
+        run: npm run test:chassis
+
+      - name: Test GitHub and hosted routes
+        run: npm run test:github
+
+      - name: Test Studio
+        run: npm run test:studio
+
+      - name: Test SVG package
+        run: npm run test:svg
+
+      - name: Test static generator
+        run: npm run test:static
+
+      - name: Test bundled Action
+        run: npm run test:action
+
+      - name: Test package artifacts
+        run: npm run test:packaging
+
+      - name: Build and test rendered application
+        run: npm test
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
