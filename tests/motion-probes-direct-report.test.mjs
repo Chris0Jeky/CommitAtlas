@@ -81,6 +81,24 @@ test("direct report completion rejects missing frames and unmeasured verdicts", 
   );
 });
 
+test("recorded direct reports require a retained video path and digest per row", () => {
+  const report = completeReport();
+  report.recordVideo = true;
+  assert.throws(
+    () => validateCompletedDirectReport(report),
+    /video path/,
+  );
+
+  report.rows = report.rows.map((row) => ({
+    ...row,
+    video: {
+      path: `${row.probe}--${row.embed}/motion.webm`,
+      sha256: "a".repeat(64),
+    },
+  }));
+  assert.doesNotThrow(() => validateCompletedDirectReport(report));
+});
+
 test("reduced-motion evidence fails closed when currentSrc cannot be read", () => {
   assert.throws(
     () => directReducedMotionEvidence(true, "", 12),
