@@ -177,7 +177,7 @@ Land a measured motion backend, reusable primitives, deterministic maps, budgets
 
 ### H3 — reviewed signatures and findings
 
-Keep owner projections at C0 until Q-9 authorizes tracked publication. When authorized, publish owner-controlled Developer Lens signatures and bounded Lab findings through their distinct schemas and evidence gates.
+Keep C1 owner projections unpublished until Q-9 authorizes tracked publication; only the invented C0 showcase fixture remains usable in the meantime. When authorized, publish owner-controlled Developer Lens signatures and bounded Lab findings through their distinct schemas and evidence gates.
 
 ### H4 — generative visual identity
 
