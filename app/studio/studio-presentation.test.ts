@@ -150,3 +150,11 @@ test("Studio text inputs retain an explicit keyboard focus treatment", () => {
   assert.match(rule[1], /outline-offset:\s*-\d/);
   assert.match(css, /\.text-field:focus-within \{ border-color:/);
 });
+
+test("Studio exposes exactly the three hosted motion profiles", () => {
+  const source = readFileSync(new URL("./studio-client.tsx", import.meta.url), "utf8");
+  for (const profile of ["none", "subtle", "ambient"]) {
+    assert.match(source, new RegExp(`setMotion\("${profile}"\)`));
+  }
+  assert.doesNotMatch(source, /setMotion\("cinematic"\)/);
+});

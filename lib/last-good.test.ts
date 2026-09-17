@@ -14,11 +14,14 @@ test("canonical keys ignore query order while isolating user, theme, and route",
   const otherUser = new Request("https://example.test/api/v1/cards/profile.svg?theme=paper&user=hubot&demo=false&motion=none");
   const otherTheme = new Request("https://example.test/api/v1/cards/profile.svg?theme=ember&user=octocat&demo=false&motion=none");
   const otherRoute = new Request("https://example.test/api/v1/cards/streak.svg?theme=paper&user=octocat&demo=false&motion=none");
+  const subtleMotion = new Request("https://example.test/api/v1/cards/profile.svg?theme=paper&user=octocat&demo=false&motion=subtle");
+  const ambientMotion = new Request("https://example.test/api/v1/cards/profile.svg?theme=paper&user=octocat&demo=false&motion=ambient");
 
   assert.equal(await publicLastGoodKey(first), await publicLastGoodKey(reordered));
   assert.notEqual(await publicLastGoodKey(first), await publicLastGoodKey(otherUser));
   assert.notEqual(await publicLastGoodKey(first), await publicLastGoodKey(otherTheme));
   assert.notEqual(await publicLastGoodKey(first), await publicLastGoodKey(otherRoute));
+  assert.notEqual(await publicLastGoodKey(subtleMotion), await publicLastGoodKey(ambientMotion));
   assert.match(await publicLastGoodKey(first), /^public-last-good:v1:[a-f\d]{64}$/);
 });
 

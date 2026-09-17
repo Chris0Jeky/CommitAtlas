@@ -38,6 +38,15 @@ test("validates one contained config and rejects ambiguous projects or card sele
   }), /owned by the configured user/);
 });
 
+
+test("accepts all four motion profiles, keeps the still default, and rejects unknown values", () => {
+  for (const motion of ["none", "subtle", "ambient", "cinematic"]) {
+    assert.equal(parseStaticConfig({ ...rawConfig(), motion }).motion, motion);
+  }
+  const { motion: _motion, ...withoutMotion } = rawConfig();
+  assert.equal(parseStaticConfig(withoutMotion).motion, "none");
+  assert.throws(() => parseStaticConfig({ ...rawConfig(), motion: "warp" }), /invalid|option/i);
+});
 test("accepts bounded opposite-scheme theme outputs and rejects ambiguous variants", () => {
   const paired = parseStaticConfig({
     ...rawConfig(),
