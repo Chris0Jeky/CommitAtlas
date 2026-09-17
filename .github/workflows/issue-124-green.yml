@@ -1,0 +1,62 @@
+name: Issue 124 implementation bootstrap
+
+on:
+  push:
+    branches:
+      - codex/issue-124-motion-profiles
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-124-green-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  implement-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Implement the motion profile contract
+        run: python3 .github/agent/issue-124-green.py
+
+      - name: Remove one-shot bootstrap machinery
+        shell: bash
+        run: |
+          rm .github/workflows/issue-124-green.yml
+          rm .github/agent/issue-124-green.py
+          rmdir .github/agent 2>/dev/null || true
+
+      - name: Check patch hygiene
+        run: git diff --check
+
+      - name: Run the complete repository gate
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: expand the motion profile contract"
+          git push origin HEAD:codex/issue-124-motion-profiles
