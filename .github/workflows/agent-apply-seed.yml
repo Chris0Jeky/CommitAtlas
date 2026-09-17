@@ -1,0 +1,48 @@
+name: Apply issue 123 seed export
+
+on:
+  push:
+    branches: [feat/123-stable-seed]
+    paths:
+      - .agent-patch
+      - .github/workflows/agent-apply-seed.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Apply export and documentation patch
+        run: |
+          git apply --check --recount .agent-patch
+          git apply --recount .agent-patch
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify the SVG package
+        run: npm --prefix packages/svg test
+
+      - name: Commit verified implementation
+        run: |
+          rm .agent-patch .github/workflows/agent-apply-seed.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: export and document stable model seeds"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
