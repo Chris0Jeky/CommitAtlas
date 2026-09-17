@@ -165,9 +165,14 @@ test("hosted direct capture validates status, MIME, fixture hash, and bounded di
   );
 });
 
-test("compatibility eligibility requires an exact browser version and a completed run", () => {
-  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
+test("compatibility eligibility requires an exact browser version and explicit completion", () => {
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4", true), {
     eligible: true, browserVersion: "143.0.7499.4",
+  });
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
+    eligible: false,
+    browserVersion: "143.0.7499.4",
+    reason: "capture run is incomplete; a partial report is a structural observation, not compatibility evidence",
   });
   assert.equal(compatibilityEvidenceStatus(null).eligible, false);
   assert.match(compatibilityEvidenceStatus(null).reason, /not compatibility evidence/);
@@ -190,11 +195,19 @@ test("a partial direct report stays ineligible until the whole matrix completes"
   assert.match(source, /report\.status = "complete";/u);
   assert.match(source, /report\.compatibilityEvidence = compatibilityEvidenceStatus\(browserVersion, true\);/u);
   const completion = source.indexOf('report.status = "complete";');
+  const reportCreation = source.indexOf("const report = {");
+  const firstPartialWrite = source.indexOf("await writePartialDirectReport(partialFile, report);");
+  const rowLoop = source.indexOf("for (const probe of selectedProbes)");
   const completedWrite = source.indexOf('writeFile(path.join(outputDirectory, "report.json")');
-  const lastPartialWrite = source.lastIndexOf('writeFile(path.join(outputDirectory, "report.partial.json")');
+  const lastPartialWrite = source.lastIndexOf("await writePartialDirectReport(partialFile, report);");
+  const failureWrite = source.indexOf("await writePartialDirectReport(partialFile, report, error);");
   assert.ok(completion > 0);
   assert.ok(completedWrite > 0, "the completed report write must still be locatable");
   assert.ok(lastPartialWrite > 0, "the partial report write must still be locatable");
+  assert.ok(
+    firstPartialWrite > reportCreation && firstPartialWrite < rowLoop,
+    "an atomic partial report must exist before the first row starts",
+  );
   assert.ok(
     completion < completedWrite,
     "report.json must only be written after the run is marked complete",
@@ -202,6 +215,10 @@ test("a partial direct report stays ineligible until the whole matrix completes"
   assert.ok(
     completion > lastPartialWrite,
     "every partial write must happen while the report is still marked partial",
+  );
+  assert.ok(
+    failureWrite > lastPartialWrite,
+    "an aborted capture must persist its failure reason before rethrowing",
   );
 });
 

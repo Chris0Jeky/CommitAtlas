@@ -151,7 +151,7 @@ export async function createFreshOutputDirectory(outputDirectory) {
   }
 }
 
-export function compatibilityEvidenceStatus(browserVersion, complete = true) {
+export function compatibilityEvidenceStatus(browserVersion, complete = false) {
   if (!complete) {
     return {
       eligible: false,
@@ -267,6 +267,19 @@ export async function validateHostedAssets(assetBase, selectedProbes, reducedMot
   return observations;
 }
 
+async function writeJsonAtomic(file, value) {
+  const temporary = `${file}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`);
+  await rename(temporary, file);
+}
+
+export async function writePartialDirectReport(file, report, error) {
+  const partialReport = error === undefined
+    ? report
+    : { ...report, failure: error instanceof Error ? error.message : String(error) };
+  await writeJsonAtomic(file, partialReport);
+}
+
 export async function capture(options) {
   const { browser, playwrightEngine, playwrightCli, reducedMotion, recordVideo, outputDirectory, selectedProbes, selectedEmbeds, assetBase, hostLabel } = options;
   await createFreshOutputDirectory(outputDirectory);
@@ -304,8 +317,8 @@ export async function capture(options) {
   if (!address || typeof address === "string") throw new Error("fixture server did not bind a TCP port");
   const origin = `http://127.0.0.1:${address.port}/`;
 
-  try {
   const browserVersion = recordedBrowser?.version() ?? null;
+  const partialFile = path.join(outputDirectory, "report.partial.json");
   const report = {
     status: "partial",
     protocol: recordVideo
@@ -326,6 +339,8 @@ export async function capture(options) {
     hostLabel,
     rows: [],
   };
+  try {
+  await writePartialDirectReport(partialFile, report);
   for (const probe of selectedProbes) {
     for (const embed of selectedEmbeds) {
       const directory = path.join(outputDirectory, `${probe}--${embed}`);
@@ -447,7 +462,7 @@ export async function capture(options) {
           frameZeroReferenceVerified: reducedMotionControlVerified,
         }),
       });
-      await writeFile(path.join(outputDirectory, "report.partial.json"), `${JSON.stringify(report, null, 2)}\n`);
+      await writePartialDirectReport(partialFile, report);
     }
   }
   validateCompletedDirectReport(report);
@@ -455,6 +470,9 @@ export async function capture(options) {
   report.compatibilityEvidence = compatibilityEvidenceStatus(browserVersion, true);
   await writeFile(path.join(outputDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } catch (error) {
+    await writePartialDirectReport(partialFile, report, error);
+    throw error;
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await recordedBrowser?.close();
