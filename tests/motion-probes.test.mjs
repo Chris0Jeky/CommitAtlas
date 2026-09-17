@@ -165,9 +165,14 @@ test("hosted direct capture validates status, MIME, fixture hash, and bounded di
   );
 });
 
-test("compatibility eligibility requires an exact browser version and a completed run", () => {
-  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
+test("compatibility eligibility requires an exact browser version and explicit completion", () => {
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4", true), {
     eligible: true, browserVersion: "143.0.7499.4",
+  });
+  assert.deepEqual(compatibilityEvidenceStatus("143.0.7499.4"), {
+    eligible: false,
+    browserVersion: "143.0.7499.4",
+    reason: "capture run is incomplete; a partial report is a structural observation, not compatibility evidence",
   });
   assert.equal(compatibilityEvidenceStatus(null).eligible, false);
   assert.match(compatibilityEvidenceStatus(null).reason, /not compatibility evidence/);

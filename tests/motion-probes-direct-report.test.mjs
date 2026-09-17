@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import {
   directReducedMotionEvidence,
   frameTimes,
   validateCompletedDirectReport,
+  writePartialDirectReport,
 } from "./motion-probes/capture.mjs";
 
 const directRow = (probe, embed, overrides = {}) => ({
@@ -138,4 +142,23 @@ test("reduced-motion evidence fails closed when currentSrc cannot be read", () =
       reducedMotionControlVerified: false,
     },
   );
+});
+
+test("direct partial reports are atomically replaced and retain abort reasons", async (context) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "commitatlas-direct-report-"));
+  context.after(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+  const file = path.join(directory, "report.partial.json");
+  const report = { status: "partial", rows: [] };
+
+  await writePartialDirectReport(file, report);
+  await writePartialDirectReport(file, report, new Error("browser failed"));
+
+  assert.deepEqual(JSON.parse(await readFile(file, "utf8")), {
+    status: "partial",
+    rows: [],
+    failure: "browser failed",
+  });
+  assert.deepEqual(await readdir(directory), ["report.partial.json"]);
 });
