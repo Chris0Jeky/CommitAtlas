@@ -19,7 +19,7 @@
     "clean": "node ../../scripts/clean-package-dist.mjs",
     "build": "node ../../scripts/build-package.mjs",
     "pretest": "npm --prefix ../core run build",
-    "test": "npm run build && node --test tests/svg.test.mjs",
+    "test": "npm run build && node --test tests/svg.test.mjs tests/seed.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   }
