@@ -7,6 +7,11 @@ test("two density columns pulse in the sole legal gutter", () => {
     travelPx: 0,
     steps: 1,
   });
+  assert.deepEqual(
+    densityScanMotion(2.9),
+    densityScanMotion(2),
+    "fractional layout measurements normalize to the rendered whole-column count",
+  );
 });
 
 test("wider density grids retain one stepped stop per gutter", () => {
