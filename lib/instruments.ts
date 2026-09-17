@@ -138,7 +138,32 @@ export interface DensityGrid {
   cells: readonly DensityCell[];
 }
 
+export interface DensityScanMotion {
+  /** Horizontal distance travelled by the one-pixel gutter marker. */
+  travelPx: number;
+  /** Number of discrete animation stops, one per legal gutter. */
+  steps: number;
+}
+
 const DENSITY = { cell: 4, gap: 1, rows: 7 } as const;
+
+/**
+ * Motion geometry for the density survey's decorative gutter marker.
+ *
+ * A two-column grid has exactly one legal gutter. Moving the marker by one pitch lands it on the
+ * clipped right edge, so that narrow case stays in place and pulses through the existing opacity
+ * keyframes. Wider grids preserve the original stepped sweep, with the final clipped step acting as
+ * the animation's fade-out boundary rather than painting over a contribution cell.
+ */
+export function densityScanMotion(columns: number): DensityScanMotion | null {
+  const count = Number.isFinite(columns) ? Math.max(0, Math.trunc(columns)) : 0;
+  if (count < 2) return null;
+  const gutters = count - 1;
+  return {
+    travelPx: count === 2 ? 0 : gutters * (DENSITY.cell + DENSITY.gap),
+    steps: gutters,
+  };
+}
 
 /**
  * Lay a contribution calendar out the way GitHub does: one column per week, one row per weekday.
