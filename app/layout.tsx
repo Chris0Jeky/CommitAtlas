@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ObservatoryRouteBridge } from "./observatory-route-bridge";
 import { CHASSIS_THEMES, CHASSIS_THEME_BOOTSTRAP, DEFAULT_CHASSIS_THEME } from "@/lib/chassis";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN, SITE_TAGLINE } from "@/lib/site";
 
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <ObservatoryRouteBridge />
         <script defer src="/observatory.js" />
       </body>
     </html>
