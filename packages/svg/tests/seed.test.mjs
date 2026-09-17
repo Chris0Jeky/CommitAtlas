@@ -98,7 +98,7 @@ test("canonicalJson rejects object and array getters without executing them", ()
 
 test("canonicalJson rejects setter-only array entries as accessors", () => {
   const value = [];
-  Object.defineProperty(value, "0", { set(_) {}, enumerable: true });
+  Object.defineProperty(value, "0", { set: () => assert.fail("serialization must not call a setter"), enumerable: true });
   assert.throws(() => canonicalJson(value), /accessor/u);
 });
 
