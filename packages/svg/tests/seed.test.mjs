@@ -82,3 +82,29 @@ test("seededRandom is deterministic, bounded, and reasonably distributed", () =>
 
   assert.throws(() => seededRandom("not-a-sha256"), /64-character hexadecimal/u);
 });
+
+test("canonicalJson rejects object and array getters without executing them", () => {
+  for (const value of [{}, []]) {
+    let reads = 0;
+    const key = Array.isArray(value) ? "0" : "value";
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      get() { reads += 1; return reads; },
+    });
+    assert.throws(() => canonicalJson(value), /accessor/u);
+    assert.equal(reads, 0, "serialization must not evaluate a getter");
+  }
+});
+
+test("canonicalJson rejects setter-only array entries as accessors", () => {
+  const value = [];
+  Object.defineProperty(value, "0", { set(_) {}, enumerable: true });
+  assert.throws(() => canonicalJson(value), /accessor/u);
+});
+
+test("canonicalJson preserves dense array data descriptors and repeated references", () => {
+  const shared = { b: 2, a: 1 };
+  const value = [shared, shared];
+  Object.defineProperty(value, "0", { value: shared, enumerable: false });
+  assert.equal(canonicalJson(value), '[{"a":1,"b":2},{"a":1,"b":2}]');
+});
