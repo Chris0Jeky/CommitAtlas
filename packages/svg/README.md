@@ -30,6 +30,29 @@ const svg = renderProfileCard({
 }, { theme: "aurora" });
 ```
 
+## Deterministic scene seeds
+
+Procedural presentation code can derive stable placement from the exact model it renders:
+
+```ts
+import { canonicalJson, seededRandom, stableHash } from "@commit-atlas/svg";
+
+const seed = stableHash(canonicalJson({
+  card: "atlas",
+  snapshot: { days: 365, theme: "paper" },
+}));
+const random = seededRandom(seed);
+const x = random(); // always in [0, 1), and repeatable for the same seed
+```
+
+`canonicalJson` recursively sorts plain-object keys, preserves array order, emits no optional
+whitespace, and rejects values that would make the model ambiguous: non-finite numbers,
+`undefined`, functions, symbols, bigints, accessors, sparse arrays, cycles, and non-plain objects.
+`stableHash` returns the lowercase SHA-256 digest of the exact UTF-8 text. `seededRandom` consumes
+a 64-character SHA-256 digest and runs Mulberry32 from its first 32 bits. The hash uses Node's
+synchronous crypto implementation, which is also available in the deployed Worker through the
+repository's pinned `nodejs_compat` flag.
+
 Built package artifacts contain compiled JavaScript and TypeScript declarations in `dist`. The
 package is source-installable but is not currently published to npm.
 
