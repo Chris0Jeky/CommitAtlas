@@ -135,6 +135,47 @@ test("browser route validation fails closed before fulfillment on identity drift
   assert.equal(fulfilled, false);
 });
 
+test("browser route validation rejects URL, status, and MIME drift before fulfillment", async () => {
+  const scenarios = [
+    {
+      responseUrl: `${targetUrl}?redirected=1`,
+      status: 200,
+      contentType: "image/svg+xml",
+      expected: /response URL must match/,
+    },
+    {
+      responseUrl: targetUrl,
+      status: 503,
+      contentType: "image/svg+xml",
+      expected: /must return 200/,
+    },
+    {
+      responseUrl: targetUrl,
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      expected: /must be image\/svg\+xml/,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    let fulfilled = false;
+    const response = {
+      url: () => scenario.responseUrl,
+      status: () => scenario.status,
+      headerValue: async () => scenario.contentType,
+      body: async () => body,
+    };
+    await assert.rejects(
+      fulfillValidatedHostedAssetRoute({
+        fetch: async () => response,
+        fulfill: async () => { fulfilled = true; },
+      }, { asset: "css-enter", targetUrl, expectedBodySha256: bodySha256 }),
+      scenario.expected,
+    );
+    assert.equal(fulfilled, false);
+  }
+});
+
 test("browser observations summarize only an identical per-row response identity", () => {
   const first = compactObservation();
   assert.deepEqual(

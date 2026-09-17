@@ -7,7 +7,7 @@
  *
  * Example:
  *   node tests/motion-probes/capture.mjs --browser "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --out C:\\temp\\commitatlas-motion
- *   node tests/motion-probes/capture.mjs --browser "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --asset-base https://example.invalid/probes/ --host-label worker-direct --out C:\\temp\\commitatlas-motion
+ *   node tests/motion-probes/capture.mjs --playwright-cli C:\\tools\\playwright\\cli.js --playwright-engine chromium --asset-base https://example.invalid/probes/ --host-label worker-direct --out C:\\temp\\commitatlas-motion
  */
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
