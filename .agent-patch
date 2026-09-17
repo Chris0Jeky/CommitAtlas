@@ -1,0 +1,65 @@
+diff --git a/tests/motion-probes/capture.mjs b/tests/motion-probes/capture.mjs
+--- a/tests/motion-probes/capture.mjs
++++ b/tests/motion-probes/capture.mjs
+@@ -504,7 +504,6 @@
+           if (hostedTargetUrl && selectedSource !== hostedTargetUrl) {
+             throw new Error(`${probe}/${embed} currentSrc must match the browser-bound hosted asset URL`);
+           }
+-          if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
+           const startedAt = await browserPage.evaluate(() => performance.now());
+           for (const targetTimeMs of frameTimes) {
+             const beforeWait = await browserPage.evaluate(() => performance.now());
+@@ -527,6 +526,7 @@
+           const measuredVisibleDurationMs = await browserPage.evaluate((anchor) => performance.now() - anchor, startedAt);
+           if (measuredVisibleDurationMs < 3_000) throw new Error(`recorded row was visible for only ${measuredVisibleDurationMs.toFixed(1)} ms`);
+           video = { measuredVisibleDurationMs: Math.round(measuredVisibleDurationMs * 10) / 10 };
++          if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
+         } finally {
+           await context.close();
+         }
+@@ -574,9 +574,9 @@
+                 throw new Error(`${probe}/${embed} currentSrc must match the browser-bound hosted asset URL`);
+               }
+               if (timeMs === frameTimes[0]) selectedSource = frameSelectedSource;
+-              if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
+               await browserPage.waitForTimeout(timeMs);
+               await browserPage.screenshot({ path: file });
++              if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
+             } finally {
+               await instance.close();
+             }
+diff --git a/tests/motion-probes.test.mjs b/tests/motion-probes.test.mjs
+--- a/tests/motion-probes.test.mjs
++++ b/tests/motion-probes.test.mjs
+@@ -246,6 +246,28 @@
+   assert.match(source, /evaluate\(\(anchor\) => performance\.now\(\) - anchor, startedAt\)/u);
+ });
+ 
++test("hosted response binding is finalized after rendered pixels are captured", async () => {
++  const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
++  const recordedBranch = source.indexOf("if (recordVideo) {");
++  const recordedDuration = source.indexOf("const measuredVisibleDurationMs", recordedBranch);
++  const recordedFinalize = source.indexOf(
++    "if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());",
++    recordedDuration,
++  );
++  const independentBranch = source.indexOf("} else for (const timeMs of frameTimes)", recordedBranch);
++  const independentScreenshot = source.indexOf(
++    "await browserPage.screenshot({ path: file });",
++    independentBranch,
++  );
++  const independentFinalize = source.indexOf(
++    "if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());",
++    independentScreenshot,
++  );
++
++  assert.ok(recordedDuration > recordedBranch, "the continuous capture must retain its final timing boundary");
++  assert.ok(recordedFinalize > recordedDuration && recordedFinalize < independentBranch,
++    "the continuous response gate must be finalized only after every screenshot deadline");
++  assert.ok(independentFinalize > independentScreenshot,
++    "each independent response gate must be finalized after its screenshot is written");
++});
++
+ test("recorded video metadata verifies WebM identity without claiming parsed duration", () => {
+   const metadata = inspectWebmBuffer(Buffer.from("1a45dfa300010203", "hex"));
+   assert.equal(metadata.magicHex, "1a45dfa3");
