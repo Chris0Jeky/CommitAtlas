@@ -1,0 +1,72 @@
+[
+  {
+    "name": "direct studio entry",
+    "initialPathname": "/studio",
+    "steps": [
+      { "type": "enable-sharing" },
+      { "type": "event", "event": "studio.opened" }
+    ],
+    "expectedEvents": [
+      { "event": "page.view", "route": "studio" },
+      { "event": "studio.opened", "route": "studio" }
+    ]
+  },
+  {
+    "name": "home to studio client navigation",
+    "initialPathname": "/",
+    "steps": [
+      { "type": "enable-sharing" },
+      { "type": "navigate", "pathname": "/studio" },
+      { "type": "event", "event": "studio.opened" }
+    ],
+    "expectedEvents": [
+      { "event": "page.view", "route": "home" },
+      { "event": "studio.opened", "route": "studio" }
+    ]
+  },
+  {
+    "name": "studio to home client navigation",
+    "initialPathname": "/studio",
+    "steps": [
+      { "type": "enable-sharing" },
+      { "type": "navigate", "pathname": "/" },
+      { "type": "event", "event": "action.requested" }
+    ],
+    "expectedEvents": [
+      { "event": "page.view", "route": "studio" },
+      { "event": "action.requested", "route": "home" }
+    ]
+  },
+  {
+    "name": "repeated navigation and consent keep one page view",
+    "initialPathname": "/",
+    "steps": [
+      { "type": "navigate", "pathname": "/studio" },
+      { "type": "navigate", "pathname": "/studio" },
+      { "type": "navigate", "pathname": "/studio/card" },
+      { "type": "enable-sharing" },
+      { "type": "enable-sharing" },
+      { "type": "event", "event": "card.exported" },
+      { "type": "navigate", "pathname": "/" },
+      { "type": "enable-sharing" },
+      { "type": "event", "event": "action.completed" }
+    ],
+    "expectedEvents": [
+      { "event": "page.view", "route": "studio" },
+      { "event": "card.exported", "route": "studio" },
+      { "event": "action.completed", "route": "home" }
+    ]
+  },
+  {
+    "name": "unknown routes stay content free",
+    "initialPathname": "/docs/private-looking-name",
+    "steps": [
+      { "type": "enable-sharing" },
+      { "type": "event", "event": "app.error" }
+    ],
+    "expectedEvents": [
+      { "event": "page.view", "route": "other" },
+      { "event": "app.error", "route": "other" }
+    ]
+  }
+]
