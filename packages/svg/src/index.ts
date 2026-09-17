@@ -5,6 +5,8 @@
  * DOM, or framework dependency. The caller owns data fetching and lifecycle semantics.
  */
 
+export { canonicalJson, seededRandom, stableHash } from "./seed.js";
+
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
 
 export interface SvgTheme {
