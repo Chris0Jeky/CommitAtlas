@@ -195,11 +195,19 @@ test("a partial direct report stays ineligible until the whole matrix completes"
   assert.match(source, /report\.status = "complete";/u);
   assert.match(source, /report\.compatibilityEvidence = compatibilityEvidenceStatus\(browserVersion, true\);/u);
   const completion = source.indexOf('report.status = "complete";');
+  const reportCreation = source.indexOf("const report = {");
+  const firstPartialWrite = source.indexOf("await writePartialDirectReport(partialFile, report);");
+  const rowLoop = source.indexOf("for (const probe of selectedProbes)");
   const completedWrite = source.indexOf('writeFile(path.join(outputDirectory, "report.json")');
-  const lastPartialWrite = source.lastIndexOf('writeFile(path.join(outputDirectory, "report.partial.json")');
+  const lastPartialWrite = source.lastIndexOf("await writePartialDirectReport(partialFile, report);");
+  const failureWrite = source.indexOf("await writePartialDirectReport(partialFile, report, error);");
   assert.ok(completion > 0);
   assert.ok(completedWrite > 0, "the completed report write must still be locatable");
   assert.ok(lastPartialWrite > 0, "the partial report write must still be locatable");
+  assert.ok(
+    firstPartialWrite > reportCreation && firstPartialWrite < rowLoop,
+    "an atomic partial report must exist before the first row starts",
+  );
   assert.ok(
     completion < completedWrite,
     "report.json must only be written after the run is marked complete",
@@ -207,6 +215,10 @@ test("a partial direct report stays ineligible until the whole matrix completes"
   assert.ok(
     completion > lastPartialWrite,
     "every partial write must happen while the report is still marked partial",
+  );
+  assert.ok(
+    failureWrite > lastPartialWrite,
+    "an aborted capture must persist its failure reason before rethrowing",
   );
 });
 
