@@ -1,0 +1,34 @@
+name: Sync issue 191 branch with main
+
+on:
+  push:
+    branches: [fix/191-browser-response-binding]
+    paths:
+      - .agent-sync-main
+      - .github/workflows/agent-sync-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out branch with history
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Merge current main and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          rm .agent-sync-main .github/workflows/agent-sync-main.yml
+          git add -A
+          git commit -m "chore: remove temporary branch sync workflow"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
