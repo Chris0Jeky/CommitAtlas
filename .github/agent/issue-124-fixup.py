@@ -1,7 +1,7 @@
 from pathlib import Path
 
-path = Path(".github/agent/issue-124-green.py")
-text = path.read_text(encoding="utf-8")
+script_path = Path(".github/agent/issue-124-green.py")
+script = script_path.read_text(encoding="utf-8")
 replacements = [
     (
         '    \'import { buildStudioRouteUrl, type StudioCardKind, type StudioProjectInput } from "./studio-urls";\',',
@@ -18,18 +18,22 @@ replacements = [
         '            <label><input type="radio" name="motion"',
         5,
     ),
-    (
-        '  const { motion: _motion, ...withoutMotion } = rawConfig();\n'
-        '  assert.equal(parseStaticConfig(withoutMotion).motion, "none");',
-        '  const withoutMotion = rawConfig();\n'
-        '  Reflect.deleteProperty(withoutMotion, "motion");\n'
-        '  assert.equal(parseStaticConfig(withoutMotion).motion, "none");',
-        1,
-    ),
 ]
 for old, new, expected in replacements:
-    count = text.count(old)
+    count = script.count(old)
     if count != expected:
         raise RuntimeError(f"expected {expected} bootstrap patches, found {count}: {old!r}")
-    text = text.replace(old, new)
-path.write_text(text, encoding="utf-8")
+    script = script.replace(old, new)
+script_path.write_text(script, encoding="utf-8")
+
+static_test_path = Path("packages/static/tests/static.test.mjs")
+static_test = static_test_path.read_text(encoding="utf-8")
+old_default_check = '''  const { motion: _motion, ...withoutMotion } = rawConfig();
+  assert.equal(parseStaticConfig(withoutMotion).motion, "none");'''
+new_default_check = '''  const withoutMotion = rawConfig();
+  Reflect.deleteProperty(withoutMotion, "motion");
+  assert.equal(parseStaticConfig(withoutMotion).motion, "none");'''
+count = static_test.count(old_default_check)
+if count != 1:
+    raise RuntimeError(f"expected one static default-motion test patch, found {count}")
+static_test_path.write_text(static_test.replace(old_default_check, new_default_check), encoding="utf-8")
