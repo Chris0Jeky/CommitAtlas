@@ -18,6 +18,14 @@ replacements = [
         '            <label><input type="radio" name="motion"',
         5,
     ),
+    (
+        '  const { motion: _motion, ...withoutMotion } = rawConfig();\n'
+        '  assert.equal(parseStaticConfig(withoutMotion).motion, "none");',
+        '  const withoutMotion = rawConfig();\n'
+        '  Reflect.deleteProperty(withoutMotion, "motion");\n'
+        '  assert.equal(parseStaticConfig(withoutMotion).motion, "none");',
+        1,
+    ),
 ]
 for old, new, expected in replacements:
     count = text.count(old)
