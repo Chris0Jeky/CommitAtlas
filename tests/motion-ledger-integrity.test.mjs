@@ -27,7 +27,7 @@ test("legacy direct Worker motion ledger pins every measured row", async () => {
   assert.equal(rows.length, ledger.pixelMatrix.rowCount, "the declared row count must match the matrix");
   assert.equal(
     measuredRowsSha256(rows),
-    "0000000000000000000000000000000000000000000000000000000000000000",
+    "5c2724001686d47a0d4ec10c637fd89dbaa8f8ff8e136c62ccb60f156d555131",
     "the measured pair magnitudes and recorded verdicts must stay pinned",
   );
 });
