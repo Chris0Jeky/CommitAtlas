@@ -489,7 +489,6 @@ export async function capture(options) {
           if (hostedTargetUrl && selectedSource !== hostedTargetUrl) {
             throw new Error(`${probe}/${embed} currentSrc must match the browser-bound hosted asset URL`);
           }
-          if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
           const startedAt = await browserPage.evaluate(() => performance.now());
           for (const targetTimeMs of frameTimes) {
             const beforeWait = await browserPage.evaluate(() => performance.now());
@@ -513,6 +512,7 @@ export async function capture(options) {
           const measuredVisibleDurationMs = await browserPage.evaluate((anchor) => performance.now() - anchor, startedAt);
           if (measuredVisibleDurationMs < 3_000) throw new Error(`recorded row was visible for only ${measuredVisibleDurationMs.toFixed(1)} ms`);
           video = { measuredVisibleDurationMs: Math.round(measuredVisibleDurationMs * 10) / 10 };
+          if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
         } finally {
           await context.close();
         }
@@ -559,9 +559,9 @@ export async function capture(options) {
                 throw new Error(`${probe}/${embed} currentSrc must match the browser-bound hosted asset URL`);
               }
               if (timeMs === frameTimes[0]) selectedSource = frameSelectedSource;
-              if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
               await browserPage.waitForTimeout(timeMs);
               await browserPage.screenshot({ path: file });
+              if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());
             } finally {
               await instance.close();
             }
