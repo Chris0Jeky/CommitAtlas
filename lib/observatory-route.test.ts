@@ -87,3 +87,21 @@ test("empty event names cannot become Observatory events", () => {
   const state = createObservatoryRouteState("/");
   assert.throws(() => attributeObservatoryEvent(state, ""), /event name/u);
 });
+
+test("the mounted App Router bridge remains attribution-only", async () => {
+  const [bridge, layout] = await Promise.all([
+    readFile(new URL("../app/observatory-route-bridge.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(bridge, /usePathname\(\)/u);
+  assert.match(bridge, /window\.location\.pathname/u);
+  assert.match(bridge, /window\.dispatchEvent/u);
+  assert.doesNotMatch(
+    bridge,
+    /\bfetch\s*\(|localStorage|sessionStorage|PulseboardUsage|page\.view/u,
+    "the bridge must not collect, persist, or announce a page view",
+  );
+  assert.match(layout, /<ObservatoryRouteBridge \/>/u);
+  assert.match(layout, /<script defer src="\/observatory\.js" \/>/u);
+});
