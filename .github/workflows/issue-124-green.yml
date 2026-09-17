@@ -32,6 +32,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Reconcile bootstrap with current formatting
+        run: python3 .github/agent/issue-124-fixup.py
+
       - name: Implement the motion profile contract
         run: python3 .github/agent/issue-124-green.py
 
@@ -40,6 +43,7 @@ jobs:
         run: |
           rm .github/workflows/issue-124-green.yml
           rm .github/agent/issue-124-green.py
+          rm .github/agent/issue-124-fixup.py
           rmdir .github/agent 2>/dev/null || true
 
       - name: Check patch hygiene
