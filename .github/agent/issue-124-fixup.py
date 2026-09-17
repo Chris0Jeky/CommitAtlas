@@ -6,15 +6,22 @@ replacements = [
     (
         '    \'import { buildStudioRouteUrl, type StudioCardKind, type StudioProjectInput } from "./studio-urls";\',',
         '    \'import { isStudioCardAvailable } from "./studio-card-availability";\',',
+        1,
     ),
     (
         'import { buildStudioRouteUrl, type StudioCardKind, type StudioProjectInput } from "./studio-urls";\'\'\',',
         'import { isStudioCardAvailable } from "./studio-card-availability";\'\'\',',
+        1,
+    ),
+    (
+        '              <label><input type="radio" name="motion"',
+        '            <label><input type="radio" name="motion"',
+        5,
     ),
 ]
-for old, new in replacements:
+for old, new, expected in replacements:
     count = text.count(old)
-    if count != 1:
-        raise RuntimeError(f"expected one Studio Markdown bootstrap patch, found {count}: {old!r}")
+    if count != expected:
+        raise RuntimeError(f"expected {expected} bootstrap patches, found {count}: {old!r}")
     text = text.replace(old, new)
 path.write_text(text, encoding="utf-8")
