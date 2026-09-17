@@ -1,0 +1,73 @@
+name: Issue 124 red contract bootstrap
+
+on:
+  push:
+    branches:
+      - codex/issue-124-motion-profiles
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-124-red-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  establish-red-contract:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply regression contract
+        run: python3 .github/agent/issue-124-red.py
+
+      - name: Prove each affected lane is red
+        shell: bash
+        run: |
+          set +e
+          npm run test:github > /tmp/issue-124-github.log 2>&1
+          github_status=$?
+          npm run test:studio > /tmp/issue-124-studio.log 2>&1
+          studio_status=$?
+          npm run test:svg > /tmp/issue-124-svg.log 2>&1
+          svg_status=$?
+          npm run test:static > /tmp/issue-124-static.log 2>&1
+          static_status=$?
+          set -e
+
+          for lane in github studio svg static; do
+            echo "===== ${lane} lane ====="
+            cat "/tmp/issue-124-${lane}.log"
+          done
+
+          echo "github=${github_status} studio=${studio_status} svg=${svg_status} static=${static_status}"
+          if [ "${github_status}" -eq 0 ] || [ "${studio_status}" -eq 0 ] || [ "${svg_status}" -eq 0 ] || [ "${static_status}" -eq 0 ]; then
+            echo "At least one new contract unexpectedly passed before implementation." >&2
+            exit 1
+          fi
+
+      - name: Persist tests without bootstrap machinery
+        shell: bash
+        run: |
+          rm .github/workflows/issue-124-red.yml
+          rm .github/agent/issue-124-red.py
+          rmdir .github/agent 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: define expanded motion profile contracts"
+          git push origin HEAD:codex/issue-124-motion-profiles
