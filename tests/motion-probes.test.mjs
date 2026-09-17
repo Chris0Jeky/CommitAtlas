@@ -80,7 +80,8 @@ test("fixture index supports both image embedding paths and declares the reduced
 test("capture options accept an explicit HTTPS asset base and bounded host label", () => {
   const assetBase = "https://motion.example.test/probes/";
   const options = parseCaptureOptions([
-    "--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"),
+    "--playwright-engine", "chromium", "--playwright-cli", testPlaywrightCli,
+    "--out", path.join(testOutputDirectory, "motion"),
     "--asset-base", assetBase, "--host-label", "worker-direct",
   ]);
   assert.equal(options.assetBase, assetBase);
@@ -110,6 +111,10 @@ test("capture options reject non-bare asset bases and unbounded labels", () => {
   assert.throws(() => parseHostLabel("x".repeat(65)), /host-label/);
   assert.throws(() => parseHostLabel("worker/direct"), /host-label/);
   assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--asset-base"]), /asset-base/);
+  assert.throws(
+    () => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--asset-base", "https://motion.example.test/probes/"]),
+    /asset-base requires --playwright-engine and --playwright-cli/,
+  );
   assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--host-label"]), /host-label/);
 });
 
