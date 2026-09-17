@@ -5,6 +5,7 @@ import { Ev } from "./evidence-ui";
 import {
   densityGrid,
   densityLevelOpacity,
+  densityScanMotion,
   gaugeReading,
   isEmptyDensityCell,
   momentumTrace,
@@ -182,6 +183,7 @@ export function DensitySurvey({
   label: string;
 }) {
   const grid = densityGrid(days);
+  const scan = densityScanMotion(grid.columns);
   const columns: DensityCell[][] = [];
   for (const cell of grid.cells) (columns[cell.column] ??= []).push(cell);
 
@@ -189,7 +191,7 @@ export function DensitySurvey({
     <>
       <div className="bay-instrument">
         <svg viewBox={grid.viewBox} role="img" aria-label={label} preserveAspectRatio="xMinYMid meet">
-          {grid.columns > 1 ? (
+          {scan ? (
             <rect
               className="m3-scan"
               x={4}
@@ -199,8 +201,8 @@ export function DensitySurvey({
               fill="var(--chrome)"
               opacity={0}
               style={{
-                "--density-travel": `${(grid.columns - 1) * 5}px`,
-                "--density-steps": grid.columns - 1,
+                "--density-travel": `${scan.travelPx}px`,
+                "--density-steps": scan.steps,
               } as CSSProperties}
             />
           ) : null}
