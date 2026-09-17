@@ -4,105 +4,96 @@
 
 ### Your GitHub work, mapped clearly.
 
-One cohesive toolkit for contribution analytics, streaks, project health, README widgets, and a
-live portfolio Studio.
+Source-backed GitHub analytics, README graphics, project-health views, and a live portfolio Studio — with explicit freshness, provenance, and no invented rankings.
 
 [![CI](https://github.com/Chris0Jeky/CommitAtlas/actions/workflows/ci.yml/badge.svg)](https://github.com/Chris0Jeky/CommitAtlas/actions/workflows/ci.yml)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-ff7a45.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-ffc857.svg)](tsconfig.json)
 
 [Open the live Studio](https://commit-atlas.commit-atlas.workers.dev/studio) ·
-[Run the demonstration](docs/DEMO_GUIDE.md)
+[Run the demonstration](docs/DEMO_GUIDE.md) ·
+[Product direction](docs/PRODUCT_DIRECTION.md) ·
+[Live project state](docs/PROJECT_STATE.md)
 
 </div>
 
-> **Current product boundary:** eight hosted SVG routes and the Studio are available on the public
-> Worker. The static CLI and bundled Node 24 Action support ten card types — the hosted eight plus
-> Cadence and Releases — from one credential-free public snapshot. The landing-page instrument
-> fascia, six-state rack, and evidence ladder are optional explainers, not additional exported cards
-> or a monitoring service. Their contract is in [docs/DESIGN_CHASSIS.md](docs/DESIGN_CHASSIS.md).
->
-> Every push to `main` that passes CI deploys to Cloudflare Workers and is verified by probes against
-> the origin it just published to.
->
-> **npm publication is still not claimed.** The packages are built and pack-verified but are not on
-> the registry, and the README will not say otherwise until a registry lookup succeeds.
->
-> **What comes next** — ambient and cinematic motion, a scene engine, and Developer Lens / Lab
-> projections — is planned in [docs/EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md) and tracked in
-> [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111). None of it is shipped yet.
+## What CommitAtlas is
 
-## What changed in v0.4.0
+CommitAtlas is the public presentation layer in a wider evidence-oriented developer-tool portfolio.
 
-- **Freshness that fails honestly.** Public hosted responses can retain a validated last-good
-  representation for seven days and mark it stale during a supported GitHub quota or availability
-  failure. Cold, expired, token-backed, synthetic, and mismatched requests never borrow it.
-- **Contribution fidelity.** The calendar follows GitHub's Sunday-row geometry and supplied
-  intensity levels; an open final UTC day no longer erases a continuing streak.
-- **One snapshot, both schemes.** The static generator and Action can produce dark and light output
-  directories from one fetch, with independent hash manifests carrying the same generation time
-  and window.
-- **A clearer, more readable product.** The landing page distinguishes the eight hosted routes,
-  ten static cards, Studio, and optional design lab. Standalone card text has a tested readability
-  floor, including constrained-width clipping guards.
-- **A bounded research bridge.** An optional landing-page panel consumes a pinned Developer Lens C0
-  method-trial summary. It reports the baseline/candidate result and its limitations; it is not a
-  profile score, real-repository validation, or monitoring service.
+- It turns credential-free public GitHub evidence and explicitly configured project intent into deterministic SVGs, catalogues, and portfolio views.
+- It states where every reading came from, what window it covers, how fresh it is, and what is unavailable.
+- It can retain a validated last-good public representation during bounded upstream failure, but visibly marks it stale rather than painting it healthy.
+- It does not infer private work, language proficiency, productivity, project success, or a universal developer rank.
+- It complements **Developer Lens**, which owns private/local interpretation; **Pulseboard**, which owns private operational evidence; and the GitHub profile repository, which owns final publication choices.
 
-## The complete operating picture
+The product direction is a deterministic, privacy-aware generative profile graphics engine: factual instruments today; evidence-labelled maps, signatures, scenes, and findings only when their contracts and rendering behavior are proven.
 
-The primary Atlas condenses a full year of public activity into one `860 × 380` SVG:
+## Current product boundary
 
-- 365-day contribution heatmap, total, active-day density, daily average, and peak day;
-- current and longest streak inside the displayed window;
-- commit, pull-request, issue, and review mix from GitHub's calendar-year public-profile percentages
-  when exact categorized counts are unavailable (the mix is labelled as not window-scoped);
-- 12-bucket momentum, recent-versus-previous 28-day change, and a transparent rhythm score;
-- source-backed language distribution and configured project CI health;
-- four themes, wide/compact layouts, and `motion=none|subtle`; subtle load motion includes a
-  `prefers-reduced-motion` override, while `none` emits no animation keyframes.
+**Released:** v0.4.0.
 
-The rhythm score summarizes consistency and breadth inside the displayed window. It is deliberately
-not presented as a universal GitHub ranking or a comparison with other developers.
+- Eight hosted SVG routes and the live Studio run on the public Cloudflare Worker.
+- The source CLI and bundled Node 24 Action generate ten card types from one public snapshot: the hosted eight plus static Cadence and Releases cards.
+- Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
+- The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
+- A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
+- The Observatory adapter is staged but inactive: its endpoint is empty, so it creates no consent storage, timers, or collector requests. Collection is not a hidden side effect of publishing CommitAtlas.
+- npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
-## Pick only what you need
+**Planned, not shipped:** ambient/cinematic motion, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
+
+Every push to `main` that passes CI deploys to Cloudflare Workers and is checked against the origin produced by that deployment.
+
+## The evidence model
+
+CommitAtlas keeps four kinds of information visibly separate:
+
+1. **Observed facts** — values obtained directly from the declared public source.
+2. **Derived readings** — transparent calculations over those facts, such as density, momentum, or the personal rhythm summary.
+3. **Configured intent** — owner-declared lifecycle, named workflow, or approved project links.
+4. **Missing or stale evidence** — unavailable, restricted, expired, unsupported, or temporarily served from a marked last-good snapshot.
+
+The rhythm score summarizes consistency and breadth inside the displayed window. It is not a GitHub rank and is never compared across people.
+
+A scene may later use evidence as a deterministic visual seed, but spectacle must never carry an unstated claim. Everything remains readable at frame zero; unavailable never animates as healthy; identical inputs must produce byte-identical output.
+
+## Shipped surfaces
 
 | Surface | What it shows | Hosted route / static file |
 | --- | --- | --- |
 | Atlas | Density, heatmap, streaks, collaboration mix, momentum, rhythm, languages, project health | `/api/v1/cards/atlas.svg` / `atlas.svg` |
 | Profile | Public repositories, followers, following, stars, contribution total | `/api/v1/cards/profile.svg` / `profile.svg` |
 | Streak | Current and longest-in-window streak, active days, last activity | `/api/v1/cards/streak.svg` / `streak.svg` |
-| Breakdown | Window-scoped categorized counts when exact; otherwise calendar-year profile percentages labelled as not window-scoped | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
-| Rhythm | Personal consistency from within-window density, streak, and momentum — not a GitHub rank | `/api/v1/cards/rhythm.svg` / `rhythm.svg` |
+| Breakdown | Exact window counts when available; otherwise explicitly labelled public-profile percentages | `/api/v1/cards/breakdown.svg` / `breakdown.svg` |
+| Rhythm | Personal consistency from density, streak, and momentum — not a rank | `/api/v1/cards/rhythm.svg` / `rhythm.svg` |
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
-| Projects | Up to six curated projects with declared lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg` (static: `projects.json`, `projects.md`) |
-| Cadence | Contribution share by day of week on UTC boundaries, window-scoped | static-only: `cadence.svg` |
-| Releases | The most recent published release per curated project, newest first; absence stated | static-only: `releases.svg` |
+| Projects | Up to six curated projects with lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg`, `projects.json`, `projects.md` |
+| Cadence | Contribution share by UTC weekday, window-scoped | static-only `cadence.svg` |
+| Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
 
-The cards are drawn in one hue per scale, never four: a density square's colour says *how much*,
-and never *what kind*. The Studio emits each card as a `<picture>` pair keyed on
-`prefers-color-scheme`, so a README serves a dark card to dark readers and a light one to light
-readers from a single snippet.
+The primary Atlas condenses a 365-day public activity window into one `860 × 380` SVG: contribution heatmap and totals, active-day density, peak day, streaks, public collaboration mix, twelve-bucket momentum, recent change, rhythm, language distribution, and configured project health.
 
-The [Studio](https://commit-atlas.commit-atlas.workers.dev/studio) configures, previews, and copies
-embeds. Project Docs, Install, Download, Release, Source, and CI actions live in its accessible HTML
-dashboard: a README-embedded SVG is one linked image and cannot reliably contain independent links.
+Cards use one hue per quantitative scale. Colour says how much, not what kind. The Studio emits a `<picture>` pair for dark and light readers and keeps independent project actions in accessible HTML because a README-embedded SVG is one linked image, not a reliable mini-application.
 
-## Hosted examples
+## v0.4.0 highlights
 
-Start with the deterministic examples: they make no GitHub request and therefore separate product
-behavior from upstream availability.
+- **Truthful last-good resilience.** Eligible public hosted responses may reuse a validated representation for seven days during a supported anonymous-GitHub failure. The response is visibly stale, timestamped, and short-cached. Cold, expired, token-backed, synthetic, or mismatched requests never borrow it.
+- **Contribution fidelity.** GitHub’s Sunday-row geometry and supplied intensity levels are preserved, and an open final UTC day no longer erases a continuing streak.
+- **One snapshot, two schemes.** Static dark/light outputs share the same source time and window while keeping independent manifests.
+- **Readability and product clarity.** The Studio distinguishes hosted routes, static cards, source distribution, and optional design explanations.
+- **Bounded research bridge.** A pinned Developer Lens C0 trial records a baseline/candidate result and unsupported claims without turning research into profile evidence.
 
-- [Rich Atlas — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle&layout=wide)
-- [Profile — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none)
-- [Project board — deterministic demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
+## Try it
 
-The [live public Atlas](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide)
-is the availability-dependent example. A validated public response is retained for seven days. If
-anonymous GitHub later times out or rate-limits the route, CommitAtlas serves that snapshot with a
-visible `STALE SNAPSHOT` strip plus freshness headers; a cold or expired route still returns the
-original bounded error. Synthetic and token-backed requests never use the fallback.
+The deterministic examples make no GitHub request and separate renderer behavior from upstream availability:
+
+- [Rich Atlas demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle&layout=wide)
+- [Profile demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none)
+- [Project board demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
+
+The [live public Atlas](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide) depends on anonymous GitHub availability. During an eligible upstream failure, a retained representation carries a visible `STALE SNAPSHOT` strip and freshness headers. A cold or expired route returns the original bounded error.
 
 ## Run locally
 
@@ -121,31 +112,9 @@ Open `http://localhost:3000`. Run the complete local gate with:
 npm run check
 ```
 
-## Deploy your own
-
-CommitAtlas is a Cloudflare Worker with static assets and needs **no credentials** to serve every
-documented surface. A deployment that wants hosted last-good resilience also binds one Workers KV
-namespace; see the account-specific setup in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-```bash
-npx wrangler login
-npm run deploy
-```
-
-`npm run deploy` builds, publishes, reads the deployed origin out of Wrangler's own output, and
-runs seventeen deterministic probes against it — health, the landing page, the Studio, all eight
-synthetic cards asserted to be script-free SVG, the `motion=none` CSP path, and two invalid queries
-proving each is rejected as a bounded `400` with `no-store`, plus `robots.txt`, `sitemap.xml`, and the
-landing page's structured data. The origin is never hard-coded, so this
-verifies *your* deployment. Push-to-deploy from GitHub Actions and the optional public-scope
-`GITHUB_TOKEN` are covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
 ## Generate dependable profile assets
 
-Static generation is credential-free. It reads the logged-out GitHub profile view and public REST
-endpoints, renders every selected card from one snapshot, and writes a SHA-256 manifest. Selecting
-Projects also writes source/config-labelled `projects.json` and `projects.md` catalogs. Copy the
-example, curate the projects, track the config, then generate:
+Static generation is credential-free. It reads GitHub’s logged-out public profile view and public REST endpoints, renders selected cards from one snapshot, and writes a SHA-256 manifest. Selecting Projects also writes source/config-labelled catalogues.
 
 ```bash
 cp .commitatlas.example.json .commitatlas.json
@@ -154,86 +123,62 @@ npm run build:static
 node packages/static/dist/cli.js generate --config .commitatlas.json
 ```
 
-The v1 config is intentionally one-owner and public-only. It rejects unknown fields, credentials,
-absolute/traversing/symlinked paths, untracked config, duplicate cards/projects, and invalid workflow
-identities. Add optional `themes` entries to render opposite-scheme outputs (for example, `paper` in
-`assets/commitatlas/light`) from the same fetched snapshot; each entry requires its own contained
-output path. Generation validates every variant before staged per-file replacement; unrelated files
-in each output directory are preserved.
+The v1 config is one-owner and public-only. It rejects unknown fields, credentials, absolute/traversing/symlinked paths, untracked config, duplicate outputs, and invalid workflow identities. Generation validates variants before staged per-file replacement and preserves unrelated files in the output directory.
 
-## Refresh with GitHub Actions
+The repository-root `action.yml` runs on Node 24 and only generates files. It never commits, pushes, uploads, or receives `GITHUB_TOKEN`. Pin it to an immutable CommitAtlas commit; let the consumer workflow own checkout and any reviewed commit/push step. A failed refresh leaves the last committed assets available.
 
-The repository-root `action.yml` runs on Node 24 and only generates files. It never commits, pushes,
-uploads, or receives `GITHUB_TOKEN`. Pin it to an immutable CommitAtlas commit in consumer workflows:
+See [STATIC_GENERATOR_PLAN.md](docs/STATIC_GENERATOR_PLAN.md) and [DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full contracts.
 
-```yaml
-name: Refresh CommitAtlas
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "23 5 * * *"
+## Deploy your own
 
-permissions:
-  contents: write
+CommitAtlas serves all documented surfaces without credentials. Hosted last-good resilience additionally uses a Workers KV namespace.
 
-jobs:
-  refresh:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Chris0Jeky/CommitAtlas@COMMIT_SHA
-        with:
-          config: .commitatlas.json
-      - name: Commit changed public assets
-        shell: bash
-        run: |
-          if git diff --quiet -- assets/commitatlas; then exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- assets/commitatlas
-          git commit -m "chore(profile): refresh CommitAtlas"
-          git push
+```bash
+npx wrangler login
+npm run deploy
 ```
 
-The workflow's built-in token is used only by checkout/git push. It is not passed to CommitAtlas's
-data layer. A failed refresh leaves the last committed profile assets available.
+The deployment script builds, publishes, obtains the real origin from Wrangler output, and probes health, the landing page, Studio, all eight deterministic cards, CSP paths, bounded invalid queries, `robots.txt`, `sitemap.xml`, and structured data. The origin is not hard-coded.
 
 ## Public-data and privacy boundary
 
-Credential-free contribution cards use GitHub's logged-out public profile view. That view can include
-anonymous aggregate contribution counts a user has elected to display, but CommitAtlas requests no
-private repository names, commits, URLs, or other private details. Activity-type values from that view
-come from calendar-year profile views and are labelled as public-profile percentages that are not
-scoped to the requested contribution window; only an explicitly exact source is rendered as
-window-scoped counts. A percentage is never presented as a count.
+Credential-free cards use GitHub’s logged-out public profile and public REST evidence. That view may include anonymous aggregate private-contribution counts a user elected to display, but CommitAtlas requests no private repository names, commits, URLs, or details.
 
-A signed-in owner can see a different contribution total or daily calendar on GitHub when private
-activity is enabled. That does not make the public CommitAtlas snapshot stale or incorrect: the two
-views have different evidence boundaries. Compare CommitAtlas with a logged-out profile view when
-checking public parity.
+Some activity-type values come from calendar-year public-profile percentages rather than exact counts in the requested contribution window. CommitAtlas labels that distinction and never converts a percentage into a count.
 
-Hosted requests may optionally use a server-side classic public-only token, but the client requires
-positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data
-credentials. Never place a token in a URL, browser setting, config, generated file, or committed fixture.
+A signed-in owner may see different totals because GitHub exposes a different evidence boundary. Compare public parity against a logged-out profile.
 
-## Design and evidence
+Hosted requests may optionally use a server-side classic public-only token, but the client requires positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data credentials. Never place a token in a URL, browser setting, generated file, committed fixture, or tracked config.
 
+Developer Lens projections follow a separate publication boundary. Private/local evidence is never fetched by the hosted product. Any future owner projection must be explicitly redacted, reviewed, committed by the owner, freshness-checked, and labelled as a derived signature—not silently inferred from GitHub.
+
+## Direction
+
+Near-term work is evidence-gated:
+
+1. prove which SVG motion backend actually works through GitHub README `<img>` rendering before expanding the motion vocabulary;
+2. compile motion from one primitive model with frame-zero and reduced-motion invariants;
+3. add deterministic maps and scenes without letting aesthetics imply facts;
+4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;
+5. accept Lab research findings only through product-owned schemas with pinned provenance, decision vocabulary, limitations, and unsupported claims; do not invent coverage or expiry fields that the finding contract does not define;
+6. keep hosted data public-only and keep any Observatory collection separately consented and inactive by default;
+7. extend static/profile publication only after artifact lists, manifests, budgets, and consumer workflows are updated together.
+
+Read [PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) for the concise map and [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md) for implementation-level decisions and seeded work.
+
+## Documentation
+
+- [Product direction](docs/PRODUCT_DIRECTION.md)
 - [Architecture and security boundaries](docs/ARCHITECTURE.md)
-- [Competitive research and product gap](docs/RESEARCH.md)
-- [Pinned Developer Lens method trial](https://chris0jeky.github.io/developer-lens/?view=method-trial)
-- [Complete demonstration guide](docs/DEMO_GUIDE.md)
-- [Static generator and Action contract](docs/STATIC_GENERATOR_PLAN.md)
-- [Studio production QA](docs/STUDIO_QA_2026-08-20.md)
 - [Live project state](docs/PROJECT_STATE.md)
-- [v0.1 release plan](docs/V0_1_PLAN.md)
+- [Expansion programme](docs/EXPANSION_PLAN.md)
+- [Projection contracts](docs/PROJECTION_CONTRACTS.md)
+- [Design chassis and evidence ladder](docs/DESIGN_CHASSIS.md)
+- [Competitive research and product gap](docs/RESEARCH.md)
+- [Demonstration guide](docs/DEMO_GUIDE.md)
+- [Studio production QA](docs/STUDIO_QA_2026-08-20.md)
 
-CommitAtlas does not invent a global developer rank, language proficiency, CI result, lifecycle,
-release, or download URL. It shows source-backed facts, explicitly configured intent, source
-availability, and freshness.
-
-The Developer Lens bridge follows the same rule. Its vendored summary is an invented offline C0
-experiment with explicit unsupported claims; CommitAtlas performs no runtime cross-site fetch and
-does not turn the experiment into a person-level signal.
+CommitAtlas does not invent a global developer rank, language proficiency, CI result, project lifecycle, release, download URL, or private evidence. It shows source-backed facts, explicitly configured intent, transparent derivations, availability, and freshness.
 
 ## License
 
