@@ -54,29 +54,34 @@ node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\A
 capture CLIs require a platform-native absolute path and reject an existing directory before
 launching a browser or creating screenshots, recordings, or browser profiles.
 For a deployed Worker (or another authorized public synthetic host), pass its bare HTTPS asset
-directory and a short host label. The page remains the local wrapper, while each image source is
-resolved against the encoded `assetBase` query value; the report repeats the exact `assetBase` and
-`hostLabel` values in its top-level metadata and rows:
+directory and a short host label through the pinned Playwright API. Hosted mode requires this path
+so the harness can intercept the browser's own asset request, hash the exact body it fulfills, and
+bind that observation to the screenshots. The page remains the local wrapper, while each image
+source is resolved against the encoded `assetBase` query value; the report repeats the exact
+`assetBase` and `hostLabel` values in its top-level metadata and rows:
 
 ```powershell
-node tests/motion-probes/capture.mjs --browser 'C:\Program Files\Google\Chrome\Application\chrome.exe' --asset-base 'https://example.invalid/api/v1/probes/motion/' --host-label worker-direct --out C:\temp\commitatlas-motion-worker
+$playwrightCli = $env:COMMITATLAS_PLAYWRIGHT_CLI
+node tests/motion-probes/capture.mjs --playwright-cli $playwrightCli --playwright-engine chromium --asset-base 'https://example.invalid/api/v1/probes/motion/' --host-label worker-direct --out C:\temp\commitatlas-motion-worker
 ```
 
 `--asset-base` must be an absolute HTTPS URL ending in `/` with no credentials, query, or fragment.
+It is rejected without both `--playwright-engine` and the pinned `--playwright-cli`; a native
+browser screenshot cannot expose the exact response body that produced its pixels.
 `--host-label` is an ASCII label of at most 64 letters, numbers, `.`, `_`, or `-`; it defaults to
 `local-direct`. Do not pass private URLs, tokens, or user data.
 
-The cached Playwright 1.57.0 runner can instead be passed through `--playwright-engine` and
-`--playwright-cli`. On Windows, `--playwright-cli` must name the package's `cli.js`, never its
-`.cmd` launcher; the harness rejects the latter before starting a browser. This permits
-Firefox/WebKit capture and `--reduced-motion` without changing `package.json` or `package-lock.json`.
-Capture artifacts are deliberately untracked; their compact, dated pixel evidence is committed in
+The cached Playwright 1.57.0 runner is required for hosted capture and can also be passed for local
+Firefox/WebKit capture and `--reduced-motion` without changing `package.json` or
+`package-lock.json`. On Windows, `--playwright-cli` must name the package's `cli.js`, never its
+`.cmd` launcher; the harness rejects the latter before starting a browser. Capture artifacts are
+deliberately untracked; their compact, dated pixel evidence is committed in
 [`2026-08-29-local-direct.json`](../tests/fixtures/motion-probes/evidence/2026-08-29-local-direct.json).
 
 Add `--record-video` to make each direct row one continuous Playwright context with a five-second
 WebM as well as the five PNG deadlines. Recording requires the supplied Playwright API path and an
-engine; the non-recording browser and CLI workflows above remain unchanged. The report verifies
-WebM magic, byte size, and SHA-256. `measuredVisibleDurationMs` is browser time, not a parsed media
+engine; local non-hosted browser and CLI workflows remain unchanged. The report verifies WebM
+magic, byte size, and SHA-256. `measuredVisibleDurationMs` is browser time, not a parsed media
 duration, and the report states that boundary explicitly. Set
 `COMMITATLAS_PLAYWRIGHT_CLI` to the pinned Playwright package's absolute `cli.js` path, then run:
 
@@ -103,9 +108,17 @@ headers for reproducibility and must remain untracked; only reviewed, synthetic-
 evidence belongs in the repository.
 
 Direct hosted capture also fetches every selected synthetic asset before browser launch and requires
-`200 image/svg+xml`, the local fixture's exact SHA-256, and declared `360x120` bounds. A direct report
-without an exact browser version is marked ineligible as compatibility evidence; it remains useful
-only as a structural observation. The direct harness also carries an explicit `status`: every
+`200 image/svg+xml`, the local fixture's exact SHA-256, and declared `360x120` bounds. That Node
+preflight is not treated as proof of what the browser rendered. Each hosted browser context routes
+the exact selected URL, rejects redirects/status/MIME/body drift, and fulfills the image with the
+same body it hashed. A recorded row must bind one continuous request; an independent five-frame
+row must bind five observations with an identical response identity. Each row retains only the
+synthetic-safe URL, status, content type, body SHA-256, selected asset name, and interception count;
+raw response headers remain outside the direct report.
+
+A direct report without an exact browser version is marked ineligible as compatibility evidence;
+it remains useful only as a structural observation. The direct harness also carries an explicit
+`status`: every
 `report.partial.json` written mid-run stays `partial` and ineligible, and only the completed
 `report.json` is marked `complete` and re-evaluated for eligibility, so an interrupted matrix can
 never present itself as compatibility evidence. A direct run's `report.partial.json` and
