@@ -1,9 +1,9 @@
 # `@commit-atlas/static`
 
-Generate a compact CommitAtlas dashboard and its individual SVG widgets from one public GitHub
-snapshot. The CLI reads a tracked `.commitatlas.json`, fetches only logged-out public profile data,
-and writes selected cards plus a hash manifest. The ten selectable cards are `atlas`, `profile`,
-`streak`, `breakdown`, `rhythm`, `activity`, `languages`, `projects`, `cadence`, and `releases`.
+Generate a compact CommitAtlas dashboard and its individual SVG widgets from one bounded GitHub
+snapshot. The CLI reads a tracked `.commitatlas.json` and writes selected cards plus a hash
+manifest. The eleven selectable cards are `atlas`, `profile`, `streak`, `breakdown`, `rhythm`,
+`activity`, `languages`, `projects`, `cadence`, `releases`, and the opt-in `delivery` evidence card.
 
 ```powershell
 commitatlas generate --config .commitatlas.json
@@ -11,12 +11,29 @@ commitatlas generate --config .commitatlas.json --dry-run
 commitatlas generate --config .commitatlas.json --output-dir assets/commitatlas --as-of 2026-08-21
 ```
 
-The generator sends no GitHub credential. GitHub's public profile view is the contribution source;
-its activity mix comes from calendar-year profile views and is labelled as public-profile percentages
-that are not window-scoped unless an explicitly exact source is available. A malformed, incomplete,
-or unavailable upstream response fails generation before output is staged. The tracked v1 config selects any subset of the ten cards for one public owner and up to
-six curated projects. `manifest.json` records the exact window, provenance, byte size, and SHA-256
-hash of every generated artifact.
+The original ten cards remain credential-free. They use GitHub's logged-out public profile view and
+public REST endpoints; the activity mix comes from calendar-year profile views and is labelled as
+public-profile percentages that are not window-scoped unless an explicitly exact source is
+available. A malformed, incomplete, or unavailable upstream response fails generation before output
+is staged.
+
+`delivery` is deliberately opt-in because it needs GitHub's authenticated GraphQL search counts.
+When selected, supply a short-lived token through the Action's `github-token` input or the
+`GITHUB_TOKEN` environment variable. CommitAtlas first proves that every configured project is a
+public repository owned by the configured user, then issues one aggregate-only GraphQL request whose
+every search query explicitly names that configured repository set. It requests no pull-request
+titles, bodies, comments, branches, commits, diffs, reviewer identities, or private repository
+metadata, and it never writes the token or raw response to an artifact.
+
+```yaml
+- uses: Chris0Jeky/CommitAtlas@<full-commit-sha>
+  with:
+    github-token: ${{ github.token }}
+```
+
+The tracked v1 config selects any subset of the eleven cards for one public owner and up to six
+curated projects. `manifest.json` records the exact contribution window, provenance, byte size, and
+SHA-256 hash of every generated artifact.
 
 Set `"motion": "none"` for a static, keyframe-free output or `"motion": "subtle"` for short load
 motion with an SVG `prefers-reduced-motion` override. Rhythm remains a personal consistency score,
@@ -48,19 +65,29 @@ When `projects` is selected, the same snapshot also produces `projects.json` and
 The JSON is a bounded machine-readable catalog; the Markdown is a human-readable catalog with
 observed and configured action links.
 
-`projects.json` and `projects.md` are reserved CommitAtlas-managed names inside `outputDir`: a run
-that selects `projects` overwrites whatever sits at those paths, so do not keep hand-written files
-there. Reserving the names does not license deleting them. Stale-artifact cleanup removes a known
-CommitAtlas filename only when the previous `manifest.json` in the same directory recorded
-CommitAtlas as its writer, so a `projects.json` that predates your first run — or any file left by a
-generator whose manifest CommitAtlas cannot read — is never removed. A missing, foreign, or
-malformed `manifest.json` disables cleanup entirely rather than guessing.
+When `delivery` is selected, each theme produces `delivery.svg` and the same deterministic
+`delivery.json`. The JSON carries the exact configured-public-repository scope, lifetime and
+7/30/90/365-day pull-request counts, formulas, null states, benchmark source/date/population,
+comparability caveats, generation time, and limitations. The SVG's focal reading is latest-seven-day
+merged pull requests per week, supported by resolved merge conversion, 30-day integration balance,
+current open work, and top-two repository concentration. It permanently labels the result
+`activity flow · not quality or impact`; it does not claim a productivity score, global percentile,
+equivalent headcount, code quality, effort, or delivered user value.
 
-Untrusted upstream text — release tags and workflow names — is rendered as a delimiter-safe
-CommonMark code span. Backslash escapes are inert inside a code span, so the fence is instead grown
-past the longest backtick run in the content and padded when the content starts or ends with a
-backtick. `projects.md` deliberately emits no Markdown table: a `|` is structural only inside a table
-row, and prose is escaped before it is written, so no upstream value can open a cell or a row.
+`projects.json`, `projects.md`, and `delivery.json` are reserved CommitAtlas-managed names inside
+`outputDir`: a run that selects the corresponding card overwrites whatever sits at those paths, so
+do not keep hand-written files there. Reserving the names does not license deleting them.
+Stale-artifact cleanup removes a known CommitAtlas filename only when the previous `manifest.json`
+in the same directory recorded CommitAtlas as its writer, so a reserved file that predates the first
+run — or any file left by a generator whose manifest CommitAtlas cannot read — is never removed. A
+missing, foreign, or malformed `manifest.json` disables cleanup entirely rather than guessing.
+
+Untrusted upstream text — release tags, workflow names, and benchmark presentation text — is escaped
+for its target format. Project Markdown uses delimiter-safe CommonMark code spans: backslash escapes
+are inert inside a code span, so the fence is grown past the longest backtick run in the content and
+padded when the content starts or ends with a backtick. `projects.md` deliberately emits no Markdown
+table: a `|` is structural only inside a table row, and prose is escaped before it is written, so no
+upstream value can open a cell or a row.
 
 A rendered link is not an outbound data fetch. CommitAtlas still fetches only from GitHub-owned
 hosts and never requests any catalogued URL. The two link sources have different boundaries:
@@ -85,15 +112,15 @@ what is behind it: `github.com/<owner>/<repo>`, a gist, and a release asset on
 catalog is expected to link to the owner's own repository. The label reports only the thing a reader
 would not otherwise assume — that a destination is not on GitHub at all.
 
-With all ten cards and `responsiveAtlas: true`, the output
-contains 13 payload artifacts (ten SVGs, one Atlas companion, and two project catalogs) plus
-`manifest.json`, for 14 files total. A narrower card selection produces a correspondingly smaller
-manifest.
+With all eleven cards and `responsiveAtlas: true`, one output directory contains 15 payload
+artifacts (eleven SVGs, one Atlas companion, two project catalogs, and one delivery evidence JSON)
+plus `manifest.json`, for 16 files total. A narrower card selection produces a correspondingly
+smaller manifest.
 
 Config and output paths must remain inside the repository and may not traverse symlinks. Every input,
 metric, render, and output size is validated before staged per-file replacement; unrelated siblings
 remain untouched. After successful replacement, known CommitAtlas filenames that the previous
 manifest recorded and the new manifest no longer lists are removed, so a disabled card or prior
-responsive layout cannot remain stale while an unowned file of the same name survives. The
-caller owns commits and deployment. The package has no private mode, fixture
-mode, token argument, or publication side effect.
+responsive layout cannot remain stale while an unowned file of the same name survives. The caller
+owns commits and deployment. The package has no private-data mode, hidden token fallback, fixture
+publication mode, or publication side effect.
