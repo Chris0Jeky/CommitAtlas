@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GitHubApiError, GitHubClient } from "./client.js";
+import { GitHubApiError } from "./client.js";
+import { fetchDeliverySnapshot } from "./delivery-client.js";
 import { buildDeliveryQueryPlan } from "./delivery.js";
 
 const NOW = new Date("2026-09-21T18:22:00.000Z");
@@ -16,8 +17,10 @@ function deliveryResponse(overrides: Record<string, unknown> = {}): Record<strin
 
 test("fetchDeliverySnapshot uses one aggregate-only GraphQL request scoped to configured repositories", async () => {
   const calls: Array<{ url: string; init: RequestInit; body: { query: string; variables: Record<string, string> } }> = [];
-  const client = new GitHubClient({
+  const snapshot = await fetchDeliverySnapshot({
     token: "ghs_short_lived_action_token",
+    login: "Chris0Jeky",
+    repositories: REPOSITORIES,
     now: () => NOW,
     fetchImpl: async (input, init = {}) => {
       const url = String(input);
@@ -30,7 +33,6 @@ test("fetchDeliverySnapshot uses one aggregate-only GraphQL request scoped to co
     },
   });
 
-  const snapshot = await client.fetchDeliverySnapshot("Chris0Jeky", REPOSITORIES);
   assert.equal(calls.length, 1);
   const [call] = calls;
   assert.equal(call!.url, "https://api.github.com/graphql");
@@ -47,15 +49,17 @@ test("fetchDeliverySnapshot uses one aggregate-only GraphQL request scoped to co
 
 test("fetchDeliverySnapshot requires a token before performing any request", async () => {
   let calls = 0;
-  const client = new GitHubClient({
-    now: () => NOW,
-    fetchImpl: async () => {
-      calls += 1;
-      throw new Error("unexpected request");
-    },
-  });
   await assert.rejects(
-    () => client.fetchDeliverySnapshot("Chris0Jeky", REPOSITORIES),
+    () => fetchDeliverySnapshot({
+      token: "",
+      login: "Chris0Jeky",
+      repositories: REPOSITORIES,
+      now: () => NOW,
+      fetchImpl: async () => {
+        calls += 1;
+        throw new Error("unexpected request");
+      },
+    }),
     (error: unknown) => error instanceof GitHubApiError && error.code === "token_required" && error.status === 503,
   );
   assert.equal(calls, 0);
@@ -80,14 +84,15 @@ test("fetchDeliverySnapshot rejects missing, malformed, and GraphQL-error count 
   ];
 
   for (const { payload, pattern } of cases) {
-    const client = new GitHubClient({
+    await assert.rejects(() => fetchDeliverySnapshot({
       token: "ghs_short_lived_action_token",
+      login: "Chris0Jeky",
+      repositories: REPOSITORIES,
       now: () => NOW,
       fetchImpl: async () => new Response(JSON.stringify(payload), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
-    });
-    await assert.rejects(() => client.fetchDeliverySnapshot("Chris0Jeky", REPOSITORIES), pattern);
+    }), pattern);
   }
 });
