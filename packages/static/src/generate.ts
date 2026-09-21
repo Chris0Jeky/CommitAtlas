@@ -1,7 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { GitHubClient, type PortfolioSnapshot, type ProjectLifecycle, type ProjectWorkflow } from "@commit-atlas/github";
+import {
+  GitHubClient,
+  fetchDeliverySnapshot,
+  type DeliverySnapshot,
+  type PortfolioSnapshot,
+  type ProjectLifecycle,
+  type ProjectWorkflow,
+} from "@commit-atlas/github";
 import {
   loadStaticConfig,
   resolveContainedPath,
@@ -9,6 +16,7 @@ import {
   type StaticConfig,
   type StaticThemeName,
 } from "./config.js";
+import { renderDeliveryCard, renderDeliveryEvidence } from "./delivery.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
 
@@ -16,14 +24,13 @@ const MAX_ARTIFACT_BYTES = 96 * 1024;
 const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
 const MANIFEST_NAME = "manifest.json";
 /**
- * Filenames CommitAtlas may write inside `outputDir`. `projects.json` and `projects.md` are reserved
- * CommitAtlas-managed names there (see the package README): a run that selects `projects` overwrites
- * them.
+ * Filenames CommitAtlas may write inside `outputDir`. `projects.json`, `projects.md`, and
+ * `delivery.json` are reserved CommitAtlas-managed names there (see the package README).
  *
  * Reserving a name is not on its own a licence to delete it. Membership here only makes a file
  * *eligible* for stale-artifact cleanup; a file is actually removed only when the previous
  * `manifest.json` in the same directory records CommitAtlas as its writer (see `previouslyWritten`),
- * so an unrelated pre-existing `projects.json` a caller had before ever running CommitAtlas survives.
+ * so an unrelated pre-existing file a caller had before ever running CommitAtlas survives.
  */
 const MANAGED_ARTIFACT_NAMES = [
   ...STATIC_CARD_NAMES.map((card) => `${card}.svg`),
@@ -31,6 +38,7 @@ const MANAGED_ARTIFACT_NAMES = [
   "atlas-wide.svg",
   "projects.json",
   "projects.md",
+  "delivery.json",
 ] as const;
 
 export interface GeneratedArtifact {
@@ -56,6 +64,8 @@ export interface GenerateStaticOptions {
   readonly asOf?: string;
   readonly dryRun?: boolean;
   readonly fetchImpl?: typeof fetch;
+  /** Required only when the selected cards include `delivery`. Never written to an artifact. */
+  readonly token?: string;
 }
 
 export interface GenerateStaticResult {
@@ -84,10 +94,20 @@ export async function generateStatic(options: GenerateStaticOptions = {}): Promi
     options.fetchImpl,
     options.asOf === undefined ? "open" : "closed",
   );
+  const delivery = config.cards.includes("delivery")
+    ? await fetchDeliverySnapshot({
+      token: options.token ?? process.env.GITHUB_TOKEN ?? "",
+      login: config.user,
+      repositories: config.projects.map((project) => project.repo),
+      now: () => now,
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    })
+    : undefined;
   return generateStaticFromSnapshot({
     root: loaded.root,
     config,
     snapshot,
+    ...(delivery ? { delivery } : {}),
     dryRun: options.dryRun,
   });
 }
@@ -96,8 +116,12 @@ export async function generateStaticFromSnapshot(options: {
   readonly root: string;
   readonly config: StaticConfig;
   readonly snapshot: PortfolioSnapshot;
+  readonly delivery?: DeliverySnapshot;
   readonly dryRun?: boolean;
 }): Promise<GenerateStaticResult> {
+  const delivery = options.config.cards.includes("delivery")
+    ? validateDeliverySnapshot(options.config, options.snapshot, options.delivery)
+    : null;
   const configs: StaticConfig[] = [
     options.config,
     ...(options.config.themes ?? []).map((variant) => ({
@@ -117,6 +141,14 @@ export async function generateStaticFromSnapshot(options: {
     const rendered = {
       ...renderStaticArtifacts(options.snapshot, config),
       ...(config.cards.includes("projects") ? renderProjectCatalogArtifacts(options.snapshot, config) : {}),
+      ...(config.cards.includes("delivery") && delivery ? {
+        "delivery.svg": renderDeliveryCard(delivery, {
+          theme: config.theme,
+          width: config.layout === "compact" ? 480 : 860,
+          motion: config.motion,
+        }),
+        "delivery.json": renderDeliveryEvidence(delivery),
+      } : {}),
     };
     const payloads = validateArtifacts(rendered);
     const manifest = buildManifest(options.snapshot, payloads);
@@ -139,6 +171,29 @@ export async function generateStaticFromSnapshot(options: {
       written: !options.dryRun,
     })),
   };
+}
+
+function validateDeliverySnapshot(
+  config: StaticConfig,
+  snapshot: PortfolioSnapshot,
+  delivery: DeliverySnapshot | undefined,
+): DeliverySnapshot {
+  if (!delivery) throw new Error("delivery card selection requires a delivery snapshot or GitHub token");
+  if (delivery.version !== 1 || delivery.login.toLowerCase() !== config.user.toLowerCase()) {
+    throw new Error("delivery snapshot user does not match the static configuration");
+  }
+  const expected = config.projects.map((project) => project.repo.toLowerCase()).sort();
+  const actual = delivery.scope.repositories.map((repository) => repository.toLowerCase()).sort();
+  if (expected.length !== actual.length || expected.some((repository, index) => repository !== actual[index])) {
+    throw new Error("delivery snapshot scope does not match the configured public repositories");
+  }
+  if (delivery.generatedAt !== snapshot.freshness.generatedAt) {
+    throw new Error("delivery snapshot freshness does not match the portfolio snapshot");
+  }
+  if (delivery.asOf !== snapshot.metrics.window.to) {
+    throw new Error("delivery snapshot date does not match the portfolio window");
+  }
+  return delivery;
 }
 
 function buildManifest(snapshot: PortfolioSnapshot, payloads: readonly { readonly name: string; readonly body: string }[]): StaticManifest {
