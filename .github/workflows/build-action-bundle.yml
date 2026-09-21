@@ -1,0 +1,48 @@
+name: Build action bundle
+
+on:
+  push:
+    branches: [feat/public-delivery-evidence]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-action-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    name: Rebuild checked action bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build action bundle
+        run: npm run build:action
+
+      - name: Prove the bundle contains delivery support
+        run: |
+          grep -F 'delivery.json' action/dist/index.js
+          grep -F 'github-token' action/dist/index.js
+
+      - name: Upload exact-head bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-atlas-action-dist
+          path: action/dist/index.js
+          if-no-files-found: error
+          retention-days: 1
