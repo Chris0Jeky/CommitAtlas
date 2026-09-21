@@ -15,6 +15,11 @@ export const STATIC_CARD_NAMES = [
 ] as const;
 export type StaticCardName = (typeof STATIC_CARD_NAMES)[number];
 
+const DEFAULT_STATIC_CARD_NAMES: readonly StaticCardName[] = [
+  "atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects",
+  "cadence", "releases",
+];
+
 export const STATIC_THEME_NAMES = ["aurora", "midnight", "paper", "ember"] as const;
 export type StaticThemeName = (typeof STATIC_THEME_NAMES)[number];
 
@@ -43,7 +48,7 @@ const RawStaticConfigSchema = z.object({
   layout: z.enum(["wide", "compact"]).default("wide"),
   responsiveAtlas: z.boolean().default(false),
   outputDir: RelativePathSchema,
-  cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...STATIC_CARD_NAMES]),
+  cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...DEFAULT_STATIC_CARD_NAMES]),
   projects: z.array(z.unknown()).min(1).max(6),
 }).strict();
 
