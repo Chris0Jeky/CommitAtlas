@@ -10,7 +10,7 @@ import { GET as getStreak } from "@/app/api/v1/cards/streak.svg/route";
 import { GET as getProjects } from "@/app/api/v1/projects.svg/route";
 import { withWorkerEnv } from "@/lib/runtime-env";
 
-type Motion = "ambient" | "cinematic";
+type Motion = "none" | "ambient" | "cinematic";
 type RouteGet = (request: Request) => Promise<Response>;
 
 const routes: readonly {
@@ -63,6 +63,14 @@ const routes: readonly {
 test("every hosted SVG route accepts ambient and rejects cinematic before network access", async () => {
   await withWorkerEnv({ GITHUB_TOKEN: "" }, async () => {
     for (const route of routes) {
+      const none = await route.get(new Request(`https://example.test/api/v1/${route.name}?${route.query("none")}`));
+      assert.equal(none.status, 200, `${route.name} none status`);
+      assert.match(
+        none.headers.get("content-security-policy") ?? "",
+        /style-src 'none'/,
+        `${route.name} none CSP`,
+      );
+
       const ambient = await route.get(new Request(`https://example.test/api/v1/${route.name}?${route.query("ambient")}`));
       assert.equal(ambient.status, 200, `${route.name} ambient status`);
       assert.match(

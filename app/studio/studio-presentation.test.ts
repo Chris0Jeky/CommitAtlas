@@ -154,7 +154,7 @@ test("Studio text inputs retain an explicit keyboard focus treatment", () => {
 test("Studio exposes exactly the three hosted motion profiles", () => {
   const source = readFileSync(new URL("./studio-client.tsx", import.meta.url), "utf8");
   for (const profile of ["none", "subtle", "ambient"]) {
-    assert.match(source, new RegExp(`setMotion\("${profile}"\)`));
+    assert.ok(source.includes(`setMotion("${profile}")`), `missing ${profile} selector`);
   }
-  assert.doesNotMatch(source, /setMotion\("cinematic"\)/);
+  assert.ok(!source.includes('setMotion("cinematic")'));
 });

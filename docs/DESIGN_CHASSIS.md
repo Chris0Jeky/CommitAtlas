@@ -162,13 +162,14 @@ all animation and the result is a complete page, not a degraded one.
 | M8 | Evidence drawer | up 12px and settle, 260ms, `cubic-bezier(.2,.9,.3,1)`; ESC or click outside closes |
 | M9 | Survey parallax | the grid drifts at 0.85× scroll via a scroll-driven CSS timeline, off below 768px. Browsers without `scroll()` timelines get a static grid, which is the reduced-motion state anyway. (`globals.css` heads its motion block "M1…M9"; this is the ninth) |
 
-The card SVGs keep `motion=none|subtle` and stay transform-only. Nothing here changes them.
+The card renderer now shares the four-profile vocabulary `none | subtle | ambient | cinematic`.
+Hosted URLs and the Studio expose `none | subtle | ambient`; static/package callers may also select
+`cinematic`. This slice changes the contract rather than the visuals: `subtle`, `ambient`, and
+`cinematic` remain byte-identical, transform-only load motion, while `none` remains still.
 
-The [expansion programme](./EXPANSION_PLAN.md) plans to move that boundary — `ambient` and
-`cinematic` profiles, the M-series ported into the cards through a CSS/SMIL motion compiler — only
-after Phase 0 has measured how github.com actually renders animated SVG through `<img>`. Until a
-slice ships, the sentence above stays true, and any new motion ref a scene introduces is recorded
-in the table here as M10 onward.
+The [expansion programme](./EXPANSION_PLAN.md) will differentiate the compatibility profiles through
+a measured CSS/SMIL motion compiler only after github.com `<img>` evidence supports that backend.
+Any new motion ref a scene introduces is recorded in the table here as M10 onward.
 
 ## Where this departs from the handoff
 

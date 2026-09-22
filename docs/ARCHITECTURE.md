@@ -151,15 +151,20 @@ fails closed.
 
 ## Planned expansion (not shipped)
 
-The accepted programme in [EXPANSION_PLAN.md](./EXPANSION_PLAN.md) extends this architecture in
-three additive steps: a `none | subtle | ambient | cinematic` motion model compiled to CSS or SMIL
-by a backend chosen from measured github.com behaviour; a scene engine in `@commit-atlas/svg`
-(primitives, seeded determinism, budgets, a per-scene contract test harness) feeding new
-`/api/v1/scenes/<id>.svg` routes and `scene-<id>.svg` static artifacts; and two validated,
-fail-closed projections — `PublicLensProjection.v1` from Developer Lens and
-`ResearchFindingProjection.v1` exported by Developer Lens Lab into a Developer Lens-owned schema — specified in
-[PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md). Until a slice ships, everything above this
-heading remains the complete description of the product.
+The first motion-contract slice from [EXPANSION_PLAN.md](./EXPANSION_PLAN.md) is shipped in
+source: `@commit-atlas/svg` and static configuration accept
+`none | subtle | ambient | cinematic`, while hosted routes and the Studio accept
+`none | subtle | ambient`. Renderer metadata, rather than route string comparisons, now decides
+whether SVG CSP permits inline presentation styles. The three non-still profiles intentionally
+render byte-identically until a measured CSS/SMIL compiler differentiates them.
+
+The remaining accepted programme is additive: that compiler; a scene engine in
+`@commit-atlas/svg` (primitives, seeded determinism, budgets, a per-scene contract test harness)
+feeding new `/api/v1/scenes/<id>.svg` routes and `scene-<id>.svg` static artifacts; and two
+validated, fail-closed projections — `PublicLensProjection.v1` from Developer Lens and
+`ResearchFindingProjection.v1` exported by Developer Lens Lab into a Developer Lens-owned schema —
+specified in [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md). Until another slice ships,
+everything above this heading remains the complete description of the product.
 
 ## Project configuration
 
