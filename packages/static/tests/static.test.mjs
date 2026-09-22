@@ -412,6 +412,36 @@ test("validates every theme output before writing the primary directory", async 
   }
 });
 
+test("rejects duplicate resolved theme output directories before writing anything", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-theme-collision-"));
+  try {
+    const parsedConfigWithPaperVariantAt = (outputDir) => parseStaticConfig({
+      ...rawConfig(),
+      themes: [{ theme: "paper", outputDir }],
+    });
+    const colliding = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "assets/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+    const caseOnly = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "ASSETS/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: caseOnly, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("wraps untrusted release tags and workflow names in delimiter-safe code spans", () => {
   const hostileTags = [
     "v1.0-`code`",
