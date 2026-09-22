@@ -10,6 +10,7 @@ import {
   renderLanguagesCard,
   renderProfileCard,
   renderProjectBoard,
+  renderDeliveryCard,
   renderReleasesCard,
   renderRhythmCard,
   renderStreakCard,
@@ -17,6 +18,7 @@ import {
   truncateText,
 } from "../dist/index.js";
 import { aggregateLanguages } from "../../core/dist/index.js";
+import { deliveryFixture } from "./delivery.fixture.mjs";
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
@@ -139,6 +141,7 @@ test("every standalone card supports subtle motion with a reduced-motion fallbac
     (motion) => renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing" }] }, { motion }),
     (motion) => renderCadenceCard({ days: [{ date: "2026-02-25", count: 2 }] }, { motion }),
     (motion) => renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.0.0", publishedAt: "2026-02-25T12:00:00Z" }] }, { motion }),
+    (motion) => renderDeliveryCard(deliveryFixture(), { motion }),
   ];
   for (const render of renderers) {
     const animated = render("subtle");
@@ -668,6 +671,7 @@ test("standalone cards keep meaningful visible text above the readability floor 
     renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "passing", version: "v1.2.3", stars: 4 }] }, { width: 420 }),
     renderCadenceCard({ days: [{ date: "2026-08-24", count: 4 }, { date: "2026-08-28", count: 2 }] }, { width: 420 }),
     renderReleasesCard({ releases: [{ project: "Atlas", tag: "v1.2.3", publishedAt: "2026-08-28T12:00:00Z" }] }, { width: 420 }),
+    renderDeliveryCard(deliveryFixture(), { width: 420 }),
   ];
   for (const output of cards) {
     assertSafeSvg(output);

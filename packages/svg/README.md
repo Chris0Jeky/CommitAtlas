@@ -5,9 +5,9 @@ complete SVG string and are safe to put in a README or a static site: user text 
 escaped, links are restricted to `http`/`https`, and no scripts, images, or remote assets are
 emitted. Subtle motion uses only a bounded inline presentation style.
 
-The package includes ten renderers: a rich developer Atlas, profile, streak, contribution breakdown,
+The package includes eleven renderers: a rich developer Atlas, profile, streak, contribution breakdown,
 personal rhythm, activity, language, project signal-board (up to six projects), weekly cadence, and
-latest releases. The hosted service exposes the first eight; Cadence and Releases are static-only.
+latest releases, and delivery evidence (scoped pull-request flow with a dated benchmark comparison). The hosted service exposes the first eight; Cadence, Releases, and Delivery are static-only.
 Choose one of
 the four built-in themes (`aurora`, `midnight`, `paper`, or `ember`) and provide plain presentation
 data from your own GitHub adapter. The breakdown renderer preserves its basis: exact categorized
@@ -67,7 +67,7 @@ visible `…` rather than dropping text silently and never splits a surrogate pa
 numerics never reach visible atlas text: a non-finite `window.days` clamps like every other count,
 a non-finite `trend.changePercent` renders `trend change unavailable`, and a `projects` tally with
 any non-finite count renders `Project health unavailable` rather than a fabricated zero. Valid
-GitHub/core adapter values are far below these limits, so bounded inputs render unchanged.
+GitHub/core adapter values are far below these limits, so bounded inputs render unchanged. Delivery evidence renders unknown ratios as `UNAVAILABLE` and unknown counts as `UNKNOWN`, never as healthy readings, and prints the literal `activity flow · not quality or impact` non-claim instead of any productivity, quality, effort, or impact claim.
 Language cards use one
 source basis per item: standalone inputs may use `name` plus bytes or percentages, while the
 canonical `@commit-atlas/core` `aggregateLanguages()` result uses `language`, `bytes`, and the

@@ -251,6 +251,80 @@ export interface ReleasesCardData extends SourceLabelledCardData {
   readonly projectsUnavailable?: number;
 }
 
+export interface DeliveryCardWindow {
+  readonly days: number;
+  readonly from: string;
+  readonly to: string;
+  readonly opened: number;
+  readonly merged: number;
+  readonly mergedPerWeek: number;
+}
+
+export interface DeliveryCardRepository {
+  readonly repository: string;
+  readonly opened30: number;
+}
+
+export interface DeliveryCardBenchmark {
+  readonly version: 1;
+  readonly id: string;
+  readonly label: string;
+  readonly publisher: string;
+  readonly metric: string;
+  readonly value: number;
+  readonly unit: string;
+  readonly sourceUrl: string;
+  readonly publishedAt: string;
+  readonly population: string;
+  readonly cohort: string;
+  readonly caveats: readonly string[];
+}
+
+/**
+ * Structural delivery-evidence input for the delivery card.
+ *
+ * This mirrors the `@commit-atlas/github` DeliverySnapshot contract without importing it:
+ * this package takes no runtime dependencies, and every other card input is likewise a
+ * package-local structural type its adapter maps into. A validated DeliverySnapshot is
+ * assignable directly; unknown, missing, or stale signals render as unknown, never healthy.
+ */
+export interface DeliveryCardData {
+  readonly version: 1;
+  readonly login: string;
+  readonly scope: {
+    readonly kind: string;
+    readonly repositories: readonly string[];
+  };
+  readonly asOf: string;
+  readonly generatedAt: string;
+  readonly source: {
+    readonly provider: string;
+    readonly metric: string;
+    readonly queryCount: number;
+  };
+  readonly lifetime: {
+    readonly authored: number;
+    readonly merged: number;
+    readonly closed: number;
+    readonly closedWithoutMerge: number;
+    readonly open: number;
+    readonly drafts: number;
+  };
+  readonly windows: readonly DeliveryCardWindow[];
+  readonly repositories: readonly DeliveryCardRepository[];
+  readonly derived: {
+    readonly resolvedMergeConversion: number | null;
+    readonly integrationBalance30: number | null;
+    readonly wipMergeWeeks: number | null;
+    readonly topTwoConcentration30: number | null;
+    readonly topSixConcentration30: number | null;
+    readonly benchmarkMultiple7: number;
+  };
+  readonly benchmark: DeliveryCardBenchmark;
+  readonly formulas: Readonly<Record<string, string>>;
+  readonly limitations: readonly string[];
+}
+
 export interface AtlasCardData {
   readonly profile: {
     readonly name: string;
@@ -1168,6 +1242,327 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   return out + `</g>` + svgEnd();
 }
 
+const DELIVERY_WINDOW_ORDER = [7, 30, 90, 365] as const;
+const DELIVERY_COMPACT_BREAKPOINT = 620;
+const DELIVERY_WIDE_HEIGHT = 400;
+const DELIVERY_COMPACT_HEIGHT = 580;
+/** Caller-supplied handles stay compact in the card title. */
+const MAX_DELIVERY_LOGIN_LENGTH = 32;
+/** Benchmark publisher names stay on one provenance line. */
+const MAX_DELIVERY_PUBLISHER_LENGTH = 48;
+/** Repository names stay readable in the accessible repository list. */
+const MAX_DELIVERY_REPOSITORY_LENGTH = 40;
+/** Population, cohort, caveat, and limitation prose stays bounded in the description. */
+const MAX_DELIVERY_EVIDENCE_PROSE_LENGTH = 240;
+/** The literal non-claim every delivery card prints, visibly and accessibly. */
+const DELIVERY_NON_CLAIM = "ACTIVITY FLOW · NOT QUALITY OR IMPACT";
+
+/** A validated count, or null when the signal is unknown, missing, or stale. */
+function deliveryCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/** Exact integer counts; an unknown count is stated, never zeroed into a false reading. */
+function deliveryCountLabel(value: unknown): string {
+  const count = deliveryCount(value);
+  return count === null ? "UNKNOWN" : formatNumber(count, false);
+}
+
+function deliverySpokenCount(value: unknown): string {
+  const count = deliveryCount(value);
+  return count === null ? "unknown" : formatNumber(count, false);
+}
+
+/** Merged pull requests per week with one decimal; unknown stays unknown. */
+function deliveryRateLabel(value: unknown): string {
+  const rate = deliveryCount(value);
+  return rate === null ? "UNKNOWN" : rate.toFixed(1);
+}
+
+/**
+ * Evidence ratios as one-decimal percentages. The 30-day integration balance may exceed
+ * 100% — merges in a period are not necessarily drawn from openings in the same period —
+ * so the value is never capped. A zero denominator in the evidence is null, never zero.
+ */
+function deliveryRatioLabel(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "UNAVAILABLE";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function deliverySpokenRatio(value: unknown): string {
+  const label = deliveryRatioLabel(value);
+  return label === "UNAVAILABLE" ? "unavailable" : label.toLowerCase();
+}
+
+/** The dated benchmark comparison; an unreadable multiple is stated, never zeroed. */
+function deliveryMultipleLabel(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "UNAVAILABLE";
+  return `${value.toFixed(1)}×`;
+}
+
+function deliverySpokenMultiple(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "an unavailable multiple of";
+  return `${value.toFixed(1)} times`;
+}
+
+/** Open-work merge-weeks with two decimals; a zero 7-day merge rate is null upstream. */
+function deliveryWeeksLabel(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "UNAVAILABLE";
+  return value.toFixed(2);
+}
+
+function deliveryWindowFor(
+  windows: readonly DeliveryCardWindow[] | undefined,
+  days: number,
+): DeliveryCardWindow | null {
+  if (!Array.isArray(windows)) return null;
+  return windows.find((window) => window?.days === days) ?? null;
+}
+
+function deliveryShortRange(window: DeliveryCardWindow | null): string | null {
+  if (!window || !isValidIsoDate(window.from) || !isValidIsoDate(window.to)) return null;
+  return `${window.from.slice(5)} → ${window.to.slice(5)}`;
+}
+
+/** Render scoped public pull-request flow evidence on the shared card chassis. */
+export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptions): string {
+  const seven = deliveryWindowFor(data.windows, 7);
+  if (!seven) throw new Error("Delivery card requires a 7-day window");
+  const normalizedWidth = dimension(options?.width, 860, MIN_WIDTH, MAX_WIDTH);
+  const compact = normalizedWidth < DELIVERY_COMPACT_BREAKPOINT;
+  const defaultHeight = compact ? DELIVERY_COMPACT_HEIGHT : DELIVERY_WIDE_HEIGHT;
+  const login = truncateText(data.login, MAX_DELIVERY_LOGIN_LENGTH) || "unknown user";
+  const o = optionsFor(
+    { ...options, width: normalizedWidth },
+    defaultHeight,
+    `Delivery evidence for ${login}`,
+    `Scoped public pull-request flow for ${login}; activity flow, not quality or impact.`,
+    defaultHeight,
+    defaultHeight + 160,
+  );
+  const t = o.theme;
+  const width = o.width;
+  const height = o.height;
+
+  const rateLabel = deliveryRateLabel(seven.mergedPerWeek);
+  const multipleLabel = deliveryMultipleLabel(data.derived.benchmarkMultiple7);
+  const conversionLabel = deliveryRatioLabel(data.derived.resolvedMergeConversion);
+  const balanceLabel = deliveryRatioLabel(data.derived.integrationBalance30);
+  const concentrationLabel = deliveryRatioLabel(data.derived.topTwoConcentration30);
+  const weeksLabel = deliveryWeeksLabel(data.derived.wipMergeWeeks);
+  const openLabel = deliveryCountLabel(data.lifetime.open);
+  const wipValue = openLabel === "UNKNOWN" ? "UNKNOWN" : `${openLabel} OPEN`;
+  const wipNote = weeksLabel === "UNAVAILABLE"
+    ? "merge-weeks unavailable"
+    : `${weeksLabel} merge-weeks at 7d rate`;
+
+  const sevenRange = isValidIsoDate(seven.from) && isValidIsoDate(seven.to)
+    ? `${truncateText(seven.from, MAX_WINDOW_LABEL_LENGTH)} → ${truncateText(seven.to, MAX_WINDOW_LABEL_LENGTH)}`
+    : "DATES UNKNOWN";
+  const repositories = Array.isArray(data.scope.repositories) ? data.scope.repositories : null;
+  const scopeLabel = repositories === null
+    ? "SCOPE UNKNOWN"
+    : `${formatNumber(repositories.length, false)} CONFIGURED PUBLIC REPOS`;
+  const queryCount = deliveryCount(data.source.queryCount);
+  const provider = truncateText(String(data.source.provider ?? "").replaceAll("-", " ").toUpperCase(), 16) || "UNKNOWN SOURCE";
+  const refreshed = /^\d{4}-\d{2}-\d{2}/.test(String(data.generatedAt ?? ""))
+    ? String(data.generatedAt).slice(0, 10)
+    : truncateText(data.generatedAt, MAX_WINDOW_LABEL_LENGTH) || "UNKNOWN";
+  const benchmarkValue = typeof data.benchmark.value === "number" && Number.isFinite(data.benchmark.value) && data.benchmark.value > 0
+    ? String(data.benchmark.value)
+    : "UNKNOWN";
+  const benchmarkDate = /^\d{4}-\d{2}-\d{2}$/.test(String(data.benchmark.publishedAt ?? ""))
+    ? String(data.benchmark.publishedAt)
+    : "UNDATED";
+  const publisher = truncateText(
+    data.benchmark.publisher,
+    compact && width < 560 ? 20 : MAX_DELIVERY_PUBLISHER_LENGTH,
+  ) || "UNKNOWN PUBLISHER";
+
+  const accessibleDescription = deliveryAccessibleDescription(data, {
+    login, rateLabel, sevenRange, scopeLabel, conversionLabel, balanceLabel,
+    openLabel, weeksLabel, concentrationLabel, provider, refreshed, benchmarkValue, benchmarkDate,
+  });
+  let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
+  out += panel(16, 16, width - 32, height - 32, t);
+  out += numeral(34, 48, 1, "DELIVERY EVIDENCE", t);
+  out += mono(width - 34, 48, "PUBLIC GRAPHQL COUNTS", 10, t.muted, 500, "end", 0.1);
+  out += `<line x1="34" y1="62" x2="${width - 34}" y2="62" stroke="${t.border}"/>`;
+
+  out += mono(34, 88, "7-DAY MERGED RATE", 10, t.muted);
+  out += text(34, 136, rateLabel, 44, t.accent, 800);
+  out += text(34, 156, "PRS / WEEK", 12, t.text, 700);
+  const pillLabel = `${multipleLabel} DATED BENCHMARK`;
+  const pillWidth = Math.min(compact ? width - 68 : 300, 26 + Math.ceil([...pillLabel].length * 7.3));
+  out += `<rect x="34" y="166" width="${pillWidth}" height="26" rx="13" fill="${t.track}" stroke="${t.border}"/>`;
+  out += mono(34 + pillWidth / 2, 183, pillLabel, 11, t.chrome, 700, "middle", 0.06);
+  if (compact) {
+    out += mono(width - 34, 183, sevenRange, 10, t.muted, 500, "end", 0.06);
+  } else {
+    out += mono(34, 208, sevenRange, 10, t.muted, 500, "start", 0.06);
+    out += mono(34, 226, scopeLabel, 10, t.muted, 500, "start", 0.06);
+  }
+
+  const metricCells: ReadonlyArray<readonly [string, string, string]> = [
+    ["MERGE CONVERSION", conversionLabel, "merged / closed"],
+    ["30D INTEGRATION", balanceLabel, "merged / opened"],
+    ["OPEN WIP", wipValue, wipNote],
+    ["TOP-2 FOCUS", concentrationLabel, "share of 30d openings"],
+  ];
+  if (compact) {
+    const cardWidth = (width - 36 - 12) / 2;
+    metricCells.forEach(([label, value, note], index) => {
+      const x = 18 + (index % 2) * (cardWidth + 12);
+      const y = 202 + Math.floor(index / 2) * 88;
+      out += deliveryMetricCell(x, y, cardWidth, 80, label, value, note, t);
+    });
+    out += `<line x1="18" y1="384" x2="${width - 18}" y2="384" stroke="${t.border}"/>`;
+    out += mono(34, 406, "PR FLOW · OPENED → MERGED · RATE / WEEK", 9.5, t.muted, 500, "start", 0.08);
+    const columnWidth = (width - 68 - 12) / 2;
+    DELIVERY_WINDOW_ORDER.forEach((days, index) => {
+      const x = 34 + (index % 2) * (columnWidth + 12);
+      const y = 424 + Math.floor(index / 2) * 38;
+      out += deliveryWindowCell(x, y, days, deliveryWindowFor(data.windows, days), t);
+    });
+    const authored = deliveryCountLabel(data.lifetime.authored);
+    const merged = deliveryCountLabel(data.lifetime.merged);
+    const closed = deliveryCountLabel(data.lifetime.closed);
+    out += mono(34, 504, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN`, 9.5, t.muted, 500, "start", 0.06);
+    out += mono(34, 522, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+    const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
+    out += mono(34, 540, footer, 9.5, t.muted, 500, "start", 0.04);
+    out += mono(width / 2, 560, DELIVERY_NON_CLAIM, 9.5, t.warning, 700, "middle", 0.06);
+  } else {
+    const metricsX = 352;
+    const metricsWidth = width - metricsX - 34;
+    const columnWidth = (metricsWidth - 12) / 2;
+    metricCells.forEach(([label, value, note], index) => {
+      const x = metricsX + (index % 2) * (columnWidth + 12);
+      const y = 80 + Math.floor(index / 2) * 92;
+      out += deliveryMetricCell(x, y, columnWidth, 80, label, value, note, t);
+    });
+    out += `<line x1="34" y1="264" x2="${width - 34}" y2="264" stroke="${t.border}"/>`;
+    out += mono(34, 286, "PR FLOW · OPENED → MERGED · RATE / WEEK", 9.5, t.muted, 500, "start", 0.08);
+    const columnWidthWide = (width - 68) / 4;
+    DELIVERY_WINDOW_ORDER.forEach((days, index) => {
+      out += deliveryWindowCell(34 + index * columnWidthWide, 304, days, deliveryWindowFor(data.windows, days), t);
+    });
+    const authored = deliveryCountLabel(data.lifetime.authored);
+    const merged = deliveryCountLabel(data.lifetime.merged);
+    const closed = deliveryCountLabel(data.lifetime.closed);
+    const drafts = deliveryCount(data.lifetime.drafts);
+    out += mono(34, 348, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN${drafts !== null && drafts > 0 ? ` · ${formatNumber(drafts, false)} DRAFTS` : ""}`, 9.5, t.muted, 500, "start", 0.06);
+    out += mono(34, 366, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+    const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
+    out += mono(34, height - 26, footer, 9.5, t.muted, 500, "start", 0.04);
+    out += mono(width - 34, height - 26, DELIVERY_NON_CLAIM, 9.5, t.warning, 700, "end", 0.06);
+  }
+  return out + `</g>` + svgEnd();
+}
+
+function deliveryMetricCell(
+  x: number,
+  y: number,
+  cellWidth: number,
+  cellHeight: number,
+  label: string,
+  value: string,
+  note: string,
+  theme: SvgTheme,
+): string {
+  let out = `<rect x="${x}" y="${y}" width="${cellWidth}" height="${cellHeight}" rx="10" fill="${theme.surface}" stroke="${theme.border}"/>`;
+  out += mono(x + 14, y + 22, label, 9.5, theme.muted, 500, "start", 0.08);
+  out += text(x + 14, y + 50, value, 19, theme.text, 760);
+  out += mono(x + 14, y + 68, note, 9.5, theme.muted, 500, "start", 0.06);
+  return out;
+}
+
+function deliveryWindowCell(
+  x: number,
+  y: number,
+  days: number,
+  window: DeliveryCardWindow | null,
+  theme: SvgTheme,
+): string {
+  const opened = window ? deliveryCount(window.opened) : null;
+  const merged = window ? deliveryCount(window.merged) : null;
+  const rate = window ? deliveryCount(window.mergedPerWeek) : null;
+  const range = deliveryShortRange(window);
+  if (opened === null || merged === null || rate === null) {
+    return mono(x, y, `${days}D · UNKNOWN`, 9.5, theme.muted, 500, "start", 0.08) +
+      text(x, y + 18, "not observed", 12, theme.muted, 550);
+  }
+  return mono(x, y, range ? `${days}D · ${range}` : `${days}D`, 9.5, theme.muted, 500, "start", 0.08) +
+    text(x, y + 18, `${formatNumber(opened, false)}→${formatNumber(merged, false)} · ${rate.toFixed(1)}/wk`, 12, theme.text, 650);
+}
+
+function deliveryAccessibleDescription(
+  data: DeliveryCardData,
+  readings: {
+    readonly login: string;
+    readonly rateLabel: string;
+    readonly sevenRange: string;
+    readonly scopeLabel: string;
+    readonly conversionLabel: string;
+    readonly balanceLabel: string;
+    readonly openLabel: string;
+    readonly weeksLabel: string;
+    readonly concentrationLabel: string;
+    readonly provider: string;
+    readonly refreshed: string;
+    readonly benchmarkValue: string;
+    readonly benchmarkDate: string;
+  },
+): string {
+  const rateSpoken = readings.rateLabel === "UNKNOWN" ? "an unknown rate of" : `${readings.rateLabel}`;
+  const benchmark = data.benchmark;
+  const label = truncateText(benchmark.label, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown reference";
+  const population = truncateText(benchmark.population, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown population";
+  const cohort = truncateText(benchmark.cohort, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown cohort";
+  const caveats = Array.isArray(benchmark.caveats) && benchmark.caveats.length > 0
+    ? benchmark.caveats.map((caveat) => truncateText(caveat, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH)).join(" ")
+    : "No caveats recorded.";
+  const limitations = Array.isArray(data.limitations) && data.limitations.length > 0
+    ? data.limitations.map((limitation) => truncateText(limitation, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH)).join(" ")
+    : "No limitations recorded.";
+  const repositories = Array.isArray(data.scope.repositories) ? data.scope.repositories : null;
+  const repositoryList = repositories === null
+    ? "unknown scope"
+    : repositories.length === 0
+      ? "no configured repositories"
+      : repositories.map((repository) => truncateText(repository, MAX_DELIVERY_REPOSITORY_LENGTH)).join(", ");
+  const windowReadings = DELIVERY_WINDOW_ORDER.map((days) => {
+    const window = deliveryWindowFor(data.windows, days);
+    const opened = window ? deliverySpokenCount(window.opened) : "unknown";
+    const merged = window ? deliverySpokenCount(window.merged) : "unknown";
+    return `${days}-day ${opened} opened and ${merged} merged`;
+  }).join("; ");
+  const drafts = deliveryCount(data.lifetime.drafts);
+  const sourceUrl = truncateText(benchmark.sourceUrl, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH);
+  return `${rateSpoken} merged pull requests per week during ${readings.sevenRange}. ` +
+    `${deliverySpokenMultiple(data.derived.benchmarkMultiple7)} the dated ${label} reference of ` +
+    `${readings.benchmarkValue} merged pull requests per engineer-week, published ${readings.benchmarkDate}. ` +
+    `Population: ${population} Cohort: ${cohort} ` +
+    `Resolved merge conversion ${deliverySpokenRatio(data.derived.resolvedMergeConversion)}; ` +
+    `30-day integration balance ${deliverySpokenRatio(data.derived.integrationBalance30)}; ` +
+    `open work in progress ${deliverySpokenCount(data.lifetime.open)}` +
+    `${readings.weeksLabel === "UNAVAILABLE" ? " with unavailable merge-weeks" : ` at ${readings.weeksLabel} merge-weeks`}; ` +
+    `top-two repository concentration ${deliverySpokenRatio(data.derived.topTwoConcentration30)}; ` +
+    `top-six repository concentration ${deliverySpokenRatio(data.derived.topSixConcentration30)}; ` +
+    `lifetime ${deliverySpokenCount(data.lifetime.authored)} authored, ` +
+    `${deliverySpokenCount(data.lifetime.merged)} merged, ` +
+    `${deliverySpokenCount(data.lifetime.closed)} closed, ` +
+    `${deliverySpokenCount(data.lifetime.open)} open` +
+    `${drafts !== null && drafts > 0 ? `, including ${formatNumber(drafts, false)} drafts` : ""}; ` +
+    `${windowReadings}. ` +
+    `Scope: ${readings.scopeLabel.toLowerCase()} for ${readings.login}: ${repositoryList}. ` +
+    `Source: ${readings.provider} aggregate pull-request search counts, refreshed ${readings.refreshed}; ` +
+    `as of ${truncateText(data.asOf, MAX_WINDOW_LABEL_LENGTH) || "an unknown date"}. ` +
+    `Benchmark source: ${sourceUrl || "not recorded"}. Caveats: ${caveats} Limitations: ${limitations} ` +
+    `Pull-request flow is activity flow, not quality or impact.`;
+}
+
 /** Render the compact, source-labelled CommitAtlas overview card. */
 export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): string {
   const normalizedWidth = dimension(options?.width, 860, MIN_WIDTH, MAX_WIDTH);
@@ -1345,6 +1740,7 @@ export const renderStreak = renderStreakCard;
 export const renderActivity = renderActivityCard;
 export const renderLanguages = renderLanguagesCard;
 export const renderProjectSignalBoard = renderProjectBoard;
+export const renderDelivery = renderDeliveryCard;
 export const renderContributionBreakdown = renderContributionBreakdownCard;
 export const renderRhythm = renderRhythmCard;
 export const renderAtlas = renderAtlasCard;
