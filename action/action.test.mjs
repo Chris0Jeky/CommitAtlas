@@ -6,7 +6,7 @@ test("action keeps delivery credentials optional and exposes generated evidence 
   const metadata = await readFile(new URL("../action.yml", import.meta.url), "utf8");
   assert.match(metadata, /using: node24/);
   assert.match(metadata, /main: action\/dist\/index\.js/);
-  assert.match(metadata, /github-token:\n[\s\S]*?required: false/);
+  assert.match(metadata, /github-token:\r?\n[\s\S]*?required: false/);
   assert.match(metadata, /dry-run:/);
   for (const output of [
     "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
