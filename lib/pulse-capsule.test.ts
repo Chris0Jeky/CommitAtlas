@@ -304,7 +304,7 @@ test("mapping display names are XML-escaped and motion stays frozen-safe", () =>
 
 test("accessible description names every selected project with its fraction", () => {
   const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE));
-  assert.match(card, /<desc>.*Atlas Web.*11\/12 sampled checks.*Atlas API.*3\/5 sampled checks.*<\/desc>/s);
+  assert.match(card, /<desc>[\s\S]*?Atlas Web[\s\S]*?11\/12 sampled checks[\s\S]*?Atlas API[\s\S]*?3\/5 sampled checks[\s\S]*?<\/desc>/);
 });
 
 test("manual file input reads local capsules and refuses remote or oversized files", () => {
