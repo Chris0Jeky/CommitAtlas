@@ -107,6 +107,17 @@ test("loads only a tracked, non-symlinked repository config", async () => {
   }
 });
 
+test("rejects missing intermediate and final components when mustExist is true", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-contained-"));
+  try {
+    await assert.rejects(resolveContainedPath(root, "no-such-dir/config.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    await assert.rejects(resolveContainedPath(root, "missing.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    assert.equal(await resolveContainedPath(root, "no-such-dir/config.json", { mustExist: false, label: "output" }), path.resolve(root, "no-such-dir/config.json"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("renders all rich widgets deterministically from one snapshot", () => {
   const first = renderStaticArtifacts(snapshot(), config());
   const second = renderStaticArtifacts(snapshot(), config());
