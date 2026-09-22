@@ -964,7 +964,11 @@ function contributionLevel(value: unknown): number {
     THIRD_QUARTILE: 3,
     FOURTH_QUARTILE: 4,
   };
-  return typeof value === "string" ? levels[value] ?? 0 : 0;
+  const level = typeof value === "string" && Object.hasOwn(levels, value) ? levels[value] : undefined;
+  if (level === undefined) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an unknown contribution level");
+  }
+  return level;
 }
 
 function assertRequestedContributionWindow(

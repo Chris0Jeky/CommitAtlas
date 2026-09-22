@@ -200,6 +200,72 @@ test("exposes only a scope-proven public contribution calendar", async () => {
   assert.equal("restrictedContributions" in contributions, false);
 });
 
+test("rejects an unknown contribution level instead of rendering it as no activity", async () => {
+  // An inherited Object.prototype key ("toString") is not a known level either.
+  for (const level of ["FIFTH_QUARTILE", "toString"]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      return json({
+        data: {
+          user: {
+            contributionsCollection: {
+              totalCommitContributions: 2,
+              totalIssueContributions: 1,
+              totalPullRequestContributions: 1,
+              totalPullRequestReviewContributions: 1,
+              hasAnyRestrictedContributions: false,
+              restrictedContributionsCount: 0,
+              contributionCalendar: {
+                weeks: [{ contributionDays: [
+                  { date: "2026-08-18", contributionCount: 0, contributionLevel: "NONE" },
+                  { date: "2026-08-19", contributionCount: 5, contributionLevel: level },
+                ] }],
+              },
+            },
+          },
+        },
+      });
+    };
+    await assert.rejects(
+      new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1),
+      (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+      `contributionLevel=${level}`,
+    );
+  }
+});
+
+test("rejects a contribution day without a level instead of rendering it as no activity", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    return json({
+      data: {
+        user: {
+          contributionsCollection: {
+            totalCommitContributions: 2,
+            totalIssueContributions: 1,
+            totalPullRequestContributions: 1,
+            totalPullRequestReviewContributions: 1,
+            hasAnyRestrictedContributions: false,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              weeks: [{ contributionDays: [
+                { date: "2026-08-18", contributionCount: 0, contributionLevel: "NONE" },
+                { date: "2026-08-19", contributionCount: 5 },
+              ] }],
+            },
+          },
+        },
+      },
+    });
+  };
+  await assert.rejects(
+    new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
 test("rejects a contribution window that ends before the requested UTC date", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -268,9 +334,9 @@ test("accepts complete zero contribution days across a leap day", async () => {
         hasAnyRestrictedContributions: false,
         restrictedContributionsCount: 0,
         contributionCalendar: { weeks: [{ contributionDays: [
-          { date: "2024-02-28", contributionCount: 0 },
-          { date: "2024-02-29", contributionCount: 0 },
-          { date: "2024-03-01", contributionCount: 0 },
+          { date: "2024-02-28", contributionCount: 0, contributionLevel: "NONE" },
+          { date: "2024-02-29", contributionCount: 0, contributionLevel: "NONE" },
+          { date: "2024-03-01", contributionCount: 0, contributionLevel: "NONE" },
         ] }] },
       } } },
     });
@@ -994,7 +1060,7 @@ test("returns exactly the requested inclusive UTC contribution window", async ()
       const contributionDays = Array.from({ length: requestedDays + 4 }, (_, offset) => {
         const date = new Date(start);
         date.setUTCDate(date.getUTCDate() + offset);
-        return { date: date.toISOString().slice(0, 10), contributionCount: 1 };
+        return { date: date.toISOString().slice(0, 10), contributionCount: 1, contributionLevel: "FIRST_QUARTILE" };
       });
       return json({ data: { user: { contributionsCollection: {
         totalCommitContributions: 1,
