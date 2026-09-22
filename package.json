@@ -63,7 +63,7 @@
     "test:motion-probes": "node --test tests/motion-probes.test.mjs tests/motion-probes-hosted-response.test.mjs tests/motion-ledger-integrity.test.mjs tests/motion-probes-direct-report.test.mjs",
     "test:observatory": "node observatory/check.mjs && tsx --test lib/observatory-route.test.ts",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs tests/discoverability.test.mjs",
-    "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern \"**/.claude/**\"",
+    "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern .swarm --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
