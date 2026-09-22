@@ -69,8 +69,8 @@
     "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
   },
   "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -81,8 +81,8 @@
     "@openai/sites-vite-plugin": "0.2.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.19.19",
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.7",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@vercel/ncc": "0.45.0",
     "@vitejs/plugin-react": "6.1.1",
     "@vitejs/plugin-rsc": "0.5.35",
