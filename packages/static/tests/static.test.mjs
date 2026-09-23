@@ -184,6 +184,33 @@ test("propagates synthetic source truth to every standalone static card", () => 
   }
 });
 
+test("atlas card uses the same source mapping as every sibling card", () => {
+  const base = snapshot();
+  const withFreshness = (freshness) => ({
+    ...base,
+    profile: { ...base.profile, freshness },
+    contributions: { ...base.contributions, freshness },
+    projects: { ...base.projects, freshness },
+    freshness,
+  });
+  const live = renderStaticArtifacts(base, config());
+  assert.match(live["atlas.svg"], />PUBLIC PROFILE VIEW</);
+  assert.doesNotMatch(live["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(live["streak.svg"], /SYNTHETIC DEMO/);
+  const githubRest = renderStaticArtifacts(withFreshness({ generatedAt, source: "github-rest", mode: "live" }), config());
+  assert.match(githubRest["atlas.svg"], />PUBLIC GITHUB</);
+  assert.doesNotMatch(githubRest["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(githubRest["streak.svg"], /SYNTHETIC DEMO/);
+  const demoMode = renderStaticArtifacts(withFreshness({ generatedAt, source: "github-rest", mode: "demo" }), config());
+  assert.match(demoMode["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(demoMode["atlas.svg"], />PUBLIC GITHUB</);
+  assert.match(demoMode["streak.svg"], />SYNTHETIC DEMO<\/text>/);
+  const syntheticSource = renderStaticArtifacts(withFreshness({ generatedAt, source: "synthetic-demo", mode: "live" }), config());
+  assert.match(syntheticSource["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(syntheticSource["atlas.svg"], />PUBLIC GITHUB</);
+  assert.match(syntheticSource["streak.svg"], />SYNTHETIC DEMO<\/text>/);
+});
+
 test("preserves the declared planned lifecycle in static project SVGs", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({
