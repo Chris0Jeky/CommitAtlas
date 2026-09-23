@@ -964,7 +964,15 @@ function contributionLevel(value: unknown): number {
     THIRD_QUARTILE: 3,
     FOURTH_QUARTILE: 4,
   };
-  return typeof value === "string" ? levels[value] ?? 0 : 0;
+  // An absent field keeps the historical level 0 (the query requests it and GitHub's schema makes it
+  // non-null, so only hand-written fixtures omit it); a present value outside the enum - a new or
+  // renamed quartile, null, another type - is an upstream contract change and fails closed.
+  if (value === undefined) return 0;
+  const level = typeof value === "string" && Object.hasOwn(levels, value) ? levels[value] : undefined;
+  if (level === undefined) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an unknown contribution level");
+  }
+  return level;
 }
 
 function assertRequestedContributionWindow(
