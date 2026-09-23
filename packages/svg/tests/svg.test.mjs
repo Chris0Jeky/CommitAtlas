@@ -1254,3 +1254,92 @@ test("releases card deduplicates a large adversarial list within its output/time
   assert.equal((output.match(/>2026-08-01</g) ?? []).length, 6);
   assert.match(output, />6 of 20000 shown</);
 });
+
+test("activity density clamps out-of-range finite levels to the ramp ends", () => {
+  const output = renderActivityCard({
+    days: [
+      { date: "2026-01-01", count: 5, level: 99 },
+      { date: "2026-01-02", count: 5, level: -2 },
+    ],
+  }, { theme: "ember" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<path fill="([^"]+)" d="[^"]+"\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 2);
+  assert.equal(fills[0], themes.ember.density[3]);
+  assert.equal(fills[0], "#ff7a45");
+  assert.equal(fills[1], themes.ember.socket);
+  assert.equal(fills[1], "#1c1f19");
+  assert.match(output, /<path fill="#ff7a45" d="/);
+  assert.match(output, /<path fill="#1c1f19" d="/);
+});
+
+test("project board maps CI state to status dot colour", () => {
+  const output = renderProjectBoard({ projects: [
+    { name: "Passing project", lifecycle: "active", ci: "passing" },
+    { name: "Failing project", lifecycle: "active", ci: "failing" },
+    { name: "Pending project", lifecycle: "active", ci: "pending" },
+    { name: "Stale project", lifecycle: "active", ci: "stale" },
+    { name: "Unconfigured project", lifecycle: "active", ci: "unconfigured" },
+    { name: "Unavailable project", lifecycle: "active", ci: "unavailable" },
+  ] }, { theme: "aurora" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<circle[^>]*fill="([^"]+)"[^>]*\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 6);
+  assert.equal(fills[0], themes.aurora.positive);
+  assert.equal(fills[0], "#79f2c0");
+  assert.equal(fills[1], themes.aurora.negative);
+  assert.equal(fills[1], "#ff7b9c");
+  assert.equal(fills[2], themes.aurora.warning);
+  assert.equal(fills[3], themes.aurora.warning);
+  assert.equal(themes.aurora.warning, "#ffd166");
+  assert.equal(fills[4], themes.aurora.muted);
+  assert.equal(fills[5], themes.aurora.muted);
+  assert.equal(themes.aurora.muted, "#a9c1d5");
+});
+
+test("project board falls back to muted for an unknown CI state", () => {
+  const output = renderProjectBoard({ projects: [
+    { name: "Mystery project", lifecycle: "active", ci: "bogus" },
+  ] }, { theme: "aurora" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<circle[^>]*fill="([^"]+)"[^>]*\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 1);
+  assert.equal(fills[0], themes.aurora.muted);
+  assert.equal(fills[0], "#a9c1d5");
+});
+
+test("profile card renders a safe anchor for an https website", () => {
+  const url = "https://example.com/";
+  const output = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: url,
+  });
+  assertSafeSvg(output);
+  const href = (output.match(/<a href="([^"]+)"[^>]*>/) ?? [])[1];
+  assert.equal(href, url);
+  assert.match(output, /<a href="https:\/\/example\.com\/" target="_blank" rel="noopener"/);
+  assert.match(output, /rel="[^"]*noopener[^"]*"/);
+});
+
+test("profile card omits the anchor for unsafe or missing websites", () => {
+  const unsafe = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: "javascript:alert(1)",
+  });
+  assertSafeSvg(unsafe);
+  assert.doesNotMatch(unsafe, /<a\b/);
+  assert.doesNotMatch(unsafe, /href=/);
+  const credentialed = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: "https://user:secret@example.com/",
+  });
+  assertSafeSvg(credentialed);
+  assert.doesNotMatch(credentialed, /<a\b/);
+  assert.doesNotMatch(credentialed, /secret/);
+  const missing = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+  });
+  assertSafeSvg(missing);
+  assert.doesNotMatch(missing, /<a\b/);
+  assert.doesNotMatch(missing, /href=/);
+});
