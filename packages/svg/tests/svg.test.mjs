@@ -1441,6 +1441,32 @@ test("atlas card states a public-profile source as PUBLIC PROFILE VIEW", () => {
   assert.doesNotMatch(synthetic, /PUBLIC PROFILE VIEW/);
 });
 
+test("atlas card states a missing or unrecognised source as SOURCE UNKNOWN", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const missingData = atlasFixture({ ...fixed });
+  delete missingData.source;
+  const missing = renderAtlasCard(missingData, { motion: "none" });
+  assertSafeSvg(missing);
+  assert.match(missing, />SOURCE UNKNOWN<\/text>/);
+  assert.doesNotMatch(missing, />PUBLIC GITHUB<\/text>/);
+  const bogus = renderAtlasCard(atlasFixture({ ...fixed, source: "bogus" }), { motion: "none" });
+  assertSafeSvg(bogus);
+  assert.match(bogus, />SOURCE UNKNOWN<\/text>/);
+  assert.doesNotMatch(bogus, />PUBLIC GITHUB<\/text>/);
+});
+
+test("project board states an unrecognised CI state as Unknown", () => {
+  const output = renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "weird" }] });
+  assertSafeSvg(output);
+  assert.match(output, /CI Unknown/);
+  assert.doesNotMatch(output, /undefined/);
+});
+
 test("atlas card prints Languages unavailable when no languages are present", () => {
   const fixed = {
     window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
