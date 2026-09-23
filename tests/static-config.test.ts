@@ -153,12 +153,9 @@ test("returns the resolved path for a missing nested path when mustExist is fals
 });
 
 test("rejects a missing final component when mustExist is true", async () => {
-  await assert.rejects(
-    resolveContainedPath(rootDir, "missing-final-component.txt", { mustExist: true, label: LABEL }),
-    (error: unknown) => {
-      assert.equal((error as NodeJS.ErrnoException).code, "ENOENT");
-      return true;
-    },
-    "expected resolveContainedPath to reject a missing final component with ENOENT",
-  );
+  await assertContainedPathMessage(rootDir, "missing-final-component.txt", true, `${LABEL} path does not exist`);
+});
+
+test("rejects a missing intermediate component when mustExist is true", async () => {
+  await assertContainedPathMessage(rootDir, "missing-dir/file.txt", true, `${LABEL} path does not exist`);
 });
