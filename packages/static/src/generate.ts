@@ -122,6 +122,12 @@ export async function generateStaticFromSnapshot(options: {
     const manifest = buildManifest(options.snapshot, payloads);
     return { config, outputDir, payloads, manifest };
   }));
+  const seenOutputDirs = new Set<string>();
+  for (const target of targets) {
+    const outputKey = path.resolve(target.outputDir).toLowerCase();
+    if (seenOutputDirs.has(outputKey)) throw new Error("themes must use unique outputDir paths");
+    seenOutputDirs.add(outputKey);
+  }
   if (!options.dryRun) {
     for (const target of targets) await writeArtifacts(target.outputDir, target.payloads, target.manifest);
   }

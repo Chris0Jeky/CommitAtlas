@@ -107,6 +107,17 @@ test("loads only a tracked, non-symlinked repository config", async () => {
   }
 });
 
+test("rejects missing intermediate and final components when mustExist is true", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-contained-"));
+  try {
+    await assert.rejects(resolveContainedPath(root, "no-such-dir/config.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    await assert.rejects(resolveContainedPath(root, "missing.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    assert.equal(await resolveContainedPath(root, "no-such-dir/config.json", { mustExist: false, label: "output" }), path.resolve(root, "no-such-dir/config.json"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("renders all rich widgets deterministically from one snapshot", () => {
   const first = renderStaticArtifacts(snapshot(), config());
   const second = renderStaticArtifacts(snapshot(), config());
@@ -407,6 +418,40 @@ test("validates every theme output before writing the primary directory", async 
       /inside the repository/,
     );
     await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects duplicate resolved theme output directories before writing anything", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-theme-collision-"));
+  try {
+    const parsedConfigWithPaperVariantAt = (outputDir) => parseStaticConfig({
+      ...rawConfig(),
+      themes: [{ theme: "paper", outputDir }],
+    });
+    const colliding = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "assets/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot(), dryRun: true }),
+      /unique outputDir/,
+    );
+    const caseOnly = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "ASSETS/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: caseOnly, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
