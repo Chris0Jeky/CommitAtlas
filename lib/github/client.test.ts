@@ -626,6 +626,32 @@ test("rejects malformed required metrics rather than treating them as zero", asy
   );
 });
 
+test("rejects a fractional repository metric rather than storing it as exact data", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return json({ ...projectRepository("atlas"), stargazers_count: 2.5 });
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]])),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("rejects an unsafe-integer profile metric rather than storing it as exact data", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    return url.pathname.endsWith("/repos")
+      ? json([])
+      : json({ login: "octocat", public_repos: 0, followers: 1e30, following: 0 });
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
 test("rejects oversized GitHub names, descriptions, languages, and release metadata", async () => {
   const profileFetch: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -1024,6 +1050,7 @@ test("reports missing or non-array workflow_runs as unavailable rather than unco
     { workflow_runs: { 0: { status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" } } },
     { workflow_runs: [] },
     { workflow_runs: ["not-a-run"] },
+    { workflow_runs: ["corrupt", { status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z", html_url: "https://github.com/acme/atlas/actions/runs/1", head_sha: "0123456789abcdef0123456789abcdef01234567" }] },
   ]) {
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());

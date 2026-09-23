@@ -410,8 +410,8 @@ export class GitHubClient {
     // A 200 whose workflow_runs is missing or not an array is an unreadable
     // observation, not an observed absence of runs. Report it as unavailable so
     // a malformed payload can never present as configured-and-clean or as
-    // "Not configured".
-    if (!Array.isArray(result.workflow_runs)) {
+    // "Not configured". A mixed array containing any non-object entry is likewise unreadable.
+    if (!Array.isArray(result.workflow_runs) || result.workflow_runs.some((entry) => !isRecord(entry))) {
       return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
     const runs = result.workflow_runs.filter(isRecord);
@@ -829,7 +829,7 @@ function matchesUtcDate(
 
 function requiredMetric(record: Record<string, unknown>, key: string): number {
   const value = record[key];
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || !Number.isSafeInteger(value)) {
     throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} metric`);
   }
   return value;
