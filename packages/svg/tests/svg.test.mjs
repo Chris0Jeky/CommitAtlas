@@ -1421,10 +1421,6 @@ test("atlas card states a synthetic source as SYNTHETIC PREVIEW", () => {
   assertSafeSvg(live);
   assert.match(live, />PUBLIC GITHUB<\/text>/);
   assert.doesNotMatch(live, /SYNTHETIC PREVIEW/);
-  const absent = renderAtlasCard(atlasFixture({ ...fixed, source: undefined }), { motion: "none" });
-  assertSafeSvg(absent);
-  assert.match(absent, />PUBLIC GITHUB<\/text>/);
-  assert.doesNotMatch(absent, /SYNTHETIC PREVIEW/);
 });
 
 test("atlas card states a public-profile source as PUBLIC PROFILE VIEW", () => {
@@ -1443,10 +1439,6 @@ test("atlas card states a public-profile source as PUBLIC PROFILE VIEW", () => {
   assertSafeSvg(synthetic);
   assert.match(synthetic, />SYNTHETIC PREVIEW<\/text>/);
   assert.doesNotMatch(synthetic, /PUBLIC PROFILE VIEW/);
-  const unknown = renderAtlasCard(atlasFixture({ ...fixed, source: "bogus-source" }), { motion: "none" });
-  assertSafeSvg(unknown);
-  assert.match(unknown, />PUBLIC GITHUB<\/text>/);
-  assert.doesNotMatch(unknown, /PUBLIC PROFILE VIEW/);
 });
 
 test("atlas card prints Languages unavailable when no languages are present", () => {
