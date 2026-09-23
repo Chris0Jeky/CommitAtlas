@@ -178,7 +178,7 @@ test("landingSnapshot projects follow LANDING_PROJECTS in order and never report
   );
 });
 
-test("specimenCards returns one entry per card with unique ids and the exact url each card uses", () => {
+test("specimenCards returns one entry per card with unique ids, and each card kind has its route", () => {
   const cards = specimenCards(snapshot);
   assert.equal(cards.length, 8);
   assert.deepEqual(
@@ -196,6 +196,9 @@ test("specimenCards returns one entry per card with unique ids and the exact url
     assert.notEqual(card.title.trim(), "", `${card.number} has a blank title`);
   }
 
+  // SpecimenCard carries no URL: the page derives it from the kind (compact plate ->
+  // landingCompactAtlasUrl, every other plate -> landingCardUrl). This pins that route per kind; it
+  // cannot catch a page that wires a card to the wrong helper.
   const expectedPaths: Record<StudioCardKind, string> = {
     atlas: "/api/v1/cards/atlas.svg",
     profile: "/api/v1/cards/profile.svg",
