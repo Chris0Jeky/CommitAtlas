@@ -201,8 +201,8 @@ test("exposes only a scope-proven public contribution calendar", async () => {
 });
 
 test("rejects an unknown contribution level instead of rendering it as no activity", async () => {
-  // An inherited Object.prototype key ("toString") is not a known level either.
-  for (const level of ["FIFTH_QUARTILE", "toString"]) {
+  // A renamed quartile, an inherited Object.prototype key, null and a non-string are all unknown.
+  for (const level of ["FIFTH_QUARTILE", "toString", null, 3]) {
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
@@ -235,7 +235,7 @@ test("rejects an unknown contribution level instead of rendering it as no activi
   }
 });
 
-test("rejects a contribution day without a level instead of rendering it as no activity", async () => {
+test("keeps level 0 for a contribution day whose level field is absent", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
@@ -260,10 +260,10 @@ test("rejects a contribution day without a level instead of rendering it as no a
       },
     });
   };
-  await assert.rejects(
-    new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1),
-    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
-  );
+  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1);
+  assert.deepEqual(contributions.days.map(({ date, count, level }) => ({ date, count, level })), [
+    { date: "2026-08-19", count: 5, level: 0 },
+  ]);
 });
 
 test("rejects a contribution window that ends before the requested UTC date", async () => {
