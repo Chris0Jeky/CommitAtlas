@@ -438,7 +438,11 @@ test("rejects duplicate resolved theme output directories before writing anythin
       generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot() }),
       /unique outputDir/,
     );
-    await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot(), dryRun: true }),
+      /unique outputDir/,
+    );
     const caseOnly = {
       ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
       outputDir: "ASSETS/commitatlas/light",
@@ -447,7 +451,7 @@ test("rejects duplicate resolved theme output directories before writing anythin
       generateStaticFromSnapshot({ root, config: caseOnly, snapshot: snapshot() }),
       /unique outputDir/,
     );
-    await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
