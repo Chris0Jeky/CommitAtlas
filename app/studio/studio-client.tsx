@@ -26,6 +26,7 @@ import {
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  STUDIO_PREVIEW_DAYS,
   isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
@@ -123,7 +124,7 @@ const starterProfile: ProfileSnapshot = {
 };
 
 const starterContributionDays = Array.from(
-  { length: 120 },
+  { length: STUDIO_PREVIEW_DAYS },
   (_, index) => ({ date: `demo-${index}`, count: (index * 5) % 8 }),
 );
 
@@ -171,15 +172,6 @@ export default function StudioClient() {
     hasContributions: true,
     hasLanguages: true,
   });
-  const [atlasPreviewUrl, setAtlasPreviewUrl] = useState(() => buildStudioRouteUrl("atlas", {
-    owner: "octocat",
-    projects: starterProjects,
-    theme: "ember",
-    demo: true,
-    days: 365,
-    motion: "subtle",
-    layout: "wide",
-  }));
 
   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
   const configurationKey = useMemo(() => buildStudioConfigurationKey({
@@ -187,7 +179,7 @@ export default function StudioClient() {
     projects: activeProjects,
     theme,
     demo,
-    days: 365,
+    days: STUDIO_PREVIEW_DAYS,
     motion,
     layout,
   }), [activeProjects, demo, handle, layout, motion, theme]);
@@ -196,7 +188,7 @@ export default function StudioClient() {
     projects: previewConfiguration.projects,
     theme: previewConfiguration.theme,
     demo: previewConfiguration.demo,
-    days: 365,
+    days: STUDIO_PREVIEW_DAYS,
     motion: previewConfiguration.motion,
     layout: previewConfiguration.layout,
   }), [previewConfiguration]);
@@ -218,12 +210,6 @@ export default function StudioClient() {
   // configuration has not confirmed it yet.
   const previewIsRetained = configurationKey !== previewConfigurationKey || refreshUnresolved;
   const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
-  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
-    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
-    : atlasPreviewUrl;
-  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
-    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
-    : atlasPreviewUrl;
   const galleryAvailability = {
     demo: previewConfiguration.demo,
     hasCurrentContributions: previewConfiguration.hasContributions,
@@ -239,10 +225,17 @@ export default function StudioClient() {
     projects: previewConfiguration.projects,
     theme: previewConfiguration.theme,
     demo: previewConfiguration.demo,
-    days: 365,
+    days: STUDIO_PREVIEW_DAYS,
     motion: previewConfiguration.motion,
     layout: previewConfiguration.layout,
   })])) as Record<CardKind, string>, [previewConfiguration]);
+  const atlasPreviewUrl = previewUrls.atlas;
+  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
+    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
+    : atlasPreviewUrl;
+  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
+    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
+    : atlasPreviewUrl;
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
       baseUrl,
@@ -279,7 +272,7 @@ export default function StudioClient() {
       projects: activeProjects,
       theme,
       demo,
-      days: 365,
+      days: STUDIO_PREVIEW_DAYS,
       motion,
       layout,
     });
@@ -289,7 +282,7 @@ export default function StudioClient() {
     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
     try {
       const common = `user=${encodeURIComponent(login)}&demo=${demo}`;
-      const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=120`)
+      const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=${STUDIO_PREVIEW_DAYS}`)
         .then((value) => ({ value, error: null }))
         .catch((error: unknown) => ({ value: null, error }));
       const [nextProfile, contributionResult, nextBoard] = await Promise.all([
@@ -318,17 +311,6 @@ export default function StudioClient() {
         hasContributions: contributionResult.value !== null,
         hasLanguages: !nextProfile.repositoriesTruncated,
       });
-      if (contributionResult.value) {
-        setAtlasPreviewUrl(buildStudioRouteUrl("atlas", {
-          owner: login,
-          projects: activeProjects,
-          theme,
-          demo,
-          days: 365,
-          motion,
-          layout,
-        }));
-      }
       setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
       // Resolve only this run's key; any other configuration left unconfirmed stays so.
       setUnresolvedRefreshKeys((current) => {
