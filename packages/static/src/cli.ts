@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { realpathSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 import { generateStatic } from "./generate.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
@@ -47,7 +46,7 @@ function parseArguments(argv: readonly string[]): {
 function isEntryPoint(): boolean {
   if (!process.argv[1]) return false;
   try {
-    return pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url;
+    return realpathSync(process.argv[1]) === realpathSync(new URL(import.meta.url));
   } catch {
     return false;
   }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readdir, rm, symlink } from "node:fs/promises";
+import { mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -74,10 +74,16 @@ test("a symlinked npm-style CLI entry still executes, including escaped path cha
       }
       throw error;
     }
-    const result = run([entry], root);
-    assert.equal(result.status, 1);
-    assert.equal(result.stdout, "");
-    assert.match(result.stderr, /^CommitAtlas: Usage: commitatlas generate \[/);
+    // Preserving the main symlink also changes the relative import base. Keep its
+    // generator dependency resolvable so this test isolates entry-point detection.
+    await symlink(fileURLToPath(new URL("../dist/generate.js", import.meta.url)), path.join(root, "generate.js"), "file");
+    await writeFile(path.join(root, "package.json"), '{"type":"module"}');
+    for (const flags of [[], ["--preserve-symlinks-main"]]) {
+      const result = run([...flags, entry], root);
+      assert.equal(result.status, 1, `flags=${flags.join(" ")}: ${result.stderr}`);
+      assert.equal(result.stdout, "");
+      assert.match(result.stderr, /^CommitAtlas: Usage: commitatlas generate \[/);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }
