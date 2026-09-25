@@ -12,6 +12,15 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+### Delivery producer maintenance (2026-09-25, PR #227)
+
+The draft producer supports scoped public PR-flow JSON/SVG and paired manifests, with
+one-request repository-visibility validation and shared static/SVG presentation. No built-in
+external reference is enabled: ordinary output marks the benchmark and multiple unavailable
+while retaining observed counts. Benchmark verification remains in #245; profile adoption and
+manual-refresh evidence remain in #226. Neither feature completion nor release publication is
+implied by this producer checkpoint.
+
 - **Released: [v0.4.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.4.0).** The
   release is tagged at merge `87bc329`, marked latest, and is neither a draft nor a prerelease. The
   private root package version is `0.4.0`; the workspace packages remain `0.1.0` because they are

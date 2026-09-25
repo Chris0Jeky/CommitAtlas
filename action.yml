@@ -21,6 +21,9 @@ inputs:
     description: Validate and render without writing files.
     required: false
     default: "false"
+  github-token:
+    description: Optional short-lived GitHub token; required only when the delivery card is selected.
+    required: false
 
 outputs:
   manifest:
@@ -49,6 +52,10 @@ outputs:
     description: Repository-relative path to cadence.svg when selected.
   releases:
     description: Repository-relative path to releases.svg when selected.
+  delivery:
+    description: Repository-relative path to delivery.svg when selected.
+  delivery-json:
+    description: Repository-relative path to delivery.json when selected.
   projects-json:
     description: Repository-relative path to projects.json when projects is selected.
   projects-markdown:

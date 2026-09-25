@@ -5,7 +5,11 @@
   "license": "GPL-3.0-only",
   "type": "module",
   "sideEffects": false,
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "commitatlas": "./dist/cli.js"
   },
@@ -22,7 +26,7 @@
     "prebuild": "npm --prefix ../core run build && npm --prefix ../github run build && npm --prefix ../svg run build",
     "clean": "node ../../scripts/clean-package-dist.mjs",
     "build": "node ../../scripts/build-package.mjs",
-    "test": "npm run build && node --test tests/static.test.mjs tests/entrypoint.test.mjs",
+    "test": "npm run build && node --test tests/static.test.mjs tests/entrypoint.test.mjs tests/delivery.test.mjs tests/delivery-generation.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },
