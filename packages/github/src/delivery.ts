@@ -126,7 +126,7 @@ export function buildDeliveryQueryPlan(input: {
     to: asOf,
   }));
   const scope = repositoryScope(repositories);
-  const base = `is:pr author:${login} ${scope}`;
+  const base = `is:pr is:public author:${login} ${scope}`;
   const queries: DeliveryCountQuery[] = [
     { alias: "lifetimeAuthored", search: base },
     { alias: "lifetimeMerged", search: `${base} is:merged` },
@@ -144,7 +144,7 @@ export function buildDeliveryQueryPlan(input: {
   repositories.forEach((repository, index) => {
     queries.push({
       alias: `repoOpened30_${index}`,
-      search: `is:pr author:${login} repo:${repository} created:${thirtyDayWindow.from}..${thirtyDayWindow.to}`,
+      search: `is:pr is:public author:${login} repo:${repository} created:${thirtyDayWindow.from}..${thirtyDayWindow.to}`,
       repository,
     });
   });
@@ -207,6 +207,19 @@ export function deriveDeliverySnapshot(input: {
       mergedPerWeek: round4((windowMerged / window.days) * 7),
     };
   });
+  // A shorter inclusive window is a subset of every longer window. Contradictory
+  // search counts are unavailable evidence, not a valid throughput comparison.
+  for (const metric of ["opened", "merged"] as const) {
+    const lifetime = metric === "opened" ? authored : merged;
+    for (let index = 0; index < DELIVERY_WINDOW_DAYS.length; index += 1) {
+      const days = DELIVERY_WINDOW_DAYS[index]!;
+      const nextDays = DELIVERY_WINDOW_DAYS[index + 1];
+      const upper = nextDays === undefined ? lifetime : read(`${metric}${nextDays}`);
+      if (read(`${metric}${days}`) > upper) {
+        throw new Error(`Delivery ${metric}${days} count cannot exceed ${nextDays === undefined ? "the lifetime count" : `${metric}${nextDays}`}`);
+      }
+    }
+  }
   const repositoryQueries = input.plan.queries.filter((query): query is DeliveryCountQuery & { repository: string } => (
     typeof query.repository === "string"
   ));

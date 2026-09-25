@@ -208,3 +208,30 @@ test("the benchmark is versioned, dated, sourced, and explicit about comparabili
   assert.match(benchmark.population, /700.*200,000.*20 million/i);
   assert.ok(benchmark.caveats.some((caveat) => /not.*percentile|percentile.*not/i.test(caveat)));
 });
+
+test("all delivery searches explicitly exclude private and internal repositories", () => {
+  for (const repositories of [REPOSITORIES.slice(0, 1), REPOSITORIES]) {
+    const queryPlan = buildDeliveryQueryPlan({ login: "Chris0Jeky", repositories, asOf: AS_OF });
+    for (const query of queryPlan.queries) {
+      assert.match(query.search, /(?:^|\s)is:public(?:\s|$)/, `${query.alias} must remain public-only with a private-capable token`);
+    }
+  }
+});
+
+test("nested delivery windows cannot exceed a longer window or their lifetime total", () => {
+  const queryPlan = plan();
+  for (const metric of ["opened", "merged"] as const) {
+    for (const [shorter, longer] of [[7, 30], [30, 90], [90, 365], [365, null]] as const) {
+      const counts = validCounts(queryPlan);
+      const key = `${metric}${shorter}`;
+      const limitKey = longer === null ? (metric === "opened" ? "lifetimeAuthored" : "lifetimeMerged") : `${metric}${longer}`;
+      const before = counts[key]!;
+      counts[key] = counts[limitKey]! + 1;
+      if (metric === "opened" && shorter === 30) {
+        // Keep the existing repository sum invariant valid to isolate the new boundary.
+        counts.repoOpened30_0! += counts[key]! - before;
+      }
+      assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts }), /cannot exceed/i, `${key} > ${limitKey}`);
+    }
+  }
+});
