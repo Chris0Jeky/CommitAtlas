@@ -2,6 +2,7 @@ import type { HostedMotionProfile } from "@/packages/svg/src/index";
 import { isStudioCardAvailable } from "./studio-card-availability";
 import {
   buildStudioRouteUrl,
+  STUDIO_PREVIEW_DAYS,
   type StudioCardKind,
   type StudioProjectInput,
 } from "./studio-urls";
@@ -76,7 +77,7 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
         projects: options.projects,
         theme,
         demo: options.demo,
-        days: 365,
+        days: STUDIO_PREVIEW_DAYS,
         motion: options.motion,
         layout: options.layout,
       })}`;

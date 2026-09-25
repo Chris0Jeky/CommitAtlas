@@ -29,6 +29,26 @@ npm audit --omit=dev --audit-level=high
 
 Add focused tests for changed calculations, validation, rendering, or endpoint behavior. SVG changes must remain deterministic, XML-safe, readable without color, and accessible through an explicit image name and description.
 
+## Isolated Studio browser regression
+
+The optional Studio interaction harness mounts the real React component with synthetic API
+responses, an anchor-only navigation wrapper, and all external network requests blocked. It
+checks the shared 365-day evidence window, current Atlas URLs after a partial synthetic preview,
+and retained-preview/copy withholding after a failed live refresh. It is not a production-route
+or screenshot/visual-compatibility test.
+
+Use an explicitly installed Playwright CLI and its Chromium browser, as with the motion harness:
+
+```bash
+node tests/studio-preview.browser.mjs --playwright-cli /path/to/playwright/cli.js
+# A locally installed Chromium can be used without downloading a browser:
+node tests/studio-preview.browser.mjs --playwright-cli /path/to/playwright/cli.js --browser-executable /path/to/chromium
+```
+
+The harness emits a JSON check receipt and exits nonzero on failure. It requires the locked
+repository development dependencies, including esbuild, but adds no runtime or default-gate
+browser dependency. `npm run test:studio` remains part of `npm run check`.
+
 ## Pull requests
 
 - Use a present-tense Conventional Commit title, such as `feat(cards): add project release signals`.

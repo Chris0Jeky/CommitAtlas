@@ -220,3 +220,19 @@ test("binds a successful origin to the exact route-affecting configuration", () 
   assert.equal(resolveStudioBaseUrl(key, validated, "https://placeholder.example"), "https://atlas.example");
   assert.equal(resolveStudioBaseUrl("changed", validated, "https://placeholder.example"), "https://placeholder.example");
 });
+
+test("the Studio preview window matches every date-window README embed", async () => {
+  const urls = await import("./studio-urls");
+  const { buildStudioMarkdown } = await import("./studio-markdown");
+  assert.equal(urls.STUDIO_PREVIEW_DAYS, 365);
+  const markdown = buildStudioMarkdown({
+    baseUrl: "https://studio.example", owner: "octocat", theme: "ember", demo: true,
+    projects: [], selectedCards: new Set(["atlas", "activity", "breakdown", "rhythm"]),
+    hasCurrentContributions: true, hasCurrentLanguages: true,
+  });
+  const embeds = [...markdown.matchAll(/(?:src|srcset)="([^"]+)"/g)];
+  assert.equal(embeds.length, 12);
+  for (const [, url] of embeds) {
+    assert.equal(new URL(url!).searchParams.get("days"), String(urls.STUDIO_PREVIEW_DAYS));
+  }
+});
