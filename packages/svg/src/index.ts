@@ -275,6 +275,11 @@ export interface PulseProjectRow {
   readonly sampledTotal: number;
 }
 
+/** Rendering time is supplied explicitly so this dependency-free renderer stays deterministic. */
+export interface PulseRenderOptions extends RenderOptions {
+  readonly nowMs: number;
+}
+
 export interface PulseCardData extends SourceLabelledCardData {
   /**
    * Expiry is enforced at this boundary, not just at parse time: "expired" renders an expired
@@ -1224,13 +1229,22 @@ function pulseStateColor(state: PulseProbeState, theme: SvgTheme): string {
   return theme.muted;
 }
 
+function pulseTimestampValue(value: unknown): number | null {
+  if (typeof value !== "string" || !PULSE_TIMESTAMP_PATTERN.test(value)) return null;
+  const milliseconds = Date.parse(value);
+  if (!Number.isFinite(milliseconds)) return null;
+  // Date.parse normalizes impossible calendar dates; do not present those as evidence.
+  return new Date(milliseconds).toISOString().slice(0, 19) === value.slice(0, 19)
+    ? milliseconds : null;
+}
+
 function pulseTimestampLabel(value: unknown): string {
-  if (typeof value !== "string" || !PULSE_TIMESTAMP_PATTERN.test(value)) return "an unknown time";
+  if (typeof value !== "string" || pulseTimestampValue(value) === null) return "an unknown time";
   return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
 }
 
 function pulseCheckedLabel(checkedAt: unknown): string {
-  if (typeof checkedAt !== "string" || !PULSE_TIMESTAMP_PATTERN.test(checkedAt)) {
+  if (typeof checkedAt !== "string" || pulseTimestampValue(checkedAt) === null) {
     return "check time unavailable";
   }
   return `checked ${checkedAt.slice(0, 10)} ${checkedAt.slice(11, 16)} UTC`;
@@ -1245,16 +1259,24 @@ function pulseCheckedLabel(checkedAt: unknown): string {
  * two availability claims cannot merge into one score. An expired capsule renders an expired
  * panel instead of probe data.
  */
-export function renderPulseCard(data: PulseCardData, options?: RenderOptions): string {
+export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions): string {
+  const nowMs = options?.nowMs;
+  const generatedAt = pulseTimestampValue(data.generatedAt);
+  const expiresAt = pulseTimestampValue(data.expiresAt);
+  const validBounds = Number.isSafeInteger(nowMs) && nowMs >= 0 && nowMs <= 8_640_000_000_000_000
+    && generatedAt !== null && expiresAt !== null && expiresAt > generatedAt && generatedAt <= nowMs;
+  const status = !validBounds ? "unavailable"
+    : data.status === "expired" || nowMs >= expiresAt! ? "expired"
+    : data.status === "live" ? "live" : "unavailable";
   const validStates: readonly PulseProbeState[] = ["up", "down", "unknown", "stale"];
-  const rows = data.status === "live"
+  const rows = status === "live"
     ? data.projects.filter((row) => String(row.id ?? "").trim() && validStates.includes(row.state))
     : [];
   const shown = rows.slice(0, PULSE_MAX_ROWS);
-  const totalRows = data.status === "live" ? data.projects.length : 0;
+  const totalRows = status === "live" ? data.projects.length : 0;
   const unmapped = Number.isFinite(data.unmappedCount)
     ? Math.max(0, Math.trunc(data.unmappedCount as number)) : 0;
-  const rowsHeight = 96 + shown.length * 44 + 34;
+  const rowsHeight = Math.max(162, 96 + shown.length * 44 + 34);
   const o = optionsFor(options, rowsHeight, "Public pulse",
     "Operator-reviewed Pulseboard probe capsule. Sampled checks, not time-weighted uptime; CI health is shown separately.",
     rowsHeight, 420);
@@ -1269,7 +1291,9 @@ export function renderPulseCard(data: PulseCardData, options?: RenderOptions): s
     return `${name} (${truncateText(String(row.id), 30)}): ${pulseStateLabel(row.state)}, ` +
       `${good}/${total} sampled checks, ${pulseCheckedLabel(row.checkedAt)}${total <= 0 ? ", no samples observed" : ""}.`;
   };
-  const accessibleDescription = data.status === "expired"
+  const accessibleDescription = status === "unavailable"
+    ? `${metadata.description} Capsule time bounds or rendering time are unavailable. Probe states are not live evidence.`
+    : status === "expired"
     ? `${metadata.description} Capsule generated ${pulseTimestampLabel(data.generatedAt)}; ` +
       `expired at ${pulseTimestampLabel(data.expiresAt)}. Probe states are not live evidence.`
     : `${metadata.description} Observed window ${windowLabel ?? "unavailable"}. ` +
@@ -1283,10 +1307,12 @@ export function renderPulseCard(data: PulseCardData, options?: RenderOptions): s
   out += numeral(34, 48, 1, "PUBLIC PULSE", t);
   out += sourceMarker(data.source, width - 34, 31, t);
   if (windowLabel) out += mono(width - 34, 64, windowLabel, 10, t.muted, 500, "end", 0.04);
-  if (data.status === "expired") {
-    out += text(34, 100, "Pulse capsule expired", 16, t.muted, 700);
+  if (status !== "live") {
+    out += text(34, 100, status === "expired" ? "Pulse capsule expired" : "Pulse capsule unavailable", 16, t.muted, 700);
     out += text(34, 122, truncateText(
-      `Expired ${pulseTimestampLabel(data.expiresAt)}; probe states are not live evidence.`,
+      status === "expired"
+        ? `Expired ${pulseTimestampLabel(data.expiresAt)}; probe states are not live evidence.`
+        : "Time bounds unavailable; probe states are not live evidence.",
       width < 560 ? 52 : 80,
     ), 12, t.muted);
     return out + `</g>` + svgEnd();

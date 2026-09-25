@@ -213,7 +213,7 @@ test("unmapped ids resolve distinctly and fail closed on demand", () => {
   assert.throws(() => requirePulseMapping(resolved), /no catalogue mapping for ghost-desk/);
   assert.doesNotThrow(() => requirePulseMapping([resolved[0]!]));
 
-  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE));
+  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
   assert.match(card, /Unmapped project/);
   assert.match(card, /ghost-desk/);
   assert.match(card, /1 UNMAPPED/);
@@ -225,7 +225,7 @@ test("expiry is enforced at cache and render boundaries", () => {
   const capsule = liveCapsule();
   const cache = new PulseCapsuleCache();
   cache.store(capsule, T0 + MINUTE);
-  assert.equal(cache.get(T0 + MINUTE), capsule);
+  assert.deepEqual(cache.get(T0 + MINUTE), capsule);
   assert.equal(cache.ttlMs(T0 + MINUTE), capsule.expiresAt - (T0 + MINUTE));
   assert.equal(cache.get(capsule.expiresAt), null);
   assert.equal(cache.ttlMs(capsule.expiresAt), 0);
@@ -233,14 +233,14 @@ test("expiry is enforced at cache and render boundaries", () => {
   assert.throws(() => cache.store(capsule, capsule.expiresAt), /expired/);
   assert.throws(() => assertPulseCapsuleLive(capsule, capsule.expiresAt), /expired/);
 
-  const expiredCard = renderPulseCard(toPulseCardData(capsule, mapping, capsule.expiresAt));
+  const expiredCard = renderPulseCard(toPulseCardData(capsule, mapping, capsule.expiresAt), { nowMs: T0 + MINUTE });
   assert.match(expiredCard, /Pulse capsule expired/);
   assert.match(expiredCard, /not live evidence/);
   assert.doesNotMatch(expiredCard, /11\/12 sampled/);
 });
 
 test("live card shows denominators, never uptime language or CI states", () => {
-  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE));
+  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
   assert.match(card, /role="img"/);
   assert.match(card, /<title>Public pulse<\/title>/);
   assert.match(card, /11\/12 sampled/);
@@ -256,7 +256,7 @@ test("live card shows denominators, never uptime language or CI states", () => {
 
 test("demo capsules preserve synthetic markings end to end", () => {
   const capsule = parsePulseCapsule(capsuleJson({ sourceMode: "demo" }), T0 + MINUTE);
-  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE));
+  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
   assert.match(card, /SYNTHETIC DEMO/);
   assert.match(card, /<title>Synthetic demo: Public pulse<\/title>/);
   assert.match(card, /Synthetic demonstration data/);
@@ -265,7 +265,7 @@ test("demo capsules preserve synthetic markings end to end", () => {
 test("expired demo capsules stay expired and stay marked", () => {
   const capsule = liveCapsule();
   const demo = { ...capsule, sourceMode: "demo" as const };
-  const card = renderPulseCard(toPulseCardData(demo, mapping, capsule.expiresAt + 1));
+  const card = renderPulseCard(toPulseCardData(demo, mapping, capsule.expiresAt + 1), { nowMs: T0 + MINUTE });
   assert.match(card, /Pulse capsule expired/);
   assert.match(card, /SYNTHETIC DEMO/);
 });
@@ -280,7 +280,7 @@ test("mapping display names are XML-escaped and motion stays frozen-safe", () =>
     }],
   }), T0 + MINUTE);
   const data = toPulseCardData(capsule, { "atlas-web": injection }, T0 + MINUTE);
-  const card = renderPulseCard(data);
+  const card = renderPulseCard(data, { nowMs: T0 + MINUTE });
   assert.doesNotMatch(card, /<img src=x/);
   assert.match(card, /&lt;img src=x/);
   assert.match(card, /&amp;/);
@@ -294,16 +294,16 @@ test("mapping display names are XML-escaped and motion stays frozen-safe", () =>
       `forbidden XML 1.0 character U+${codePoint.toString(16).toUpperCase()}`,
     );
   }
-  const animated = renderPulseCard(data, { motion: "subtle" });
+  const animated = renderPulseCard(data, { nowMs: T0 + MINUTE, motion: "subtle" });
   assert.match(animated, /@keyframes card-enter/);
   assert.match(animated, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(animated, /\bboth\b|backwards|from\{[^}]*opacity|from\{[^}]*scale/);
-  const still = renderPulseCard(data);
+  const still = renderPulseCard(data, { nowMs: T0 + MINUTE });
   assert.doesNotMatch(still, /<style>|@keyframes|animation:/);
 });
 
 test("accessible description names every selected project with its fraction", () => {
-  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE));
+  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
   assert.match(card, /<desc>[\s\S]*?Atlas Web[\s\S]*?11\/12 sampled checks[\s\S]*?Atlas API[\s\S]*?3\/5 sampled checks[\s\S]*?<\/desc>/);
 });
 

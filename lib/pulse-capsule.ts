@@ -301,8 +301,9 @@ export class PulseCapsuleCache {
 
   store(capsule: PulseCapsule, nowMs: number): void {
     assertSafeNow(nowMs);
-    assertPulseCapsuleLive(capsule, nowMs);
-    this.current = capsule;
+    const owned = parsePulseCapsule(capsule, nowMs);
+    assertPulseCapsuleLive(owned, nowMs);
+    this.current = owned;
   }
 
   get(nowMs: number): PulseCapsule | null {
@@ -311,7 +312,7 @@ export class PulseCapsuleCache {
       this.current = null;
       return null;
     }
-    return this.current;
+    return structuredClone(this.current);
   }
 
   /** Remaining lifetime in milliseconds, or 0 when empty or expired. */

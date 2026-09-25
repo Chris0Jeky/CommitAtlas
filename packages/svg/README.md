@@ -79,3 +79,20 @@ canonical `@commit-atlas/core` `aggregateLanguages()` result uses `language`, `b
 derived `percentage` together and can be passed directly to `renderLanguagesCard`. Profile cards
 render an optional source-backed aggregate `stars` value when supplied and leave it absent
 otherwise. Partial bytes/percentage mixtures are rejected because their basis is ambiguous.
+
+## Manual public pulse capsules
+
+`renderPulseCard(data, { nowMs, theme?, motion? })` renders the separately validated
+public-pulse projection. Supply the current rendering time explicitly in epoch milliseconds.
+A previously adapted `live` card is not proof that its capsule is still live: the renderer
+rechecks the original generation and expiry bounds on every call. At expiry it removes
+probe rows; a missing or invalid clock or invalid time bounds produces an unavailable panel.
+The renderer does not read the process clock, open files, fetch URLs, or install a timer.
+A saved SVG is a snapshot, not a self-expiring live widget, and must not be served as current
+evidence after its source expiry without rerendering.
+
+The server-side `lib/pulse-capsule.ts` adapter accepts only operator-reviewed local files.
+Its cache validates and owns a deep copy of each stored capsule and returns isolated copies.
+Consumers must preserve the original expiry and enforce it when publishing or caching output.
+Sampled checks retain their numerator/denominator, remain separate from CI, and are never
+reported as time-weighted uptime. This package does not add a hosted route or remote ingestion.
