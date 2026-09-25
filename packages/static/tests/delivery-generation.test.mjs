@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { renderDeliveryCard } from "@commit-atlas/svg";
 import { calculateContributionMetrics } from "@commit-atlas/core";
 import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "@commit-atlas/github";
 import { generateStaticFromSnapshot, parseStaticConfig } from "../dist/index.js";
@@ -145,6 +146,10 @@ test("generates paired delivery SVG and identical evidence JSON atomically", asy
     assert.deepEqual((await readdir(light)).sort(), ["delivery.json", "delivery.svg", "manifest.json"]);
     assert.equal(await readFile(path.join(dark, "delivery.json"), "utf8"), await readFile(path.join(light, "delivery.json"), "utf8"));
     assert.notEqual(await readFile(path.join(dark, "delivery.svg"), "utf8"), await readFile(path.join(light, "delivery.svg"), "utf8"));
+    for (const [directory, theme] of [[dark, "ember"], [light, "paper"]]) {
+      assert.equal(await readFile(path.join(directory, "delivery.svg"), "utf8"),
+        renderDeliveryCard(delivery(), { theme, width: 860, motion: "none" }));
+    }
     for (const directory of [dark, light]) {
       const manifest = JSON.parse(await readFile(path.join(directory, "manifest.json"), "utf8"));
       assert.deepEqual(manifest.artifacts.map(({ path: artifact }) => artifact), ["delivery.json", "delivery.svg"]);

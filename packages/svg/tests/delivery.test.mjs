@@ -244,3 +244,20 @@ test("delivery integration balance above 100% is never silently capped", () => {
   assertSafeDeliverySvg(output);
   assert.match(output, /150\.0%/);
 });
+
+test("delivery provenance lines remain separated and the configured scope is visible in both layouts", () => {
+  for (const width of [480, 860]) {
+    const output = renderDeliveryCard(deliveryFixture(), { width, theme: "paper" });
+    const labels = [...output.matchAll(/<text\b([^>]*)>([^<]*)<\/text>/g)];
+    assert.ok(labels.some(([, , label]) => label === "2 CONFIGURED PUBLIC REPOS"), `visible scope missing at width ${width}`);
+    const yFor = (prefix) => {
+      const match = labels.find(([, , label]) => label.startsWith(prefix));
+      assert.ok(match, `missing ${prefix}`);
+      return Number(/\by="([\d.]+)"/.exec(match[1])[1]);
+    };
+    const baselines = [yFor("LIFETIME "), yFor("BENCHMARK "), yFor("GITHUB GRAPHQL ")];
+    for (let index = 1; index < baselines.length; index += 1) {
+      assert.ok(baselines[index] - baselines[index - 1] >= 12, `provenance lines overlap at width ${width}: ${baselines}`);
+    }
+  }
+});

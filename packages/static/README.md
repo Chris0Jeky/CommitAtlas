@@ -124,3 +124,13 @@ manifest recorded and the new manifest no longer lists are removed, so a disable
 responsive layout cannot remain stale while an unowned file of the same name survives. The caller
 owns commits and deployment. The package has no private-data mode, hidden token fallback, fixture
 publication mode, or publication side effect.
+
+### Shared delivery presentation
+
+The static `delivery.svg` delegates to `@commit-atlas/svg`'s `renderDeliveryCard`; there is no
+second presentation implementation. Its wide and compact defaults are 860×400 and 480×580,
+with all four windows, lifetime counts, bounded accessible provenance, and the shared
+motion/frame-zero policy. The direct static rendering API retains its `aurora` default theme;
+configured generation passes its chosen theme explicitly. Paired artifacts are checked against
+the shared renderer byte-for-byte. This presentation consolidation does not change
+`delivery.json` or introduce any new data fetch.

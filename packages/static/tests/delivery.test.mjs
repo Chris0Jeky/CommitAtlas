@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "@commit-atlas/github";
+import { renderDeliveryCard as renderSharedDeliveryCard } from "@commit-atlas/svg";
 import { renderDeliveryCard, renderDeliveryEvidence } from "../dist/index.js";
 
 const NOW = new Date("2026-09-21T18:22:00.000Z");
@@ -64,16 +65,17 @@ test("delivery card presents the focal rate, comparison, supporting evidence, an
   const svg = renderDeliveryCard(snapshot(), { theme: "ember", width: 860, motion: "none" });
   assert.match(svg, /^<svg/);
   assert.match(svg, /role="img"/);
-  assert.match(svg, /aria-labelledby="delivery-title delivery-desc"/);
-  assert.match(svg, /<title id="delivery-title">/);
-  assert.match(svg, /<desc id="delivery-desc">/);
+  assert.match(svg, /aria-label="Delivery evidence for Chris0Jeky"/);
+  assert.match(svg, /<title>Delivery evidence for Chris0Jeky<\/title>/);
+  assert.match(svg, /<desc>/);
   assert.match(svg, /DELIVERY EVIDENCE/);
-  assert.match(svg, />12<\/text>/);
-  assert.match(svg, /PRs \/ WEEK/);
+  assert.match(svg, />12\.0<\/text>/);
+  assert.match(svg, /PRS \/ WEEK/);
   assert.match(svg, /5\.5×/);
   assert.match(svg, /90\.9%/);
   assert.match(svg, /88\.0%/);
-  assert.match(svg, /10 OPEN · 0\.83 MERGE-WEEKS/);
+  assert.match(svg, />10 OPEN<\/text>/);
+  assert.match(svg, /0\.83 merge-weeks at 7d rate/);
   assert.match(svg, /100\.0%/);
   assert.match(svg, /2 CONFIGURED PUBLIC REPOS/);
   assert.match(svg, /2026-09-15 → 2026-09-21/);
@@ -85,8 +87,8 @@ test("delivery card presents the focal rate, comparison, supporting evidence, an
 test("delivery card supports the paired light theme and compact layout", () => {
   const wide = renderDeliveryCard(snapshot(), { theme: "paper", width: 860, motion: "none" });
   const compact = renderDeliveryCard(snapshot(), { theme: "paper", width: 480, motion: "none" });
-  assert.match(wide, /viewBox="0 0 860 360"/);
-  assert.match(compact, /viewBox="0 0 480 520"/);
+  assert.match(wide, /viewBox="0 0 860 400"/);
+  assert.match(compact, /viewBox="0 0 480 580"/);
   assert.match(wide, /#dfe4c9/);
   assert.match(compact, /#dfe4c9/);
   assert.match(compact, /ACTIVITY FLOW · NOT QUALITY OR IMPACT/);
@@ -120,4 +122,20 @@ test("delivery card escapes hostile benchmark presentation text", () => {
   assert.doesNotMatch(svg, /<script>/);
   assert.match(svg, /&lt;script&gt;/);
   assert.match(svg, /A &amp; B &lt; C/);
+});
+
+
+test("static delivery uses the shared renderer for every theme, width and motion profile", () => {
+  const evidence = snapshot();
+  for (const theme of ["ember", "aurora", "midnight", "paper"]) {
+    for (const width of [480, 860]) {
+      for (const motion of ["none", "subtle", "ambient", "cinematic"]) {
+        const options = { theme, width, motion };
+        assert.ok(renderDeliveryCard(evidence, options) === renderSharedDeliveryCard(evidence, options),
+          `static/shared renderer mismatch: ${theme}/${width}/${motion}`);
+      }
+    }
+  }
+  assert.ok(renderDeliveryCard(evidence) === renderSharedDeliveryCard(evidence, { theme: "aurora" }),
+    "the direct static API preserves its established aurora default");
 });

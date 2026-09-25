@@ -1444,6 +1444,7 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
   out += `<rect x="34" y="166" width="${pillWidth}" height="26" rx="13" fill="${t.track}" stroke="${t.border}"/>`;
   out += mono(34 + pillWidth / 2, 183, pillLabel, 11, t.chrome, 700, "middle", 0.06);
   if (compact) {
+    out += mono(width - 34, 156, scopeLabel, 9.5, t.muted, 500, "end", 0.06);
     out += mono(width - 34, 183, sevenRange, 10, t.muted, 500, "end", 0.06);
   } else {
     out += mono(34, 208, sevenRange, 10, t.muted, 500, "start", 0.06);
@@ -1499,7 +1500,7 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
     const closed = deliveryCountLabel(data.lifetime.closed);
     const drafts = deliveryCount(data.lifetime.drafts);
     out += mono(34, 348, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN${drafts !== null && drafts > 0 ? ` · ${formatNumber(drafts, false)} DRAFTS` : ""}`, 9.5, t.muted, 500, "start", 0.06);
-    out += mono(34, 366, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+    out += mono(34, 360, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
     const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
     out += mono(34, height - 26, footer, 9.5, t.muted, 500, "start", 0.04);
     out += mono(width - 34, height - 26, DELIVERY_NON_CLAIM, 9.5, t.warning, 700, "end", 0.06);
