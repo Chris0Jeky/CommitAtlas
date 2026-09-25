@@ -8,6 +8,16 @@
 export { canonicalJson, seededRandom, stableHash } from "./seed.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
+export type MotionProfile = "none" | "subtle" | "ambient" | "cinematic";
+export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
+
+export interface MotionRenderMetadata {
+  readonly inlineStyles: boolean;
+}
+
+export function motionRenderMetadata(motion: MotionProfile | undefined): MotionRenderMetadata {
+  return { inlineStyles: motion !== undefined && motion !== "none" };
+}
 
 export interface SvgTheme {
   readonly background: string;
@@ -107,10 +117,10 @@ export interface RenderOptions {
   readonly height?: number;
   readonly title?: string;
   readonly description?: string;
-  readonly motion?: "none" | "subtle";
+  readonly motion?: MotionProfile;
 }
 
-export type CardSource = "public-github" | "public-profile" | "synthetic-demo";
+export type CardSource = "public-github" | "public-profile" | "synthetic-demo" | "public-pulse";
 
 export interface SourceLabelledCardData {
   readonly source?: CardSource;
@@ -323,6 +333,42 @@ export interface DeliveryCardData {
   readonly benchmark: DeliveryCardBenchmark;
   readonly formulas: Readonly<Record<string, string>>;
   readonly limitations: readonly string[];
+}
+
+export type PulseProbeState = "up" | "down" | "unknown" | "stale";
+
+export interface PulseProjectRow {
+  /** Producer project id (`/^[a-z0-9-]{1,64}$/`); always printed so a row is never anonymous. */
+  readonly id: string;
+  /** Catalogue display name from the operator mapping; null renders as an unmapped project. */
+  readonly displayName: string | null;
+  readonly state: PulseProbeState;
+  /** ISO 8601 UTC check timestamp; anything else renders as an unavailable check time. */
+  readonly checkedAt: string;
+  readonly sampledGood: number;
+  readonly sampledTotal: number;
+}
+
+/** Rendering time is supplied explicitly so this dependency-free renderer stays deterministic. */
+export interface PulseRenderOptions extends RenderOptions {
+  readonly nowMs: number;
+}
+
+export interface PulseCardData extends SourceLabelledCardData {
+  /**
+   * Expiry is enforced at this boundary, not just at parse time: "expired" renders an expired
+   * panel instead of probe data, so a stale capsule can never read as live.
+   */
+  readonly status: "live" | "expired";
+  /** ISO 8601 UTC timestamps bounding the capsule. */
+  readonly generatedAt: string;
+  readonly expiresAt: string;
+  /** Observed window as ISO calendar dates; anything else renders as unavailable. */
+  readonly windowStart: string;
+  readonly windowEnd: string;
+  readonly projects: readonly PulseProjectRow[];
+  /** Selected projects with no catalogue mapping; listed as unmapped, never dropped. */
+  readonly unmappedCount?: number;
 }
 
 export interface AtlasCardData {
@@ -692,7 +738,7 @@ function sourceMarker(
 }
 
 function cardMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Fill-mode none with a delay, for the same reason as atlasMotionStyle: a renderer that never
   // runs CSS animations (SVG through <img>) must show the finished card, not a frozen keyframe.
   return `<style>
@@ -1037,7 +1083,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
 }
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
   // pipeline — so the card must be finished before any keyframe applies. That means fill-mode
   // none with a small delay, never "both": a renderer that ignores or freezes the animation sits
@@ -1561,6 +1607,136 @@ function deliveryAccessibleDescription(
     `as of ${truncateText(data.asOf, MAX_WINDOW_LABEL_LENGTH) || "an unknown date"}. ` +
     `Benchmark source: ${sourceUrl || "not recorded"}. Caveats: ${caveats} Limitations: ${limitations} ` +
     `Pull-request flow is activity flow, not quality or impact.`;
+}
+
+const PULSE_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+/** Six rows like the releases card; anything beyond prints as an "N of M shown" line. */
+const PULSE_MAX_ROWS = 6;
+
+function pulseStateLabel(state: PulseProbeState): string {
+  return { up: "Up", down: "Down", unknown: "Unknown", stale: "Stale" }[state];
+}
+
+function pulseStateColor(state: PulseProbeState, theme: SvgTheme): string {
+  if (state === "up") return theme.positive;
+  if (state === "down") return theme.negative;
+  if (state === "stale") return theme.warning;
+  return theme.muted;
+}
+
+function pulseTimestampValue(value: unknown): number | null {
+  if (typeof value !== "string" || !PULSE_TIMESTAMP_PATTERN.test(value)) return null;
+  const milliseconds = Date.parse(value);
+  if (!Number.isFinite(milliseconds)) return null;
+  // Date.parse normalizes impossible calendar dates; do not present those as evidence.
+  return new Date(milliseconds).toISOString().slice(0, 19) === value.slice(0, 19)
+    ? milliseconds : null;
+}
+
+function pulseTimestampLabel(value: unknown): string {
+  if (typeof value !== "string" || pulseTimestampValue(value) === null) return "an unknown time";
+  return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
+}
+
+function pulseCheckedLabel(checkedAt: unknown): string {
+  if (typeof checkedAt !== "string" || pulseTimestampValue(checkedAt) === null) {
+    return "check time unavailable";
+  }
+  return `checked ${checkedAt.slice(0, 10)} ${checkedAt.slice(11, 16)} UTC`;
+}
+
+/**
+ * Render the compact operator-reviewed public-pulse panel.
+ *
+ * One row per selected project: the catalogue name (or an explicit unmapped label), the probe
+ * state in words, and the sampled fraction with its denominator always printed. The fraction
+ * is never relabelled as time-weighted uptime, and CI health never enters this card, so the
+ * two availability claims cannot merge into one score. An expired capsule renders an expired
+ * panel instead of probe data.
+ */
+export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions): string {
+  const nowMs = options?.nowMs;
+  const generatedAt = pulseTimestampValue(data.generatedAt);
+  const expiresAt = pulseTimestampValue(data.expiresAt);
+  const validBounds = Number.isSafeInteger(nowMs) && nowMs >= 0 && nowMs <= 8_640_000_000_000_000
+    && generatedAt !== null && expiresAt !== null && expiresAt > generatedAt && generatedAt <= nowMs;
+  const status = !validBounds ? "unavailable"
+    : data.status === "expired" || nowMs >= expiresAt! ? "expired"
+    : data.status === "live" ? "live" : "unavailable";
+  const validStates: readonly PulseProbeState[] = ["up", "down", "unknown", "stale"];
+  const rows = status === "live"
+    ? data.projects.filter((row) => String(row.id ?? "").trim() && validStates.includes(row.state))
+    : [];
+  const shown = rows.slice(0, PULSE_MAX_ROWS);
+  const totalRows = status === "live" ? data.projects.length : 0;
+  const unmapped = Number.isFinite(data.unmappedCount)
+    ? Math.max(0, Math.trunc(data.unmappedCount as number)) : 0;
+  const rowsHeight = Math.max(162, 96 + shown.length * 44 + 34);
+  const o = optionsFor(options, rowsHeight, "Public pulse",
+    "Operator-reviewed Pulseboard probe capsule. Sampled checks, not time-weighted uptime; CI health is shown separately.",
+    rowsHeight, 420);
+  const t = o.theme; const width = o.width;
+  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const windowLabel = isValidIsoDate(data.windowStart) && isValidIsoDate(data.windowEnd)
+    ? `${data.windowStart} → ${data.windowEnd}` : null;
+  const rowSentence = (row: PulseProjectRow): string => {
+    const name = truncateText(String(row.displayName ?? "").trim() || "Unmapped project", 25);
+    const good = Math.trunc(finite(row.sampledGood));
+    const total = Math.trunc(finite(row.sampledTotal));
+    return `${name} (${truncateText(String(row.id), 30)}): ${pulseStateLabel(row.state)}, ` +
+      `${good}/${total} sampled checks, ${pulseCheckedLabel(row.checkedAt)}${total <= 0 ? ", no samples observed" : ""}.`;
+  };
+  const accessibleDescription = status === "unavailable"
+    ? `${metadata.description} Capsule time bounds or rendering time are unavailable. Probe states are not live evidence.`
+    : status === "expired"
+    ? `${metadata.description} Capsule generated ${pulseTimestampLabel(data.generatedAt)}; ` +
+      `expired at ${pulseTimestampLabel(data.expiresAt)}. Probe states are not live evidence.`
+    : `${metadata.description} Observed window ${windowLabel ?? "unavailable"}. ` +
+      `Generated ${pulseTimestampLabel(data.generatedAt)}; expires ${pulseTimestampLabel(data.expiresAt)}. ` +
+      `${shown.map(rowSentence).join(" ")}` +
+      `${totalRows > shown.length ? ` ${shown.length} of ${totalRows} selected projects shown.` : ""}` +
+      `${unmapped > 0 ? ` ${unmapped} of ${totalRows} selected projects have no catalogue mapping.` : ""}`;
+  let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
+  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
+  out += panel(16, 16, width - 32, o.height - 32, t);
+  out += numeral(34, 48, 1, "PUBLIC PULSE", t);
+  out += sourceMarker(data.source, width - 34, 31, t);
+  if (windowLabel) out += mono(width - 34, 64, windowLabel, 10, t.muted, 500, "end", 0.04);
+  if (status !== "live") {
+    out += text(34, 100, status === "expired" ? "Pulse capsule expired" : "Pulse capsule unavailable", 16, t.muted, 700);
+    out += text(34, 122, truncateText(
+      status === "expired"
+        ? `Expired ${pulseTimestampLabel(data.expiresAt)}; probe states are not live evidence.`
+        : "Time bounds unavailable; probe states are not live evidence.",
+      width < 560 ? 52 : 80,
+    ), 12, t.muted);
+    return out + `</g>` + svgEnd();
+  }
+  if (!shown.length) {
+    out += text(34, 100, "No probe rows to display", 13, t.muted, 550);
+    return out + `</g>` + svgEnd();
+  }
+  if (totalRows > shown.length) out += text(width - 34, 82, `${shown.length} of ${totalRows} shown`, 11, t.muted, 500, "end");
+  shown.forEach((row, index) => {
+    const y = 100 + index * 44;
+    if (index > 0) out += `<line x1="34" y1="${y - 26}" x2="${width - 34}" y2="${y - 26}" stroke="${t.border}"/>`;
+    const name = String(row.displayName ?? "").trim() || "Unmapped project";
+    const good = Math.trunc(finite(row.sampledGood));
+    const total = Math.trunc(finite(row.sampledTotal));
+    out += text(34, y, truncateText(name, width < 560 ? 16 : 30), 13.5, t.text, 700);
+    out += mono(width - 34, y, `${good}/${total} sampled`, 11, t.muted, 600, "end", 0.04);
+    out += `<rect x="34" y="${y + 8}" width="8" height="8" fill="${pulseStateColor(row.state, t)}"/>`;
+    const detail = `${pulseStateLabel(row.state)} · ${truncateText(String(row.id), 40)} · ` +
+      `${pulseCheckedLabel(row.checkedAt)}${total <= 0 ? " · no samples observed" : ""}`;
+    out += mono(48, y + 15, width < 560 ? truncateText(detail, 52) : detail, 9.5, t.muted, 550, "start", 0.08);
+  });
+  const footer = [
+    unmapped > 0 ? `${unmapped} UNMAPPED` : null,
+    "SAMPLED CHECKS ARE NOT UPTIME",
+    "CI SHOWN SEPARATELY",
+  ].filter((part): part is string => part !== null).join(" · ");
+  out += mono(34, o.height - 26, width < 560 ? truncateText(footer, 54) : footer, 9.5, t.muted, 550, "start", 0.08);
+  return out + `</g>` + svgEnd();
 }
 
 /** Render the compact, source-labelled CommitAtlas overview card. */

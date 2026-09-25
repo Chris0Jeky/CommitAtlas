@@ -4,7 +4,7 @@ import { parseSvgLanguagesQuery } from "@/lib/svg-routes";
 import { toLanguagesCard } from "@/lib/svg-adapters";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
-import { renderLanguagesCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderLanguagesCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
       title: `${snapshot.login} languages`,
       description: "Public repository-language distribution by repository count; this is not a measure of proficiency.",
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: query.motion === "subtle" });
+    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -93,8 +93,10 @@ anonymous aggregates the account owner elected to display, but it exposes no pri
 details to CommitAtlas. Activity type data from calendar-year profile views is carried as
 public-profile percentages and labelled as not window-scoped unless an exact categorized source is
 present; a percentage is never rendered as an exact count. Rhythm is a
-within-window personal consistency summary, not a GitHub rank. `motion: "none"` produces no
-animation keyframes; `motion: "subtle"` produces short load motion with a reduced-motion override.
+within-window personal consistency summary, not a GitHub rank. Static configuration accepts
+`motion: "none" | "subtle" | "ambient" | "cinematic"` and defaults to `none`. `none` produces no
+animation keyframes. The other three profiles currently produce the same bounded load motion with a
+reduced-motion override; differentiated ambient and cinematic compilation remains a later slice.
 A malformed, incomplete, gapped, oversized, or unavailable response fails generation.
 
 ## Output semantics

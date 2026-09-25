@@ -34,6 +34,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 **Released:** v0.4.0.
 
 - Eight hosted SVG routes and the live Studio run on the public Cloudflare Worker.
+- Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`. In this compatibility slice, every non-`none` profile remains byte-identical to the existing subtle load motion.
 - The source CLI and bundled Node 24 Action generate ten card types from one public snapshot: the hosted eight plus static Cadence and Releases cards.
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
@@ -41,7 +42,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 - The Observatory adapter is staged but inactive: its endpoint is empty, so it creates no consent storage, timers, or collector requests. Collection is not a hidden side effect of publishing CommitAtlas.
 - npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
-**Planned, not shipped:** ambient/cinematic motion, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
+**Planned, not shipped:** differentiated ambient/cinematic motion, a motion compiler, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
 
 Every push to `main` that passes CI deploys to Cloudflare Workers and is checked against the origin produced by that deployment.
 
@@ -156,7 +157,7 @@ Developer Lens projections follow a separate publication boundary. Private/local
 
 Near-term work is evidence-gated:
 
-1. prove which SVG motion backend actually works through GitHub README `<img>` rendering before expanding the motion vocabulary;
+1. finish proving which SVG motion backend works through GitHub README `<img>` rendering before differentiating the compatibility motion profiles;
 2. compile motion from one primitive model with frame-zero and reduced-motion invariants;
 3. add deterministic maps and scenes without letting aesthetics imply facts;
 4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;

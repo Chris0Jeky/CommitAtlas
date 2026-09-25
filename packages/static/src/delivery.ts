@@ -1,10 +1,10 @@
 import type { DeliverySnapshot } from "@commit-atlas/github";
-import { themes, type ThemeName } from "@commit-atlas/svg";
+import { themes, type MotionProfile, type ThemeName } from "@commit-atlas/svg";
 
 export interface DeliveryCardOptions {
   readonly theme?: ThemeName;
   readonly width?: number;
-  readonly motion?: "none" | "subtle";
+  readonly motion?: MotionProfile;
 }
 
 export function renderDeliveryEvidence(snapshot: DeliverySnapshot): string {

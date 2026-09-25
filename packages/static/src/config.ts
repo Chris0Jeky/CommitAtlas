@@ -7,6 +7,7 @@ import {
   parseManifest,
   type ProjectManifest,
 } from "@commit-atlas/core";
+import type { MotionProfile } from "@commit-atlas/svg";
 import { z } from "zod";
 
 export const STATIC_CARD_NAMES = [
@@ -44,7 +45,7 @@ const RawStaticConfigSchema = z.object({
     outputDir: RelativePathSchema,
   }).strict()).max(3).default([]),
   days: z.number().int().min(7).max(365).default(365),
-  motion: z.enum(["none", "subtle"]).default("none"),
+  motion: z.enum(["none", "subtle", "ambient", "cinematic"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
   responsiveAtlas: z.boolean().default(false),
   outputDir: RelativePathSchema,
@@ -58,7 +59,7 @@ export interface StaticConfig {
   readonly theme: StaticThemeName;
   readonly themes: readonly StaticThemeVariant[];
   readonly days: number;
-  readonly motion: "none" | "subtle";
+  readonly motion: MotionProfile;
   readonly layout: "wide" | "compact";
   readonly responsiveAtlas: boolean;
   readonly outputDir: string;

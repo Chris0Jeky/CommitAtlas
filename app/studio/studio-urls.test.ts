@@ -177,6 +177,19 @@ test("emits card URLs in the public route canonical order", () => {
   }), "/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=none&layout=compact");
 });
 
+
+test("emits ambient motion in hosted URLs and treats it as route-affecting configuration", () => {
+  assert.equal(buildStudioRouteUrl("profile", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    motion: "ambient",
+  }), "/api/v1/cards/profile.svg?user=octocat&demo=true&theme=ember&motion=ambient");
+
+  const subtle = buildStudioConfigurationKey({ owner: "octocat", theme: "ember", demo: true, motion: "subtle" });
+  const ambient = buildStudioConfigurationKey({ owner: "octocat", theme: "ember", demo: true, motion: "ambient" });
+  assert.notEqual(ambient, subtle);
+});
 test("binds a successful origin to the exact route-affecting configuration", () => {
   const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };
   const key = buildStudioConfigurationKey(baseline);
