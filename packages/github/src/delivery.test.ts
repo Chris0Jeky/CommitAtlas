@@ -264,3 +264,26 @@ test("delivery without an explicit benchmark preserves counts but publishes no c
     assert.doesNotMatch(JSON.stringify(snapshot), /Jellyfish|jellyfish|226\.8182/);
   }
 });
+
+test("explicit benchmark provenance requires a real calendar date", () => {
+  const queryPlan = plan();
+  for (const publishedAt of ["2026-99-99", "2026-02-30", "2025-02-29", "1900-02-29", "2026-04-31", "2026-9-01", "2026-01-01\n", "", null]) {
+    assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+      benchmark: { ...SYNTHETIC_BENCHMARK, publishedAt } as DeliveryBenchmark }), /provenance is invalid/);
+  }
+  for (const publishedAt of ["2024-02-29", "2000-02-29", "2026-04-30", "2026-12-31"]) {
+    assert.equal(deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+      benchmark: { ...SYNTHETIC_BENCHMARK, publishedAt } }).benchmark?.publishedAt, publishedAt);
+  }
+});
+
+test("explicit benchmark provenance requires an absolute HTTPS URL without credentials or controls", () => {
+  const queryPlan = plan();
+  for (const sourceUrl of ["https://", "https:///", "https:example.invalid", "https:///example.invalid", "http://example.invalid", "https://[bad", "https://example.invalid:99999", "https://user:secret@example.invalid", "https://example.invalid/\nreport", "https://example.invalid/ report", " https://example.invalid", "https://example.invalid\\report", null, 7]) {
+    assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+      benchmark: { ...SYNTHETIC_BENCHMARK, sourceUrl } as DeliveryBenchmark }), /provenance is invalid/);
+  }
+  const sourceUrl = "https://example.invalid/report%20one.pdf?version=1#page=4";
+  assert.equal(deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+    benchmark: { ...SYNTHETIC_BENCHMARK, sourceUrl } }).benchmark?.sourceUrl, sourceUrl);
+});

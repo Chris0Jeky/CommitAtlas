@@ -344,7 +344,19 @@ function validateBenchmark(value: DeliveryBenchmark): DeliveryBenchmark {
   if (value.unit !== "merged-pull-requests-per-engineer-week") {
     throw new Error("Delivery benchmark unit is unsupported");
   }
-  if (!/^https:\/\//.test(value.sourceUrl) || !/^\d{4}-\d{2}-\d{2}$/.test(value.publishedAt)) {
+  let source: URL;
+  try {
+    if (typeof value.sourceUrl !== "string" || !/^https:\/\/[^/]/.test(value.sourceUrl)
+      || /[\s\\]/.test(value.sourceUrl)
+      || [...value.sourceUrl].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) throw new Error();
+    source = new URL(value.sourceUrl);
+    if (source.protocol !== "https:" || !source.hostname || source.username || source.password) throw new Error();
+  } catch {
+    throw new Error("Delivery benchmark provenance is invalid");
+  }
+  const publishedAt = typeof value.publishedAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.publishedAt)
+    ? Date.parse(`${value.publishedAt}T00:00:00.000Z`) : NaN;
+  if (!Number.isFinite(publishedAt) || new Date(publishedAt).toISOString().slice(0, 10) !== value.publishedAt) {
     throw new Error("Delivery benchmark provenance is invalid");
   }
   if (!value.population || !value.cohort || value.caveats.length === 0) {
