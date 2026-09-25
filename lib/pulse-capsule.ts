@@ -200,6 +200,9 @@ export function parsePulseCapsule(input: unknown, nowMs: number = Date.now()): P
     if (project.probe.checked > nowMs) {
       throw new PulseCapsuleError("future", `probe check time for ${project.id} is in the future`);
     }
+    if (project.probe.checked > capsule.generatedAt) {
+      throw new PulseCapsuleError("invalid", `probe check time for ${project.id} is after capsule generation`);
+    }
   }
   return capsule;
 }

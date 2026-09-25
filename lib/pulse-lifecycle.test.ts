@@ -86,3 +86,16 @@ test("cache stores validate runtime capsule inputs rather than trusting a TypeSc
   assert.throws(() => cache.store(input, NOW), /successful checks cannot exceed/);
   assert.equal(cache.get(NOW), null);
 });
+
+test("probe observations cannot postdate capsule generation even when consumed later", () => {
+  const input = capsule();
+  input.projects[0]!.probe.checked = NOW + 30_000;
+  for (const nowMs of [NOW + 30_000, NOW + 45_000]) {
+    assert.throws(() => parsePulseCapsule(input, nowMs), /check time.*after.*generation/);
+    const cache = new PulseCapsuleCache();
+    assert.throws(() => cache.store(input, nowMs), /check time.*after.*generation/);
+    assert.equal(cache.get(nowMs), null);
+  }
+  input.projects[0]!.probe.checked = NOW;
+  assert.doesNotThrow(() => parsePulseCapsule(input, NOW + 45_000));
+});
