@@ -1,4 +1,4 @@
-# Temporary draft-branch verification; remove with delivery-visibility.patch before final review.
+# Temporary draft-branch transport. Remove with delivery-renderer.patch before final review.
 name: Delivery maintenance evidence
 on:
   push:
@@ -18,36 +18,59 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
           cache: npm
-      - run: npm ci
-      - name: Prove the public-scope regressions on the original implementation
+      - name: Apply tested renderer consolidation and verify exact source identity
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = cbe4b7e755a15d80ceafa09229483c4b38cb1ead
-          git apply --include=packages/github/src/delivery-client.test.ts .github/delivery-visibility.patch
-          set +e
-          npx --no-install tsx --test packages/github/src/delivery-client.test.ts > /tmp/visibility-red.log 2>&1
-          status=$?
-          set -e
-          cat /tmp/visibility-red.log
-          test "$status" = 1
-          grep -q '^# tests 6$' /tmp/visibility-red.log
-          grep -q '^# fail 3$' /tmp/visibility-red.log
-      - name: Apply the reviewed visibility guard and rebuild distribution
-        run: |
-          git apply --exclude=packages/github/src/delivery-client.test.ts .github/delivery-visibility.patch
-          npm run build:action
+          test "$(git rev-parse HEAD^)" = e460201a62f7928c58f7ee43f77ece32662adf96
+          git apply --check .github/delivery-renderer.patch
+          git apply .github/delivery-renderer.patch
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+            'packages/static/src/delivery.ts':'635eb72993bf2ee95424e4dedabddd68b57d61a5',
+            'packages/static/tests/delivery.test.mjs':'fc348e4ac70bdb065a714f0c72f99fd69c1531e3',
+            'packages/static/tests/delivery-generation.test.mjs':'6c24df392fcc621c849af82e511955d4b16b02d3',
+            'packages/svg/src/index.ts':'21cf631746063450630d0f801dc320f8ee772a29',
+            'packages/svg/tests/delivery.test.mjs':'bb68d7cc9ddec9fb2bd32563071a1ea623405cc4',
+            'packages/static/README.md':'5ab3e18616d86e133400da07cc097ede999bd0e6',
+          }
+          for file, sha in expected.items():
+            if subprocess.check_output(['git','hash-object',file], text=True).strip() != sha:
+              raise SystemExit(f'Published source differs from locally tested candidate: {file}')
+          PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add packages/github/src/delivery-client.ts packages/github/src/delivery-client.test.ts docs/specs/PUBLIC_DELIVERY_EVIDENCE.md action/dist/index.js
+          git add packages/static packages/svg
           git diff --cached --check
-          git commit -m 'fix(delivery): prove every configured repository public in the aggregate request'
-      - name: Verify the entire candidate
+          git commit -m 'refactor(delivery): share one renderer and prove paired-artifact parity'
+      - name: Preserve the newly merged lifecycle and Studio fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge --no-commit --no-ff 8fc6169282c3b05af4190010397abbf307ab1222 || test -f .git/MERGE_HEAD
+          python3 - <<'PY'
+          import subprocess
+          conflicts=set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'], text=True).splitlines())
+          if not conflicts <= {'action/dist/index.js'}: raise SystemExit(f'Unreviewed conflicts: {conflicts}')
+          if conflicts:
+            subprocess.run(['git','checkout','--ours','--','action/dist/index.js'],check=True)
+            subprocess.run(['git','add','action/dist/index.js'],check=True)
+          PY
+          git commit -m 'merge: retain reviewed lifecycle and Studio fixes in delivery draft'
+      - run: npm ci
+      - name: Rebuild checked distribution
+        run: |
+          npm run build:action
+          git add action/dist/index.js
+          git diff --cached --check
+          if ! git diff --cached --quiet; then git commit -m 'build(action): include shared delivery rendering and public visibility validation'; fi
+      - name: Verify the whole candidate
         run: npm run check && npm audit --omit=dev --audit-level=high
       - name: Publish only a verified fast-forward of the draft branch
         run: git push origin HEAD:refs/heads/feat/public-delivery-evidence

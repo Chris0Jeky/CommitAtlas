@@ -1,0 +1,137 @@
+diff --git a/packages/static/README.md b/packages/static/README.md
+index 6fe1c04..5ab3e18 100644
+--- a/packages/static/README.md
++++ b/packages/static/README.md
+@@ -125,2 +125,12 @@ responsive layout cannot remain stale while an unowned file of the same name sur
+ owns commits and deployment. The package has no private-data mode, hidden token fallback, fixture
+ publication mode, or publication side effect.
++
++### Shared delivery presentation
++
++The static `delivery.svg` delegates to `@commit-atlas/svg`'s `renderDeliveryCard`; there is no
++second presentation implementation. Its wide and compact defaults are 860×400 and 480×580,
++with all four windows, lifetime counts, bounded accessible provenance, and the shared
++motion/frame-zero policy. The direct static rendering API retains its `aurora` default theme;
++configured generation passes its chosen theme explicitly. Paired artifacts are checked against
++the shared renderer byte-for-byte. This presentation consolidation does not change
++`delivery.json` or introduce any new data fetch.
+diff --git a/packages/static/tests/delivery-generation.test.mjs b/packages/static/tests/delivery-generation.test.mjs
+index aa1ebcf..6c24df3 100644
+--- a/packages/static/tests/delivery-generation.test.mjs
++++ b/packages/static/tests/delivery-generation.test.mjs
+@@ -4,4 +4,5 @@ import os from "node:os";
+ import path from "node:path";
+ import test from "node:test";
++import { renderDeliveryCard } from "@commit-atlas/svg";
+ import { calculateContributionMetrics } from "@commit-atlas/core";
+ import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "@commit-atlas/github";
+@@ -146,4 +147,8 @@ test("generates paired delivery SVG and identical evidence JSON atomically", asy
+     assert.equal(await readFile(path.join(dark, "delivery.json"), "utf8"), await readFile(path.join(light, "delivery.json"), "utf8"));
+     assert.notEqual(await readFile(path.join(dark, "delivery.svg"), "utf8"), await readFile(path.join(light, "delivery.svg"), "utf8"));
++    for (const [directory, theme] of [[dark, "ember"], [light, "paper"]]) {
++      assert.equal(await readFile(path.join(directory, "delivery.svg"), "utf8"),
++        renderDeliveryCard(delivery(), { theme, width: 860, motion: "none" }));
++    }
+     for (const directory of [dark, light]) {
+       const manifest = JSON.parse(await readFile(path.join(directory, "manifest.json"), "utf8"));
+diff --git a/packages/static/tests/delivery.test.mjs b/packages/static/tests/delivery.test.mjs
+index 9c89c07..fc348e4 100644
+--- a/packages/static/tests/delivery.test.mjs
++++ b/packages/static/tests/delivery.test.mjs
+@@ -2,4 +2,5 @@ import assert from "node:assert/strict";
+ import test from "node:test";
+ import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "@commit-atlas/github";
++import { renderDeliveryCard as renderSharedDeliveryCard } from "@commit-atlas/svg";
+ import { renderDeliveryCard, renderDeliveryEvidence } from "../dist/index.js";
+ 
+@@ -65,14 +66,15 @@ test("delivery card presents the focal rate, comparison, supporting evidence, an
+   assert.match(svg, /^<svg/);
+   assert.match(svg, /role="img"/);
+-  assert.match(svg, /aria-labelledby="delivery-title delivery-desc"/);
+-  assert.match(svg, /<title id="delivery-title">/);
+-  assert.match(svg, /<desc id="delivery-desc">/);
++  assert.match(svg, /aria-label="Delivery evidence for Chris0Jeky"/);
++  assert.match(svg, /<title>Delivery evidence for Chris0Jeky<\/title>/);
++  assert.match(svg, /<desc>/);
+   assert.match(svg, /DELIVERY EVIDENCE/);
+-  assert.match(svg, />12<\/text>/);
+-  assert.match(svg, /PRs \/ WEEK/);
++  assert.match(svg, />12\.0<\/text>/);
++  assert.match(svg, /PRS \/ WEEK/);
+   assert.match(svg, /5\.5×/);
+   assert.match(svg, /90\.9%/);
+   assert.match(svg, /88\.0%/);
+-  assert.match(svg, /10 OPEN · 0\.83 MERGE-WEEKS/);
++  assert.match(svg, />10 OPEN<\/text>/);
++  assert.match(svg, /0\.83 merge-weeks at 7d rate/);
+   assert.match(svg, /100\.0%/);
+   assert.match(svg, /2 CONFIGURED PUBLIC REPOS/);
+@@ -86,6 +88,6 @@ test("delivery card supports the paired light theme and compact layout", () => {
+   const wide = renderDeliveryCard(snapshot(), { theme: "paper", width: 860, motion: "none" });
+   const compact = renderDeliveryCard(snapshot(), { theme: "paper", width: 480, motion: "none" });
+-  assert.match(wide, /viewBox="0 0 860 360"/);
+-  assert.match(compact, /viewBox="0 0 480 520"/);
++  assert.match(wide, /viewBox="0 0 860 400"/);
++  assert.match(compact, /viewBox="0 0 480 580"/);
+   assert.match(wide, /#dfe4c9/);
+   assert.match(compact, /#dfe4c9/);
+@@ -122,2 +124,18 @@ test("delivery card escapes hostile benchmark presentation text", () => {
+   assert.match(svg, /A &amp; B &lt; C/);
+ });
++
++
++test("static delivery uses the shared renderer for every theme, width and motion profile", () => {
++  const evidence = snapshot();
++  for (const theme of ["ember", "aurora", "midnight", "paper"]) {
++    for (const width of [480, 860]) {
++      for (const motion of ["none", "subtle", "ambient", "cinematic"]) {
++        const options = { theme, width, motion };
++        assert.ok(renderDeliveryCard(evidence, options) === renderSharedDeliveryCard(evidence, options),
++          `static/shared renderer mismatch: ${theme}/${width}/${motion}`);
++      }
++    }
++  }
++  assert.ok(renderDeliveryCard(evidence) === renderSharedDeliveryCard(evidence, { theme: "aurora" }),
++    "the direct static API preserves its established aurora default");
++});
+diff --git a/packages/svg/src/index.ts b/packages/svg/src/index.ts
+index bd8edf2..21cf631 100644
+--- a/packages/svg/src/index.ts
++++ b/packages/svg/src/index.ts
+@@ -1445,4 +1445,5 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
+   out += mono(34 + pillWidth / 2, 183, pillLabel, 11, t.chrome, 700, "middle", 0.06);
+   if (compact) {
++    out += mono(width - 34, 156, scopeLabel, 9.5, t.muted, 500, "end", 0.06);
+     out += mono(width - 34, 183, sevenRange, 10, t.muted, 500, "end", 0.06);
+   } else {
+@@ -1500,5 +1501,5 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
+     const drafts = deliveryCount(data.lifetime.drafts);
+     out += mono(34, 348, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN${drafts !== null && drafts > 0 ? ` · ${formatNumber(drafts, false)} DRAFTS` : ""}`, 9.5, t.muted, 500, "start", 0.06);
+-    out += mono(34, 366, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
++    out += mono(34, 360, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+     const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
+     out += mono(34, height - 26, footer, 9.5, t.muted, 500, "start", 0.04);
+diff --git a/packages/svg/tests/delivery.test.mjs b/packages/svg/tests/delivery.test.mjs
+index 0e1bae7..bb68d7c 100644
+--- a/packages/svg/tests/delivery.test.mjs
++++ b/packages/svg/tests/delivery.test.mjs
+@@ -245,2 +245,19 @@ test("delivery integration balance above 100% is never silently capped", () => {
+   assert.match(output, /150\.0%/);
+ });
++
++test("delivery provenance lines remain separated and the configured scope is visible in both layouts", () => {
++  for (const width of [480, 860]) {
++    const output = renderDeliveryCard(deliveryFixture(), { width, theme: "paper" });
++    const labels = [...output.matchAll(/<text\b([^>]*)>([^<]*)<\/text>/g)];
++    assert.ok(labels.some(([, , label]) => label === "2 CONFIGURED PUBLIC REPOS"), `visible scope missing at width ${width}`);
++    const yFor = (prefix) => {
++      const match = labels.find(([, , label]) => label.startsWith(prefix));
++      assert.ok(match, `missing ${prefix}`);
++      return Number(/\by="([\d.]+)"/.exec(match[1])[1]);
++    };
++    const baselines = [yFor("LIFETIME "), yFor("BENCHMARK "), yFor("GITHUB GRAPHQL ")];
++    for (let index = 1; index < baselines.length; index += 1) {
++      assert.ok(baselines[index] - baselines[index - 1] >= 12, `provenance lines overlap at width ${width}: ${baselines}`);
++    }
++  }
++});
