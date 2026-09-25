@@ -1,0 +1,71 @@
+# Temporary branch-only repair transport. Remove with repair-pulse.patch before merge.
+name: Reconcile pulse capsule safety
+on:
+  push:
+    branches: [feat/pulse-capsules]
+    paths: [.github/workflows/reconcile-pulse.yml]
+permissions:
+  contents: write
+concurrency:
+  group: reconcile-pulse-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/pulse-capsules'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Preserve motion and current-main fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = e1a423421eaeab32320e9f95bd456203bebd59f2
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-commit --no-ff c778f27c69f6b7366970d75da91c5d965a9b734a || test -f .git/MERGE_HEAD
+          python3 - <<'PY'
+          import subprocess
+          conflicts = set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'], text=True).splitlines())
+          if not conflicts <= {'action/dist/index.js'}:
+              raise SystemExit(f'Unreviewed conflicts: {sorted(conflicts)}')
+          if conflicts:
+              subprocess.run(['git','checkout','--ours','--','action/dist/index.js'], check=True)
+              subprocess.run(['git','add','action/dist/index.js'], check=True)
+          PY
+          git commit -m 'merge: retain reviewed motion and current-main safeguards in pulse branch'
+          git merge --no-edit --no-ff 1b7136810765d77e8d73f54d49bc8704874208ea
+      - run: npm ci
+      - name: Prove original pulse lifecycle failures
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          npx --no-install tsx --test lib/pulse-lifecycle.test.ts > /tmp/pulse-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/pulse-red.log
+          test "$status" = 1
+          grep -q '^# tests 7$' /tmp/pulse-red.log
+          grep -q '^# fail 6$' /tmp/pulse-red.log
+      - name: Apply reviewed fixes and rebuild the Action
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --check .github/repair-pulse.patch
+          git apply .github/repair-pulse.patch
+          npm run build:action
+          git add lib/pulse-capsule.ts lib/pulse-capsule.test.ts packages/svg/src/index.ts packages/svg/README.md package.json action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(pulse): enforce render-time expiry and isolate cached capsules'
+      - name: Verify all boundaries and the complete candidate
+        run: npm run check && npm audit --omit=dev --audit-level=high
+      - name: Publish only a verified fast-forward of this branch
+        run: git push origin HEAD:refs/heads/feat/pulse-capsules

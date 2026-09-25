@@ -1,0 +1,236 @@
+--- a/lib/pulse-capsule.ts
++++ b/lib/pulse-capsule.ts
+@@ -301,8 +301,9 @@
+ 
+   store(capsule: PulseCapsule, nowMs: number): void {
+     assertSafeNow(nowMs);
+-    assertPulseCapsuleLive(capsule, nowMs);
+-    this.current = capsule;
++    const owned = parsePulseCapsule(capsule, nowMs);
++    assertPulseCapsuleLive(owned, nowMs);
++    this.current = owned;
+   }
+ 
+   get(nowMs: number): PulseCapsule | null {
+@@ -311,7 +312,7 @@
+       this.current = null;
+       return null;
+     }
+-    return this.current;
++    return structuredClone(this.current);
+   }
+ 
+   /** Remaining lifetime in milliseconds, or 0 when empty or expired. */
+--- a/lib/pulse-capsule.test.ts
++++ b/lib/pulse-capsule.test.ts
+@@ -213,7 +213,7 @@
+   assert.throws(() => requirePulseMapping(resolved), /no catalogue mapping for ghost-desk/);
+   assert.doesNotThrow(() => requirePulseMapping([resolved[0]!]));
+ 
+-  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE));
++  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
+   assert.match(card, /Unmapped project/);
+   assert.match(card, /ghost-desk/);
+   assert.match(card, /1 UNMAPPED/);
+@@ -225,7 +225,7 @@
+   const capsule = liveCapsule();
+   const cache = new PulseCapsuleCache();
+   cache.store(capsule, T0 + MINUTE);
+-  assert.equal(cache.get(T0 + MINUTE), capsule);
++  assert.deepEqual(cache.get(T0 + MINUTE), capsule);
+   assert.equal(cache.ttlMs(T0 + MINUTE), capsule.expiresAt - (T0 + MINUTE));
+   assert.equal(cache.get(capsule.expiresAt), null);
+   assert.equal(cache.ttlMs(capsule.expiresAt), 0);
+@@ -233,14 +233,14 @@
+   assert.throws(() => cache.store(capsule, capsule.expiresAt), /expired/);
+   assert.throws(() => assertPulseCapsuleLive(capsule, capsule.expiresAt), /expired/);
+ 
+-  const expiredCard = renderPulseCard(toPulseCardData(capsule, mapping, capsule.expiresAt));
++  const expiredCard = renderPulseCard(toPulseCardData(capsule, mapping, capsule.expiresAt), { nowMs: T0 + MINUTE });
+   assert.match(expiredCard, /Pulse capsule expired/);
+   assert.match(expiredCard, /not live evidence/);
+   assert.doesNotMatch(expiredCard, /11\/12 sampled/);
+ });
+ 
+ test("live card shows denominators, never uptime language or CI states", () => {
+-  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE));
++  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
+   assert.match(card, /role="img"/);
+   assert.match(card, /<title>Public pulse<\/title>/);
+   assert.match(card, /11\/12 sampled/);
+@@ -256,7 +256,7 @@
+ 
+ test("demo capsules preserve synthetic markings end to end", () => {
+   const capsule = parsePulseCapsule(capsuleJson({ sourceMode: "demo" }), T0 + MINUTE);
+-  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE));
++  const card = renderPulseCard(toPulseCardData(capsule, mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
+   assert.match(card, /SYNTHETIC DEMO/);
+   assert.match(card, /<title>Synthetic demo: Public pulse<\/title>/);
+   assert.match(card, /Synthetic demonstration data/);
+@@ -265,7 +265,7 @@
+ test("expired demo capsules stay expired and stay marked", () => {
+   const capsule = liveCapsule();
+   const demo = { ...capsule, sourceMode: "demo" as const };
+-  const card = renderPulseCard(toPulseCardData(demo, mapping, capsule.expiresAt + 1));
++  const card = renderPulseCard(toPulseCardData(demo, mapping, capsule.expiresAt + 1), { nowMs: T0 + MINUTE });
+   assert.match(card, /Pulse capsule expired/);
+   assert.match(card, /SYNTHETIC DEMO/);
+ });
+@@ -280,7 +280,7 @@
+     }],
+   }), T0 + MINUTE);
+   const data = toPulseCardData(capsule, { "atlas-web": injection }, T0 + MINUTE);
+-  const card = renderPulseCard(data);
++  const card = renderPulseCard(data, { nowMs: T0 + MINUTE });
+   assert.doesNotMatch(card, /<img src=x/);
+   assert.match(card, /&lt;img src=x/);
+   assert.match(card, /&amp;/);
+@@ -294,16 +294,16 @@
+       `forbidden XML 1.0 character U+${codePoint.toString(16).toUpperCase()}`,
+     );
+   }
+-  const animated = renderPulseCard(data, { motion: "subtle" });
++  const animated = renderPulseCard(data, { nowMs: T0 + MINUTE, motion: "subtle" });
+   assert.match(animated, /@keyframes card-enter/);
+   assert.match(animated, /prefers-reduced-motion:reduce/);
+   assert.doesNotMatch(animated, /\bboth\b|backwards|from\{[^}]*opacity|from\{[^}]*scale/);
+-  const still = renderPulseCard(data);
++  const still = renderPulseCard(data, { nowMs: T0 + MINUTE });
+   assert.doesNotMatch(still, /<style>|@keyframes|animation:/);
+ });
+ 
+ test("accessible description names every selected project with its fraction", () => {
+-  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE));
++  const card = renderPulseCard(toPulseCardData(liveCapsule(), mapping, T0 + MINUTE), { nowMs: T0 + MINUTE });
+   assert.match(card, /<desc>[\s\S]*?Atlas Web[\s\S]*?11\/12 sampled checks[\s\S]*?Atlas API[\s\S]*?3\/5 sampled checks[\s\S]*?<\/desc>/);
+ });
+ 
+--- a/packages/svg/src/index.ts
++++ b/packages/svg/src/index.ts
+@@ -273,6 +273,11 @@
+   readonly checkedAt: string;
+   readonly sampledGood: number;
+   readonly sampledTotal: number;
++}
++
++/** Rendering time is supplied explicitly so this dependency-free renderer stays deterministic. */
++export interface PulseRenderOptions extends RenderOptions {
++  readonly nowMs: number;
+ }
+ 
+ export interface PulseCardData extends SourceLabelledCardData {
+@@ -1224,13 +1229,22 @@
+   return theme.muted;
+ }
+ 
++function pulseTimestampValue(value: unknown): number | null {
++  if (typeof value !== "string" || !PULSE_TIMESTAMP_PATTERN.test(value)) return null;
++  const milliseconds = Date.parse(value);
++  if (!Number.isFinite(milliseconds)) return null;
++  // Date.parse normalizes impossible calendar dates; do not present those as evidence.
++  return new Date(milliseconds).toISOString().slice(0, 19) === value.slice(0, 19)
++    ? milliseconds : null;
++}
++
+ function pulseTimestampLabel(value: unknown): string {
+-  if (typeof value !== "string" || !PULSE_TIMESTAMP_PATTERN.test(value)) return "an unknown time";
++  if (typeof value !== "string" || pulseTimestampValue(value) === null) return "an unknown time";
+   return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
+ }
+ 
+ function pulseCheckedLabel(checkedAt: unknown): string {
+-  if (typeof checkedAt !== "string" || !PULSE_TIMESTAMP_PATTERN.test(checkedAt)) {
++  if (typeof checkedAt !== "string" || pulseTimestampValue(checkedAt) === null) {
+     return "check time unavailable";
+   }
+   return `checked ${checkedAt.slice(0, 10)} ${checkedAt.slice(11, 16)} UTC`;
+@@ -1245,16 +1259,24 @@
+  * two availability claims cannot merge into one score. An expired capsule renders an expired
+  * panel instead of probe data.
+  */
+-export function renderPulseCard(data: PulseCardData, options?: RenderOptions): string {
++export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions): string {
++  const nowMs = options?.nowMs;
++  const generatedAt = pulseTimestampValue(data.generatedAt);
++  const expiresAt = pulseTimestampValue(data.expiresAt);
++  const validBounds = Number.isSafeInteger(nowMs) && nowMs >= 0 && nowMs <= 8_640_000_000_000_000
++    && generatedAt !== null && expiresAt !== null && expiresAt > generatedAt && generatedAt <= nowMs;
++  const status = !validBounds ? "unavailable"
++    : data.status === "expired" || nowMs >= expiresAt! ? "expired"
++    : data.status === "live" ? "live" : "unavailable";
+   const validStates: readonly PulseProbeState[] = ["up", "down", "unknown", "stale"];
+-  const rows = data.status === "live"
++  const rows = status === "live"
+     ? data.projects.filter((row) => String(row.id ?? "").trim() && validStates.includes(row.state))
+     : [];
+   const shown = rows.slice(0, PULSE_MAX_ROWS);
+-  const totalRows = data.status === "live" ? data.projects.length : 0;
++  const totalRows = status === "live" ? data.projects.length : 0;
+   const unmapped = Number.isFinite(data.unmappedCount)
+     ? Math.max(0, Math.trunc(data.unmappedCount as number)) : 0;
+-  const rowsHeight = 96 + shown.length * 44 + 34;
++  const rowsHeight = Math.max(162, 96 + shown.length * 44 + 34);
+   const o = optionsFor(options, rowsHeight, "Public pulse",
+     "Operator-reviewed Pulseboard probe capsule. Sampled checks, not time-weighted uptime; CI health is shown separately.",
+     rowsHeight, 420);
+@@ -1269,7 +1291,9 @@
+     return `${name} (${truncateText(String(row.id), 30)}): ${pulseStateLabel(row.state)}, ` +
+       `${good}/${total} sampled checks, ${pulseCheckedLabel(row.checkedAt)}${total <= 0 ? ", no samples observed" : ""}.`;
+   };
+-  const accessibleDescription = data.status === "expired"
++  const accessibleDescription = status === "unavailable"
++    ? `${metadata.description} Capsule time bounds or rendering time are unavailable. Probe states are not live evidence.`
++    : status === "expired"
+     ? `${metadata.description} Capsule generated ${pulseTimestampLabel(data.generatedAt)}; ` +
+       `expired at ${pulseTimestampLabel(data.expiresAt)}. Probe states are not live evidence.`
+     : `${metadata.description} Observed window ${windowLabel ?? "unavailable"}. ` +
+@@ -1283,10 +1307,12 @@
+   out += numeral(34, 48, 1, "PUBLIC PULSE", t);
+   out += sourceMarker(data.source, width - 34, 31, t);
+   if (windowLabel) out += mono(width - 34, 64, windowLabel, 10, t.muted, 500, "end", 0.04);
+-  if (data.status === "expired") {
+-    out += text(34, 100, "Pulse capsule expired", 16, t.muted, 700);
++  if (status !== "live") {
++    out += text(34, 100, status === "expired" ? "Pulse capsule expired" : "Pulse capsule unavailable", 16, t.muted, 700);
+     out += text(34, 122, truncateText(
+-      `Expired ${pulseTimestampLabel(data.expiresAt)}; probe states are not live evidence.`,
++      status === "expired"
++        ? `Expired ${pulseTimestampLabel(data.expiresAt)}; probe states are not live evidence.`
++        : "Time bounds unavailable; probe states are not live evidence.",
+       width < 560 ? 52 : 80,
+     ), 12, t.muted);
+     return out + `</g>` + svgEnd();
+--- a/packages/svg/README.md
++++ b/packages/svg/README.md
+@@ -79,3 +79,20 @@
+ derived `percentage` together and can be passed directly to `renderLanguagesCard`. Profile cards
+ render an optional source-backed aggregate `stars` value when supplied and leave it absent
+ otherwise. Partial bytes/percentage mixtures are rejected because their basis is ambiguous.
++
++## Manual public pulse capsules
++
++`renderPulseCard(data, { nowMs, theme?, motion? })` renders the separately validated
++public-pulse projection. Supply the current rendering time explicitly in epoch milliseconds.
++A previously adapted `live` card is not proof that its capsule is still live: the renderer
++rechecks the original generation and expiry bounds on every call. At expiry it removes
++probe rows; a missing or invalid clock or invalid time bounds produces an unavailable panel.
++The renderer does not read the process clock, open files, fetch URLs, or install a timer.
++A saved SVG is a snapshot, not a self-expiring live widget, and must not be served as current
++evidence after its source expiry without rerendering.
++
++The server-side `lib/pulse-capsule.ts` adapter accepts only operator-reviewed local files.
++Its cache validates and owns a deep copy of each stored capsule and returns isolated copies.
++Consumers must preserve the original expiry and enforce it when publishing or caching output.
++Sampled checks retain their numerator/denominator, remain separate from CI, and are never
++reported as time-weighted uptime. This package does not add a hosted route or remote ingestion.
+--- a/package.json
++++ b/package.json
+@@ -44,7 +44,7 @@
+     "typecheck:worker": "wrangler types worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime=false --check",
+     "typecheck": "tsc --noEmit",
+     "test:core": "vitest run --config packages/core/vitest.config.ts",
+-    "test:github": "tsx --test app/api/v1/health/route.test.ts tests/motion-probe-route.test.ts tests/hosted-motion-routes.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
++    "test:github": "tsx --test app/api/v1/health/route.test.ts tests/motion-probe-route.test.ts tests/hosted-motion-routes.test.ts lib/pulse-capsule.test.ts lib/pulse-lifecycle.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
+     "test:chassis": "tsx --test lib/chassis.test.ts lib/health.test.ts lib/instruments.test.ts lib/density-scan.test.ts lib/evidence.test.ts lib/research-bridge.test.ts lib/landing.test.ts",
+     "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-refresh-lifecycle.test.ts app/studio/studio-urls.test.ts",
+     "test:svg": "npm --prefix packages/svg test",
