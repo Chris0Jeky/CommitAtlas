@@ -1,0 +1,63 @@
+# Temporary evidence-only workflow for parked PR #186; no publication or product change.
+name: Bounded WebKit identity diagnostic
+on:
+  push:
+    branches: [fix/issue-180-webkit-identity]
+    paths: [.github/workflows/webkit-diagnostic.yml]
+permissions:
+  contents: read
+concurrency:
+  group: webkit-identity-diagnostic
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/issue-180-webkit-identity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+      - name: Pin the diagnostic source and browser driver
+        run: |
+          test "$(git rev-parse HEAD^)" = 132c1b6628a01feddfee399bd660501652050ae1
+          npm install --prefix "$RUNNER_TEMP/webkit-driver" --ignore-scripts --no-audit --no-fund --save-exact playwright@1.57.0
+          node "$RUNNER_TEMP/webkit-driver/node_modules/playwright/cli.js" install --with-deps webkit
+      - name: Run one seven-row diagnostic without retries
+        id: capture
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/webkit-evidence"
+          git rev-parse HEAD > "$RUNNER_TEMP/webkit-evidence/HEAD"
+          node --version > "$RUNNER_TEMP/webkit-evidence/node-version.txt"
+          node tests/motion-probes/capture-github.mjs \
+            --playwright-cli "$RUNNER_TEMP/webkit-driver/node_modules/playwright/cli.js" \
+            --playwright-engine webkit --probe css-enter \
+            --include-positive-control --include-reduced-controls \
+            --out "$RUNNER_TEMP/webkit-evidence/diagnostic" \
+            > "$RUNNER_TEMP/webkit-evidence/capture.log" 2>&1
+      - name: Preserve immutable hashes and the literal outcome
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/webkit-evidence"
+          printf '%s\n' '${{ steps.capture.outcome }}' > "$RUNNER_TEMP/webkit-evidence/outcome.txt"
+          cd "$RUNNER_TEMP/webkit-evidence"
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-diagnostic-${{ github.sha }}
+          path: ${{ runner.temp }}/webkit-evidence/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Preserve failed capture as a failed job
+        if: always()
+        run: test '${{ steps.capture.outcome }}' = success
