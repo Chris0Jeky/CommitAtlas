@@ -1,13 +1,9 @@
-# Temporary repair transport for PR #227. Remove before final review/merge.
+# Temporary draft-branch verification; remove with delivery-visibility.patch before final review.
 name: Delivery maintenance evidence
 on:
   push:
     branches: [feat/public-delivery-evidence]
-    paths:
-      - .github/workflows/maintenance-evidence.yml
-      - packages/**
-      - action/**
-      - package.json
+    paths: [.github/workflows/maintenance-evidence.yml]
 permissions:
   contents: write
 concurrency:
@@ -22,40 +18,35 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
           cache: npm
       - run: npm ci
-      - name: Export public source and selected locked development dependencies
+      - name: Prove the public-scope regressions on the original implementation
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/commitatlas-maintenance
-          git archive --format=tar.gz 9c0aad155fc79989a72eadc36050ac1a74386598 > /tmp/commitatlas-maintenance/main.tar.gz
-          git archive --format=tar.gz HEAD > /tmp/commitatlas-maintenance/delivery.tar.gz
-          node --input-type=module <<'JS'
-          import { existsSync } from 'node:fs';
-          import { execFileSync } from 'node:child_process';
-          const names = ['zod','typescript','tsx','esbuild','@esbuild','get-tsconfig','resolve-pkg-maps','react','react-dom','scheduler','@types','csstype','undici-types'];
-          execFileSync('tar', ['-czf','/tmp/commitatlas-maintenance/dependencies.tar.gz', ...names.map(n => `node_modules/${n}`).filter(existsSync)]);
-          JS
-          git rev-parse HEAD > /tmp/commitatlas-maintenance/HEAD
-          sha256sum /tmp/commitatlas-maintenance/*.tar.gz > /tmp/commitatlas-maintenance/SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: maintenance-${{ github.sha }}
-          path: /tmp/commitatlas-maintenance/
-          retention-days: 2
-      - name: Rebuild only the checked Action distribution
+          test "$(git rev-parse HEAD^)" = cbe4b7e755a15d80ceafa09229483c4b38cb1ead
+          git apply --include=packages/github/src/delivery-client.test.ts .github/delivery-visibility.patch
+          set +e
+          npx --no-install tsx --test packages/github/src/delivery-client.test.ts > /tmp/visibility-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/visibility-red.log
+          test "$status" = 1
+          grep -q '^# tests 6$' /tmp/visibility-red.log
+          grep -q '^# fail 3$' /tmp/visibility-red.log
+      - name: Apply the reviewed visibility guard and rebuild distribution
         run: |
+          git apply --exclude=packages/github/src/delivery-client.test.ts .github/delivery-visibility.patch
           npm run build:action
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add action/dist/index.js
+          git add packages/github/src/delivery-client.ts packages/github/src/delivery-client.test.ts docs/specs/PUBLIC_DELIVERY_EVIDENCE.md action/dist/index.js
           git diff --cached --check
-          if ! git diff --cached --quiet; then git commit -m 'build(action): refresh checked bundle for verified delivery repairs'; fi
+          git commit -m 'fix(delivery): prove every configured repository public in the aggregate request'
       - name: Verify the entire candidate
         run: npm run check && npm audit --omit=dev --audit-level=high
       - name: Publish only a verified fast-forward of the draft branch
