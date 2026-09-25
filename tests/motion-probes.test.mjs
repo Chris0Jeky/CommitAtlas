@@ -80,7 +80,8 @@ test("fixture index supports both image embedding paths and declares the reduced
 test("capture options accept an explicit HTTPS asset base and bounded host label", () => {
   const assetBase = "https://motion.example.test/probes/";
   const options = parseCaptureOptions([
-    "--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"),
+    "--playwright-engine", "chromium", "--playwright-cli", testPlaywrightCli,
+    "--out", path.join(testOutputDirectory, "motion"),
     "--asset-base", assetBase, "--host-label", "worker-direct",
   ]);
   assert.equal(options.assetBase, assetBase);
@@ -110,6 +111,10 @@ test("capture options reject non-bare asset bases and unbounded labels", () => {
   assert.throws(() => parseHostLabel("x".repeat(65)), /host-label/);
   assert.throws(() => parseHostLabel("worker/direct"), /host-label/);
   assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--asset-base"]), /asset-base/);
+  assert.throws(
+    () => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--asset-base", "https://motion.example.test/probes/"]),
+    /asset-base requires --playwright-engine and --playwright-cli/,
+  );
   assert.throws(() => parseCaptureOptions(["--browser", testBrowser, "--out", path.join(testOutputDirectory, "motion"), "--host-label"]), /host-label/);
 });
 
@@ -248,6 +253,31 @@ test("direct video timing passes the Node anchor into the browser evaluation", a
   const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
   assert.doesNotMatch(source, /evaluate\(\(\) => performance\.now\(\) - startedAt\)/u);
   assert.match(source, /evaluate\(\(anchor\) => performance\.now\(\) - anchor, startedAt\)/u);
+});
+
+test("hosted response binding is finalized after rendered pixels are captured", async () => {
+  const source = await readFile(path.join(testDirectory, "motion-probes", "capture.mjs"), "utf8");
+  const recordedBranch = source.indexOf("if (recordVideo) {");
+  const recordedDuration = source.indexOf("const measuredVisibleDurationMs", recordedBranch);
+  const recordedFinalize = source.indexOf(
+    "if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());",
+    recordedDuration,
+  );
+  const independentBranch = source.indexOf("} else for (const timeMs of frameTimes)", recordedBranch);
+  const independentScreenshot = source.indexOf(
+    "await browserPage.screenshot({ path: file });",
+    independentBranch,
+  );
+  const independentFinalize = source.indexOf(
+    "if (hostedGate) browserHostedAssetObservations.push(hostedGate.assertComplete());",
+    independentScreenshot,
+  );
+
+  assert.ok(recordedDuration > recordedBranch, "the continuous capture must retain its final timing boundary");
+  assert.ok(recordedFinalize > recordedDuration && recordedFinalize < independentBranch,
+    "the continuous response gate must be finalized only after every screenshot deadline");
+  assert.ok(independentFinalize > independentScreenshot,
+    "each independent response gate must be finalized after its screenshot is written");
 });
 
 test("recorded video metadata verifies WebM identity without claiming parsed duration", () => {

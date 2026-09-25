@@ -147,7 +147,7 @@ export async function resolveContainedPath(
   }
   const target = path.resolve(root, relativePath);
   assertInside(root, target, options.label);
-  await assertNoSymlinkComponents(root, target, options.mustExist);
+  await assertNoSymlinkComponents(root, target, options.mustExist, options.label);
   return target;
 }
 
@@ -158,7 +158,7 @@ function assertInside(root: string, target: string, label: string): void {
   }
 }
 
-async function assertNoSymlinkComponents(root: string, target: string, mustExist: boolean): Promise<void> {
+async function assertNoSymlinkComponents(root: string, target: string, mustExist: boolean, label: string): Promise<void> {
   const relative = path.relative(root, target);
   const parts = relative.split(path.sep);
   let current = root;
@@ -169,7 +169,10 @@ async function assertNoSymlinkComponents(root: string, target: string, mustExist
       if (metadata.isSymbolicLink()) throw new Error("Repository paths must not traverse symbolic links");
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT" && (!mustExist || index < parts.length - 1)) return;
+      if (code === "ENOENT") {
+        if (!mustExist) return;
+        throw new Error(`${label} path does not exist`);
+      }
       throw error;
     }
   }

@@ -649,7 +649,7 @@ function statusColor(state: CiState, theme: SvgTheme): string {
 }
 
 function statusLabel(state: CiState): string {
-  return { passing: "Passing", failing: "Failing", pending: "Pending", stale: "Stale", unavailable: "Unavailable", unconfigured: "Unconfigured" }[state];
+  return ({ passing: "Passing", failing: "Failing", pending: "Pending", stale: "Stale", unavailable: "Unavailable", unconfigured: "Unconfigured" } as Record<string, string>)[state] ?? "Unknown";
 }
 
 function lifecycleLabel(state: Lifecycle): string {
@@ -1583,7 +1583,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
   const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW"
     : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
-      : "PUBLIC GITHUB";
+      : data.source === "public-github" ? "PUBLIC GITHUB" : "SOURCE UNKNOWN";
   const breakdownQualifier = data.breakdownBasis === "public-profile-percentages"
     ? "Public profile activity percentage mix from calendar-year views, not scoped to this contribution window"
     : "Breakdown";
@@ -1605,7 +1605,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += `<g class="atlas-enter"><circle cx="30" cy="32" r="16" fill="${t.accent}"/>`;
   out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
   out += text(56, 29, name, 18, t.text, 760) + text(56, 47, `@${login}`, 10, t.muted, 550);
-  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : t.positive, 700, "end");
+  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted, 700, "end");
   out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 

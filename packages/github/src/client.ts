@@ -410,8 +410,8 @@ export class GitHubClient {
     // A 200 whose workflow_runs is missing or not an array is an unreadable
     // observation, not an observed absence of runs. Report it as unavailable so
     // a malformed payload can never present as configured-and-clean or as
-    // "Not configured".
-    if (!Array.isArray(result.workflow_runs)) {
+    // "Not configured". A mixed array containing any non-object entry is likewise unreadable.
+    if (!Array.isArray(result.workflow_runs) || result.workflow_runs.some((entry) => !isRecord(entry))) {
       return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
     const runs = result.workflow_runs.filter(isRecord);
@@ -829,7 +829,7 @@ function matchesUtcDate(
 
 function requiredMetric(record: Record<string, unknown>, key: string): number {
   const value = record[key];
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || !Number.isSafeInteger(value)) {
     throw new GitHubApiError("invalid_response", `GitHub returned an invalid ${key} metric`);
   }
   return value;
@@ -964,7 +964,15 @@ function contributionLevel(value: unknown): number {
     THIRD_QUARTILE: 3,
     FOURTH_QUARTILE: 4,
   };
-  return typeof value === "string" ? levels[value] ?? 0 : 0;
+  // An absent field keeps the historical level 0 (the query requests it and GitHub's schema makes it
+  // non-null, so only hand-written fixtures omit it); a present value outside the enum - a new or
+  // renamed quartile, null, another type - is an upstream contract change and fails closed.
+  if (value === undefined) return 0;
+  const level = typeof value === "string" && Object.hasOwn(levels, value) ? levels[value] : undefined;
+  if (level === undefined) {
+    throw new GitHubApiError("invalid_response", "GitHub returned an unknown contribution level");
+  }
+  return level;
 }
 
 function assertRequestedContributionWindow(

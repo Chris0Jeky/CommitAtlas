@@ -200,6 +200,72 @@ test("exposes only a scope-proven public contribution calendar", async () => {
   assert.equal("restrictedContributions" in contributions, false);
 });
 
+test("rejects an unknown contribution level instead of rendering it as no activity", async () => {
+  // A renamed quartile, an inherited Object.prototype key, null and a non-string are all unknown.
+  for (const level of ["FIFTH_QUARTILE", "toString", null, 3]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      return json({
+        data: {
+          user: {
+            contributionsCollection: {
+              totalCommitContributions: 2,
+              totalIssueContributions: 1,
+              totalPullRequestContributions: 1,
+              totalPullRequestReviewContributions: 1,
+              hasAnyRestrictedContributions: false,
+              restrictedContributionsCount: 0,
+              contributionCalendar: {
+                weeks: [{ contributionDays: [
+                  { date: "2026-08-18", contributionCount: 0, contributionLevel: "NONE" },
+                  { date: "2026-08-19", contributionCount: 5, contributionLevel: level },
+                ] }],
+              },
+            },
+          },
+        },
+      });
+    };
+    await assert.rejects(
+      new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1),
+      (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+      `contributionLevel=${level}`,
+    );
+  }
+});
+
+test("keeps level 0 for a contribution day whose level field is absent", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    return json({
+      data: {
+        user: {
+          contributionsCollection: {
+            totalCommitContributions: 2,
+            totalIssueContributions: 1,
+            totalPullRequestContributions: 1,
+            totalPullRequestReviewContributions: 1,
+            hasAnyRestrictedContributions: false,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              weeks: [{ contributionDays: [
+                { date: "2026-08-18", contributionCount: 0, contributionLevel: "NONE" },
+                { date: "2026-08-19", contributionCount: 5 },
+              ] }],
+            },
+          },
+        },
+      },
+    });
+  };
+  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 1);
+  assert.deepEqual(contributions.days.map(({ date, count, level }) => ({ date, count, level })), [
+    { date: "2026-08-19", count: 5, level: 0 },
+  ]);
+});
+
 test("rejects a contribution window that ends before the requested UTC date", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -268,9 +334,9 @@ test("accepts complete zero contribution days across a leap day", async () => {
         hasAnyRestrictedContributions: false,
         restrictedContributionsCount: 0,
         contributionCalendar: { weeks: [{ contributionDays: [
-          { date: "2024-02-28", contributionCount: 0 },
-          { date: "2024-02-29", contributionCount: 0 },
-          { date: "2024-03-01", contributionCount: 0 },
+          { date: "2024-02-28", contributionCount: 0, contributionLevel: "NONE" },
+          { date: "2024-02-29", contributionCount: 0, contributionLevel: "NONE" },
+          { date: "2024-03-01", contributionCount: 0, contributionLevel: "NONE" },
         ] }] },
       } } },
     });
@@ -553,6 +619,32 @@ test("rejects malformed required metrics rather than treating them as zero", asy
     return url.pathname.endsWith("/repos")
       ? json([])
       : json({ login: "octocat", public_repos: "not-a-number", followers: 1, following: 2 });
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("rejects a fractional repository metric rather than storing it as exact data", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/repos/acme/atlas") return json({ ...projectRepository("atlas"), stargazers_count: 2.5 });
+    if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]])),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "invalid_response",
+  );
+});
+
+test("rejects an unsafe-integer profile metric rather than storing it as exact data", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    return url.pathname.endsWith("/repos")
+      ? json([])
+      : json({ login: "octocat", public_repos: 0, followers: 1e30, following: 0 });
   };
   await assert.rejects(
     new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
@@ -950,6 +1042,202 @@ test("treats only 404 as an absent optional release or workflow run", async () =
   assert.equal(restricted.freshness.mode, "partial");
 });
 
+test("maps a published release through fetchProjects with the first downloadable asset", async () => {
+  const board = await new GitHubClient({
+    fetchImpl: projectTextFetch({}, {
+      tag_name: "v2.0.0",
+      name: "Atlas 2.0",
+      html_url: "https://github.com/acme/atlas/releases/tag/v2.0.0",
+      published_at: "2026-08-18T12:00:00Z",
+      assets: [
+        { name: "atlas-linux.zip", browser_download_url: "https://github.com/acme/atlas/releases/download/v2.0.0/atlas-linux.zip" },
+        { name: "checksums.txt", browser_download_url: "https://github.com/acme/atlas/releases/download/v2.0.0/checksums.txt" },
+      ],
+    }),
+    now: () => NOW,
+  }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]));
+
+  assert.equal(board.projects[0].releaseState, "published");
+  assert.deepEqual(board.projects[0].release, {
+    tag: "v2.0.0",
+    name: "Atlas 2.0",
+    url: "https://github.com/acme/atlas/releases/tag/v2.0.0",
+    publishedAt: "2026-08-18T12:00:00Z",
+    download: {
+      name: "atlas-linux.zip",
+      url: "https://github.com/acme/atlas/releases/download/v2.0.0/atlas-linux.zip",
+    },
+  });
+});
+
+test("falls back to the tag and default asset name and skips non-downloadable assets", async () => {
+  const board = await new GitHubClient({
+    fetchImpl: projectTextFetch({}, {
+      tag_name: "v2.1.0",
+      html_url: "https://github.com/acme/atlas/releases/tag/v2.1.0",
+      published_at: "2026-08-18T12:00:00Z",
+      assets: [
+        { name: "not-a-download", browser_download_url: "javascript:alert(1)" },
+        { browser_download_url: "https://github.com/acme/atlas/releases/download/v2.1.0/atlas.tar.gz" },
+      ],
+    }),
+    now: () => NOW,
+  }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]));
+
+  assert.equal(board.projects[0].releaseState, "published");
+  assert.deepEqual(board.projects[0].release, {
+    tag: "v2.1.0",
+    name: "v2.1.0",
+    url: "https://github.com/acme/atlas/releases/tag/v2.1.0",
+    publishedAt: "2026-08-18T12:00:00Z",
+    download: {
+      name: "Release asset",
+      url: "https://github.com/acme/atlas/releases/download/v2.1.0/atlas.tar.gz",
+    },
+  });
+
+  const withoutAssets = await new GitHubClient({
+    fetchImpl: projectTextFetch({}, {
+      tag_name: "v2.1.0",
+      html_url: "https://github.com/acme/atlas/releases/tag/v2.1.0",
+      published_at: "2026-08-18T12:00:00Z",
+      assets: [],
+    }),
+    now: () => NOW,
+  }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]));
+
+  assert.equal(withoutAssets.projects[0].releaseState, "published");
+  assert.equal(withoutAssets.projects[0].release?.tag, "v2.1.0");
+  assert.equal(withoutAssets.projects[0].release?.download, null);
+});
+
+test("reports a release missing its tag, url or timestamp as unavailable", async () => {
+  const complete: Record<string, unknown> = {
+    tag_name: "v2.0.0",
+    name: "Atlas 2.0",
+    html_url: "https://github.com/acme/atlas/releases/tag/v2.0.0",
+    published_at: "2026-08-18T12:00:00Z",
+    assets: [],
+  };
+  for (const key of ["tag_name", "html_url", "published_at"]) {
+    const release: Record<string, unknown> = { ...complete };
+    delete release[key];
+    const board = await new GitHubClient({
+      fetchImpl: projectTextFetch({}, release),
+      now: () => NOW,
+    }).fetchProjects("acme", ["atlas"], new Map([["atlas", "active"]]));
+    assert.equal(board.projects[0].releaseState, "unavailable", `missing ${key}`);
+    assert.equal(board.projects[0].release, null, `missing ${key}`);
+  }
+});
+
+test("maps workflow conclusions to CI states through fetchProjects", async () => {
+  const observedAt = "2026-08-18T23:00:00Z";
+  const cases: Array<{ label: string; run: Record<string, unknown>; state: string; ciLabel: string }> = [
+    { label: "failure", run: { status: "completed", conclusion: "failure", updated_at: observedAt }, state: "failing", ciLabel: "Failing" },
+    { label: "cancelled", run: { status: "completed", conclusion: "cancelled", updated_at: observedAt }, state: "failing", ciLabel: "Failing" },
+    { label: "timed_out", run: { status: "completed", conclusion: "timed_out", updated_at: observedAt }, state: "failing", ciLabel: "Failing" },
+    { label: "success", run: { status: "completed", conclusion: "success", updated_at: observedAt }, state: "passing", ciLabel: "Passing" },
+    { label: "queued", run: { status: "queued", updated_at: observedAt }, state: "pending", ciLabel: "Pending" },
+    { label: "in_progress", run: { status: "in_progress", updated_at: observedAt }, state: "pending", ciLabel: "Pending" },
+    // Current behaviour pins action_required as unavailable: core maps only
+    // failure/cancelled/timed_out to failing, so any other known conclusion
+    // without a passing/pending mapping stays unavailable.
+    { label: "action_required", run: { status: "completed", conclusion: "action_required", updated_at: observedAt }, state: "unavailable", ciLabel: "CI unavailable" },
+  ];
+  for (const { label, run, state, ciLabel } of cases) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [run] });
+      assert.fail(`unexpected lookup: ${url.pathname}`);
+    };
+    const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+      "acme",
+      ["atlas"],
+      new Map([["atlas", "active"]]),
+      new Map([["atlas", "ci.yml"]]),
+    );
+    assert.equal(board.projects[0].ci.state, state, label);
+    assert.equal(board.projects[0].ci.label, ciLabel, label);
+    assert.equal(board.projects[0].ci.workflow, "ci.yml", label);
+    assert.equal(board.projects[0].ci.checkedAt, observedAt, label);
+  }
+});
+
+test("reports an unknown workflow conclusion as unavailable rather than passing or failing", async () => {
+  for (const run of [
+    { status: "completed", conclusion: "mystery", updated_at: "2026-08-18T23:00:00Z" },
+    { status: "weird-status", updated_at: "2026-08-18T23:00:00Z" },
+  ]) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [run] });
+      assert.fail(`unexpected lookup: ${url.pathname}`);
+    };
+    const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
+      "acme",
+      ["atlas"],
+      new Map([["atlas", "active"]]),
+      new Map([["atlas", "ci.yml"]]),
+    );
+    const label = JSON.stringify(run);
+    assert.equal(board.projects[0].ci.state, "unavailable", label);
+    assert.equal(board.projects[0].ci.label, "CI unavailable", label);
+    assert.notEqual(board.projects[0].ci.state, "passing", label);
+    assert.notEqual(board.projects[0].ci.state, "failing", label);
+  }
+});
+
+test("rejects a profile whose repository list contains a private repository", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 2, followers: 1, following: 1 });
+    }
+    if (url.pathname === "/users/octocat/repos") {
+      return json([
+        { stargazers_count: 1, forks_count: 0, private: false },
+        { stargazers_count: 2, forks_count: 1, private: true },
+      ]);
+    }
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  await assert.rejects(
+    new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+    (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "private_data");
+      assert.equal(error.status, 403);
+      assert.equal(error.message, "GitHub returned a private repository in a public profile response");
+      return true;
+    },
+  );
+});
+
+test("accepts a profile whose repositories omit the private flag or mark it false", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 2, followers: 1, following: 1 });
+    }
+    if (url.pathname === "/users/octocat/repos") {
+      return json([
+        { stargazers_count: 3, forks_count: 1, private: false },
+        { stargazers_count: 4, forks_count: 2 },
+      ]);
+    }
+    assert.fail(`unexpected lookup: ${url.pathname}`);
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.equal(profile.login, "octocat");
+  assert.equal(profile.stars, 7);
+  assert.equal(profile.forks, 3);
+});
+
 test("reports missing or non-array workflow_runs as unavailable rather than unconfigured", async () => {
   for (const body of [
     {},
@@ -958,6 +1246,7 @@ test("reports missing or non-array workflow_runs as unavailable rather than unco
     { workflow_runs: { 0: { status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" } } },
     { workflow_runs: [] },
     { workflow_runs: ["not-a-run"] },
+    { workflow_runs: ["corrupt", { status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z", html_url: "https://github.com/acme/atlas/actions/runs/1", head_sha: "0123456789abcdef0123456789abcdef01234567" }] },
   ]) {
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -994,7 +1283,7 @@ test("returns exactly the requested inclusive UTC contribution window", async ()
       const contributionDays = Array.from({ length: requestedDays + 4 }, (_, offset) => {
         const date = new Date(start);
         date.setUTCDate(date.getUTCDate() + offset);
-        return { date: date.toISOString().slice(0, 10), contributionCount: 1 };
+        return { date: date.toISOString().slice(0, 10), contributionCount: 1, contributionLevel: "FIRST_QUARTILE" };
       });
       return json({ data: { user: { contributionsCollection: {
         totalCommitContributions: 1,
