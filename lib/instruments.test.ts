@@ -205,3 +205,102 @@ test("the four-square meter bins a reading without rounding nothing up to someth
   assert.equal(quarterMeter(-5), 0);
   assert.equal(quarterMeter(Number.NaN), 0);
 });
+
+test("the density grid carries each day's count and level through unchanged", () => {
+  const days = [
+    { date: "2026-08-24", count: 3, level: 2 },
+    { date: "2026-08-25", count: 0, level: 0 },
+    { date: "2026-08-26", count: 12, level: 4 },
+  ];
+  const grid = densityGrid(days);
+
+  assert.deepEqual(
+    grid.cells.map((cell) => [cell.date, cell.count, cell.level]),
+    [
+      ["2026-08-24", 3, 2],
+      ["2026-08-25", 0, 0],
+      ["2026-08-26", 12, 4],
+    ],
+  );
+  // Boundary: a zero count and a zero level survive verbatim instead of being coerced.
+  assert.equal(grid.cells[1]!.count, 0);
+  assert.equal(grid.cells[1]!.level, 0);
+  // Bad input is still passed through: a negative count is not clamped into range.
+  const negative = densityGrid([{ date: "2026-08-24", count: -2, level: 1 }]);
+  assert.equal(negative.cells[0]!.count, -2);
+  assert.equal(negative.cells[0]!.level, 1);
+});
+
+test("a day without a level gets the documented zero default", () => {
+  const grid = densityGrid([
+    { date: "2026-08-24", count: 3, level: 2 },
+    { date: "2026-08-25", count: 5 },
+    { date: "2026-08-26", count: 0, level: 0 },
+  ]);
+
+  assert.equal(grid.cells[0]!.level, 2);
+  assert.equal(grid.cells[1]!.level, 0);
+  assert.equal(grid.cells[2]!.level, 0);
+  // Boundary: an explicit `undefined` level falls back the same way as a missing one.
+  const explicit = densityGrid([{ date: "2026-08-24", count: 1, level: undefined }]);
+  assert.equal(explicit.cells[0]!.level, 0);
+  // Boundary: a single defaulted day still opens the grid at its own weekday row.
+  assert.equal(explicit.cells[0]!.y, 5);
+  assert.equal(explicit.columns, 1);
+});
+
+test("density grid cells map to the computed week columns and weekday rows", () => {
+  // 2026-08-24 is a Monday, so slots 1..8 share column 0 until the Sunday slot wraps.
+  const days = Array.from({ length: 8 }, (_, offset) => ({
+    date: new Date(Date.UTC(2026, 7, 24 + offset)).toISOString().slice(0, 10),
+    count: offset,
+    level: 1,
+  }));
+  const grid = densityGrid(days);
+
+  assert.deepEqual(
+    grid.cells.map((cell) => cell.column),
+    [0, 0, 0, 0, 0, 0, 1, 1],
+  );
+  assert.deepEqual(
+    grid.cells.map((cell) => cell.x),
+    [0, 0, 0, 0, 0, 0, 5, 5],
+  );
+  assert.deepEqual(
+    grid.cells.map((cell) => cell.y),
+    [5, 10, 15, 20, 25, 30, 0, 5],
+  );
+  assert.equal(grid.columns, 2);
+  assert.equal(grid.viewBox, "0 0 9 34");
+  // Boundary: a Saturday start wraps onto a new column after a single day.
+  const saturday = densityGrid([
+    { date: "2026-08-29", count: 1, level: 1 },
+    { date: "2026-08-30", count: 2, level: 1 },
+  ]);
+  assert.deepEqual(
+    saturday.cells.map((cell) => cell.column),
+    [0, 1],
+  );
+  assert.deepEqual(
+    saturday.cells.map((cell) => cell.y),
+    [30, 0],
+  );
+});
+
+test("the density grid pins exact cell objects for a small fixed input", () => {
+  const grid = densityGrid([
+    { date: "2026-08-24", count: 3, level: 2 },
+    { date: "2026-08-25", count: 0, level: 0 },
+    { date: "2026-08-26", count: 5 },
+  ]);
+
+  assert.deepEqual([...grid.cells], [
+    { date: "2026-08-24", count: 3, level: 2, column: 0, x: 0, y: 5 },
+    { date: "2026-08-25", count: 0, level: 0, column: 0, x: 0, y: 10 },
+    { date: "2026-08-26", count: 5, level: 0, column: 0, x: 0, y: 15 },
+  ]);
+  assert.equal(grid.columns, 1);
+  assert.equal(grid.cell, 4);
+  assert.equal(grid.gap, 1);
+  assert.equal(grid.viewBox, "0 0 4 34");
+});

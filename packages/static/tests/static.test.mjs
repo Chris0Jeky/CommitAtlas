@@ -117,6 +117,17 @@ test("loads only a tracked, non-symlinked repository config", async () => {
   }
 });
 
+test("rejects missing intermediate and final components when mustExist is true", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-contained-"));
+  try {
+    await assert.rejects(resolveContainedPath(root, "no-such-dir/config.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    await assert.rejects(resolveContainedPath(root, "missing.json", { mustExist: true, label: "config" }), /config path does not exist/);
+    assert.equal(await resolveContainedPath(root, "no-such-dir/config.json", { mustExist: false, label: "output" }), path.resolve(root, "no-such-dir/config.json"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("renders all rich widgets deterministically from one snapshot", () => {
   const first = renderStaticArtifacts(snapshot(), config());
   const second = renderStaticArtifacts(snapshot(), config());
@@ -181,6 +192,33 @@ test("propagates synthetic source truth to every standalone static card", () => 
     assert.match(svg, /<title>Synthetic demo:/, name);
     assert.match(svg, /<desc>Synthetic demonstration data, not live GitHub data\./, name);
   }
+});
+
+test("atlas card uses the same source mapping as every sibling card", () => {
+  const base = snapshot();
+  const withFreshness = (freshness) => ({
+    ...base,
+    profile: { ...base.profile, freshness },
+    contributions: { ...base.contributions, freshness },
+    projects: { ...base.projects, freshness },
+    freshness,
+  });
+  const live = renderStaticArtifacts(base, config());
+  assert.match(live["atlas.svg"], />PUBLIC PROFILE VIEW</);
+  assert.doesNotMatch(live["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(live["streak.svg"], /SYNTHETIC DEMO/);
+  const githubRest = renderStaticArtifacts(withFreshness({ generatedAt, source: "github-rest", mode: "live" }), config());
+  assert.match(githubRest["atlas.svg"], />PUBLIC GITHUB</);
+  assert.doesNotMatch(githubRest["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(githubRest["streak.svg"], /SYNTHETIC DEMO/);
+  const demoMode = renderStaticArtifacts(withFreshness({ generatedAt, source: "github-rest", mode: "demo" }), config());
+  assert.match(demoMode["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(demoMode["atlas.svg"], />PUBLIC GITHUB</);
+  assert.match(demoMode["streak.svg"], />SYNTHETIC DEMO<\/text>/);
+  const syntheticSource = renderStaticArtifacts(withFreshness({ generatedAt, source: "synthetic-demo", mode: "live" }), config());
+  assert.match(syntheticSource["atlas.svg"], /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(syntheticSource["atlas.svg"], />PUBLIC GITHUB</);
+  assert.match(syntheticSource["streak.svg"], />SYNTHETIC DEMO<\/text>/);
 });
 
 test("preserves the declared planned lifecycle in static project SVGs", () => {
@@ -417,6 +455,40 @@ test("validates every theme output before writing the primary directory", async 
       /inside the repository/,
     );
     await assert.rejects(readFile(path.join(root, "assets", "commitatlas", "manifest.json")), /ENOENT/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects duplicate resolved theme output directories before writing anything", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-theme-collision-"));
+  try {
+    const parsedConfigWithPaperVariantAt = (outputDir) => parseStaticConfig({
+      ...rawConfig(),
+      themes: [{ theme: "paper", outputDir }],
+    });
+    const colliding = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "assets/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: colliding, snapshot: snapshot(), dryRun: true }),
+      /unique outputDir/,
+    );
+    const caseOnly = {
+      ...parsedConfigWithPaperVariantAt("assets/commitatlas/light"),
+      outputDir: "ASSETS/commitatlas/light",
+    };
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: caseOnly, snapshot: snapshot() }),
+      /unique outputDir/,
+    );
+    assert.deepEqual(await readdir(root), [], "nothing may be created under the root");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

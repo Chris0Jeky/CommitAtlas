@@ -90,3 +90,51 @@ test("an empty board reports nothing rather than a perfect score", () => {
   assert.equal(reading.headline, "0/0 CI PASSING · 0 ATTENTION");
   assert.doesNotMatch(reading.headline, /UNAVAILABLE|UNCONFIGURED/);
 });
+
+test("passing pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.passing.tone, "good");
+  assert.equal(CI_STATE_PRESENTATION.passing.word, "PASSING");
+  assert.equal(CI_STATE_PRESENTATION.passing.pulses, false);
+});
+
+test("failing pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.failing.tone, "bad");
+  assert.equal(CI_STATE_PRESENTATION.failing.word, "FAILING");
+  assert.equal(CI_STATE_PRESENTATION.failing.pulses, false);
+});
+
+test("pending pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.pending.tone, "warn");
+  assert.equal(CI_STATE_PRESENTATION.pending.word, "PENDING");
+  assert.equal(CI_STATE_PRESENTATION.pending.pulses, true);
+});
+
+test("stale pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.stale.tone, "warn");
+  assert.equal(CI_STATE_PRESENTATION.stale.word, "STALE");
+  assert.equal(CI_STATE_PRESENTATION.stale.pulses, false);
+});
+
+test("unavailable pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.unavailable.tone, "unknown");
+  assert.equal(CI_STATE_PRESENTATION.unavailable.word, "UNAVAILABLE");
+  assert.equal(CI_STATE_PRESENTATION.unavailable.pulses, false);
+});
+
+test("unconfigured pins its tone, word, and pulse flag", () => {
+  assert.equal(CI_STATE_PRESENTATION.unconfigured.tone, "unknown");
+  assert.equal(CI_STATE_PRESENTATION.unconfigured.word, "UNCONFIGURED");
+  assert.equal(CI_STATE_PRESENTATION.unconfigured.pulses, false);
+});
+
+test("an unknown CI state has no presentation and never falls back to a healthy tone", () => {
+  const byKey = CI_STATE_PRESENTATION as unknown as Record<string, unknown>;
+  assert.equal(byKey["bogus"], undefined);
+  assert.equal(byKey[""], undefined);
+  for (const state of Object.values(CI_STATE_PRESENTATION)) {
+    assert.ok(
+      state.tone === "good" || state.tone === "warn" || state.tone === "bad" || state.tone === "unknown",
+      `${state.state} carries an out-of-vocabulary tone`,
+    );
+  }
+});

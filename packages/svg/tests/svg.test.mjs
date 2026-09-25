@@ -1266,3 +1266,341 @@ test("releases card deduplicates a large adversarial list within its output/time
   assert.equal((output.match(/>2026-08-01</g) ?? []).length, 6);
   assert.match(output, />6 of 20000 shown</);
 });
+
+test("activity density clamps out-of-range finite levels to the ramp ends", () => {
+  const output = renderActivityCard({
+    days: [
+      { date: "2026-01-01", count: 5, level: 99 },
+      { date: "2026-01-02", count: 5, level: -2 },
+    ],
+  }, { theme: "ember" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<path fill="([^"]+)" d="[^"]+"\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 2);
+  assert.equal(fills[0], themes.ember.density[3]);
+  assert.equal(fills[0], "#ff7a45");
+  assert.equal(fills[1], themes.ember.socket);
+  assert.equal(fills[1], "#1c1f19");
+  assert.match(output, /<path fill="#ff7a45" d="/);
+  assert.match(output, /<path fill="#1c1f19" d="/);
+});
+
+test("project board maps CI state to status dot colour", () => {
+  const output = renderProjectBoard({ projects: [
+    { name: "Passing project", lifecycle: "active", ci: "passing" },
+    { name: "Failing project", lifecycle: "active", ci: "failing" },
+    { name: "Pending project", lifecycle: "active", ci: "pending" },
+    { name: "Stale project", lifecycle: "active", ci: "stale" },
+    { name: "Unconfigured project", lifecycle: "active", ci: "unconfigured" },
+    { name: "Unavailable project", lifecycle: "active", ci: "unavailable" },
+  ] }, { theme: "aurora" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<circle[^>]*fill="([^"]+)"[^>]*\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 6);
+  assert.equal(fills[0], themes.aurora.positive);
+  assert.equal(fills[0], "#79f2c0");
+  assert.equal(fills[1], themes.aurora.negative);
+  assert.equal(fills[1], "#ff7b9c");
+  assert.equal(fills[2], themes.aurora.warning);
+  assert.equal(fills[3], themes.aurora.warning);
+  assert.equal(themes.aurora.warning, "#ffd166");
+  assert.equal(fills[4], themes.aurora.muted);
+  assert.equal(fills[5], themes.aurora.muted);
+  assert.equal(themes.aurora.muted, "#a9c1d5");
+});
+
+test("project board falls back to muted for an unknown CI state", () => {
+  const output = renderProjectBoard({ projects: [
+    { name: "Mystery project", lifecycle: "active", ci: "bogus" },
+  ] }, { theme: "aurora" });
+  assertSafeSvg(output);
+  const fills = [...output.matchAll(/<circle[^>]*fill="([^"]+)"[^>]*\/>/g)].map((match) => match[1]);
+  assert.equal(fills.length, 1);
+  assert.equal(fills[0], themes.aurora.muted);
+  assert.equal(fills[0], "#a9c1d5");
+});
+
+test("profile card renders a safe anchor for an https website", () => {
+  const url = "https://example.com/";
+  const output = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: url,
+  });
+  assertSafeSvg(output);
+  const href = (output.match(/<a href="([^"]+)"[^>]*>/) ?? [])[1];
+  assert.equal(href, url);
+  assert.match(output, /<a href="https:\/\/example\.com\/" target="_blank" rel="noopener"/);
+  assert.match(output, /rel="[^"]*noopener[^"]*"/);
+});
+
+test("profile card omits the anchor for unsafe or missing websites", () => {
+  const unsafe = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: "javascript:alert(1)",
+  });
+  assertSafeSvg(unsafe);
+  assert.doesNotMatch(unsafe, /<a\b/);
+  assert.doesNotMatch(unsafe, /href=/);
+  const credentialed = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+    website: "https://user:secret@example.com/",
+  });
+  assertSafeSvg(credentialed);
+  assert.doesNotMatch(credentialed, /<a\b/);
+  assert.doesNotMatch(credentialed, /secret/);
+  const missing = renderProfileCard({
+    name: "Ada", login: "ada", repositories: 1, followers: 2, following: 3,
+  });
+  assertSafeSvg(missing);
+  assert.doesNotMatch(missing, /<a\b/);
+  assert.doesNotMatch(missing, /href=/);
+});
+
+test("activity density key prints LESS, five ember swatches, and MORE", () => {
+  const output = renderActivityCard({ days: [{ date: "2026-08-20", count: 3 }] }, { theme: "ember" });
+  assertSafeSvg(output);
+  assert.match(output, />LESS</);
+  assert.match(output, />MORE</);
+  assert.ok(output.indexOf(">LESS<") < output.indexOf(">MORE<"), "LESS must precede MORE in the key");
+  for (const fill of [themes.ember.socket, ...themes.ember.density]) {
+    assert.match(output, new RegExp(`fill="${fill}"`), `key must print swatch ${fill}`);
+  }
+  assert.equal(themes.ember.socket, "#1c1f19");
+  assert.deepEqual([...themes.ember.density], ["#5c2a17", "#97431f", "#d05e2f", "#ff7a45"]);
+});
+
+test("activity density key still prints with no days", () => {
+  const output = renderActivityCard({ days: [] }, { theme: "ember" });
+  assertSafeSvg(output);
+  assert.match(output, />LESS</);
+  assert.match(output, />MORE</);
+  const swatches = output.match(/<rect[^>]*width="8" height="8"[^>]*>/g) ?? [];
+  assert.equal(swatches.length, 5);
+  for (const fill of ["#1c1f19", "#5c2a17", "#97431f", "#d05e2f", "#ff7a45"]) {
+    assert.match(output, new RegExp(`fill="${fill}"`));
+  }
+});
+
+test("languages card caps display at eight languages", () => {
+  const languages = Array.from({ length: 9 }, (_, index) => ({
+    name: `CapLang 0${index + 1}`, percentage: 10,
+  }));
+  const output = renderLanguagesCard({ languages });
+  assertSafeSvg(output);
+  for (let index = 1; index <= 8; index += 1) {
+    assert.match(output, new RegExp(`>CapLang 0${index}<`));
+  }
+  assert.doesNotMatch(output, />CapLang 09</);
+  const swatches = output.match(/<rect[^>]*width="8" height="8"[^>]*>/g) ?? [];
+  assert.equal(swatches.length, 8);
+});
+
+test("languages card renders no rows for an empty language list", () => {
+  const output = renderLanguagesCard({ languages: [] });
+  assertSafeSvg(output);
+  assert.match(output, /<title>Languages<\/title>/);
+  assert.doesNotMatch(output, /%/);
+  const swatches = output.match(/<rect[^>]*width="8" height="8"[^>]*>/g) ?? [];
+  assert.equal(swatches.length, 0);
+});
+
+test("language entry without a name renders the Unknown language fallback", () => {
+  const output = renderLanguagesCard({ languages: [{ percentage: 100 }] });
+  assertSafeSvg(output);
+  assert.match(output, />Unknown language</);
+});
+
+test("language entry with a canonical language field avoids the fallback", () => {
+  const output = renderLanguagesCard({ languages: [{ language: "Rust", percentage: 100 }] });
+  assertSafeSvg(output);
+  assert.match(output, />Rust</);
+  assert.doesNotMatch(output, /Unknown language/);
+});
+
+test("atlas card states a synthetic source as SYNTHETIC PREVIEW", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const synthetic = renderAtlasCard(atlasFixture({ ...fixed, source: "synthetic-demo" }), { motion: "none" });
+  assertSafeSvg(synthetic);
+  assert.match(synthetic, />SYNTHETIC PREVIEW<\/text>/);
+  assert.doesNotMatch(synthetic, /PUBLIC PROFILE VIEW/);
+  assert.doesNotMatch(synthetic, />PUBLIC GITHUB<\/text>/);
+  const live = renderAtlasCard(atlasFixture({ ...fixed, source: "public-github" }), { motion: "none" });
+  assertSafeSvg(live);
+  assert.match(live, />PUBLIC GITHUB<\/text>/);
+  assert.doesNotMatch(live, /SYNTHETIC PREVIEW/);
+});
+
+test("atlas card states a public-profile source as PUBLIC PROFILE VIEW", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const profile = renderAtlasCard(atlasFixture({ ...fixed, source: "public-profile" }), { motion: "none" });
+  assertSafeSvg(profile);
+  assert.match(profile, />PUBLIC PROFILE VIEW<\/text>/);
+  assert.doesNotMatch(profile, /SYNTHETIC PREVIEW/);
+  assert.doesNotMatch(profile, />PUBLIC GITHUB<\/text>/);
+  const synthetic = renderAtlasCard(atlasFixture({ ...fixed, source: "synthetic-demo" }), { motion: "none" });
+  assertSafeSvg(synthetic);
+  assert.match(synthetic, />SYNTHETIC PREVIEW<\/text>/);
+  assert.doesNotMatch(synthetic, /PUBLIC PROFILE VIEW/);
+});
+
+test("atlas card states a missing or unrecognised source as SOURCE UNKNOWN", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const missingData = atlasFixture({ ...fixed });
+  delete missingData.source;
+  const missing = renderAtlasCard(missingData, { motion: "none" });
+  assertSafeSvg(missing);
+  assert.match(missing, />SOURCE UNKNOWN<\/text>/);
+  assert.doesNotMatch(missing, />PUBLIC GITHUB<\/text>/);
+  const bogus = renderAtlasCard(atlasFixture({ ...fixed, source: "bogus" }), { motion: "none" });
+  assertSafeSvg(bogus);
+  assert.match(bogus, />SOURCE UNKNOWN<\/text>/);
+  assert.doesNotMatch(bogus, />PUBLIC GITHUB<\/text>/);
+});
+
+test("project board states an unrecognised CI state as Unknown", () => {
+  const output = renderProjectBoard({ projects: [{ name: "Atlas", lifecycle: "active", ci: "weird" }] });
+  assertSafeSvg(output);
+  assert.match(output, /CI Unknown/);
+  assert.doesNotMatch(output, /undefined/);
+});
+
+test("atlas card prints Languages unavailable when no languages are present", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const missing = renderAtlasCard(atlasFixture({ ...fixed, languages: undefined }), { motion: "none" });
+  assertSafeSvg(missing);
+  assert.match(missing, />Languages unavailable<\/text>/);
+  const empty = renderAtlasCard(atlasFixture({ ...fixed, languages: [] }), { motion: "none" });
+  assertSafeSvg(empty);
+  assert.match(empty, />Languages unavailable<\/text>/);
+  const present = renderAtlasCard(
+    atlasFixture({ ...fixed, languages: [{ name: "TypeScript", percentage: 55 }] }),
+    { motion: "none" },
+  );
+  assertSafeSvg(present);
+  assert.match(present, /TypeScript 55%/);
+  assert.doesNotMatch(present, /Languages unavailable/);
+});
+
+test("atlas card prints stars unavailable when star data is missing", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const base = atlasFixture(fixed);
+  const missing = renderAtlasCard({
+    ...base,
+    profile: { name: "Ada Lovelace", login: "octocat", repositories: 24, followers: 312 },
+  }, { motion: "none" });
+  assertSafeSvg(missing);
+  assert.match(missing, /stars unavailable/);
+  assert.match(missing, />24 repos · 312 followers · stars unavailable<\/text>/);
+  const notFinite = renderAtlasCard({
+    ...base,
+    profile: { name: "Ada Lovelace", login: "octocat", repositories: 24, followers: 312, stars: Number.NaN },
+  }, { motion: "none" });
+  assertSafeSvg(notFinite);
+  assert.match(notFinite, /stars unavailable/);
+  assert.doesNotMatch(notFinite, /NaN/);
+  const present = renderAtlasCard({
+    ...base,
+    profile: { name: "Ada Lovelace", login: "octocat", repositories: 24, followers: 312, stars: 487 },
+  }, { motion: "none" });
+  assertSafeSvg(present);
+  assert.match(present, /487 stars/);
+  assert.doesNotMatch(present, /stars unavailable/);
+  const zero = renderAtlasCard({
+    ...base,
+    profile: { name: "Ada Lovelace", login: "octocat", repositories: 24, followers: 312, stars: 0 },
+  }, { motion: "none" });
+  assertSafeSvg(zero);
+  assert.match(zero, /0 stars/);
+  assert.doesNotMatch(zero, /stars unavailable/);
+});
+
+test("atlas card prints Project health not configured when projects are absent", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+  };
+  const unconfigured = renderAtlasCard(atlasFixture({ ...fixed, projects: undefined }), { motion: "none" });
+  assertSafeSvg(unconfigured);
+  assert.match(unconfigured, />Project health not configured<\/text>/);
+  assert.doesNotMatch(unconfigured, /CI passing/);
+  assert.doesNotMatch(unconfigured, /Project health unavailable/);
+  const configured = renderAtlasCard(atlasFixture(fixed), { motion: "none" });
+  assertSafeSvg(configured);
+  assert.match(configured, /4\/6 CI passing · 1 attention · 1 unavailable/);
+  assert.doesNotMatch(configured, /Project health not configured/);
+  const unknown = renderAtlasCard(
+    atlasFixture({ ...fixed, projects: { total: 6, passing: Number.NaN, attention: 1, unavailable: 1 } }),
+    { motion: "none" },
+  );
+  assertSafeSvg(unknown);
+  assert.match(unknown, />Project health unavailable<\/text>/);
+  assert.doesNotMatch(unknown, /Project health not configured/);
+  assert.doesNotMatch(unknown, /CI passing/);
+});
+
+test("atlas heatmap without a level uses the fallback density step for positive counts and the socket for zero", () => {
+  const fixed = {
+    window: { from: "2026-08-20", to: "2026-08-21", days: 2 },
+    peakDay: { date: "2026-08-20", count: 5 },
+    generatedAt: "2026-08-21T18:00:00.000Z",
+  };
+  const output = renderAtlasCard(atlasFixture({
+    ...fixed,
+    activity: [
+      { date: "2026-08-20", count: 5 },
+      { date: "2026-08-21", count: 0 },
+    ],
+  }), { theme: "aurora", motion: "none" });
+  assertSafeSvg(output);
+  assert.equal(themes.aurora.density[1], "#1a6b60");
+  assert.equal(themes.aurora.socket, "#101e2c");
+  assert.match(output, /<path class="atlas-cell" fill="#1a6b60"/);
+  assert.match(output, /<path class="atlas-cell" fill="#101e2c"/);
+  const explicit = renderAtlasCard(atlasFixture({
+    ...fixed,
+    activity: [
+      { date: "2026-08-20", count: 5, level: 4 },
+      { date: "2026-08-21", count: 0, level: 0 },
+    ],
+  }), { theme: "aurora", motion: "none" });
+  assertSafeSvg(explicit);
+  assert.match(explicit, /<path class="atlas-cell" fill="#58e6be"/);
+  assert.doesNotMatch(explicit, /<path class="atlas-cell" fill="#1a6b60"/);
+  const bad = renderAtlasCard(atlasFixture({
+    ...fixed,
+    activity: [
+      { date: "2026-08-20", count: Number.NaN },
+      { date: "not-a-date", count: 5 },
+    ],
+  }), { theme: "aurora", motion: "none" });
+  assertSafeSvg(bad);
+  assert.match(bad, /<path class="atlas-cell" fill="#101e2c"/);
+  assert.doesNotMatch(bad, /NaN/);
+});

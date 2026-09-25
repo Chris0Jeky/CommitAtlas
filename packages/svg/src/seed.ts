@@ -32,10 +32,14 @@ export function canonicalJson(value: unknown): string {
       if (Array.isArray(current)) {
         const items: string[] = [];
         for (let index = 0; index < current.length; index += 1) {
-          if (!Object.prototype.hasOwnProperty.call(current, index)) {
+          const descriptor = Object.getOwnPropertyDescriptor(current, index);
+          if (!descriptor) {
             throw new TypeError(`canonical JSON cannot contain a sparse array entry at ${path}[${index}]`);
           }
-          items.push(serialize(current[index], `${path}[${index}]`));
+          if (!("value" in descriptor)) {
+            throw new TypeError(`canonical JSON cannot evaluate an accessor at ${path}[${index}]`);
+          }
+          items.push(serialize(descriptor.value, `${path}[${index}]`));
         }
         return `[${items.join(",")}]`;
       }
