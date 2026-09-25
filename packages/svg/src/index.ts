@@ -8,6 +8,16 @@
 export { canonicalJson, seededRandom, stableHash } from "./seed.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
+export type MotionProfile = "none" | "subtle" | "ambient" | "cinematic";
+export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
+
+export interface MotionRenderMetadata {
+  readonly inlineStyles: boolean;
+}
+
+export function motionRenderMetadata(motion: MotionProfile | undefined): MotionRenderMetadata {
+  return { inlineStyles: motion !== undefined && motion !== "none" };
+}
 
 export interface SvgTheme {
   readonly background: string;
@@ -107,7 +117,7 @@ export interface RenderOptions {
   readonly height?: number;
   readonly title?: string;
   readonly description?: string;
-  readonly motion?: "none" | "subtle";
+  readonly motion?: MotionProfile;
 }
 
 export type CardSource = "public-github" | "public-profile" | "synthetic-demo";
@@ -618,7 +628,7 @@ function sourceMarker(
 }
 
 function cardMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Fill-mode none with a delay, for the same reason as atlasMotionStyle: a renderer that never
   // runs CSS animations (SVG through <img>) must show the finished card, not a frozen keyframe.
   return `<style>
@@ -963,7 +973,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
 }
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
   // pipeline — so the card must be finished before any keyframe applies. That means fill-mode
   // none with a small delay, never "both": a renderer that ignores or freezes the animation sits

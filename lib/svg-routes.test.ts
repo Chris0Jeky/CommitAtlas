@@ -76,6 +76,30 @@ test("parses profile, streak, activity, and language contracts with canonical or
   });
 });
 
+
+test("accepts ambient and rejects cinematic across every hosted SVG query", () => {
+  const routes: readonly {
+    readonly parse: (parameters: URLSearchParams) => { readonly motion: string; readonly canonical: string };
+    readonly base: string;
+  }[] = [
+    { parse: parseSvgProfileQuery, base: "user=octocat&demo=true&theme=aurora" },
+    { parse: parseSvgStreakQuery, base: "user=octocat&demo=true&theme=aurora" },
+    { parse: parseSvgLanguagesQuery, base: "user=octocat&demo=true&theme=aurora" },
+    { parse: parseSvgActivityQuery, base: "user=octocat&demo=true&theme=aurora&days=365" },
+    { parse: parseSvgAtlasQuery, base: "user=octocat&demo=true&theme=aurora&days=365&layout=wide" },
+    { parse: parseSvgProjectsQuery, base: "owner=octocat&repos=atlas&states=atlas:active&demo=true&theme=aurora" },
+  ];
+
+  for (const { parse, base } of routes) {
+    const ambient = parse(new URLSearchParams(`${base}&motion=ambient`));
+    assert.equal(ambient.motion, "ambient");
+    assert.match(ambient.canonical, /(?:^|&)motion=ambient(?:&|$)/);
+    assert.throws(
+      () => parse(new URLSearchParams(`${base}&motion=cinematic`)),
+      /motion must be none, subtle, or ambient/,
+    );
+  }
+});
 test("rejects unknown and duplicate SVG keys before query values are read", () => {
   for (const query of [
     "user=octocat&unknown=x",

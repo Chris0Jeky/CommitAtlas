@@ -4,7 +4,7 @@ import { parseSvgProfileQuery } from "@/lib/svg-routes";
 import { toProfileCard } from "@/lib/svg-adapters";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
-import { renderProfileCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderProfileCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export async function GET(request: Request): Promise<Response> {
         ? `Public GitHub profile summary for ${snapshot.login}. Aggregate star totals are unavailable because the repository list is partial.`
         : `Public GitHub profile summary for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: query.motion === "subtle" });
+    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
   } catch (error) {
     return apiErrorResponse(error);
   }

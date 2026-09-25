@@ -11,6 +11,8 @@ export type StudioCardKind =
   | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
+import type { HostedMotionProfile } from "@/packages/svg/src/index";
+
 export interface StudioProjectInput {
   repo: string;
   lifecycle: string;
@@ -22,7 +24,7 @@ export interface StudioRouteOptions {
   theme: string;
   demo: boolean;
   days?: number;
-  motion?: "none" | "subtle";
+  motion?: HostedMotionProfile;
   layout?: "wide" | "compact";
   projects?: StudioProjectInput[];
 }

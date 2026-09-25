@@ -236,8 +236,12 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
   percentages are visibly and accessibly labelled as annual profile-view data, not requested-window
   counts. Rhythm is explicitly a personal consistency signal, not a GitHub rank.
 - Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
-  Midnight, and Paper themes support `motion=none|subtle`; subtle motion is transform-only, leaves
-  essential content visible at frame zero, and includes a reduced-motion override.
+  Midnight, and Paper themes support hosted `motion=none|subtle|ambient`; package and static
+  callers additionally accept `cinematic`. This compatibility slice deliberately maps every
+  non-`none` profile to the same transform-only Subtle motion, with essential content visible
+  at frame zero and a reduced-motion override. Defaults remain Atlas `subtle`, other hosted
+  cards `none`, and static generation `none`. Differentiated ambient/cinematic backends and
+  the GitHub/WebKit evidence gates remain separate, unfinished work.
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
   provenance, errors, and copyable README Markdown.

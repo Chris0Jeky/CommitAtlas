@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   escapeXml,
   formatNumber,
+  motionRenderMetadata,
   renderContributionBreakdownCard,
   renderAtlasCard,
   renderActivityCard,
@@ -92,6 +93,11 @@ test("primitives are deterministic and safe", () => {
   assert.equal(formatNumber(999_999_999), "1B");
   assert.equal(formatNumber(Number.NaN), "0");
   assert.deepEqual(Object.keys(themes), ["aurora", "midnight", "paper", "ember"]);
+  assert.deepEqual(motionRenderMetadata(undefined), { inlineStyles: false });
+  assert.deepEqual(motionRenderMetadata("none"), { inlineStyles: false });
+  assert.deepEqual(motionRenderMetadata("subtle"), { inlineStyles: true });
+  assert.deepEqual(motionRenderMetadata("ambient"), { inlineStyles: true });
+  assert.deepEqual(motionRenderMetadata("cinematic"), { inlineStyles: true });
 });
 
 test("renderer defaults are specific and dimensions stay within safe bounds", () => {
@@ -142,6 +148,8 @@ test("every standalone card supports subtle motion with a reduced-motion fallbac
   ];
   for (const render of renderers) {
     const animated = render("subtle");
+    assert.equal(render("ambient"), animated);
+    assert.equal(render("cinematic"), animated);
     assert.match(animated, /@keyframes card-enter/);
     assert.match(animated, /prefers-reduced-motion:reduce/);
     // Renderers that never run CSS animations (SVG through <img>) must still show a finished card.
@@ -312,10 +320,14 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   };
   const staticAtlas = renderAtlasCard(data, { theme: "ember", motion: "none" });
   const animatedAtlas = renderAtlasCard(data, { theme: "aurora", motion: "subtle" });
+  const ambientAtlas = renderAtlasCard(data, { theme: "aurora", motion: "ambient" });
+  const cinematicAtlas = renderAtlasCard(data, { theme: "aurora", motion: "cinematic" });
   const narrowAtlas = renderAtlasCard(data, { width: 420, motion: "none" });
 
   assertSafeSvg(staticAtlas);
   assertSafeSvg(animatedAtlas, { allowStyle: true });
+  assert.equal(ambientAtlas, animatedAtlas);
+  assert.equal(cinematicAtlas, animatedAtlas);
   assertSafeSvg(narrowAtlas);
   assert.match(staticAtlas, /CONTRIBUTION DENSITY/);
   assert.match(staticAtlas, /CONTRIBUTION MIX/);

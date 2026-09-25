@@ -138,6 +138,24 @@ test("choosing the light theme inverts the pair rather than dropping it", () => 
   assert.match(markdown, /<img alt="CommitAtlas Atlas" src="[^"]*theme=paper[^"]*">/);
 });
 
+
+test("README Markdown carries the selected ambient profile through every emitted source", () => {
+  const markdown = buildStudioMarkdown({
+    baseUrl: "https://atlas.example",
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects,
+    selectedCards: new Set(["atlas", "profile"]),
+    hasCurrentContributions: true,
+    hasCurrentLanguages: true,
+    motion: "ambient",
+  });
+
+  const urls = markdown.match(/https:\/\/atlas\.example[^" >]+/g) ?? [];
+  assert.ok(urls.length > 0);
+  for (const url of urls) assert.match(url, /(?:\?|&)motion=ambient(?:&|$)/);
+});
 test("the pairing table agrees with the renderer it mirrors", () => {
   // `THEME_PAIRS` is restated here rather than imported so the client bundle does not pull in
   // every card renderer to read four strings. This is what keeps the copy honest.

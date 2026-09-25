@@ -1,4 +1,4 @@
-import type { ThemeName } from "@/packages/svg/src/index";
+import type { HostedMotionProfile, ThemeName } from "@/packages/svg/src/index";
 import type { ProjectLifecycle, ProjectWorkflow } from "./github/types";
 import { encodeWorkflowMapComponent } from "./github/workflow-map";
 import {
@@ -19,7 +19,7 @@ export interface SvgProfileQuery {
   readonly user: string;
   readonly demo: boolean;
   readonly theme: ThemeName;
-  readonly motion: "none" | "subtle";
+  readonly motion: HostedMotionProfile;
   readonly canonical: string;
 }
 
@@ -31,7 +31,7 @@ export interface SvgActivityQuery extends SvgProfileQuery {
 }
 
 export interface SvgAtlasQuery extends SvgActivityQuery {
-  readonly motion: "none" | "subtle";
+  readonly motion: HostedMotionProfile;
   readonly layout: "wide" | "compact";
   readonly repos: readonly string[];
   readonly states: ReadonlyMap<string, ProjectLifecycle>;
@@ -53,7 +53,7 @@ export interface SvgProjectsQuery {
   readonly projects: readonly SvgProjectQueryItem[];
   readonly demo: boolean;
   readonly theme: ThemeName;
-  readonly motion: "none" | "subtle";
+  readonly motion: HostedMotionProfile;
   readonly canonical: string;
 }
 
@@ -176,16 +176,16 @@ export function parseActivityDays(value: string | null): number {
   return days;
 }
 
-export function parseMotion(value: string | null): "none" | "subtle" {
+export function parseMotion(value: string | null): HostedMotionProfile {
   if (value === null || value === "subtle") return "subtle";
-  if (value === "none") return "none";
-  throw new InputError("motion must be subtle or none");
+  if (value === "none" || value === "ambient") return value;
+  throw new InputError("motion must be none, subtle, or ambient");
 }
 
-export function parseStandaloneMotion(value: string | null): "none" | "subtle" {
+export function parseStandaloneMotion(value: string | null): HostedMotionProfile {
   if (value === null || value === "none") return "none";
-  if (value === "subtle") return "subtle";
-  throw new InputError("motion must be subtle or none");
+  if (value === "subtle" || value === "ambient") return value;
+  throw new InputError("motion must be none, subtle, or ambient");
 }
 
 export function parseAtlasLayout(value: string | null): "wide" | "compact" {

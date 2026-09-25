@@ -61,7 +61,7 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
               <br />
               LIMITS <b>No script · No foreignObject · No external refs</b>
               <br />
-              MOTION <b>none | subtle (transform-only)</b>
+              MOTION <b>hosted: none | subtle | ambient</b>
             </p>
           </div>
           <p className="flagship-caveat">
