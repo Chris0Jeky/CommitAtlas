@@ -1,0 +1,48 @@
+{
+  "scope": "bounded WebKit seven-row capture attempts after exact discovery; no completed rows or animation verdict",
+  "browser": {
+    "engine": "webkit",
+    "version": "26.0",
+    "playwright": "1.57.0"
+  },
+  "plannedRows": 7,
+  "exactDiscovery": {
+    "commitAtlasHead": "5e1461324480c1ca6007094a0856b7e5e2f0c0e1",
+    "status": "complete",
+    "completedDiscoveries": 7,
+    "naturalDimensions": { "width": 400, "height": 133 },
+    "renderedDimensions": { "width": 400, "height": 133.328125 },
+    "identityChecks": "canonical URL and final SVG MIME passed for every target; pinned body hashes passed for the synthetic fixtures"
+  },
+  "attempts": [
+    {
+      "attemptedAt": "2026-08-30T01:43:17.499Z",
+      "commitAtlasHead": "5e1461324480c1ca6007094a0856b7e5e2f0c0e1",
+      "completedDiscoveries": 7,
+      "completedRows": 0,
+      "failure": "gated image load observation returned undefined after GitHub replaced the target node",
+      "partialReportSha256": "6ee5f97d9c47b30890d6f8cc53b3d01fdca8e88ab572d0841399e5b20ae9853f"
+    },
+    {
+      "attemptedAt": "2026-08-30T01:44:21.496Z",
+      "commitAtlasHead": "29fc401bc54441932d78df2ad7adfec23e6d67d7",
+      "completedDiscoveries": 7,
+      "completedRows": 0,
+      "failure": "WebKit element screenshot actionability lost the animated GitHub target node",
+      "partialReportSha256": "b8ac003cff32c340ef9944e4065b7936fa4be3ad7d501e3b2e1d65badab249bc"
+    },
+    {
+      "attemptedAt": "2026-08-30T01:45:19.676Z",
+      "commitAtlasHead": "1d38fd13c5f1a31132d9bac836a470b1544f3094",
+      "completedDiscoveries": 7,
+      "completedRows": 0,
+      "failure": "page screenshot clip used document coordinates outside the visible screenshot image",
+      "partialReportSha256": "f0870d7bce88c4d9519ae530ab5490ba9080207e72b1f29c5e5a2c6c42d036c5"
+    }
+  ],
+  "animationEvidence": "none",
+  "unverifiedHead": "f6b24ddf46f076a5dcc6b22ec4ec69357668f9e8",
+  "unverifiedSafety": "viewport-coordinate clipping plus fail-closed timed DOM-node identity before and after every frame",
+  "nextAction": "run one fresh seven-row WebKit diagnostic on the viewport-coordinate page-clip fix in a new gate loop",
+  "disposition": "parked at the three-attempt ceiling; #113 remains locked"
+}

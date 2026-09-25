@@ -1,0 +1,29 @@
+{
+  "observedAt": "2026-08-30T01:21:12.767Z",
+  "scope": "metadata-only WebKit observation; no screenshots, recordings, or animation verdict",
+  "commitAtlasHead": "b8d1cb3b904b24761457a9d4708ecf5bccf416af",
+  "scratchCommit": "039a0370b1a52fb6135e4414e04a11bff7ba21d0",
+  "browser": {
+    "engine": "webkit",
+    "version": "26.0",
+    "playwright": "1.57.0"
+  },
+  "source": {
+    "literal": "/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+    "current": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+    "final": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg"
+  },
+  "response": {
+    "redirectStatus": 302,
+    "finalStatus": 200,
+    "finalContentType": "image/svg+xml",
+    "finalBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+    "fixtureBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+    "workerBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+  },
+  "dimensions": {
+    "natural": { "width": 400, "height": 133 },
+    "rendered": { "width": 400, "height": 133.328125 }
+  },
+  "rawObservationSha256": "af261e3578915ff7d54492acf181c4a795f3b80b51e67f3927d81558116d2741"
+}
