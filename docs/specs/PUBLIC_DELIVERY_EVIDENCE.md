@@ -22,9 +22,20 @@ The configured handle and the repositories already listed in `.commitatlas.json`
 3. occur exactly once;
 4. have passed the existing public project fetch, which rejects private repositories.
 
-The collector uses a short-lived GitHub Actions repository token only to call GraphQL. Token visibility never expands the query: every search query includes the configured author and an explicit OR clause naming every configured repository. The collector asks for `issueCount` only. It never requests pull-request titles, bodies, comments, branches, commits, diffs, reviewers, labels, identities other than the configured author, or private repository metadata.
+The collector uses a short-lived GitHub Actions repository token only to call GraphQL. Token visibility never expands the query: every search includes `is:public`, the configured author, and the exact configured repository scope. Search selections request `issueCount` only. They never request pull-request titles, bodies, comments, branches, commits, diffs, reviewers, labels, or identities other than the configured author.
 
-No raw GraphQL response is written to an artifact. Only validated aggregate integers enter the snapshot.
+The exported collector independently proves each configured repository public in that same request:
+`scopeRepository<index>: repository(owner: ..., name: ..., followRenames: false) { isPrivate }`.
+Only literal `isPrivate: false` is accepted; GitHub defines that field as private **or internal**.
+Null, missing, malformed, private/internal, renamed or errored scope fails the whole collection,
+even when every search count is zero. A public-only search filter is not itself a visibility proof.
+These at-most-six visibility bits are transient validation data, not retained repository metadata.
+The GraphQL repository query/field definitions are documented in
+[GitHub's primary schema reference](https://docs.github.com/en/graphql/reference/repos).
+
+No raw GraphQL response or visibility bit is written to an artifact. Only validated aggregate
+integers enter the snapshot; `source.queryCount` counts aggregate search aliases, not the
+additional visibility selections or network requests. Collection still performs one request.
 
 ## Time basis
 

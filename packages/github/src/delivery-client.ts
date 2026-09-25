@@ -29,7 +29,9 @@ export interface FetchDeliverySnapshotOptions {
  * short-lived repository token without that classic-scope evidence. Delivery collection does not
  * widen that general invariant. Instead, every search variable is generated from strict
  * owner/repository identifiers and names the complete configured scope. Only `issueCount` fields
- * are requested and only validated aggregate integers survive the response boundary.
+ * and a per-configured-repository `isPrivate` guard are requested. Renames are not followed;
+ * every guard must be false (public). Guard values are discarded, and only validated aggregate
+ * integers survive the response boundary.
  */
 export async function fetchDeliverySnapshot(
   options: FetchDeliverySnapshotOptions,
@@ -52,7 +54,13 @@ export async function fetchDeliverySnapshot(
   const selections = plan.queries.map((query, index) => (
     `${query.alias}: search(query: $query${index}, type: ISSUE, first: 1) { issueCount }`
   )).join("\n  ");
-  const query = `query DeliveryCounts(${declarations}) {\n  ${selections}\n}`;
+  // The public-only search filter is not proof that every configured name exists
+  // and is public. Request only the visibility bit, never repository content.
+  const scopeSelections = plan.repositories.map((repository, index) => {
+    const [owner, name] = repository.split("/");
+    return `scopeRepository${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}, followRenames: false) { isPrivate }`;
+  }).join("\n  ");
+  const query = `query DeliveryCounts(${declarations}) {\n  ${selections}\n  ${scopeSelections}\n}`;
   const response = await requestGraphql({
     token,
     query,
@@ -69,6 +77,17 @@ export async function fetchDeliverySnapshot(
   }
   if (!isRecord(response.data)) {
     throw new GitHubApiError("invalid_response", "GitHub returned invalid delivery count data");
+  }
+  for (let index = 0; index < plan.repositories.length; index += 1) {
+    const repository = response.data[`scopeRepository${index}`];
+    // GitHub's isPrivate includes internal repositories. Only literal false is
+    // affirmative public evidence; missing, null, or malformed bits fail closed.
+    if (!isRecord(repository) || repository.isPrivate !== false) {
+      throw new GitHubApiError(
+        "invalid_response",
+        "GitHub did not confirm public visibility for every configured delivery repository",
+      );
+    }
   }
   const counts: Record<string, number> = {};
   for (const item of plan.queries) {
