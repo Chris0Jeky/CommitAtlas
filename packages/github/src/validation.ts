@@ -49,7 +49,7 @@ export function parseLifecycleMap(
   if (!value) throw new InputError("states must declare a lifecycle for every repository");
   if (value.length > MAX_LIFECYCLE_MAP_LENGTH) throw new InputError("states is too long");
 
-  const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  const entries = value.split(",").map((entry) => entry.trim());
   const result = new Map<string, ProjectLifecycle>();
   for (const entry of entries) {
     const separator = entry.lastIndexOf(":");

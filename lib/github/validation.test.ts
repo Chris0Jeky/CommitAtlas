@@ -85,3 +85,19 @@ test("permits only bounded HTTPS links", () => {
   assert.equal(safeHttpsUrl("javascript:alert(1)"), null);
   assert.equal(safeHttpsUrl("https://token@example.com/docs"), null);
 });
+
+test("rejects empty lifecycle entries instead of silently repairing malformed CSV", () => {
+  for (const states of [
+    ",alpha:active,beta:maintenance",
+    "alpha:active,beta:maintenance,",
+    "alpha:active,,beta:maintenance",
+    "alpha:active, \t ,beta:maintenance",
+    "alpha:active,beta:maintenance,\n",
+  ]) {
+    assert.throws(() => parseLifecycleMap(states, ["alpha", "beta"]),
+      (error: unknown) => error instanceof InputError && error.message === "states must use repo:lifecycle entries",
+      JSON.stringify(states));
+  }
+  assert.deepEqual([...parseLifecycleMap(" Alpha:active , beta:maintenance ", ["alpha", "beta"])],
+    [["alpha", "active"], ["beta", "maintenance"]]);
+});
