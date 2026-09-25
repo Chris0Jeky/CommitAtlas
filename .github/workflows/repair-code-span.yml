@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 8fc6169282c3b05af4190010397abbf307ab1222
+          test "$(git rev-parse HEAD^)" = 2f894957e98bf065b0d6504b5000c6403ccb8148
           npm run build:static
           set +e
           node --test packages/static/tests/code-span.test.mjs > /tmp/code-span-red.log 2>&1
@@ -59,17 +59,19 @@ jobs:
           assert sha(p) == 'be41480aafe510185ccf828b847c26672f9cb8da'
           assert sha(Path('packages/static/tests/code-span.test.mjs')) == '2af7cfcf9d7a9667b4a9c32bc6f537d06631ed52'
           PY
-      - name: Rebuild and verify the complete candidate
+      - name: Rebuild and seal the local candidate
         run: |
           npm run build:action
-          npm run check
-          npm audit --omit=dev --audit-level=high
-          git diff --check
-      - name: Publish only the verified branch candidate
-        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add packages/static/src/projects-catalog.ts packages/static/package.json action/dist/index.js
           git diff --cached --check
           git commit -m 'fix(static): normalize Markdown line endings before code-span padding'
-          git push origin HEAD:refs/heads/fix/markdown-code-span-lines
+      - name: Verify the complete candidate
+        run: |
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          git diff --check
+          git diff --exit-code
+      - name: Publish only the verified branch candidate
+        run: git push origin HEAD:refs/heads/fix/markdown-code-span-lines
