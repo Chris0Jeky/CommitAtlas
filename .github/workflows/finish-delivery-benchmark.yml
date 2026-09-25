@@ -1,0 +1,87 @@
+# Temporary bounded branch repair; remove this workflow and its patch before merge.
+name: Finish delivery benchmark safety
+on:
+  push:
+    branches: [feat/public-delivery-evidence]
+    paths: [.github/workflows/finish-delivery-benchmark.yml]
+permissions:
+  contents: write
+concurrency:
+  group: finish-delivery-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/public-delivery-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Verify the exact reviewed repair payload
+        run: |
+          test "$(git rev-parse HEAD^)" = 155d8ff0ccc85be3f42cfab1ebd62311a4f80079
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib
+          encoded = pathlib.Path('.github/finish-benchmark.b64').read_text().strip()
+          assert len(encoded) == 9780, 'Unexpected encoded patch length'
+          patch = gzip.decompress(base64.b64decode(encoded, validate=True))
+          assert len(patch) == 26775, 'Unexpected decoded patch length'
+          assert hashlib.sha256(patch).hexdigest() == '173988d9f1a05b87db497679afbd6c3de447c4338ed5476ad4e1a9902e5f90ba', 'Patch differs from locally tested source'
+          pathlib.Path('/tmp/benchmark.patch').write_bytes(patch)
+          PY
+          git apply --check /tmp/benchmark.patch
+          git apply --include=packages/github/src/delivery.test.ts /tmp/benchmark.patch
+      - run: npm ci
+      - name: Prove the unsupported-default regression
+        shell: bash
+        run: |
+          set +e
+          npx --no-install tsx --test --test-name-pattern='delivery without an explicit benchmark' packages/github/src/delivery.test.ts > /tmp/benchmark-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/benchmark-red.log
+          test "$status" = 1
+          grep -q '^# fail 1$' /tmp/benchmark-red.log
+      - name: Apply the remaining fix and check all tested source hashes
+        run: |
+          git apply --exclude=packages/github/src/delivery.test.ts /tmp/benchmark.patch
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+            'docs/PROJECT_STATE.md': '359cdd3bac8248893feeb7e92fe752dd8f4773f7',
+            'docs/specs/PUBLIC_DELIVERY_EVIDENCE.md': '60bc2fd72eca52d3d76441d8b990cdadfe01b65f',
+            'packages/github/src/delivery-client.ts': '878e459c77b4b0ffae70c6f2188ed76d093a2112',
+            'packages/github/src/delivery.test.ts': '7cb61aa35902f9bb541a1d20a5ed8f630d06cde2',
+            'packages/github/src/delivery.ts': 'b85bf2c4141d835e7e22e9f9b6d3bace46d0f750',
+            'packages/static/README.md': '5f51e19255371f444c7b1b3d34789b34aae74678',
+            'packages/static/tests/delivery-generation.test.mjs': '7e30fdf394692fffebdb39a09367f1504baeaeb6',
+            'packages/static/tests/delivery.test.mjs': '423b495c0f6e3a998f8e6928ed2acef6077bfa9f',
+            'packages/svg/README.md': '3e18c630675386614bd03d9f0a158cf40f4cbee1',
+            'packages/svg/src/index.ts': '91a3cbb9ee7f2651cf3e1f0555fc44e8664155dc',
+            'packages/svg/tests/delivery.fixture.mjs': 'e694c6ce3ac615f7b2378d186688a6f20958861a',
+            'packages/svg/tests/delivery.test.mjs': '4a479d8e8241238f4b1524ff248da389dd9e5a4f'
+          }
+          for path, sha in expected.items():
+              actual = subprocess.check_output(['git', 'hash-object', path], text=True).strip()
+              assert actual == sha, f'Untested contents at {path}'
+          PY
+      - name: Rebuild the tracked Action and run the complete gate
+        run: |
+          npm run build:action
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          git diff --check
+      - name: Publish the verified candidate as a fast-forward only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/PROJECT_STATE.md docs/specs/PUBLIC_DELIVERY_EVIDENCE.md packages/github packages/static packages/svg action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(delivery): withhold external comparison without a verified default'
+          git push origin HEAD:refs/heads/feat/public-delivery-evidence
