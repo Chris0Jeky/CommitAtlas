@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
 import { generateStatic } from "./generate.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
@@ -41,8 +42,20 @@ function parseArguments(argv: readonly string[]): {
   return parsed;
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : "CommitAtlas generation failed";
-  process.stderr.write(`CommitAtlas: ${message}\n`);
-  process.exitCode = 1;
-});
+/** Resolve npm's executable symlink without running when another program imports this module. */
+function isEntryPoint(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(new URL(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "CommitAtlas generation failed";
+    process.stderr.write(`CommitAtlas: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
