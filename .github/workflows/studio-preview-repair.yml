@@ -1,0 +1,39 @@
+# Temporary branch-only repair transport; remove with studio-preview.patch before merge.
+name: Verify Studio preview consistency
+on:
+  push:
+    branches: [fix/studio-preview-consistency]
+    paths: [.github/workflows/studio-preview-repair.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/studio-preview-consistency'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Apply the locally tested patch on its exact base
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 9c0aad155fc79989a72eadc36050ac1a74386598
+          git apply --check .github/studio-preview.patch
+          git apply .github/studio-preview.patch
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/studio/studio-client.tsx app/studio/studio-markdown.ts app/studio/studio-urls.ts app/studio/studio-urls.test.ts CONTRIBUTING.md docs/PROJECT_STATE.md
+          git commit -m 'fix(studio): share preview window and derive Atlas URLs from accepted configuration'
+      - name: Verify the complete candidate
+        run: npm run check && npm audit --omit=dev --audit-level=high
+      - name: Publish only a verified fast-forward
+        run: git push origin HEAD:refs/heads/fix/studio-preview-consistency

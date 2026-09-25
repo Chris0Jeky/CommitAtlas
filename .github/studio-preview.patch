@@ -1,0 +1,226 @@
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index 1f9dc4e..7fbf1bc 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -29,6 +29,26 @@ npm audit --omit=dev --audit-level=high
+ 
+ Add focused tests for changed calculations, validation, rendering, or endpoint behavior. SVG changes must remain deterministic, XML-safe, readable without color, and accessible through an explicit image name and description.
+ 
++## Isolated Studio browser regression
++
++The optional Studio interaction harness mounts the real React component with synthetic API
++responses, an anchor-only navigation wrapper, and all external network requests blocked. It
++checks the shared 365-day evidence window, current Atlas URLs after a partial synthetic preview,
++and retained-preview/copy withholding after a failed live refresh. It is not a production-route
++or screenshot/visual-compatibility test.
++
++Use an explicitly installed Playwright CLI and its Chromium browser, as with the motion harness:
++
++```bash
++node tests/studio-preview.browser.mjs --playwright-cli /path/to/playwright/cli.js
++# A locally installed Chromium can be used without downloading a browser:
++node tests/studio-preview.browser.mjs --playwright-cli /path/to/playwright/cli.js --browser-executable /path/to/chromium
++```
++
++The harness emits a JSON check receipt and exits nonzero on failure. It requires the locked
++repository development dependencies, including esbuild, but adds no runtime or default-gate
++browser dependency. `npm run test:studio` remains part of `npm run check`.
++
+ ## Pull requests
+ 
+ - Use a present-tense Conventional Commit title, such as `feat(cards): add project release signals`.
+diff --git a/app/studio/studio-client.tsx b/app/studio/studio-client.tsx
+index a59d1cb..d4ff645 100644
+--- a/app/studio/studio-client.tsx
++++ b/app/studio/studio-client.tsx
+@@ -26,6 +26,7 @@ import {
+ import {
+   buildStudioConfigurationKey,
+   buildStudioRouteUrl,
++  STUDIO_PREVIEW_DAYS,
+   isCopyableStudioOrigin,
+   isStudioPreviewCurrent,
+   resolveStudioBaseUrl,
+@@ -123,7 +124,7 @@ const starterProfile: ProfileSnapshot = {
+ };
+ 
+ const starterContributionDays = Array.from(
+-  { length: 120 },
++  { length: STUDIO_PREVIEW_DAYS },
+   (_, index) => ({ date: `demo-${index}`, count: (index * 5) % 8 }),
+ );
+ 
+@@ -171,15 +172,6 @@ export default function StudioClient() {
+     hasContributions: true,
+     hasLanguages: true,
+   });
+-  const [atlasPreviewUrl, setAtlasPreviewUrl] = useState(() => buildStudioRouteUrl("atlas", {
+-    owner: "octocat",
+-    projects: starterProjects,
+-    theme: "ember",
+-    demo: true,
+-    days: 365,
+-    motion: "subtle",
+-    layout: "wide",
+-  }));
+ 
+   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
+   const configurationKey = useMemo(() => buildStudioConfigurationKey({
+@@ -187,7 +179,7 @@ export default function StudioClient() {
+     projects: activeProjects,
+     theme,
+     demo,
+-    days: 365,
++    days: STUDIO_PREVIEW_DAYS,
+     motion,
+     layout,
+   }), [activeProjects, demo, handle, layout, motion, theme]);
+@@ -196,7 +188,7 @@ export default function StudioClient() {
+     projects: previewConfiguration.projects,
+     theme: previewConfiguration.theme,
+     demo: previewConfiguration.demo,
+-    days: 365,
++    days: STUDIO_PREVIEW_DAYS,
+     motion: previewConfiguration.motion,
+     layout: previewConfiguration.layout,
+   }), [previewConfiguration]);
+@@ -218,12 +210,6 @@ export default function StudioClient() {
+   // configuration has not confirmed it yet.
+   const previewIsRetained = configurationKey !== previewConfigurationKey || refreshUnresolved;
+   const baseUrl = resolveStudioBaseUrl(configurationKey, validatedPreview, PLACEHOLDER_BASE_URL);
+-  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
+-    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
+-    : atlasPreviewUrl;
+-  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
+-    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
+-    : atlasPreviewUrl;
+   const galleryAvailability = {
+     demo: previewConfiguration.demo,
+     hasCurrentContributions: previewConfiguration.hasContributions,
+@@ -239,10 +225,17 @@ export default function StudioClient() {
+     projects: previewConfiguration.projects,
+     theme: previewConfiguration.theme,
+     demo: previewConfiguration.demo,
+-    days: 365,
++    days: STUDIO_PREVIEW_DAYS,
+     motion: previewConfiguration.motion,
+     layout: previewConfiguration.layout,
+   })])) as Record<CardKind, string>, [previewConfiguration]);
++  const atlasPreviewUrl = previewUrls.atlas;
++  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
++    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
++    : atlasPreviewUrl;
++  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
++    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
++    : atlasPreviewUrl;
+   const markdown = useMemo(() => {
+     return buildStudioMarkdown({
+       baseUrl,
+@@ -279,7 +272,7 @@ export default function StudioClient() {
+       projects: activeProjects,
+       theme,
+       demo,
+-      days: 365,
++      days: STUDIO_PREVIEW_DAYS,
+       motion,
+       layout,
+     });
+@@ -289,7 +282,7 @@ export default function StudioClient() {
+     setNotice(`Loading ${demo ? "synthetic" : "live public"} GitHub signals for @${login}…`);
+     try {
+       const common = `user=${encodeURIComponent(login)}&demo=${demo}`;
+-      const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=120`)
++      const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=${STUDIO_PREVIEW_DAYS}`)
+         .then((value) => ({ value, error: null }))
+         .catch((error: unknown) => ({ value: null, error }));
+       const [nextProfile, contributionResult, nextBoard] = await Promise.all([
+@@ -318,17 +311,6 @@ export default function StudioClient() {
+         hasContributions: contributionResult.value !== null,
+         hasLanguages: !nextProfile.repositoriesTruncated,
+       });
+-      if (contributionResult.value) {
+-        setAtlasPreviewUrl(buildStudioRouteUrl("atlas", {
+-          owner: login,
+-          projects: activeProjects,
+-          theme,
+-          demo,
+-          days: 365,
+-          motion,
+-          layout,
+-        }));
+-      }
+       setValidatedPreview({ key: requestedConfigurationKey, origin: window.location.origin });
+       // Resolve only this run's key; any other configuration left unconfirmed stays so.
+       setUnresolvedRefreshKeys((current) => {
+diff --git a/app/studio/studio-markdown.ts b/app/studio/studio-markdown.ts
+index ef07550..f276dcb 100644
+--- a/app/studio/studio-markdown.ts
++++ b/app/studio/studio-markdown.ts
+@@ -2,6 +2,7 @@ import type { HostedMotionProfile } from "@/packages/svg/src/index";
+ import { isStudioCardAvailable } from "./studio-card-availability";
+ import {
+   buildStudioRouteUrl,
++  STUDIO_PREVIEW_DAYS,
+   type StudioCardKind,
+   type StudioProjectInput,
+ } from "./studio-urls";
+@@ -76,7 +77,7 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
+         projects: options.projects,
+         theme,
+         demo: options.demo,
+-        days: 365,
++        days: STUDIO_PREVIEW_DAYS,
+         motion: options.motion,
+         layout: options.layout,
+       })}`;
+diff --git a/app/studio/studio-urls.test.ts b/app/studio/studio-urls.test.ts
+index bb89ff2..cfcf1b4 100644
+--- a/app/studio/studio-urls.test.ts
++++ b/app/studio/studio-urls.test.ts
+@@ -220,3 +220,19 @@ test("binds a successful origin to the exact route-affecting configuration", ()
+   assert.equal(resolveStudioBaseUrl(key, validated, "https://placeholder.example"), "https://atlas.example");
+   assert.equal(resolveStudioBaseUrl("changed", validated, "https://placeholder.example"), "https://placeholder.example");
+ });
++
++test("the Studio preview window matches every date-window README embed", async () => {
++  const urls = await import("./studio-urls");
++  const { buildStudioMarkdown } = await import("./studio-markdown");
++  assert.equal(urls.STUDIO_PREVIEW_DAYS, 365);
++  const markdown = buildStudioMarkdown({
++    baseUrl: "https://studio.example", owner: "octocat", theme: "ember", demo: true,
++    projects: [], selectedCards: new Set(["atlas", "activity", "breakdown", "rhythm"]),
++    hasCurrentContributions: true, hasCurrentLanguages: true,
++  });
++  const embeds = [...markdown.matchAll(/(?:src|srcset)="([^"]+)"/g)];
++  assert.equal(embeds.length, 12);
++  for (const [, url] of embeds) {
++    assert.equal(new URL(url!).searchParams.get("days"), String(urls.STUDIO_PREVIEW_DAYS));
++  }
++});
+diff --git a/app/studio/studio-urls.ts b/app/studio/studio-urls.ts
+index e9578f4..4008d11 100644
+--- a/app/studio/studio-urls.ts
++++ b/app/studio/studio-urls.ts
+@@ -1,5 +1,8 @@
+ import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
+ 
++/** One evidence window for collection, preview configuration, card URLs, and README output. */
++export const STUDIO_PREVIEW_DAYS = 365;
++
+ export type StudioCardKind =
+   | "atlas"
+   | "profile"
+diff --git a/docs/PROJECT_STATE.md b/docs/PROJECT_STATE.md
+index 6c5c10c..19402bc 100644
+--- a/docs/PROJECT_STATE.md
++++ b/docs/PROJECT_STATE.md
+@@ -245,6 +245,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
+ - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
+   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
+   provenance, errors, and copyable README Markdown.
++- Studio contribution collection, preview identity, gallery URLs, and emitted README image URLs
++  share the 365-day window. Atlas wide/compact previews and their links derive from the same
++  accepted preview configuration as the other cards, including partial synthetic refreshes.
+ - Studio live evidence is confirmed per preview run, not per configuration. While a retry of an
+   unchanged live configuration is in flight, and after that retry fails, the prior preview stays
+   visible and labelled retained, but contribution- and language-backed cards are withheld from the
