@@ -1,0 +1,75 @@
+# Temporary test-first branch repair; remove before merge.
+name: Verify Markdown code span repair
+on:
+  push:
+    branches: [fix/markdown-code-span-lines]
+    paths: [.github/workflows/repair-code-span.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/markdown-code-span-lines'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Prove the newline regression against the unchanged helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 8fc6169282c3b05af4190010397abbf307ab1222
+          npm run build:static
+          set +e
+          node --test packages/static/tests/code-span.test.mjs > /tmp/code-span-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/code-span-red.log
+          test "$status" = 1
+          grep -q '^# tests 2$' /tmp/code-span-red.log
+          grep -q '^# fail 2$' /tmp/code-span-red.log
+      - name: Apply the exact locally verified normalization and gate wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          def sha(path):
+              return subprocess.check_output(['git','hash-object',str(path)], text=True).strip()
+          p = Path('packages/static/src/projects-catalog.ts')
+          assert sha(p) == '1a954c0e96a27987bfbe9d377f9203304ba21857'
+          text = p.read_text()
+          old = '  if (value.length === 0) throw new Error("Cannot render an empty value as a Markdown code span");\n'
+          new = old + '  // CommonMark normalizes line endings before deciding whether boundary padding is stripped.\n  value = value.replace(/\\r\\n|[\\r\\n]/g, " ");\n'
+          assert text.count(old) == 1
+          p.write_text(text.replace(old, new))
+          assert sha(p) == 'a567ef353c8ea875f7377c762107f1d6e3310f66'
+          p = Path('packages/static/package.json')
+          assert sha(p) == '17d0ba21bf623ae3a2a8c1ef10de6906c6dec25a'
+          text = p.read_text()
+          old = 'node --test tests/static.test.mjs tests/entrypoint.test.mjs'
+          assert text.count(old) == 1
+          p.write_text(text.replace(old, old + ' tests/code-span.test.mjs'))
+          assert sha(p) == 'be41480aafe510185ccf828b847c26672f9cb8da'
+          assert sha(Path('packages/static/tests/code-span.test.mjs')) == '2af7cfcf9d7a9667b4a9c32bc6f537d06631ed52'
+          PY
+      - name: Rebuild and verify the complete candidate
+        run: |
+          npm run build:action
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          git diff --check
+      - name: Publish only the verified branch candidate
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/static/src/projects-catalog.ts packages/static/package.json action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(static): normalize Markdown line endings before code-span padding'
+          git push origin HEAD:refs/heads/fix/markdown-code-span-lines
