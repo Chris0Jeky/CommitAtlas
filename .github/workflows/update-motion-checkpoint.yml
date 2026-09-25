@@ -1,0 +1,47 @@
+# Temporary branch-only documentation repair. Remove before PR #224 merges.
+name: Synchronize motion checkpoint
+on:
+  push:
+    branches: [codex/issue-124-motion-profiles]
+    paths: [.github/workflows/update-motion-checkpoint.yml]
+permissions:
+  contents: write
+jobs:
+  checkpoint:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/codex/issue-124-motion-profiles'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - name: Apply the reviewed checkpoint correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = c778f27c69f6b7366970d75da91c5d965a9b734a
+          python3 - <<'PY'
+          from pathlib import Path
+          file = Path('docs/PROJECT_STATE.md')
+          old = '''- Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
+            Midnight, and Paper themes support `motion=none|subtle`; subtle motion is transform-only, leaves
+            essential content visible at frame zero, and includes a reduced-motion override.'''
+          new = '''- Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
+            Midnight, and Paper themes support hosted `motion=none|subtle|ambient`; package and static
+            callers additionally accept `cinematic`. This compatibility slice deliberately maps every
+            non-`none` profile to the same transform-only Subtle motion, with essential content visible
+            at frame zero and a reduced-motion override. Defaults remain Atlas `subtle`, other hosted
+            cards `none`, and static generation `none`. Differentiated ambient/cinematic backends and
+            the GitHub/WebKit evidence gates remain separate, unfinished work.'''
+          text = file.read_text()
+          if text.count(old) != 1:
+              raise SystemExit('Checkpoint changed; refusing an unreviewed replacement')
+          file.write_text(text.replace(old, new))
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/PROJECT_STATE.md
+          git commit -m 'docs: align project checkpoint with motion profile compatibility contract'
+          git push origin HEAD:refs/heads/codex/issue-124-motion-profiles
