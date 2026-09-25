@@ -25,7 +25,7 @@ jobs:
           cache: npm
       - name: Apply only hash-checked regression tests first
         run: |
-          test "$(git rev-parse HEAD^)" = 05706e566efeb67b03afdaf453165dbfd3a9ae7d
+          test "$(git rev-parse HEAD^)" = 7c9d3f4994c8645caa1d4ec062a8da7da6ae93ab
           cat > /tmp/apply-benchmark.py <<'PY'
           import hashlib, json, pathlib, sys
           def blob(data):
@@ -75,16 +75,26 @@ jobs:
           cp tsconfig.json /tmp/delivery-evidence/tsconfig.json
           node --version > /tmp/delivery-evidence/node.txt
           npm ls typescript --depth=0 > /tmp/delivery-evidence/typescript.txt
-          git grep -n 'snapshot.benchmark' -- ':!action/dist/index.js' > /tmp/delivery-evidence/benchmark-callers.txt || test "$?" = 1
           rm -f tsconfig.tsbuildinfo
-      - name: Rebuild the tracked Action and run the complete gate
+      - name: Rebuild and commit the local candidate for the drift check
         shell: bash
         run: |
           set -euo pipefail
           npm run build:action 2>&1 | tee /tmp/delivery-evidence/action-build.log
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/PROJECT_STATE.md docs/specs/PUBLIC_DELIVERY_EVIDENCE.md packages/github packages/static packages/svg action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(delivery): withhold external comparison without a verified default'
+          git rev-parse HEAD > /tmp/delivery-evidence/candidate.txt
+      - name: Verify the complete sealed candidate
+        shell: bash
+        run: |
+          set -euo pipefail
           npm run check 2>&1 | tee /tmp/delivery-evidence/full-check.log
           npm audit --omit=dev --audit-level=high 2>&1 | tee /tmp/delivery-evidence/audit.log
           git diff --check
+          git diff --exit-code
       - name: Preserve verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -93,10 +103,4 @@ jobs:
           path: /tmp/delivery-evidence
           retention-days: 7
       - name: Publish the verified candidate as a fast-forward only
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/PROJECT_STATE.md docs/specs/PUBLIC_DELIVERY_EVIDENCE.md packages/github packages/static packages/svg action/dist/index.js
-          git diff --cached --check
-          git commit -m 'fix(delivery): withhold external comparison without a verified default'
-          git push origin HEAD:refs/heads/feat/public-delivery-evidence
+        run: git push origin HEAD:refs/heads/feat/public-delivery-evidence
