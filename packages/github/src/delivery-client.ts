@@ -15,7 +15,7 @@ export interface FetchDeliverySnapshotOptions {
   readonly token: string;
   readonly login: string;
   readonly repositories: readonly string[];
-  readonly benchmark?: DeliveryBenchmark;
+  readonly benchmark?: DeliveryBenchmark | null;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => Date;
   readonly deadlineMs?: number;

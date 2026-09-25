@@ -104,7 +104,7 @@ interface DeliverySnapshot {
   windows: readonly DeliveryWindow[];
   repositories: readonly DeliveryRepositoryWindow[];
   derived: DeliveryDerivedSignals;
-  benchmark: DeliveryBenchmark;
+  benchmark: DeliveryBenchmark | null;
   formulas: Readonly<Record<string, string>>;
   limitations: readonly string[];
 }
@@ -128,21 +128,22 @@ All ratios use validated counts and are rounded to four decimal places in the ev
 
 Integration balance may exceed `1.0`; merges in a period are not necessarily drawn from openings in the same period. It must never be silently capped.
 
-## Benchmark v1
+## Benchmark availability
 
-The initial comparison is a dated external organisational reference:
+No built-in numeric benchmark is enabled. Ordinary static and Action generation emits
+`benchmark: null` and `derived.benchmarkMultiple7: null`; the SVG and its accessible description
+state `BENCHMARK UNAVAILABLE`. Observed counts and other derived flow metrics are preserved.
+The benchmark formula applies only when an explicit reference exists; otherwise the result is
+null, not zero. A retained numeric multiple without a reference cannot render a comparison.
 
-- id: `jellyfish-high-ai-adoption-2026-03`;
-- publisher: Jellyfish Research;
-- value: `2.2` merged pull requests per engineer per week;
-- source: `https://jellyfish.co/newsroom/jellyfish-reveals-ais-real-impact-on-engineering-teams/`;
-- publication date: `2026-03-17`;
-- reported population: more than 700 companies, 200,000 engineers, and 20 million pull requests;
-- cohort: companies with the highest frequent-AI adoption in the published study.
+Programmatic collectors may supply a structurally valid `DeliveryBenchmark` with a version,
+identity, unit/value, primary source, date, population, cohort, and caveats. The caller is
+responsible for verifying that source; structural validation does not authenticate a claim.
+No external URL is fetched by this feature. Test comparisons use an explicitly synthetic
+reference on `example.invalid`, never an attribution to a real publisher.
 
-The comparison is a ratio of differently scoped PR-count rates. It is not a global percentile, an estimate of equivalent headcount, or proof of superior engineering outcomes. Repository architecture, PR granularity, automation, review policy, and ownership differ materially.
-
-The benchmark is versioned and intentionally not scraped at generation time. A future benchmark update is a reviewed source-data change, not an unreviewed change to historical output.
+Issue #245 tracks the primary-evidence requirement before enabling any built-in reference.
+The original draft's unverified numeric default is removed rather than being shown as verified.
 
 ## SVG content
 

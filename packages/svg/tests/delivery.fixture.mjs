@@ -1,5 +1,20 @@
 import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "../../github/dist/index.js";
 
+export const SYNTHETIC_BENCHMARK = {
+  version: 1,
+  id: "synthetic-reference",
+  label: "Synthetic test reference",
+  publisher: "Synthetic Tests",
+  metric: "Invented pull request throughput",
+  value: 2.2,
+  unit: "merged-pull-requests-per-engineer-week",
+  sourceUrl: "https://example.invalid/synthetic-benchmark",
+  publishedAt: "2026-03-17",
+  population: "Invented test population; not observed data.",
+  cohort: "Synthetic fixture only.",
+  caveats: ["This synthetic comparison is not a global percentile or real benchmark."],
+};
+
 const AS_OF = new Date("2026-09-21T18:22:00.000Z");
 
 const CANONICAL_COUNTS = {
@@ -31,7 +46,7 @@ const CANONICAL_REPOSITORIES = new Map([
  * `counts` replaces individual aliases (callers must keep the lifetime and repository
  * aggregate identities intact); `benchmark` replaces the versioned benchmark wholesale.
  */
-export function deliveryFixture({ login, repositories, counts, benchmark } = {}) {
+export function deliveryFixture({ login, repositories, counts, benchmark = SYNTHETIC_BENCHMARK } = {}) {
   const plan = buildDeliveryQueryPlan({
     login: login ?? "Chris0Jeky",
     repositories: repositories ?? [...CANONICAL_REPOSITORIES.keys()],
@@ -47,7 +62,7 @@ export function deliveryFixture({ login, repositories, counts, benchmark } = {})
     }
   }
   Object.assign(merged, counts ?? {});
-  return deriveDeliverySnapshot({ plan, counts: merged, ...(benchmark ? { benchmark } : {}) });
+  return deriveDeliverySnapshot({ plan, counts: merged, benchmark });
 }
 
 /** Every count is zero, so every denominator-driven ratio is null upstream. */

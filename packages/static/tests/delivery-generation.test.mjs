@@ -146,6 +146,9 @@ test("generates paired delivery SVG and identical evidence JSON atomically", asy
     assert.deepEqual((await readdir(light)).sort(), ["delivery.json", "delivery.svg", "manifest.json"]);
     assert.equal(await readFile(path.join(dark, "delivery.json"), "utf8"), await readFile(path.join(light, "delivery.json"), "utf8"));
     assert.notEqual(await readFile(path.join(dark, "delivery.svg"), "utf8"), await readFile(path.join(light, "delivery.svg"), "utf8"));
+    const evidence = JSON.parse(await readFile(path.join(dark, "delivery.json"), "utf8"));
+    assert.equal(evidence.benchmark, null);
+    assert.equal(evidence.derived.benchmarkMultiple7, null);
     for (const [directory, theme] of [[dark, "ember"], [light, "paper"]]) {
       assert.equal(await readFile(path.join(directory, "delivery.svg"), "utf8"),
         renderDeliveryCard(delivery(), { theme, width: 860, motion: "none" }));

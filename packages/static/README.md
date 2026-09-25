@@ -134,3 +134,11 @@ motion/frame-zero policy. The direct static rendering API retains its `aurora` d
 configured generation passes its chosen theme explicitly. Paired artifacts are checked against
 the shared renderer byte-for-byte. This presentation consolidation does not change
 `delivery.json` or introduce any new data fetch.
+
+### Delivery benchmark availability
+
+Ordinary generation does not enable an external benchmark. `delivery.json` carries
+`benchmark: null` and `derived.benchmarkMultiple7: null`; the shared SVG renderer prints
+`BENCHMARK UNAVAILABLE` while retaining the observed flow metrics. Explicit programmatic
+references require caller-verified provenance. No source URL is fetched; see #245 before
+introducing a built-in numeric reference.

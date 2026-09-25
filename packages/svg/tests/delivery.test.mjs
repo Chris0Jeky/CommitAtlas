@@ -101,16 +101,16 @@ test("delivery card presents the focal rate, comparison, supporting evidence, an
   assert.match(output, /88→72 · 5\.6\/wk/);
   assert.match(output, /120→100 · 1\.9\/wk/);
   assert.match(output, /LIFETIME 120 AUTHORED · 100 MERGED · 110 CLOSED · 10 OPEN · 4 DRAFTS/);
-  assert.match(output, /BENCHMARK JELLYFISH RESEARCH · 2\.2\/WK · 2026-03-17/);
+  assert.match(output, /BENCHMARK SYNTHETIC TESTS · 2\.2\/WK · 2026-03-17/);
   assert.match(output, /GITHUB GRAPHQL · 15 QUERIES · REFRESHED 2026-09-21/);
   assert.match(output, /ACTIVITY FLOW · NOT QUALITY OR IMPACT/);
   const desc = output.match(/<desc>([\s\S]*)<\/desc>/)[1];
   assert.match(desc, /12\.0 merged pull requests per week during 2026-09-15 → 2026-09-21/);
-  assert.match(desc, /5\.5 times the dated Jellyfish high-AI-adoption organisations reference/);
-  assert.match(desc, /More than 700 companies/);
+  assert.match(desc, /5\.5 times the dated Synthetic test reference reference/);
+  assert.match(desc, /Invented test population/);
   assert.match(desc, /not a global percentile/);
   assert.match(desc, /not a measure of code quality/);
-  assert.match(desc, /jellyfish\.co\/newsroom/);
+  assert.match(desc, /example\.invalid\/synthetic-benchmark/);
   assert.match(desc, /Chris0Jeky\/CommitAtlas, Chris0Jeky\/Taskdeck/);
   assert.match(desc, /activity flow, not quality or impact/);
 });
@@ -142,7 +142,7 @@ test("delivery card renders unknown ratios without NaN or Infinity", () => {
   assertSafeDeliverySvg(output);
   assert.match(output, /UNAVAILABLE/);
   assert.match(output, />0\.0</);
-  assert.match(output, /0\.0× DATED BENCHMARK/);
+  assert.match(output, /BENCHMARK UNAVAILABLE/);
   assert.match(output, /merge-weeks unavailable/);
   assert.match(output, /LIFETIME 0 AUTHORED · 0 MERGED · 0 CLOSED · 0 OPEN/);
   assert.doesNotMatch(output, /NaN|Infinity/);
@@ -258,6 +258,22 @@ test("delivery provenance lines remain separated and the configured scope is vis
     const baselines = [yFor("LIFETIME "), yFor("BENCHMARK "), yFor("GITHUB GRAPHQL ")];
     for (let index = 1; index < baselines.length; index += 1) {
       assert.ok(baselines[index] - baselines[index - 1] >= 12, `provenance lines overlap at width ${width}: ${baselines}`);
+    }
+  }
+});
+
+test("an absent benchmark cannot render a multiple even with a retained numeric ratio", () => {
+  const data = structuredClone(deliveryFixture());
+  data.benchmark = null;
+  for (const width of [420, 480, 860]) {
+    for (const theme of ["ember", "aurora", "midnight", "paper"]) {
+      const output = renderDeliveryCard(data, { width, theme, motion: "none" });
+      assert.match(output, /BENCHMARK UNAVAILABLE/);
+      assert.match(output, /No external benchmark is configured/);
+      assert.doesNotMatch(output, /[\d.]×|times the dated|JELLYFISH|Jellyfish|UNKNOWN PUBLISHER/);
+      assert.match(output, />12\.0</);
+      assertSafeDeliverySvg(output);
+      assertReadableFloor(output);
     }
   }
 });

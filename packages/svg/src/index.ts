@@ -328,9 +328,9 @@ export interface DeliveryCardData {
     readonly wipMergeWeeks: number | null;
     readonly topTwoConcentration30: number | null;
     readonly topSixConcentration30: number | null;
-    readonly benchmarkMultiple7: number;
+    readonly benchmarkMultiple7: number | null;
   };
-  readonly benchmark: DeliveryCardBenchmark;
+  readonly benchmark: DeliveryCardBenchmark | null;
   readonly formulas: Readonly<Record<string, string>>;
   readonly limitations: readonly string[];
 }
@@ -1391,7 +1391,8 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
   const height = o.height;
 
   const rateLabel = deliveryRateLabel(seven.mergedPerWeek);
-  const multipleLabel = deliveryMultipleLabel(data.derived.benchmarkMultiple7);
+  const benchmark = data.benchmark;
+  const multipleLabel = deliveryMultipleLabel(benchmark == null ? null : data.derived.benchmarkMultiple7);
   const conversionLabel = deliveryRatioLabel(data.derived.resolvedMergeConversion);
   const balanceLabel = deliveryRatioLabel(data.derived.integrationBalance30);
   const concentrationLabel = deliveryRatioLabel(data.derived.topTwoConcentration30);
@@ -1414,14 +1415,14 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
   const refreshed = /^\d{4}-\d{2}-\d{2}/.test(String(data.generatedAt ?? ""))
     ? String(data.generatedAt).slice(0, 10)
     : truncateText(data.generatedAt, MAX_WINDOW_LABEL_LENGTH) || "UNKNOWN";
-  const benchmarkValue = typeof data.benchmark.value === "number" && Number.isFinite(data.benchmark.value) && data.benchmark.value > 0
-    ? String(data.benchmark.value)
+  const benchmarkValue = typeof benchmark?.value === "number" && Number.isFinite(benchmark.value) && benchmark.value > 0
+    ? String(benchmark.value)
     : "UNKNOWN";
-  const benchmarkDate = /^\d{4}-\d{2}-\d{2}$/.test(String(data.benchmark.publishedAt ?? ""))
-    ? String(data.benchmark.publishedAt)
+  const benchmarkDate = /^\d{4}-\d{2}-\d{2}$/.test(String(benchmark?.publishedAt ?? ""))
+    ? String(benchmark?.publishedAt)
     : "UNDATED";
   const publisher = truncateText(
-    data.benchmark.publisher,
+    benchmark?.publisher ?? "",
     compact && width < 560 ? 20 : MAX_DELIVERY_PUBLISHER_LENGTH,
   ) || "UNKNOWN PUBLISHER";
 
@@ -1439,7 +1440,10 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
   out += mono(34, 88, "7-DAY MERGED RATE", 10, t.muted);
   out += text(34, 136, rateLabel, 44, t.accent, 800);
   out += text(34, 156, "PRS / WEEK", 12, t.text, 700);
-  const pillLabel = `${multipleLabel} DATED BENCHMARK`;
+  const pillLabel = benchmark == null ? "BENCHMARK UNAVAILABLE" : `${multipleLabel} DATED BENCHMARK`;
+  const benchmarkLine = benchmark == null
+    ? "BENCHMARK UNAVAILABLE · NO EXTERNAL REFERENCE"
+    : `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`;
   const pillWidth = Math.min(compact ? width - 68 : 300, 26 + Math.ceil([...pillLabel].length * 7.3));
   out += `<rect x="34" y="166" width="${pillWidth}" height="26" rx="13" fill="${t.track}" stroke="${t.border}"/>`;
   out += mono(34 + pillWidth / 2, 183, pillLabel, 11, t.chrome, 700, "middle", 0.06);
@@ -1476,7 +1480,7 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
     const merged = deliveryCountLabel(data.lifetime.merged);
     const closed = deliveryCountLabel(data.lifetime.closed);
     out += mono(34, 504, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN`, 9.5, t.muted, 500, "start", 0.06);
-    out += mono(34, 522, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+    out += mono(34, 522, benchmarkLine, 9.5, t.muted, 500, "start", 0.06);
     const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
     out += mono(34, 540, footer, 9.5, t.muted, 500, "start", 0.04);
     out += mono(width / 2, 560, DELIVERY_NON_CLAIM, 9.5, t.warning, 700, "middle", 0.06);
@@ -1500,7 +1504,7 @@ export function renderDeliveryCard(data: DeliveryCardData, options?: RenderOptio
     const closed = deliveryCountLabel(data.lifetime.closed);
     const drafts = deliveryCount(data.lifetime.drafts);
     out += mono(34, 348, `LIFETIME ${authored} AUTHORED · ${merged} MERGED · ${closed} CLOSED · ${openLabel} OPEN${drafts !== null && drafts > 0 ? ` · ${formatNumber(drafts, false)} DRAFTS` : ""}`, 9.5, t.muted, 500, "start", 0.06);
-    out += mono(34, 360, `BENCHMARK ${publisher.toUpperCase()} · ${benchmarkValue}/WK · ${benchmarkDate}`, 9.5, t.muted, 500, "start", 0.06);
+    out += mono(34, 360, benchmarkLine, 9.5, t.muted, 500, "start", 0.06);
     const footer = `${provider} · ${queryCount === null ? "QUERY COUNT UNKNOWN" : `${formatNumber(queryCount, false)} QUERIES`} · REFRESHED ${refreshed}`;
     out += mono(34, height - 26, footer, 9.5, t.muted, 500, "start", 0.04);
     out += mono(width - 34, height - 26, DELIVERY_NON_CLAIM, 9.5, t.warning, 700, "end", 0.06);
@@ -1564,10 +1568,10 @@ function deliveryAccessibleDescription(
 ): string {
   const rateSpoken = readings.rateLabel === "UNKNOWN" ? "an unknown rate of" : `${readings.rateLabel}`;
   const benchmark = data.benchmark;
-  const label = truncateText(benchmark.label, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown reference";
-  const population = truncateText(benchmark.population, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown population";
-  const cohort = truncateText(benchmark.cohort, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown cohort";
-  const caveats = Array.isArray(benchmark.caveats) && benchmark.caveats.length > 0
+  const label = truncateText(benchmark?.label ?? "", MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown reference";
+  const population = truncateText(benchmark?.population ?? "", MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown population";
+  const cohort = truncateText(benchmark?.cohort ?? "", MAX_DELIVERY_EVIDENCE_PROSE_LENGTH) || "unknown cohort";
+  const caveats = Array.isArray(benchmark?.caveats) && benchmark.caveats.length > 0
     ? benchmark.caveats.map((caveat) => truncateText(caveat, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH)).join(" ")
     : "No caveats recorded.";
   const limitations = Array.isArray(data.limitations) && data.limitations.length > 0
@@ -1586,11 +1590,14 @@ function deliveryAccessibleDescription(
     return `${days}-day ${opened} opened and ${merged} merged`;
   }).join("; ");
   const drafts = deliveryCount(data.lifetime.drafts);
-  const sourceUrl = truncateText(benchmark.sourceUrl, MAX_DELIVERY_EVIDENCE_PROSE_LENGTH);
+  const sourceUrl = truncateText(benchmark?.sourceUrl ?? "", MAX_DELIVERY_EVIDENCE_PROSE_LENGTH);
+  const comparison = benchmark == null
+    ? "No external benchmark is configured; the comparison is unavailable. "
+    : `${deliverySpokenMultiple(data.derived.benchmarkMultiple7)} the dated ${label} reference of ` +
+      `${readings.benchmarkValue} merged pull requests per engineer-week, published ${readings.benchmarkDate}. ` +
+      `Population: ${population} Cohort: ${cohort} Benchmark source: ${sourceUrl || "not recorded"}. Caveats: ${caveats} `;
   return `${rateSpoken} merged pull requests per week during ${readings.sevenRange}. ` +
-    `${deliverySpokenMultiple(data.derived.benchmarkMultiple7)} the dated ${label} reference of ` +
-    `${readings.benchmarkValue} merged pull requests per engineer-week, published ${readings.benchmarkDate}. ` +
-    `Population: ${population} Cohort: ${cohort} ` +
+    comparison +
     `Resolved merge conversion ${deliverySpokenRatio(data.derived.resolvedMergeConversion)}; ` +
     `30-day integration balance ${deliverySpokenRatio(data.derived.integrationBalance30)}; ` +
     `open work in progress ${deliverySpokenCount(data.lifetime.open)}` +
@@ -1606,7 +1613,7 @@ function deliveryAccessibleDescription(
     `Scope: ${readings.scopeLabel.toLowerCase()} for ${readings.login}: ${repositoryList}. ` +
     `Source: ${readings.provider} aggregate pull-request search counts, refreshed ${readings.refreshed}; ` +
     `as of ${truncateText(data.asOf, MAX_WINDOW_LABEL_LENGTH) || "an unknown date"}. ` +
-    `Benchmark source: ${sourceUrl || "not recorded"}. Caveats: ${caveats} Limitations: ${limitations} ` +
+    `Limitations: ${limitations} ` +
     `Pull-request flow is activity flow, not quality or impact.`;
 }
 

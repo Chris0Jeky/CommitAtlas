@@ -4,6 +4,21 @@ import { buildDeliveryQueryPlan, deriveDeliverySnapshot } from "@commit-atlas/gi
 import { renderDeliveryCard as renderSharedDeliveryCard } from "@commit-atlas/svg";
 import { renderDeliveryCard, renderDeliveryEvidence } from "../dist/index.js";
 
+const SYNTHETIC_BENCHMARK = {
+  version: 1,
+  id: "synthetic-reference",
+  label: "Synthetic test reference",
+  publisher: "Synthetic Tests",
+  metric: "Invented pull request throughput",
+  value: 2.2,
+  unit: "merged-pull-requests-per-engineer-week",
+  sourceUrl: "https://example.invalid/synthetic-benchmark",
+  publishedAt: "2026-03-17",
+  population: "Invented test population; not observed data.",
+  cohort: "Synthetic fixture only.",
+  caveats: ["This synthetic comparison is not a global percentile or real benchmark."],
+};
+
 const NOW = new Date("2026-09-21T18:22:00.000Z");
 
 function snapshot(options = {}) {
@@ -56,13 +71,13 @@ test("delivery evidence JSON is deterministic, versioned, sorted, and self-expla
     "Chris0Jeky/Taskdeck",
   ]);
   assert.equal(parsed.formulas.resolvedMergeConversion, "lifetime.merged / lifetime.closed");
-  assert.equal(parsed.benchmark.publisher, "Jellyfish Research");
-  assert.match(parsed.benchmark.sourceUrl, /^https:\/\//);
+  assert.equal(parsed.benchmark, null);
+  assert.equal(parsed.derived.benchmarkMultiple7, null);
   assert.ok(parsed.limitations.some((limitation) => /not.*quality|quality.*not/i.test(limitation)));
 });
 
 test("delivery card presents the focal rate, comparison, supporting evidence, and non-claim accessibly", () => {
-  const svg = renderDeliveryCard(snapshot(), { theme: "ember", width: 860, motion: "none" });
+  const svg = renderDeliveryCard(snapshot({ benchmark: SYNTHETIC_BENCHMARK }), { theme: "ember", width: 860, motion: "none" });
   assert.match(svg, /^<svg/);
   assert.match(svg, /role="img"/);
   assert.match(svg, /aria-label="Delivery evidence for Chris0Jeky"/);
@@ -111,7 +126,7 @@ test("delivery card renders unavailable ratios without NaN or Infinity", () => {
 });
 
 test("delivery card escapes hostile benchmark presentation text", () => {
-  const base = snapshot().benchmark;
+  const base = SYNTHETIC_BENCHMARK;
   const svg = renderDeliveryCard(snapshot({
     benchmark: {
       ...base,
@@ -138,4 +153,14 @@ test("static delivery uses the shared renderer for every theme, width and motion
   }
   assert.ok(renderDeliveryCard(evidence) === renderSharedDeliveryCard(evidence, { theme: "aurora" }),
     "the direct static API preserves its established aurora default");
+});
+
+test("default static delivery evidence omits the unverified reference in JSON and SVG", () => {
+  const value = snapshot();
+  const json = JSON.parse(renderDeliveryEvidence(value));
+  assert.equal(json.benchmark, null);
+  assert.equal(json.derived.benchmarkMultiple7, null);
+  const svg = renderDeliveryCard(value, { theme: "paper", width: 480 });
+  assert.match(svg, /BENCHMARK UNAVAILABLE/);
+  assert.doesNotMatch(svg, /Jellyfish|JELLYFISH|[\d.]× DATED BENCHMARK/);
 });

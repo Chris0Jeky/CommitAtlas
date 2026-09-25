@@ -59,7 +59,7 @@ export interface DeliveryDerivedSignals {
   readonly wipMergeWeeks: number | null;
   readonly topTwoConcentration30: number | null;
   readonly topSixConcentration30: number | null;
-  readonly benchmarkMultiple7: number;
+  readonly benchmarkMultiple7: number | null;
 }
 
 export interface DeliverySnapshot {
@@ -87,29 +87,10 @@ export interface DeliverySnapshot {
   readonly windows: readonly DeliveryWindowSnapshot[];
   readonly repositories: readonly DeliveryRepositoryWindow[];
   readonly derived: DeliveryDerivedSignals;
-  readonly benchmark: DeliveryBenchmark;
+  readonly benchmark: DeliveryBenchmark | null;
   readonly formulas: Readonly<Record<string, string>>;
   readonly limitations: readonly string[];
 }
-
-export const JELLYFISH_HIGH_AI_ADOPTION_BENCHMARK: DeliveryBenchmark = {
-  version: 1,
-  id: "jellyfish-high-ai-adoption-2026-03",
-  label: "Jellyfish high-AI-adoption organisations",
-  publisher: "Jellyfish Research",
-  metric: "Pull request throughput",
-  value: 2.2,
-  unit: "merged-pull-requests-per-engineer-week",
-  sourceUrl: "https://jellyfish.co/newsroom/jellyfish-reveals-ais-real-impact-on-engineering-teams/",
-  publishedAt: "2026-03-17",
-  population: "More than 700 companies, 200,000 engineers, and 20 million pull requests.",
-  cohort: "Companies in the published study with the highest frequent-AI adoption.",
-  caveats: [
-    "This comparison is not a global percentile, ranking, or estimate of equivalent headcount.",
-    "Repository architecture, pull-request granularity, automation, review policy, and ownership differ materially.",
-    "Pull-request throughput is activity flow, not evidence of quality, effort, impact, or business outcomes.",
-  ],
-};
 
 export function buildDeliveryQueryPlan(input: {
   readonly login: string;
@@ -162,9 +143,10 @@ export function buildDeliveryQueryPlan(input: {
 export function deriveDeliverySnapshot(input: {
   readonly plan: DeliveryQueryPlan;
   readonly counts: Readonly<Record<string, number>>;
-  readonly benchmark?: DeliveryBenchmark;
+  readonly benchmark?: DeliveryBenchmark | null;
 }): DeliverySnapshot {
-  const benchmark = validateBenchmark(input.benchmark ?? JELLYFISH_HIGH_AI_ADOPTION_BENCHMARK);
+  // No built-in reference is enabled until its exact primary datum is verified.
+  const benchmark = input.benchmark == null ? null : validateBenchmark(input.benchmark);
   const aliases = new Set<string>();
   for (const query of input.plan.queries) {
     if (aliases.has(query.alias)) throw new Error(`Delivery query plan contains duplicate alias ${query.alias}`);
@@ -275,7 +257,7 @@ export function deriveDeliverySnapshot(input: {
       wipMergeWeeks: merged7 === 0 ? null : round4(open / merged7),
       topTwoConcentration30: concentration(2),
       topSixConcentration30: concentration(6),
-      benchmarkMultiple7: round4(mergedPerWeek7 / benchmark.value),
+      benchmarkMultiple7: benchmark === null ? null : round4(mergedPerWeek7 / benchmark.value),
     },
     benchmark,
     formulas: {
@@ -290,7 +272,9 @@ export function deriveDeliverySnapshot(input: {
     limitations: [
       "Pull-request count is activity flow, not a measure of code quality, effort, impact, or delivered user value.",
       "The snapshot covers only the configured public repositories and may exclude other public or private work.",
-      "The external benchmark is a dated organisational reference, not a global percentile or equivalent-headcount estimate.",
+      benchmark === null
+        ? "No external benchmark is configured; the benchmark comparison is unavailable."
+        : "The external benchmark is a caller-supplied dated reference, not a global percentile or equivalent-headcount estimate.",
       "Pull-request size, automation, review policy, stacking, ownership, and repository architecture can materially change counts.",
     ],
   };

@@ -96,3 +96,7 @@ Its cache validates and owns a deep copy of each stored capsule and returns isol
 Consumers must preserve the original expiry and enforce it when publishing or caching output.
 Sampled checks retain their numerator/denominator, remain separate from CI, and are never
 reported as time-weighted uptime. This package does not add a hosted route or remote ingestion.
+
+Delivery cards accept `benchmark: null`. An absent reference renders `BENCHMARK UNAVAILABLE`
+even when a direct caller supplies a retained numeric multiple. No publisher, reference rate,
+or comparison is invented; all independent flow readings remain visible.

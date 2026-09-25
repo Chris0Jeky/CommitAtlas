@@ -1,11 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  JELLYFISH_HIGH_AI_ADOPTION_BENCHMARK,
+  type DeliveryBenchmark,
   buildDeliveryQueryPlan,
   deriveDeliverySnapshot,
   type DeliveryQueryPlan,
 } from "./delivery.js";
+
+const SYNTHETIC_BENCHMARK: DeliveryBenchmark = {
+  version: 1,
+  id: "synthetic-reference",
+  label: "Synthetic test reference",
+  publisher: "Synthetic Tests",
+  metric: "Invented pull request throughput",
+  value: 2.2,
+  unit: "merged-pull-requests-per-engineer-week",
+  sourceUrl: "https://example.invalid/synthetic-benchmark",
+  publishedAt: "2026-03-17",
+  population: "Invented test population; not observed data.",
+  cohort: "Synthetic fixture only.",
+  caveats: ["This synthetic comparison is not a global percentile or real benchmark."],
+};
 
 const AS_OF = new Date("2026-09-21T18:22:00.000Z");
 const REPOSITORIES = [
@@ -129,6 +144,7 @@ test("deriveDeliverySnapshot calculates transparent high-volume flow signals", (
   const snapshot = deriveDeliverySnapshot({
     plan: queryPlan,
     counts: validCounts(queryPlan),
+    benchmark: SYNTHETIC_BENCHMARK,
   });
 
   assert.deepEqual(snapshot.lifetime, {
@@ -157,7 +173,7 @@ test("deriveDeliverySnapshot calculates transparent high-volume flow signals", (
   assert.equal(snapshot.repositories.at(-1)?.repository, "Chris0Jeky/Taskdeck");
   assert.equal(snapshot.source.queryCount, 19);
   assert.equal(snapshot.scope.kind, "configured-public-repositories");
-  assert.equal(snapshot.benchmark.id, "jellyfish-high-ai-adoption-2026-03");
+  assert.equal(snapshot.benchmark?.id, "synthetic-reference");
   assert.match(snapshot.formulas.benchmarkMultiple7, /mergedPerWeek7 \/ benchmark\.value/);
   assert.ok(snapshot.limitations.some((limitation) => /not.*quality|quality.*not/i.test(limitation)));
 });
@@ -176,7 +192,7 @@ test("deriveDeliverySnapshot leaves zero-denominator ratios unavailable", () => 
     wipMergeWeeks: null,
     topTwoConcentration30: null,
     topSixConcentration30: null,
-    benchmarkMultiple7: 0,
+    benchmarkMultiple7: null,
   });
   assert.ok(snapshot.windows.every(({ mergedPerWeek }) => mergedPerWeek === 0));
 });
@@ -198,15 +214,15 @@ test("deriveDeliverySnapshot rejects malformed or contradictory count evidence",
   assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: missing }), /missing.*merged90/i);
 });
 
-test("the benchmark is versioned, dated, sourced, and explicit about comparability", () => {
-  const benchmark = JELLYFISH_HIGH_AI_ADOPTION_BENCHMARK;
-  assert.equal(benchmark.version, 1);
-  assert.equal(benchmark.value, 2.2);
-  assert.equal(benchmark.unit, "merged-pull-requests-per-engineer-week");
-  assert.match(benchmark.sourceUrl, /^https:\/\/jellyfish\.co\//);
-  assert.match(benchmark.publishedAt, /^2026-03-17$/);
-  assert.match(benchmark.population, /700.*200,000.*20 million/i);
-  assert.ok(benchmark.caveats.some((caveat) => /not.*percentile|percentile.*not/i.test(caveat)));
+test("only an explicit structurally valid reference enables a comparison", () => {
+  const queryPlan = plan();
+  const snapshot = deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan), benchmark: SYNTHETIC_BENCHMARK });
+  assert.equal(snapshot.benchmark?.id, "synthetic-reference");
+  assert.equal(snapshot.derived.benchmarkMultiple7, 226.8182);
+  for (const value of [0, -1, NaN, Infinity]) {
+    assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+      benchmark: { ...SYNTHETIC_BENCHMARK, value } }), /finite positive/);
+  }
 });
 
 test("all delivery searches explicitly exclude private and internal repositories", () => {
@@ -233,5 +249,18 @@ test("nested delivery windows cannot exceed a longer window or their lifetime to
       }
       assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts }), /cannot exceed/i, `${key} > ${limitKey}`);
     }
+  }
+});
+
+test("delivery without an explicit benchmark preserves counts but publishes no comparison", () => {
+  const queryPlan = plan();
+  for (const benchmark of [undefined, null]) {
+    const snapshot = deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan), benchmark });
+    assert.equal(snapshot.benchmark, null);
+    assert.equal(snapshot.derived.benchmarkMultiple7, null);
+    assert.equal(snapshot.windows[0]?.mergedPerWeek, 499);
+    assert.equal(snapshot.lifetime.merged, 4227);
+    assert.ok(snapshot.limitations.some((line) => /benchmark.*unavailable/i.test(line)));
+    assert.doesNotMatch(JSON.stringify(snapshot), /Jellyfish|jellyfish|226\.8182/);
   }
 });
