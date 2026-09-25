@@ -245,6 +245,9 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
   provenance, errors, and copyable README Markdown.
+- Studio contribution collection, preview identity, gallery URLs, and emitted README image URLs
+  share the 365-day window. Atlas wide/compact previews and their links derive from the same
+  accepted preview configuration as the other cards, including partial synthetic refreshes.
 - Studio live evidence is confirmed per preview run, not per configuration. While a retry of an
   unchanged live configuration is in flight, and after that retry fails, the prior preview stays
   visible and labelled retained, but contribution- and language-backed cards are withheld from the

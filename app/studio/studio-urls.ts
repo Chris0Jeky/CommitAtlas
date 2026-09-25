@@ -1,5 +1,8 @@
 import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
 
+/** One evidence window for collection, preview configuration, card URLs, and README output. */
+export const STUDIO_PREVIEW_DAYS = 365;
+
 export type StudioCardKind =
   | "atlas"
   | "profile"
