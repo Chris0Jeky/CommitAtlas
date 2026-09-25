@@ -355,6 +355,8 @@ function escapeMarkdown(value: string): string {
  */
 export function codeSpan(value: string): string {
   if (value.length === 0) throw new Error("Cannot render an empty value as a Markdown code span");
+  // CommonMark normalizes line endings before deciding whether boundary padding is stripped.
+  value = value.replace(/\r\n|[\r\n]/g, " ");
   const longestRun = (value.match(/`+/g) ?? []).reduce((longest, run) => Math.max(longest, run.length), 0);
   const fence = "`".repeat(longestRun + 1);
   const padded = value.startsWith("`") || value.endsWith("`")
