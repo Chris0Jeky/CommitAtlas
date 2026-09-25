@@ -1,0 +1,40 @@
+# Temporary read-only recovery transport; remove before merging #227.
+name: Recover delivery verification
+on:
+  push:
+    branches: [feat/public-delivery-evidence]
+    paths: [.github/workflows/recover-delivery-verification.yml]
+permissions:
+  contents: read
+jobs:
+  recover:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/public-delivery-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Export public tracked source and locked test dependencies only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ca-verification
+          git archive --format=tar.gz a4e1831d3ea023eb7cb7a673ff11e486cce10e9d > /tmp/ca-verification/delivery.tar.gz
+          git archive --format=tar.gz 8fc6169282c3b05af4190010397abbf307ab1222 > /tmp/ca-verification/main.tar.gz
+          git archive --format=tar.gz 37466699ede1e074d821c8f516c2c6840f7ea6a0 > /tmp/ca-verification/webkit.tar.gz
+          tar -czf /tmp/ca-verification/dependencies.tar.gz node_modules/zod node_modules/typescript node_modules/tsx node_modules/esbuild node_modules/@esbuild node_modules/get-tsconfig node_modules/resolve-pkg-maps node_modules/react node_modules/react-dom node_modules/scheduler node_modules/@types node_modules/@vercel/ncc
+          cd /tmp/ca-verification
+          sha256sum *.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ca-verification-${{ github.sha }}
+          path: /tmp/ca-verification
+          retention-days: 2
