@@ -1,0 +1,112 @@
+# Temporary bounded review repair; remove before final-head review.
+name: Verify explicit benchmark provenance
+on:
+  push:
+    branches: [feat/public-delivery-evidence]
+    paths: [.github/workflows/repair-delivery-provenance.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/public-delivery-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Add the exact regression tests
+        run: |
+          test "$(git rev-parse HEAD^)" = 822f475bbe4aeee3db50c89cf23762e0c6928c8f
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p = Path('packages/github/src/delivery.test.ts')
+          assert subprocess.check_output(['git','hash-object',str(p)],text=True).strip() == '7cb61aa35902f9bb541a1d20a5ed8f630d06cde2'
+          p.write_text(p.read_text() + r'''
+          test("explicit benchmark provenance requires a real calendar date", () => {
+            const queryPlan = plan();
+            for (const publishedAt of ["2026-99-99", "2026-02-30", "2025-02-29", "1900-02-29", "2026-04-31", "2026-9-01", "2026-01-01\n", "", null]) {
+              assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+                benchmark: { ...SYNTHETIC_BENCHMARK, publishedAt } as DeliveryBenchmark }), /provenance is invalid/);
+            }
+            for (const publishedAt of ["2024-02-29", "2000-02-29", "2026-04-30", "2026-12-31"]) {
+              assert.equal(deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+                benchmark: { ...SYNTHETIC_BENCHMARK, publishedAt } }).benchmark?.publishedAt, publishedAt);
+            }
+          });
+
+          test("explicit benchmark provenance requires an absolute HTTPS URL without credentials or controls", () => {
+            const queryPlan = plan();
+            for (const sourceUrl of ["https://", "https:///", "https:example.invalid", "https:///example.invalid", "http://example.invalid", "https://[bad", "https://example.invalid:99999", "https://user:secret@example.invalid", "https://example.invalid/\nreport", "https://example.invalid/ report", " https://example.invalid", "https://example.invalid\\report", null, 7]) {
+              assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+                benchmark: { ...SYNTHETIC_BENCHMARK, sourceUrl } as DeliveryBenchmark }), /provenance is invalid/);
+            }
+            const sourceUrl = "https://example.invalid/report%20one.pdf?version=1#page=4";
+            assert.equal(deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
+              benchmark: { ...SYNTHETIC_BENCHMARK, sourceUrl } }).benchmark?.sourceUrl, sourceUrl);
+          });
+          ''')
+          assert subprocess.check_output(['git','hash-object',str(p)],text=True).strip() == 'e0cf763fc73799cccf4051e99fef9be9ff873aca'
+          PY
+      - name: Prove both provenance regressions fail before the fix
+        shell: bash
+        run: |
+          set +e
+          npx --no-install tsx --test --test-name-pattern='explicit benchmark provenance requires' packages/github/src/delivery.test.ts > /tmp/provenance-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/provenance-red.log
+          test "$status" = 1
+          grep -q '^# fail 2$' /tmp/provenance-red.log
+      - name: Apply the locally tested URL and calendar validation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p = Path('packages/github/src/delivery.ts')
+          assert subprocess.check_output(['git','hash-object',str(p)],text=True).strip() == 'b85bf2c4141d835e7e22e9f9b6d3bace46d0f750'
+          old = r'''  if (!/^https:\/\//.test(value.sourceUrl) || !/^\d{4}-\d{2}-\d{2}$/.test(value.publishedAt)) {
+              throw new Error("Delivery benchmark provenance is invalid");
+            }'''
+          new = r'''  let source: URL;
+            try {
+              if (typeof value.sourceUrl !== "string" || !/^https:\/\/[^/]/.test(value.sourceUrl)
+                || /[\s\\]/.test(value.sourceUrl)
+                || [...value.sourceUrl].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) throw new Error();
+              source = new URL(value.sourceUrl);
+              if (source.protocol !== "https:" || !source.hostname || source.username || source.password) throw new Error();
+            } catch {
+              throw new Error("Delivery benchmark provenance is invalid");
+            }
+            const publishedAt = typeof value.publishedAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.publishedAt)
+              ? Date.parse(`${value.publishedAt}T00:00:00.000Z`) : NaN;
+            if (!Number.isFinite(publishedAt) || new Date(publishedAt).toISOString().slice(0, 10) !== value.publishedAt) {
+              throw new Error("Delivery benchmark provenance is invalid");
+            }'''
+          text = p.read_text()
+          assert text.count(old) == 1
+          p.write_text(text.replace(old, new))
+          assert subprocess.check_output(['git','hash-object',str(p)],text=True).strip() == 'fe221336685dc757f0babe6f658cac69d71ca008'
+          PY
+      - name: Rebuild and seal the candidate
+        run: |
+          npm run build:action
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/github/src/delivery.ts packages/github/src/delivery.test.ts action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(delivery): validate explicit reference dates and HTTPS provenance'
+      - name: Verify all repository checks and the production audit
+        run: |
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          git diff --exit-code
+      - name: Publish verified branch only
+        run: git push origin HEAD:refs/heads/feat/public-delivery-evidence
