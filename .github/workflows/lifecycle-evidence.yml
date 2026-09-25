@@ -1,0 +1,57 @@
+# Temporary one-shot verification. Remove before merging this PR.
+name: Lifecycle CSV red-green evidence
+on:
+  push:
+    branches: [fix/lifecycle-csv-validation]
+    paths: [.github/workflows/lifecycle-evidence.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/lifecycle-csv-validation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Prove the new regression fails on the original implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 9c0aad155fc79989a72eadc36050ac1a74386598
+          set +e
+          npx --no-install tsx --test lib/github/validation.test.ts > /tmp/lifecycle-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/lifecycle-red.log
+          test "$status" = 1
+          grep -q '^# tests 9$' /tmp/lifecycle-red.log
+          grep -q '^# fail 1$' /tmp/lifecycle-red.log
+      - name: Apply the reviewed one-line parser correction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('packages/github/src/validation.ts')
+          old = 'const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);'
+          new = 'const entries = value.split(",").map((entry) => entry.trim());'
+          text = path.read_text()
+          if text.count(old) != 1: raise SystemExit('Unexpected source; refusing replacement')
+          path.write_text(text.replace(old, new))
+          PY
+          npm run build:action
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/github/src/validation.ts action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(validation): reject empty lifecycle CSV entries and rebuild Action'
+      - name: Verify the complete candidate
+        run: npm run check && npm audit --omit=dev --audit-level=high
+      - name: Publish only a verified fast-forward
+        run: git push origin HEAD:refs/heads/fix/lifecycle-csv-validation
