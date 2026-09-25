@@ -1,0 +1,73 @@
+--- a/packages/github/src/delivery.ts
++++ b/packages/github/src/delivery.ts
+@@ -126,7 +126,7 @@
+     to: asOf,
+   }));
+   const scope = repositoryScope(repositories);
+-  const base = `is:pr author:${login} ${scope}`;
++  const base = `is:pr is:public author:${login} ${scope}`;
+   const queries: DeliveryCountQuery[] = [
+     { alias: "lifetimeAuthored", search: base },
+     { alias: "lifetimeMerged", search: `${base} is:merged` },
+@@ -144,7 +144,7 @@
+   repositories.forEach((repository, index) => {
+     queries.push({
+       alias: `repoOpened30_${index}`,
+-      search: `is:pr author:${login} repo:${repository} created:${thirtyDayWindow.from}..${thirtyDayWindow.to}`,
++      search: `is:pr is:public author:${login} repo:${repository} created:${thirtyDayWindow.from}..${thirtyDayWindow.to}`,
+       repository,
+     });
+   });
+@@ -207,6 +207,19 @@
+       mergedPerWeek: round4((windowMerged / window.days) * 7),
+     };
+   });
++  // A shorter inclusive window is a subset of every longer window. Contradictory
++  // search counts are unavailable evidence, not a valid throughput comparison.
++  for (const metric of ["opened", "merged"] as const) {
++    const lifetime = metric === "opened" ? authored : merged;
++    for (let index = 0; index < DELIVERY_WINDOW_DAYS.length; index += 1) {
++      const days = DELIVERY_WINDOW_DAYS[index]!;
++      const nextDays = DELIVERY_WINDOW_DAYS[index + 1];
++      const upper = nextDays === undefined ? lifetime : read(`${metric}${nextDays}`);
++      if (read(`${metric}${days}`) > upper) {
++        throw new Error(`Delivery ${metric}${days} count cannot exceed ${nextDays === undefined ? "the lifetime count" : `${metric}${nextDays}`}`);
++      }
++    }
++  }
+   const repositoryQueries = input.plan.queries.filter((query): query is DeliveryCountQuery & { repository: string } => (
+     typeof query.repository === "string"
+   ));
+--- a/packages/github/src/delivery.test.ts
++++ b/packages/github/src/delivery.test.ts
+@@ -208,3 +208,30 @@
+   assert.match(benchmark.population, /700.*200,000.*20 million/i);
+   assert.ok(benchmark.caveats.some((caveat) => /not.*percentile|percentile.*not/i.test(caveat)));
+ });
++
++test("all delivery searches explicitly exclude private and internal repositories", () => {
++  for (const repositories of [REPOSITORIES.slice(0, 1), REPOSITORIES]) {
++    const queryPlan = buildDeliveryQueryPlan({ login: "Chris0Jeky", repositories, asOf: AS_OF });
++    for (const query of queryPlan.queries) {
++      assert.match(query.search, /(?:^|\s)is:public(?:\s|$)/, `${query.alias} must remain public-only with a private-capable token`);
++    }
++  }
++});
++
++test("nested delivery windows cannot exceed a longer window or their lifetime total", () => {
++  const queryPlan = plan();
++  for (const metric of ["opened", "merged"] as const) {
++    for (const [shorter, longer] of [[7, 30], [30, 90], [90, 365], [365, null]] as const) {
++      const counts = validCounts(queryPlan);
++      const key = `${metric}${shorter}`;
++      const limitKey = longer === null ? (metric === "opened" ? "lifetimeAuthored" : "lifetimeMerged") : `${metric}${longer}`;
++      const before = counts[key]!;
++      counts[key] = counts[limitKey]! + 1;
++      if (metric === "opened" && shorter === 30) {
++        // Keep the existing repository sum invariant valid to isolate the new boundary.
++        counts.repoOpened30_0! += counts[key]! - before;
++      }
++      assert.throws(() => deriveDeliverySnapshot({ plan: queryPlan, counts }), /cannot exceed/i, `${key} > ${limitKey}`);
++    }
++  }
++});

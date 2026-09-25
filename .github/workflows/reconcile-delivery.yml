@@ -1,0 +1,80 @@
+# Temporary draft-branch repair transport. Remove with repair-delivery.patch before final review.
+name: Reconcile delivery evidence safeguards
+on:
+  push:
+    branches: [feat/public-delivery-evidence]
+    paths: [.github/workflows/reconcile-delivery.yml]
+permissions:
+  contents: write
+concurrency:
+  group: reconcile-delivery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/public-delivery-evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Preserve current-main tests and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 24d8b0a3310aeeec6153ddf6de39e1c5f5c8f53c
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-commit --no-ff 1b7136810765d77e8d73f54d49bc8704874208ea || test -f .git/MERGE_HEAD
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          conflicts = set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'], text=True).splitlines())
+          allowed = {'package.json', 'packages/static/package.json', 'action/dist/index.js'}
+          if not conflicts <= allowed:
+              raise SystemExit(f'Unreviewed conflicts: {sorted(conflicts - allowed)}')
+          for name in ['package.json', 'packages/static/package.json']:
+              package = json.loads(subprocess.check_output(['git','show',f'1b7136810765d77e8d73f54d49bc8704874208ea:{name}']))
+              if name == 'package.json':
+                  package['scripts']['test:github'] = package['scripts']['test:github'].replace('lib/http.test.ts', 'packages/github/src/delivery.test.ts packages/github/src/delivery-client.test.ts lib/http.test.ts')
+              else:
+                  package['scripts']['test'] += ' tests/delivery.test.mjs tests/delivery-generation.test.mjs'
+              pathlib.Path(name).write_text(json.dumps(package, indent=2) + '\n')
+          if 'action/dist/index.js' in conflicts:
+              subprocess.run(['git','checkout','--ours','--','action/dist/index.js'], check=True)
+          subprocess.run(['git','add','package.json','packages/static/package.json','action/dist/index.js'], check=True)
+          if subprocess.check_output(['git','diff','--name-only','--diff-filter=U']).strip():
+              raise SystemExit('Unresolved conflicts remain')
+          PY
+          git commit -m 'merge: retain current main and CLI regressions in delivery draft'
+      - run: npm ci
+      - name: Apply only regression tests and prove RED
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --include=packages/github/src/delivery.test.ts .github/repair-delivery.patch
+          set +e
+          npx --no-install tsx --test packages/github/src/delivery.test.ts > /tmp/delivery-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/delivery-red.log
+          test "$status" = 1
+          grep -q '^# tests 9$' /tmp/delivery-red.log
+          grep -q '^# fail 2$' /tmp/delivery-red.log
+      - name: Apply the minimal implementation and rebuild the Action
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --include=packages/github/src/delivery.ts .github/repair-delivery.patch
+          npm run build:action
+          git add packages/github/src/delivery.ts packages/github/src/delivery.test.ts action/dist/index.js
+          git diff --cached --check
+          git commit -m 'fix(delivery): restrict public search scope and reject impossible window counts'
+      - name: Verify the draft candidate without waiving remaining acceptance gates
+        run: npm run check && npm audit --omit=dev --audit-level=high
+      - name: Publish only a verified fast-forward of the draft branch
+        run: git push origin HEAD:refs/heads/feat/public-delivery-evidence
