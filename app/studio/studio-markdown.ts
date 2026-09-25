@@ -1,3 +1,4 @@
+import type { HostedMotionProfile } from "@/packages/svg/src/index";
 import { isStudioCardAvailable } from "./studio-card-availability";
 import {
   buildStudioRouteUrl,
@@ -36,7 +37,7 @@ export interface StudioMarkdownOptions {
   selectedCards: ReadonlySet<StudioCardKind>;
   hasCurrentContributions: boolean;
   hasCurrentLanguages: boolean;
-  motion?: "none" | "subtle";
+  motion?: HostedMotionProfile;
   layout?: "wide" | "compact";
 }
 

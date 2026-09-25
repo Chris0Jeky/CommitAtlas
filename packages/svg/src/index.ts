@@ -8,6 +8,16 @@
 export { canonicalJson, seededRandom, stableHash } from "./seed.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
+export type MotionProfile = "none" | "subtle" | "ambient" | "cinematic";
+export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
+
+export interface MotionRenderMetadata {
+  readonly inlineStyles: boolean;
+}
+
+export function motionRenderMetadata(motion: MotionProfile | undefined): MotionRenderMetadata {
+  return { inlineStyles: motion !== undefined && motion !== "none" };
+}
 
 export interface SvgTheme {
   readonly background: string;
@@ -107,7 +117,7 @@ export interface RenderOptions {
   readonly height?: number;
   readonly title?: string;
   readonly description?: string;
-  readonly motion?: "none" | "subtle";
+  readonly motion?: MotionProfile;
 }
 
 export type CardSource = "public-github" | "public-profile" | "synthetic-demo" | "public-pulse";
@@ -606,7 +616,7 @@ function statusColor(state: CiState, theme: SvgTheme): string {
 }
 
 function statusLabel(state: CiState): string {
-  return { passing: "Passing", failing: "Failing", pending: "Pending", stale: "Stale", unavailable: "Unavailable", unconfigured: "Unconfigured" }[state];
+  return ({ passing: "Passing", failing: "Failing", pending: "Pending", stale: "Stale", unavailable: "Unavailable", unconfigured: "Unconfigured" } as Record<string, string>)[state] ?? "Unknown";
 }
 
 function lifecycleLabel(state: Lifecycle): string {
@@ -649,7 +659,7 @@ function sourceMarker(
 }
 
 function cardMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Fill-mode none with a delay, for the same reason as atlasMotionStyle: a renderer that never
   // runs CSS animations (SVG through <img>) must show the finished card, not a frozen keyframe.
   return `<style>
@@ -994,7 +1004,7 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
 }
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
-  if (motion !== "subtle") return "";
+  if (!motionRenderMetadata(motion).inlineStyles) return "";
   // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
   // pipeline — so the card must be finished before any keyframe applies. That means fill-mode
   // none with a small delay, never "both": a renderer that ignores or freezes the animation sits
@@ -1328,7 +1338,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
   const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW"
     : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
-      : "PUBLIC GITHUB";
+      : data.source === "public-github" ? "PUBLIC GITHUB" : "SOURCE UNKNOWN";
   const breakdownQualifier = data.breakdownBasis === "public-profile-percentages"
     ? "Public profile activity percentage mix from calendar-year views, not scoped to this contribution window"
     : "Breakdown";
@@ -1350,7 +1360,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += `<g class="atlas-enter"><circle cx="30" cy="32" r="16" fill="${t.accent}"/>`;
   out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
   out += text(56, 29, name, 18, t.text, 760) + text(56, 47, `@${login}`, 10, t.muted, 550);
-  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : t.positive, 700, "end");
+  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted, 700, "end");
   out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 

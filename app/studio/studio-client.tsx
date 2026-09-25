@@ -1,5 +1,6 @@
 "use client";
 
+import type { HostedMotionProfile } from "@/packages/svg/src/index";
 import { useMemo, useState, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
@@ -98,7 +99,7 @@ interface PreviewConfiguration {
   projects: ProjectDraft[];
   theme: string;
   demo: boolean;
-  motion: "none" | "subtle";
+  motion: HostedMotionProfile;
   layout: "wide" | "compact";
   hasContributions: boolean;
   hasLanguages: boolean;
@@ -143,7 +144,7 @@ export default function StudioClient() {
   const [handle, setHandle] = useState("octocat");
   const [demo, setDemo] = useState(true);
   const [theme, setTheme] = useState("ember");
-  const [motion, setMotion] = useState<"none" | "subtle">("subtle");
+  const [motion, setMotion] = useState<HostedMotionProfile>("subtle");
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
   const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(["atlas", "projects"]));
@@ -419,6 +420,7 @@ export default function StudioClient() {
           <fieldset className="segmented-field">
             <legend>Load motion</legend>
             <label><input type="radio" name="motion" checked={motion === "subtle"} onChange={() => setMotion("subtle")} /><span><strong>Subtle</strong><small>Reduced-motion safe</small></span></label>
+            <label><input type="radio" name="motion" checked={motion === "ambient"} onChange={() => setMotion("ambient")} /><span><strong>Ambient</strong><small>Subtle-compatible</small></span></label>
             <label><input type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
           </fieldset>
 

@@ -4,7 +4,7 @@ import { parseSvgActivityQuery } from "@/lib/svg-routes";
 import { toActivityCard } from "@/lib/svg-adapters";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
-import { renderActivityCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderActivityCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request): Promise<Response> {
       title: `${snapshot.login} contribution activity`,
       description: `Public contribution activity for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
   } catch (error) {
     return apiErrorResponse(error);
   }

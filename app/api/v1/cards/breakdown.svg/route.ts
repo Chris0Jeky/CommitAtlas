@@ -4,7 +4,7 @@ import { parseSvgActivityQuery } from "@/lib/svg-routes";
 import { toContributionMetricsCards } from "@/lib/svg-adapters";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
-import { renderContributionBreakdownCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderContributionBreakdownCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
         description: `Public contribution activity mix for ${snapshot.login}.`,
       },
     );
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
   } catch (error) {
     return apiErrorResponse(error);
   }

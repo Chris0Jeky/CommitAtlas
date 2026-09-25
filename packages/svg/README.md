@@ -15,8 +15,13 @@ counts are rendered as window-scoped counts, while GitHub calendar-year public-p
 percentages remain visibly labelled as percentages and not window-scoped. Rhythm is a personal
 within-window consistency summary, never a GitHub rank.
 
-All renderers accept `motion: "none" | "subtle"`. `none` emits no animation keyframes; `subtle`
-adds a short load transition plus a `prefers-reduced-motion: reduce` override that disables it.
+All renderers accept the shared `MotionProfile` vocabulary: `none`, `subtle`, `ambient`, and
+`cinematic`. `none` emits no animation keyframes. In this compatibility slice, `subtle`, `ambient`,
+and `cinematic` intentionally emit byte-identical bounded load motion with a
+`prefers-reduced-motion: reduce` override. Hosted routes expose `none | subtle | ambient`; cinematic
+remains available only to package and static-generator callers until a dedicated backend lands.
+`motionRenderMetadata()` reports whether the current renderer output requires inline presentation
+styles, so HTTP routes do not duplicate profile-to-CSP rules.
 
 ```ts
 import { renderProfileCard } from "@commit-atlas/svg";

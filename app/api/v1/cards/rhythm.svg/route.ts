@@ -4,7 +4,7 @@ import { parseSvgActivityQuery } from "@/lib/svg-routes";
 import { toContributionMetricsCards } from "@/lib/svg-adapters";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
-import { renderRhythmCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderRhythmCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request): Promise<Response> {
       title: `${snapshot.login} contribution rhythm`,
       description: `Personal contribution consistency for ${snapshot.login}.`,
     });
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: query.motion === "subtle" });
+    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
   } catch (error) {
     return apiErrorResponse(error);
   }

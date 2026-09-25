@@ -7,6 +7,7 @@ import {
   parseManifest,
   type ProjectManifest,
 } from "@commit-atlas/core";
+import type { MotionProfile } from "@commit-atlas/svg";
 import { z } from "zod";
 
 export const STATIC_CARD_NAMES = [
@@ -39,7 +40,7 @@ const RawStaticConfigSchema = z.object({
     outputDir: RelativePathSchema,
   }).strict()).max(3).default([]),
   days: z.number().int().min(7).max(365).default(365),
-  motion: z.enum(["none", "subtle"]).default("none"),
+  motion: z.enum(["none", "subtle", "ambient", "cinematic"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
   responsiveAtlas: z.boolean().default(false),
   outputDir: RelativePathSchema,
@@ -53,7 +54,7 @@ export interface StaticConfig {
   readonly theme: StaticThemeName;
   readonly themes: readonly StaticThemeVariant[];
   readonly days: number;
-  readonly motion: "none" | "subtle";
+  readonly motion: MotionProfile;
   readonly layout: "wide" | "compact";
   readonly responsiveAtlas: boolean;
   readonly outputDir: string;
@@ -142,7 +143,7 @@ export async function resolveContainedPath(
   }
   const target = path.resolve(root, relativePath);
   assertInside(root, target, options.label);
-  await assertNoSymlinkComponents(root, target, options.mustExist);
+  await assertNoSymlinkComponents(root, target, options.mustExist, options.label);
   return target;
 }
 
@@ -153,7 +154,7 @@ function assertInside(root: string, target: string, label: string): void {
   }
 }
 
-async function assertNoSymlinkComponents(root: string, target: string, mustExist: boolean): Promise<void> {
+async function assertNoSymlinkComponents(root: string, target: string, mustExist: boolean, label: string): Promise<void> {
   const relative = path.relative(root, target);
   const parts = relative.split(path.sep);
   let current = root;
@@ -164,7 +165,10 @@ async function assertNoSymlinkComponents(root: string, target: string, mustExist
       if (metadata.isSymbolicLink()) throw new Error("Repository paths must not traverse symbolic links");
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT" && (!mustExist || index < parts.length - 1)) return;
+      if (code === "ENOENT") {
+        if (!mustExist) return;
+        throw new Error(`${label} path does not exist`);
+      }
       throw error;
     }
   }

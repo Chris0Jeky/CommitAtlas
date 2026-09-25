@@ -2,7 +2,7 @@ import { svgResponse, apiErrorResponse, canonicalSvgRedirect, optionsResponse } 
 import { fetchPortfolioSnapshot, toAtlasCard } from "@/lib/portfolio";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { parseSvgAtlasQuery } from "@/lib/svg-routes";
-import { renderAtlasCard } from "@/packages/svg/src/index";
+import { motionRenderMetadata, renderAtlasCard } from "@/packages/svg/src/index";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export async function GET(request: Request): Promise<Response> {
     return svgResponse(request, body, {
       edgeSeconds: 300,
       publicData,
-      inlineStyles: query.motion === "subtle",
+      inlineStyles: motionRenderMetadata(query.motion).inlineStyles,
     });
   } catch (error) {
     return apiErrorResponse(error);

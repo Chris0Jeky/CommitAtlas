@@ -44,11 +44,12 @@
     "typecheck:worker": "wrangler types worker-configuration.d.ts --env-interface CloudflareBindings --include-runtime=false --check",
     "typecheck": "tsc --noEmit",
     "test:core": "vitest run --config packages/core/vitest.config.ts",
-    "test:github": "tsx --test app/api/v1/health/route.test.ts tests/motion-probe-route.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
-    "test:chassis": "tsx --test lib/chassis.test.ts lib/health.test.ts lib/instruments.test.ts lib/density-scan.test.ts lib/evidence.test.ts lib/research-bridge.test.ts",
+    "test:github": "tsx --test app/api/v1/health/route.test.ts tests/motion-probe-route.test.ts tests/hosted-motion-routes.test.ts lib/http.test.ts lib/last-good.test.ts lib/github/client.test.ts lib/github/demo.test.ts lib/github/validation.test.ts lib/github/adapters.test.ts lib/portfolio.test.ts lib/svg-adapters.test.ts lib/svg-routes.test.ts app/structured-data.test.ts lib/site.test.ts",
+    "test:chassis": "tsx --test lib/chassis.test.ts lib/health.test.ts lib/instruments.test.ts lib/density-scan.test.ts lib/evidence.test.ts lib/research-bridge.test.ts lib/landing.test.ts",
     "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-refresh-lifecycle.test.ts app/studio/studio-urls.test.ts",
     "test:svg": "npm --prefix packages/svg test",
     "test:static": "npm --prefix packages/static test",
+    "test:static-src": "tsx --test tests/static-config.test.ts tests/projects-catalog.test.ts",
     "build:core": "npm --prefix packages/core run build",
     "build:github": "npm --prefix packages/github run build",
     "build:static": "npm --prefix packages/static run build",
@@ -63,10 +64,10 @@
     "test:motion-probes": "node --test tests/motion-probes.test.mjs tests/motion-probes-hosted-response.test.mjs tests/motion-ledger-integrity.test.mjs tests/motion-probes-direct-report.test.mjs",
     "test:observatory": "node observatory/check.mjs && tsx --test lib/observatory-route.test.ts",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rendered-svg.test.mjs tests/discoverability.test.mjs",
-    "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern \"**/.claude/**\"",
+    "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern .swarm --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
-    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:action && npm run test:packaging && npm test"
+    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:static-src && npm run test:action && npm run test:packaging && npm test"
   },
   "dependencies": {
     "react": "^19.3.0",

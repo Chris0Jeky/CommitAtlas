@@ -226,7 +226,7 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
       unavailable: projectStates.filter((project) => ["unavailable", "unconfigured"].includes(project.ci.state)).length,
     },
     generatedAt: snapshot.freshness.generatedAt,
-    source: snapshot.freshness.source === "github-profile-html" ? "public-profile" : "public-github",
+    source: toCardSource(snapshot.freshness),
   };
 }
 
