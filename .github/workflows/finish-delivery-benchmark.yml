@@ -25,7 +25,7 @@ jobs:
           cache: npm
       - name: Apply only hash-checked regression tests first
         run: |
-          test "$(git rev-parse HEAD^)" = 271e142f8163b503f1a71bdb325b49214082d134
+          test "$(git rev-parse HEAD^)" = 05706e566efeb67b03afdaf453165dbfd3a9ae7d
           cat > /tmp/apply-benchmark.py <<'PY'
           import hashlib, json, pathlib, sys
           def blob(data):
@@ -64,12 +64,34 @@ jobs:
           grep -q '^# fail 1$' /tmp/benchmark-red.log
       - name: Apply the remaining exact tested edits
         run: python3 /tmp/apply-benchmark.py implementation
-      - name: Rebuild the tracked Action and run the complete gate
+      - name: Preserve runner source identity
+        shell: bash
         run: |
-          npm run build:action
-          npm run check
-          npm audit --omit=dev --audit-level=high
+          set -euo pipefail
+          mkdir -p /tmp/delivery-evidence
+          cp /tmp/benchmark-red.log /tmp/delivery-evidence/
+          git rev-parse HEAD > /tmp/delivery-evidence/head.txt
+          git diff --binary > /tmp/delivery-evidence/applied.patch
+          cp tsconfig.json /tmp/delivery-evidence/tsconfig.json
+          node --version > /tmp/delivery-evidence/node.txt
+          npm ls typescript --depth=0 > /tmp/delivery-evidence/typescript.txt
+          git grep -n 'snapshot.benchmark' -- ':!action/dist/index.js' > /tmp/delivery-evidence/benchmark-callers.txt || test "$?" = 1
+          rm -f tsconfig.tsbuildinfo
+      - name: Rebuild the tracked Action and run the complete gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:action 2>&1 | tee /tmp/delivery-evidence/action-build.log
+          npm run check 2>&1 | tee /tmp/delivery-evidence/full-check.log
+          npm audit --omit=dev --audit-level=high 2>&1 | tee /tmp/delivery-evidence/audit.log
           git diff --check
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-verification-${{ github.sha }}
+          path: /tmp/delivery-evidence
+          retention-days: 7
       - name: Publish the verified candidate as a fast-forward only
         run: |
           git config user.name 'github-actions[bot]'
