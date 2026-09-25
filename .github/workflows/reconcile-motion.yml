@@ -1,0 +1,59 @@
+# Temporary branch-only repair transport. Remove before merging PR #224.
+name: Reconcile motion profiles
+on:
+  push:
+    branches: [codex/issue-124-motion-profiles]
+    paths: [.github/workflows/reconcile-motion.yml]
+permissions:
+  contents: write
+concurrency:
+  group: reconcile-motion-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/codex/issue-124-motion-profiles'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Reconcile only the reviewed conflicts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 30f542be6d9c5b57d94501023c432829a2ad3638
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-commit --no-ff f1ac69ddea2d75ddb1597fc6b3321ea2582f035d || test -f .git/MERGE_HEAD
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          conflicts = set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'], text=True).splitlines())
+          allowed = {'package.json', 'action/dist/index.js'}
+          if not conflicts <= allowed:
+              raise SystemExit(f'Unreviewed merge conflicts: {sorted(conflicts - allowed)}')
+          package = json.loads(subprocess.check_output(['git','show','f1ac69ddea2d75ddb1597fc6b3321ea2582f035d:package.json']))
+          package['scripts']['test:github'] = package['scripts']['test:github'].replace('lib/http.test.ts', 'tests/hosted-motion-routes.test.ts lib/http.test.ts')
+          pathlib.Path('package.json').write_text(json.dumps(package, indent=2) + '\n')
+          if 'action/dist/index.js' in conflicts:
+              subprocess.run(['git','checkout','--ours','--','action/dist/index.js'], check=True)
+          subprocess.run(['git','add','package.json','action/dist/index.js'], check=True)
+          if subprocess.check_output(['git','diff','--name-only','--diff-filter=U']).strip():
+              raise SystemExit('Unresolved conflicts remain')
+          PY
+      - run: npm ci
+      - name: Rebuild distribution and seal the candidate merge
+        run: |
+          npm run build:action
+          git add action/dist/index.js
+          git diff --cached --check
+          git commit -m 'merge: reconcile motion profiles with current main and rebuild Action'
+      - name: Verify the complete candidate
+        run: npm run check && npm audit --omit=dev --audit-level=high
+      - name: Publish only a verified fast-forward of this branch
+        run: git push origin HEAD:refs/heads/codex/issue-124-motion-profiles
