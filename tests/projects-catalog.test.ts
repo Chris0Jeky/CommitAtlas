@@ -66,9 +66,11 @@ test("codeSpan pads a value starting or ending with a backtick", () => {
   assert.equal(codeSpan("`leading"), "`` `leading ``");
 });
 
-test("codeSpan keeps a pipe or newline inside a single-backtick span", () => {
+test("codeSpan preserves pipes and normalizes line endings inside a single-backtick span", () => {
   assert.equal(codeSpan("a|b"), "`a|b`");
-  assert.equal(codeSpan("a\nb"), "`a\nb`");
+  for (const ending of ["\n", "\r\n", "\r"]) {
+    assert.equal(codeSpan(`a${ending}b`), "`a b`");
+  }
 });
 
 test("codeSpan rejects an empty value", () => {
