@@ -501,6 +501,9 @@ implied by this producer checkpoint.
   blocked until a hostname is selected and ownership is verified; no task authorizes deployment,
   activation, namespace deletion, credential publication, or replacement of the existing service.
   Use [`.hosting/README.md`](../.hosting/README.md) for the bounded acceptance notes.
+- **2026-09-26: `public/pulseboard.js` is rebuilt at Pulseboard SDK 3.2.0** (Pulseboard `3a882cc`): a
+  focus fix for removed notices, a scroll-container option, and a registered `utm_campaign` allowlist. The
+  boundary below is unchanged; `node observatory/check.mjs` pins the new hash and version.
 - **2026-09-26: the Pulseboard SDK 3.1.0 replaces the inert observer (Pulseboard#105).**
   `public/pulseboard.js` loads deferred from the root layout (HTML pages only) with a reserved Beta-bar
   placeholder; the route bridge forwards `home | studio | other`, and the Studio records `studio.opened`,
