@@ -6,7 +6,7 @@ Shared collector and Desk: [Chris0Jeky/Pulseboard](https://github.com/Chris0Jeky
 
 ## What is installed
 
-`public/pulseboard.js` is the Pulseboard SDK 3.1.0, generated for project `commitatlas` by Pulseboard's
+`public/pulseboard.js` is the Pulseboard SDK 3.2.0, generated for project `commitatlas` by Pulseboard's
 `observatory/adapters/build-sdk.mjs` and pinned by `observatory.lock.json` (SHA-256, release `unattributed`,
 the only release registered for CommitAtlas). It replaces the inert `public/observatory.js`. Never edit it by
 hand; regenerate it from a Pulseboard checkout:
