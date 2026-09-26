@@ -221,7 +221,7 @@ test("loads the Pulseboard SDK on the interactive HTML pages only", async () => 
     const html = await response.text();
     assert.equal((html.match(/<script[^>]*src="\/pulseboard\.js"[^>]*>/g) ?? []).length, 1, `${pathname} loads the SDK once`);
     assert.match(html, /<script defer="" src="\/pulseboard\.js"><\/script>/, `${pathname} loads the SDK deferred`);
-    assert.match(html, /<body[^>]*><div data-pulseboard-bar="" style="height:2\.5rem"><\/div>/, `${pathname} reserves the bar first in body`);
+    assert.match(html, /<body[^>]*><div data-pulseboard-bar="" style="min-height:2\.5rem"><\/div>/, `${pathname} reserves the bar first in body`);
     assert.doesNotMatch(html, /observatory\.js/, `${pathname} still loads the retired observer`);
     // The HTML pages declare no CSP today; if one is added it must admit the collector.
     const csp = response.headers.get("content-security-policy");

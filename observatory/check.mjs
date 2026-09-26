@@ -64,7 +64,7 @@ function page({ origin = ORIGIN, nav = {}, holder = true } = {}) {
   const document = element('#document', log);
   const body = element('body', log);
   const placeholder = holder ? element('div', log) : null;
-  if (placeholder) { placeholder.style.height = '2.5rem'; body.children.push(placeholder); placeholder.parent = body; }
+  if (placeholder) { placeholder.style.minHeight = '2.5rem'; body.children.push(placeholder); placeholder.parent = body; }
   Object.assign(document, {
     body, referrer: '', readyState: 'loading', visibilityState: 'visible',
     documentElement: { scrollHeight: 2000, clientHeight: 800, scrollTop: 0 },

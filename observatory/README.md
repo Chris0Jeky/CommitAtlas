@@ -21,8 +21,9 @@ then copy the printed `sha256` into `observatory.lock.json`.
 ## Where it loads
 
 Only the root App Router layout (`app/layout.tsx`) loads it, as `<script defer src="/pulseboard.js">`, with an
-empty `<div data-pulseboard-bar>` of 2.5rem as the first child of `<body>` so the Beta bar causes no layout
-shift. That layout renders the two interactive HTML pages, `/` and `/studio`. SVG cards, probes and JSON
+empty `<div data-pulseboard-bar>` with `min-height: 2.5rem` as the first child of `<body>` so the Beta bar causes
+no layout shift; the placeholder grows when the bar wraps on a narrow screen, pushing the page down rather than
+covering it. That layout renders the two interactive HTML pages, `/` and `/studio`. SVG cards, probes and JSON
 routes are route handlers that never render the layout: a README image fetched through GitHub's camo proxy
 carries no script (`tests/rendered-svg.test.mjs` and `tests/rendered-html.test.mjs` assert both sides).
 

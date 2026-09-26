@@ -113,6 +113,6 @@ test("the mounted App Router bridge forwards only route buckets to the SDK", asy
   assert.match(bridge, /first && detail\.route === "home"/u, "the SDK records the first home view itself");
   assert.match(layout, /<ObservatoryRouteBridge \/>/u);
   assert.match(layout, /<script defer src="\/pulseboard\.js" \/>/u);
-  assert.match(layout, /<div data-pulseboard-bar="" style=\{\{ height: "2\.5rem" \}\}/u);
+  assert.match(layout, /<div data-pulseboard-bar="" style=\{\{ minHeight: "2\.5rem" \}\}/u);
   assert.doesNotMatch(layout, /observatory\.js/u);
 });
