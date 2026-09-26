@@ -27,6 +27,20 @@ export function observatoryRouteFromPathname(
   return "other";
 }
 
+/** The `<html>` attribute the Pulseboard SDK (3.1+) reads at mount to name the landing route. */
+export const PULSEBOARD_ROUTE_ATTRIBUTE = "data-pulseboard-route";
+
+/**
+ * Sets the landing route bucket on `<html>` before the deferred SDK mounts.
+ *
+ * The root App Router layout is shared by every page and is not given the request pathname, so the
+ * bucket is derived here in the browser, by the same rule as `observatoryRouteFromPathname` (the
+ * tests hold the two together). Only the bucket is written; the pathname never leaves this script.
+ */
+export const PULSEBOARD_ROUTE_BOOTSTRAP = `(function(){try{var p=location.pathname;var r=p==="/"?"home":(p==="/studio"||p.indexOf("/studio/")===0)?"studio":"other";document.documentElement.setAttribute(${JSON.stringify(
+  PULSEBOARD_ROUTE_ATTRIBUTE,
+)},r);}catch(e){}})();`;
+
 export function observatoryRouteEventDetail(
   pathname: string | null | undefined,
 ): ObservatoryRouteEventDetail {

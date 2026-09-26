@@ -501,6 +501,12 @@ implied by this producer checkpoint.
   blocked until a hostname is selected and ownership is verified; no task authorizes deployment,
   activation, namespace deletion, credential publication, or replacement of the existing service.
   Use [`.hosting/README.md`](../.hosting/README.md) for the bounded acceptance notes.
+- **2026-09-26: the Pulseboard SDK 3.1.0 replaces the inert observer (Pulseboard#105).**
+  `public/pulseboard.js` loads deferred from the root layout (HTML pages only) with a reserved Beta-bar
+  placeholder; the route bridge forwards `home | studio | other`, and the Studio records `studio.opened`,
+  `profile.loaded` and `card.exported` with enum and count props only. The collector stores nothing for
+  `commitatlas` until the owner admits it in Pulseboard. `observatory/README.md` holds the boundary;
+  `npm run test:observatory` is the focused proof. The entry below is superseded.
 - **2026-09-10: the Observatory adapter is staged but inactive.** The local, hash-locked
   `public/observatory.js` loads with an empty endpoint, so it creates no consent storage, timers,
   or collector requests. Activation remains a separate reviewed slice requiring an isolated
