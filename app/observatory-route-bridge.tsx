@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   OBSERVATORY_ROUTE_EVENT,
@@ -27,7 +27,9 @@ export function ObservatoryRouteBridge() {
   const route = observatoryRouteFromPathname(pathname);
   const publishedRoute = useRef<ObservatoryRoute | null>(null);
 
-  useEffect(() => {
+  // A layout effect, so the route reaches the SDK before any page's passive effects (the Studio's
+  // `studio.opened`) run in the same commit, even though this bridge renders after `{children}`.
+  useLayoutEffect(() => {
     const locationDetail = observatoryRouteEventDetail(window.location.pathname);
     const detail: ObservatoryRouteEventDetail = locationDetail.route === route
       ? locationDetail

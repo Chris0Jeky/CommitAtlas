@@ -103,6 +103,13 @@ test("the mounted App Router bridge forwards only route buckets to the SDK", asy
     "the bridge must not collect, persist, or record anything but the route bucket",
   );
   assert.match(bridge, /pulseboardRoute\(detail\.route\)/u);
+  // Layout effects run before every passive effect of the same commit, so the Studio's
+  // `studio.opened` (a passive effect in `{children}`, rendered before the bridge) is counted
+  // under `studio`, not the SDK's build-time `home`.
+  assert.match(bridge, /useLayoutEffect\(\(\) => \{/u);
+  assert.doesNotMatch(bridge, /\buseEffect\b/u);
+  const studio = await readFile(new URL("../app/studio/studio-client.tsx", import.meta.url), "utf8");
+  assert.match(studio, /useEffect\(\(\) => whenPulseboardReady\(\(\) => \{ pulseboardEvent\(\{ name: "studio\.opened"/u);
   assert.match(bridge, /first && detail\.route === "home"/u, "the SDK records the first home view itself");
   assert.match(layout, /<ObservatoryRouteBridge \/>/u);
   assert.match(layout, /<script defer src="\/pulseboard\.js" \/>/u);

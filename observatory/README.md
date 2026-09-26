@@ -47,7 +47,11 @@ passed. All calls go through `lib/pulseboard.ts`, which returns `false` instead 
 
 The SDK records its own first `page.view` as `home` at mount, so the bridge forwards the first bucket only
 when it is not `home`. A direct visit to `/studio` therefore records one `home` and one `studio` view; that
-is an SDK limitation (its initial route is fixed at build time), noted for Pulseboard.
+is an SDK limitation (its initial route is fixed at build time), noted for Pulseboard. The bridge forwards
+routes in a layout effect, so the Studio's `studio.opened` (a passive effect) is attributed to `studio`.
+
+Journeys stay off until the region hint answers (the SDK treats an unknown region as EEA), so a `track` in the
+first moments of a first visit is dropped by design; the aggregate count for `studio.opened` still lands.
 
 ## Notice and choices
 
