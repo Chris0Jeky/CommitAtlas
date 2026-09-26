@@ -1,7 +1,7 @@
 "use client";
 
 import type { HostedMotionProfile } from "@/packages/svg/src/index";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
 import {
@@ -32,6 +32,13 @@ import {
   resolveStudioBaseUrl,
   type StudioCardKind,
 } from "./studio-urls";
+import {
+  pulseboardCardTheme,
+  pulseboardEvent,
+  pulseboardRepoCountBucket,
+  pulseboardSmallCount,
+  whenPulseboardReady,
+} from "@/lib/pulseboard";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
 type CardKind = StudioCardKind;
@@ -172,6 +179,9 @@ export default function StudioClient() {
     hasContributions: true,
     hasLanguages: true,
   });
+
+  // Usage signal for the Studio itself: no props, and a no-op when the SDK is absent or blocked.
+  useEffect(() => whenPulseboardReady(() => { pulseboardEvent({ name: "studio.opened", props: {} }); }), []);
 
   const activeProjects = useMemo(() => projects.filter((project) => project.repo.trim()), [projects]);
   const configurationKey = useMemo(() => buildStudioConfigurationKey({
@@ -319,6 +329,17 @@ export default function StudioClient() {
         return next;
       });
       setPhase("ready");
+      // Only a bucketed repository count, the data source and small counts: never the handle,
+      // repository names or URLs typed into the form.
+      pulseboardEvent({
+        name: "profile.loaded",
+        props: {
+          repoCountBucket: pulseboardRepoCountBucket(nextProfile.publicRepositories),
+          source: demo ? "synthetic" : "live",
+          projects: pulseboardSmallCount(activeProjects.length),
+          contributions: contributionResult.value !== null,
+        },
+      });
       setNotice(
         contributionResult.error
           ? contributionUnavailableNotice()
@@ -356,6 +377,10 @@ export default function StudioClient() {
     try {
       await navigator.clipboard.writeText(markdown);
       setNotice("README Markdown copied to your clipboard.");
+      pulseboardEvent({
+        name: "card.exported",
+        props: { format: "markdown", theme: pulseboardCardTheme(theme), cards: pulseboardSmallCount(selectedCards.size) },
+      });
     } catch {
       setNotice("Clipboard access was unavailable. Select the Markdown and copy it manually.");
     }

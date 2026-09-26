@@ -215,6 +215,24 @@ test("applies a stored chassis theme before first paint, from a bounded allowlis
   }
 });
 
+test("loads the Pulseboard SDK on the interactive HTML pages only", async () => {
+  for (const pathname of ["/", "/studio"]) {
+    const response = await render(pathname);
+    const html = await response.text();
+    assert.equal((html.match(/<script[^>]*src="\/pulseboard\.js"[^>]*>/g) ?? []).length, 1, `${pathname} loads the SDK once`);
+    assert.match(html, /<script defer="" src="\/pulseboard\.js"><\/script>/, `${pathname} loads the SDK deferred`);
+    assert.match(html, /<body[^>]*><div data-pulseboard-bar="" style="height:2\.5rem"><\/div>/, `${pathname} reserves the bar first in body`);
+    assert.doesNotMatch(html, /observatory\.js/, `${pathname} still loads the retired observer`);
+    // The HTML pages declare no CSP today; if one is added it must admit the collector.
+    const csp = response.headers.get("content-security-policy");
+    if (csp) assert.match(csp, /connect-src[^;]*https:\/\/pulseboard-observatory\.commit-atlas\.workers\.dev/);
+  }
+  for (const path of ["/api/v1/profile?user=octocat&demo=true"]) {
+    const body = await (await request(path)).text();
+    assert.doesNotMatch(body, /pulseboard/i, `${path} must never carry the SDK`);
+  }
+});
+
 test("server-renders an honest interactive Studio shell", async () => {
   const response = await render("/studio");
   assert.equal(response.status, 200);

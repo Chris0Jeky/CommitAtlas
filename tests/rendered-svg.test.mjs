@@ -40,6 +40,8 @@ test("serves all seven synthetic SVG cards with their planned public cache windo
     assert.match(body, /prefers-reduced-motion:reduce/);
     assert.match(response.headers.get("content-security-policy") ?? "", /style-src 'unsafe-inline'/);
     assert.doesNotMatch(body, /undefined|NaN/);
+    // Camo-proxied README images: the Pulseboard SDK and any script belong to the HTML UI only.
+    assert.doesNotMatch(body, /pulseboard|<script/i, path);
   }
 });
 
