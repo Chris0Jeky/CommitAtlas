@@ -153,7 +153,7 @@ Hosted requests may optionally use a server-side classic public-only token, but 
 
 ### Usage measurement
 
-The two HTML pages (`/` and `/studio`) load a first-party copy of the [Pulseboard](https://github.com/Chris0Jeky/Pulseboard) SDK. A one-line **Beta** bar says CommitAtlas collects usage and diagnostics to improve it, with no names, emails or IPs; **Choose** opens three switches:
+The two HTML pages (`/` and `/studio`), and the 404 page that shares their layout (recorded as `other`), load a first-party copy of the [Pulseboard](https://github.com/Chris0Jeky/Pulseboard) SDK. A one-line **Beta** bar says CommitAtlas collects usage and diagnostics to improve it, with no names, emails or IPs; **Choose** opens three switches:
 
 - **Usage counts** — daily aggregate counts per route bucket (`home`, `studio`, `other`) and product event, with coarse device, referral and colour-scheme totals. On by default.
 - **Diagnostics** — web-vital timings, JavaScript error summaries, visible time and scroll depth. On by default outside the EEA; in the EEA, or when the region is unknown, off until you click OK.

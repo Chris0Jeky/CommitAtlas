@@ -23,13 +23,18 @@ then copy the printed `sha256` into `observatory.lock.json`.
 Only the root App Router layout (`app/layout.tsx`) loads it, as `<script defer src="/pulseboard.js">`, with an
 empty `<div data-pulseboard-bar>` with `min-height: 2.5rem` as the first child of `<body>` so the Beta bar causes
 no layout shift; the placeholder grows when the bar wraps on a narrow screen, pushing the page down rather than
-covering it. That layout renders the two interactive HTML pages, `/` and `/studio`. SVG cards, probes and JSON
+covering it. That layout renders the two interactive HTML pages, `/` and `/studio`, and also the framework's 404 page, which
+loads the SDK too and records its view as `other`. SVG cards, probes and JSON
 routes are route handlers that never render the layout: a README image fetched through GitHub's camo proxy
 carries no script (`tests/rendered-svg.test.mjs` and `tests/rendered-html.test.mjs` assert both sides).
 
 The HTML pages send no Content-Security-Policy today. If one is added, it needs
-`connect-src https://pulseboard-observatory.commit-atlas.workers.dev` and `script-src 'self'`; the SDK styles
-through the CSSOM, so no `'unsafe-inline'` is required for it.
+`connect-src https://pulseboard-observatory.commit-atlas.workers.dev`, and its `script-src` must admit the
+inline scripts in `<head>` (the landing-route bootstrap, the chassis theme bootstrap) and the framework's own
+inline scripts, by a per-response nonce or their sha256 hashes. A bare `script-src 'self'` would block them
+silently: the SDK would still load but record every landing as `home`. `tests/rendered-html.test.mjs` fails on
+such a policy for the route bootstrap. The SDK styles through the CSSOM, so it needs no
+`style-src 'unsafe-inline'`.
 
 ## What it records
 

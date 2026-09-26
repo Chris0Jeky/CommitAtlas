@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -215,9 +216,41 @@ test("applies a stored chassis theme before first paint, from a bounded allowlis
   }
 });
 
-test("loads the Pulseboard SDK on the interactive HTML pages only", async () => {
-  for (const pathname of ["/", "/studio"]) {
+/**
+ * True when a CSP would still run the inline landing-route bootstrap in `head`: its effective script
+ * policy (`script-src`, else `default-src`, else none) allows it by 'unsafe-inline', by the script's
+ * sha256 hash, or by a nonce the script carries. A bare `script-src 'self'` does not.
+ */
+function cspRunsRouteBootstrap(csp, head) {
+  const directives = Object.fromEntries(csp.split(";").map((part) => part.trim().split(/\s+/))
+    .filter(([name]) => name).map(([name, ...values]) => [name.toLowerCase(), values]));
+  const sources = directives["script-src"] ?? directives["default-src"];
+  if (!sources) return true;
+  const tag = /<script([^>]*)>([^<]*data-pulseboard-route[^<]*)<\/script>/.exec(head);
+  if (!tag) return false;
+  const nonce = /\snonce="([^"]+)"/.exec(tag[1])?.[1];
+  const hash = `'sha256-${createHash("sha256").update(tag[2]).digest("base64")}'`;
+  return sources.includes("'unsafe-inline'") || sources.includes(hash) || Boolean(nonce && sources.includes(`'nonce-${nonce}'`));
+}
+
+test("a future CSP must still run the inline landing-route bootstrap", async () => {
+  const html = await (await render("/studio")).text();
+  const head = html.slice(0, html.indexOf("</head>"));
+  const body = /<script[^>]*>([^<]*data-pulseboard-route[^<]*)<\/script>/.exec(head)?.[1] ?? "";
+  const hash = `'sha256-${createHash("sha256").update(body).digest("base64")}'`;
+  assert.equal(cspRunsRouteBootstrap("script-src 'self'; connect-src https://pulseboard-observatory.commit-atlas.workers.dev", head), false);
+  assert.equal(cspRunsRouteBootstrap("default-src 'self'", head), false);
+  assert.equal(cspRunsRouteBootstrap(`script-src 'self' ${hash}`, head), true);
+  assert.equal(cspRunsRouteBootstrap("script-src 'self' 'unsafe-inline'", head), true);
+  assert.equal(cspRunsRouteBootstrap("connect-src https://pulseboard-observatory.commit-atlas.workers.dev", head), true);
+});
+
+test("loads the Pulseboard SDK on every page the root layout renders, the 404 included", async () => {
+  // `/` and `/studio` are the product pages; the framework's not-found page also renders the root
+  // layout, so it loads the SDK and names its landing route `other`.
+  for (const pathname of ["/", "/studio", "/no-such-page"]) {
     const response = await render(pathname);
+    if (pathname === "/no-such-page") assert.equal(response.status, 404);
     const html = await response.text();
     assert.equal((html.match(/<script[^>]*src="\/pulseboard\.js"[^>]*>/g) ?? []).length, 1, `${pathname} loads the SDK once`);
     assert.match(html, /<script defer="" src="\/pulseboard\.js"><\/script>/, `${pathname} loads the SDK deferred`);
@@ -225,9 +258,14 @@ test("loads the Pulseboard SDK on the interactive HTML pages only", async () => 
     assert.doesNotMatch(html, /observatory\.js/, `${pathname} still loads the retired observer`);
     const head = html.slice(0, html.indexOf("</head>"));
     assert.match(head, /setAttribute\("data-pulseboard-route",r\)/, `${pathname} names its landing route before the SDK`);
-    // The HTML pages declare no CSP today; if one is added it must admit the collector.
+    // The HTML pages declare no CSP today. If one is added it must admit the collector, and its
+    // script policy must still run the inline landing-route bootstrap (a nonce on that script, its
+    // sha256 hash, or 'unsafe-inline'); a bare `script-src 'self'` would silently record `home` again.
     const csp = response.headers.get("content-security-policy");
-    if (csp) assert.match(csp, /connect-src[^;]*https:\/\/pulseboard-observatory\.commit-atlas\.workers\.dev/);
+    if (csp) {
+      assert.match(csp, /connect-src[^;]*https:\/\/pulseboard-observatory\.commit-atlas\.workers\.dev/);
+      assert.ok(cspRunsRouteBootstrap(csp, head), `${pathname} CSP script-src would block the inline route bootstrap`);
+    }
   }
   for (const path of ["/api/v1/profile?user=octocat&demo=true"]) {
     const body = await (await request(path)).text();
