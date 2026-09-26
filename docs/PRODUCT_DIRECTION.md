@@ -38,7 +38,7 @@ The v0.4.0 product provides:
 - strict public-only configuration and path validation;
 - deployed-origin verification;
 - one bounded Developer Lens C0 method-trial explainer;
-- a staged but inactive Observatory adapter with an empty endpoint.
+- the Pulseboard SDK 3.0.0 on the HTML pages only, with a Beta bar and consent categories (`observatory/README.md`).
 
 ## Product families
 
@@ -130,8 +130,8 @@ Hosted CommitAtlas remains public-data-first. It must not accept projection URLs
 
 Optional integrations remain separately governed:
 
-- the Observatory adapter has no endpoint until a reviewed activation explicitly supplies one;
-- any collection notice, vocabulary, retention, and consent behavior belongs to that activation, not to the base renderer;
+- usage measurement is the Pulseboard SDK on the HTML layout only; SVG, probe and JSON routes never load it;
+- its notice, categories, retention and vocabulary are Pulseboard's (`observatory/README.md`), and product events carry only enums, counts and flags, never typed handles, repository names or URLs;
 - owner projections require deliberate publication rather than ambient synchronization;
 - the Action only generates and never commits, pushes, uploads, or receives the consumer’s token;
 - the profile repository owns final publication and removal decisions.

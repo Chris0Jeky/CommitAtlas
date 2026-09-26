@@ -39,7 +39,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
-- The Observatory adapter is staged but inactive: its endpoint is empty, so it creates no consent storage, timers, or collector requests. Collection is not a hidden side effect of publishing CommitAtlas.
+- The Studio and landing pages load the Pulseboard SDK 3.0.0 with a visible **Beta** bar and a choice of categories; SVG cards and JSON routes never load it. See [Usage measurement](#usage-measurement).
 - npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
 **Planned, not shipped:** differentiated ambient/cinematic motion, a motion compiler, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
@@ -151,6 +151,16 @@ A signed-in owner may see different totals because GitHub exposes a different ev
 
 Hosted requests may optionally use a server-side classic public-only token, but the client requires positive scope evidence and rejects broader, fine-grained, Actions, App, unknown, or restricted-data credentials. Never place a token in a URL, browser setting, generated file, committed fixture, or tracked config.
 
+### Usage measurement
+
+The two HTML pages (`/` and `/studio`) load a first-party copy of the [Pulseboard](https://github.com/Chris0Jeky/Pulseboard) SDK. A one-line **Beta** bar says CommitAtlas collects usage and diagnostics to improve it, with no names, emails or IPs; **Choose** opens three switches:
+
+- **Usage counts** — daily aggregate counts per route bucket (`home`, `studio`, `other`) and product event, with coarse device, referral and colour-scheme totals. On by default.
+- **Diagnostics** — web-vital timings, JavaScript error summaries, visible time and scroll depth. On by default outside the EEA; in the EEA, or when the region is unknown, off until you click OK.
+- **Journeys and product data** — a random id for one browser tab session and ordered product events (`studio.opened`, `profile.loaded` with a bucketed repository count, `card.exported` with its format and theme). Same default as Diagnostics.
+
+Global Privacy Control or Do Not Track turns every category off without showing the bar. The GitHub handle, repository names and URLs you type are never sent. Pulseboard keeps detailed data for 90 days and aggregate counts currently for 14 days, and stores no IP address, user agent, page URL or cross-site identifier. README SVG cards (including camo-proxied images) never load the SDK. Details: [observatory/README.md](observatory/README.md).
+
 Developer Lens projections follow a separate publication boundary. Private/local evidence is never fetched by the hosted product. Any future owner projection must be explicitly redacted, reviewed, committed by the owner, freshness-checked, and labelled as a derived signature—not silently inferred from GitHub.
 
 ## Direction
@@ -162,7 +172,7 @@ Near-term work is evidence-gated:
 3. add deterministic maps and scenes without letting aesthetics imply facts;
 4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;
 5. accept Lab research findings only through product-owned schemas with pinned provenance, decision vocabulary, limitations, and unsupported claims; do not invent coverage or expiry fields that the finding contract does not define;
-6. keep hosted data public-only and keep any Observatory collection separately consented and inactive by default;
+6. keep hosted data public-only, keep usage measurement to the Pulseboard SDK's disclosed categories on the HTML pages only, and never send typed handles, repository names or URLs;
 7. extend static/profile publication only after artifact lists, manifests, budgets, and consumer workflows are updated together.
 
 Read [PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) for the concise map and [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md) for implementation-level decisions and seeded work.
