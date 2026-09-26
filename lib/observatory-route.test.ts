@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import vm from "node:vm";
 import {
   OBSERVATORY_ROUTE_EVENT,
+  PULSEBOARD_ROUTE_ATTRIBUTE,
+  PULSEBOARD_ROUTE_BOOTSTRAP,
   announceObservatoryPageView,
   attributeObservatoryEvent,
   createObservatoryRouteState,
@@ -110,9 +113,25 @@ test("the mounted App Router bridge forwards only route buckets to the SDK", asy
   assert.doesNotMatch(bridge, /\buseEffect\b/u);
   const studio = await readFile(new URL("../app/studio/studio-client.tsx", import.meta.url), "utf8");
   assert.match(studio, /useEffect\(\(\) => whenPulseboardReady\(\(\) => \{ pulseboardEvent\(\{ name: "studio\.opened"/u);
-  assert.match(bridge, /first && detail\.route === "home"/u, "the SDK records the first home view itself");
+  assert.match(bridge, /if \(first\) return;/u, "the SDK records the first view from the landing attribute");
+  assert.match(layout, /__html: PULSEBOARD_ROUTE_BOOTSTRAP/u);
   assert.match(layout, /<ObservatoryRouteBridge \/>/u);
   assert.match(layout, /<script defer src="\/pulseboard\.js" \/>/u);
   assert.match(layout, /<div data-pulseboard-bar="" style=\{\{ minHeight: "2\.5rem" \}\}/u);
   assert.doesNotMatch(layout, /observatory\.js/u);
+});
+
+test("the landing-route bootstrap writes exactly the bucket observatoryRouteFromPathname returns", () => {
+  const paths = ["/", "/studio", "/studio/", "/studio/card/private-name", "/studios", "/api/v1/profile", "/x/studio", "", "/%2Fstudio"];
+  for (const pathname of paths) {
+    const attributes: Record<string, string> = {};
+    vm.runInNewContext(PULSEBOARD_ROUTE_BOOTSTRAP, {
+      location: { pathname },
+      document: { documentElement: { setAttribute: (name: string, value: string) => { attributes[name] = value; } } },
+    });
+    assert.deepEqual(attributes, { [PULSEBOARD_ROUTE_ATTRIBUTE]: observatoryRouteFromPathname(pathname) }, pathname);
+  }
+  assert.equal(PULSEBOARD_ROUTE_ATTRIBUTE, "data-pulseboard-route");
+  assert.doesNotMatch(PULSEBOARD_ROUTE_BOOTSTRAP, /<\/script/iu, "the inline script cannot close its own element");
+  assert.doesNotThrow(() => vm.runInNewContext(PULSEBOARD_ROUTE_BOOTSTRAP, {}), "a missing DOM falls through silently");
 });

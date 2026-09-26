@@ -223,6 +223,8 @@ test("loads the Pulseboard SDK on the interactive HTML pages only", async () => 
     assert.match(html, /<script defer="" src="\/pulseboard\.js"><\/script>/, `${pathname} loads the SDK deferred`);
     assert.match(html, /<body[^>]*><div data-pulseboard-bar="" style="min-height:2\.5rem"><\/div>/, `${pathname} reserves the bar first in body`);
     assert.doesNotMatch(html, /observatory\.js/, `${pathname} still loads the retired observer`);
+    const head = html.slice(0, html.indexOf("</head>"));
+    assert.match(head, /setAttribute\("data-pulseboard-route",r\)/, `${pathname} names its landing route before the SDK`);
     // The HTML pages declare no CSP today; if one is added it must admit the collector.
     const csp = response.headers.get("content-security-policy");
     if (csp) assert.match(csp, /connect-src[^;]*https:\/\/pulseboard-observatory\.commit-atlas\.workers\.dev/);

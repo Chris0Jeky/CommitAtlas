@@ -38,7 +38,7 @@ The v0.4.0 product provides:
 - strict public-only configuration and path validation;
 - deployed-origin verification;
 - one bounded Developer Lens C0 method-trial explainer;
-- the Pulseboard SDK 3.0.0 on the HTML pages only, with a Beta bar and consent categories (`observatory/README.md`).
+- the Pulseboard SDK 3.1.0 on the HTML pages only, with a Beta bar and consent categories (`observatory/README.md`).
 
 ## Product families
 

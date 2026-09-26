@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ObservatoryRouteBridge } from "./observatory-route-bridge";
+import { PULSEBOARD_ROUTE_BOOTSTRAP } from "@/lib/observatory-route";
 import { CHASSIS_THEMES, CHASSIS_THEME_BOOTSTRAP, DEFAULT_CHASSIS_THEME } from "@/lib/chassis";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN, SITE_TAGLINE } from "@/lib/site";
 
@@ -74,6 +75,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           script element.
         */}
         <script dangerouslySetInnerHTML={{ __html: CHASSIS_THEME_BOOTSTRAP }} />
+        {/*
+          Names the landing route for the Pulseboard SDK as `<html data-pulseboard-route>` (home,
+          studio or other), so a direct /studio visit records one studio view instead of home first.
+          This shared layout is not given the pathname, so the bucket is set here before the deferred
+          SDK mounts; `observatory-route.test.ts` holds it to `observatoryRouteFromPathname`.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: PULSEBOARD_ROUTE_BOOTSTRAP }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {/*

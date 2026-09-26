@@ -6,7 +6,7 @@ Shared collector and Desk: [Chris0Jeky/Pulseboard](https://github.com/Chris0Jeky
 
 ## What is installed
 
-`public/pulseboard.js` is the Pulseboard SDK 3.0.0, generated for project `commitatlas` by Pulseboard's
+`public/pulseboard.js` is the Pulseboard SDK 3.1.0, generated for project `commitatlas` by Pulseboard's
 `observatory/adapters/build-sdk.mjs` and pinned by `observatory.lock.json` (SHA-256, release `unattributed`,
 the only release registered for CommitAtlas). It replaces the inert `public/observatory.js`. Never edit it by
 hand; regenerate it from a Pulseboard checkout:
@@ -46,13 +46,16 @@ repository names, workflow names and URLs typed into the Studio are identity or 
 passed. All calls go through `lib/pulseboard.ts`, which returns `false` instead of throwing when
 `window.Pulseboard` is absent, blocked or broken (`lib/pulseboard.test.ts`).
 
-The SDK records its own first `page.view` as `home` at mount, so the bridge forwards the first bucket only
-when it is not `home`. A direct visit to `/studio` therefore records one `home` and one `studio` view; that
-is an SDK limitation (its initial route is fixed at build time), noted for Pulseboard. The bridge forwards
-routes in a layout effect, so the Studio's `studio.opened` (a passive effect) is attributed to `studio`.
+The landing route is named on `<html data-pulseboard-route>` (`home`, `studio` or `other`), which the SDK
+reads once at mount, so a direct visit to `/studio` records one `studio` view, never `home` first. The shared
+root layout is not given the pathname, so `PULSEBOARD_ROUTE_BOOTSTRAP` (`lib/observatory-route.ts`) sets the
+attribute in `<head>` before the deferred SDK runs, by the same rule as `observatoryRouteFromPathname`; only
+the bucket is written. The bridge forwards later navigations only, in a layout effect, so the Studio's
+`studio.opened` (a passive effect) is attributed to `studio`, and keeps the attribute current for a bfcache
+remount.
 
-Journeys stay off until the region hint answers (the SDK treats an unknown region as EEA), so a `track` in the
-first moments of a first visit is dropped by design; the aggregate count for `studio.opened` still lands.
+While the region hint is pending, the SDK holds `track` events in memory and sends them once Journeys is
+allowed (outside the EEA, or after OK); in the EEA without OK, or if the hint fails, they are dropped.
 
 ## Notice and choices
 

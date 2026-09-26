@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   OBSERVATORY_ROUTE_EVENT,
+  PULSEBOARD_ROUTE_ATTRIBUTE,
   observatoryRouteEventDetail,
   observatoryRouteFromPathname,
   type ObservatoryRoute,
@@ -17,9 +18,9 @@ import { pulseboardRoute, whenPulseboardReady } from "@/lib/pulseboard";
  * The root layout and its deferred `pulseboard.js` stay mounted across App Router navigation. This
  * bridge derives the initial route from `location.pathname`, follows `usePathname()` updates, and emits
  * only the closed `home | studio | other` vocabulary: as the `commitatlas:observatory-route` window
- * event, and as `Pulseboard.route(bucket)` when the SDK is present. The SDK records its own first view
- * as `home` when it mounts, so the first bucket is forwarded only when it is not `home`; if the SDK has
- * not executed yet, that forward waits for the window `load` event once. The bridge itself grants no
+ * event, and as `Pulseboard.route(bucket)` when the SDK is present. The SDK records the first view itself,
+ * for the bucket the layout wrote to `<html data-pulseboard-route>`, so only later navigations are
+ * forwarded; if the SDK has not executed yet, a forward waits for the window `load` event once. The bridge itself grants no
  * consent, touches no storage and makes no request; the SDK applies the visitor's choice.
  */
 export function ObservatoryRouteBridge() {
@@ -42,7 +43,11 @@ export function ObservatoryRouteBridge() {
       new CustomEvent<ObservatoryRouteEventDetail>(OBSERVATORY_ROUTE_EVENT, { detail }),
     );
 
-    if (first && detail.route === "home") return;
+    // Keep the landing attribute current, so an SDK that remounts after a bfcache restore starts here.
+    document.documentElement.setAttribute(PULSEBOARD_ROUTE_ATTRIBUTE, detail.route);
+    // The first bucket is already on <html data-pulseboard-route> (set in the layout head), which the
+    // SDK reads at mount; forwarding it too would record a second first view.
+    if (first) return;
     return whenPulseboardReady(() => { pulseboardRoute(detail.route); });
   }, [route]);
 

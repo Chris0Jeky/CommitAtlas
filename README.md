@@ -39,7 +39,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
-- The Studio and landing pages load the Pulseboard SDK 3.0.0 with a visible **Beta** bar and a choice of categories; SVG cards and JSON routes never load it. See [Usage measurement](#usage-measurement).
+- The Studio and landing pages load the Pulseboard SDK 3.1.0 with a visible **Beta** bar and a choice of categories; SVG cards and JSON routes never load it. See [Usage measurement](#usage-measurement).
 - npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
 **Planned, not shipped:** differentiated ambient/cinematic motion, a motion compiler, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
