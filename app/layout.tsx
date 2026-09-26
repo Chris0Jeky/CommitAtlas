@@ -76,9 +76,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: CHASSIS_THEME_BOOTSTRAP }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        {/*
+          Reserved space for the Pulseboard Beta bar, so the deferred SDK does not shift the page. The
+          SDK renders its bar inside this element and later collapses it (height 0, `hidden`). The empty
+          `dangerouslySetInnerHTML` keeps React from reconciling children it never rendered, and
+          `suppressHydrationWarning` covers the style and `hidden` the SDK may set before hydration.
+          Only this HTML layout loads the SDK; SVG and JSON routes never render it.
+        */}
+        <div data-pulseboard-bar="" style={{ height: "2.5rem" }} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: "" }} />
         {children}
         <ObservatoryRouteBridge />
-        <script defer src="/observatory.js" />
+        <script defer src="/pulseboard.js" />
       </body>
     </html>
   );

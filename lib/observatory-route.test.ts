@@ -88,7 +88,7 @@ test("empty event names cannot become Observatory events", () => {
   assert.throws(() => attributeObservatoryEvent(state, ""), /event name/u);
 });
 
-test("the mounted App Router bridge remains attribution-only", async () => {
+test("the mounted App Router bridge forwards only route buckets to the SDK", async () => {
   const [bridge, layout] = await Promise.all([
     readFile(new URL("../app/observatory-route-bridge.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
@@ -99,9 +99,13 @@ test("the mounted App Router bridge remains attribution-only", async () => {
   assert.match(bridge, /window\.dispatchEvent/u);
   assert.doesNotMatch(
     bridge,
-    /\bfetch\s*\(|localStorage|sessionStorage|PulseboardUsage|page\.view/u,
-    "the bridge must not collect, persist, or announce a page view",
+    /\bfetch\s*\(|localStorage|sessionStorage|PulseboardUsage|page\.view|\.track\(|\.count\(/u,
+    "the bridge must not collect, persist, or record anything but the route bucket",
   );
+  assert.match(bridge, /pulseboardRoute\(detail\.route\)/u);
+  assert.match(bridge, /first && detail\.route === "home"/u, "the SDK records the first home view itself");
   assert.match(layout, /<ObservatoryRouteBridge \/>/u);
-  assert.match(layout, /<script defer src="\/observatory\.js" \/>/u);
+  assert.match(layout, /<script defer src="\/pulseboard\.js" \/>/u);
+  assert.match(layout, /<div data-pulseboard-bar="" style=\{\{ height: "2\.5rem" \}\}/u);
+  assert.doesNotMatch(layout, /observatory\.js/u);
 });

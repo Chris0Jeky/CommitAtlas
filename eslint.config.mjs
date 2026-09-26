@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated, hash-locked Pulseboard SDK artifact; `observatory/check.mjs` verifies it instead.
+    "public/pulseboard.js",
   ]),
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
