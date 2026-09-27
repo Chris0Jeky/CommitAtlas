@@ -3,6 +3,11 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+// The built worker falls back to process.env.GITHUB_TOKEN when a request env omits the binding.
+// Keep these fixtures hermetic: a token exported in the developer shell must not switch the
+// unauthenticated paths onto authenticated GitHub calls the mocked fetch rejects.
+delete process.env.GITHUB_TOKEN;
+
 async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
