@@ -1,15 +1,15 @@
 name: Repair static Action bundle
 
 on:
-  push:
-    branches: [fix/static-publication-preflight]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   rebuild:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/static-publication-preflight' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
