@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { symlinkSync } from "node:fs";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -37,6 +38,37 @@ test("prepares every theme output before changing an existing primary snapshot",
     assert.equal(await readFile(path.join(primaryOutput, "manifest.json"), "utf8"), originalManifest);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+/** A path swapped to a symlink after initial resolution must be caught before staging. */
+test("rechecks output containment after render-time path replacement", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-race-root-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-race-outside-"));
+  try {
+    await mkdir(path.join(root, "assets"), { recursive: true });
+    const base = portfolio();
+    let replaced = false;
+    const raced = { ...base };
+    Object.defineProperty(raced, "profile", {
+      enumerable: true,
+      get() {
+        if (!replaced) {
+          replaced = true;
+          symlinkSync(outside, path.join(root, "assets", "commitatlas"), "dir");
+        }
+        return base.profile;
+      },
+    });
+
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: staticConfig({ cards: ["atlas"] }), snapshot: raced }),
+      /symbolic links|inside the repository/i,
+    );
+    assert.deepEqual(await readdir(outside), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });
 
