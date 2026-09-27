@@ -1,6 +1,7 @@
 import { fetchPortfolioSnapshot } from "./portfolio";
 import type { PortfolioSnapshot, ProjectLifecycle } from "./github/types";
 import { buildStudioRouteUrl, type StudioCardKind, type StudioRouteOptions } from "@/app/studio/studio-urls";
+import { themes, type ThemeName } from "@/packages/svg/src/index";
 import { compactCount } from "./instruments";
 
 /**
@@ -50,7 +51,8 @@ export function landingCompactAtlasUrl(): string {
   return buildStudioRouteUrl("atlas", COMPACT_OPTIONS);
 }
 
-export function landingThemedAtlasUrl(theme: string): string {
+export function landingThemedAtlasUrl(theme: ThemeName): string {
+  if (!Object.hasOwn(themes, theme)) throw new Error("landing theme must be a shipped card theme");
   return buildStudioRouteUrl("atlas", { ...LANDING_OPTIONS, theme });
 }
 
@@ -212,7 +214,7 @@ export function specimenCards(snapshot: PortfolioSnapshot): readonly SpecimenCar
 }
 
 /** The four SVG card themes, unchanged by the chassis. `paper` ships for light README embeds. */
-export const CARD_THEMES: readonly { id: string; label: string; ground: string; light?: true }[] = [
+export const CARD_THEMES: readonly { id: ThemeName; label: string; ground: string; light?: true }[] = [
   { id: "aurora", label: "AURORA · #09131F", ground: "#09131f" },
   { id: "midnight", label: "MIDNIGHT · #05070D", ground: "#05070d" },
   { id: "paper", label: "PAPER · #F8FAFC · ON LIMESTONE", ground: "#e8ecd6", light: true },
