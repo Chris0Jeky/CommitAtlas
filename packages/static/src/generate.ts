@@ -378,7 +378,10 @@ async function mkdirContained(root: string, outputDir: string): Promise<void> {
       metadata = await lstat(current);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      await mkdir(current);
+      // Another writer may create the same missing prefix first; the lstat below still validates it.
+      await mkdir(current).catch((mkdirError: NodeJS.ErrnoException) => {
+        if (mkdirError.code !== "EEXIST") throw mkdirError;
+      });
       metadata = await lstat(current);
     }
     if (metadata.isSymbolicLink()) throw new Error("Repository paths must not traverse symbolic links");
