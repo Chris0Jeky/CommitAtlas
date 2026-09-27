@@ -42,6 +42,47 @@ test("prepares every theme output before changing an existing primary snapshot",
   }
 });
 
+/** Every visible destination must be rename-compatible before any target begins committing. */
+test("preflights current secondary destinations before changing the primary snapshot", async () => {
+  for (const blockedName of ["atlas.svg", "manifest.json"]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), `commitatlas-destination-preflight-${blockedName}-`));
+    try {
+      const paired = staticConfig({
+        cards: ["atlas"],
+        themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }],
+      });
+      const primaryOutput = path.join(root, "assets", "commitatlas");
+      const secondaryOutput = path.join(primaryOutput, "light");
+      await generateStaticFromSnapshot({ root, config: paired, snapshot: portfolio() });
+      const originalAtlas = await readFile(path.join(primaryOutput, "atlas.svg"), "utf8");
+      const originalManifest = await readFile(path.join(primaryOutput, "manifest.json"), "utf8");
+
+      await rm(path.join(secondaryOutput, blockedName), { force: true });
+      await mkdir(path.join(secondaryOutput, blockedName));
+      await writeFile(path.join(secondaryOutput, blockedName, "blocker.txt"), "blocks the destination rename\n");
+
+      await assert.rejects(
+        generateStaticFromSnapshot({ root, config: paired, snapshot: portfolio("A changed Octocat") }),
+        /regular artifact file|directory|EISDIR|ENOTEMPTY/i,
+      );
+      assert.equal(
+        await readFile(path.join(primaryOutput, "atlas.svg"), "utf8"),
+        originalAtlas,
+        `${blockedName} let the primary payload advance`,
+      );
+      assert.equal(
+        await readFile(path.join(primaryOutput, "manifest.json"), "utf8"),
+        originalManifest,
+        `${blockedName} let the primary manifest advance`,
+      );
+      await assertNoStagedFiles(primaryOutput);
+      await assertNoStagedFiles(secondaryOutput);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+});
+
 /** A path swapped to a symlink after initial resolution must be caught before staging. */
 test("rechecks output containment after render-time path replacement", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-race-root-"));
