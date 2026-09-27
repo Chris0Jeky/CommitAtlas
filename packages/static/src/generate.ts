@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   GitHubClient,
@@ -160,9 +160,7 @@ export async function generateStaticFromSnapshot(options: {
     if (seenOutputDirs.has(outputKey)) throw new Error("themes must use unique outputDir paths");
     seenOutputDirs.add(outputKey);
   }
-  if (!options.dryRun) {
-    for (const target of targets) await writeArtifacts(target.outputDir, target.payloads, target.manifest);
-  }
+  if (!options.dryRun) await publishArtifacts(options.root, targets);
   const [primary, ...variants] = targets;
   if (!primary) throw new Error("No static cards were selected");
   return {
@@ -275,44 +273,129 @@ function containsControl(value: string): boolean {
   });
 }
 
-async function writeArtifacts(
-  outputDir: string,
-  payloads: readonly { readonly name: string; readonly body: string }[],
-  manifest: StaticManifest,
-): Promise<void> {
-  await mkdir(outputDir, { recursive: true });
-  const owned = await previouslyWritten(outputDir);
-  const staged: { temporary: string; destination: string }[] = [];
+interface StaticWriteTarget {
+  readonly outputDir: string;
+  readonly payloads: readonly { readonly name: string; readonly body: string }[];
+  readonly manifest: StaticManifest;
+}
+
+interface StagedFile {
+  readonly temporary: string;
+  readonly destination: string;
+}
+
+interface PreparedArtifacts {
+  readonly outputDir: string;
+  readonly payloads: readonly StagedFile[];
+  readonly manifest: StagedFile;
+  readonly stale: readonly string[];
+}
+
+async function publishArtifacts(root: string, targets: readonly StaticWriteTarget[]): Promise<void> {
+  const prepared: PreparedArtifacts[] = [];
   try {
-    for (const payload of payloads) staged.push(await stage(outputDir, payload));
-    const stagedManifest = await stage(outputDir, {
-      name: MANIFEST_NAME,
-      body: `${JSON.stringify(manifest, null, 2)}\n`,
-    });
-    staged.push(stagedManifest);
-    for (const file of staged) {
-      if (file !== stagedManifest) await rename(file.temporary, file.destination);
+    // Preparation is deliberately sequential: if a later theme cannot be created or staged, every
+    // earlier theme still contains only temporary files, which the shared `finally` removes.
+    for (const target of targets) prepared.push(await prepareArtifacts(root, target));
+
+    // Preflight every visible destination across every theme before cleanup or the first rename.
+    // Existing regular files are valid replacement targets; missing files are new artifacts. A
+    // directory, symlink, or other special entry would make a later rename fail after an earlier
+    // theme had already committed, so reject the whole publication while only temp files exist.
+    for (const target of prepared) await verifyCurrentDestinations(target);
+
+    // Detect a caller-replaced directory before deleting any stale file in any theme. Missing files
+    // are fine (the previous manifest can outlive a manual deletion), while directories are not a
+    // valid CommitAtlas artifact and make non-recursive cleanup fail.
+    for (const target of prepared) await verifyStaleArtifacts(target);
+
+    // Cleanup precedes payload installation. The previous manifest therefore remains an honest
+    // ownership record if cleanup fails, and no new bytes are exposed under that old manifest.
+    for (const target of prepared) {
+      await Promise.all(target.stale.map((name) => rm(path.join(target.outputDir, name), { force: true })));
     }
-    // Collect stale artifacts while the PREVIOUS manifest is still the one on disk. That manifest is
-    // the only ownership record, so installing the new one first would drop a name from `owned`
-    // before the file it names was removed: a crash or a failing `rm` inside that window leaks the
-    // stale artifact permanently, because no later run could then prove it was CommitAtlas's to
-    // delete. Cleaning up first needs no recovery state — an interrupted run just leaves the old
-    // manifest in place, and the next successful run repeats the same collection.
-    const current = new Set(payloads.map(({ name }) => name));
-    await Promise.all(MANAGED_ARTIFACT_NAMES
-      .filter((name) => !current.has(name) && owned.has(name))
-      .map((name) => rm(path.join(outputDir, name), { force: true })));
-    await rename(stagedManifest.temporary, stagedManifest.destination);
+
+    // Each manifest is still the final rename in its directory. All target directories and bytes
+    // were successfully staged before this commit phase began, so predictable storage and path
+    // failures cannot leave the primary theme ahead of its paired output.
+    for (const target of prepared) {
+      for (const file of target.payloads) await rename(file.temporary, file.destination);
+      await rename(target.manifest.temporary, target.manifest.destination);
+    }
   } finally {
-    await Promise.all(staged.map(({ temporary }) => rm(temporary, { force: true }).catch(() => undefined)));
+    await cleanupStaged(prepared.flatMap((target) => [...target.payloads, target.manifest]));
   }
+}
+
+async function prepareArtifacts(root: string, target: StaticWriteTarget): Promise<PreparedArtifacts> {
+  await mkdir(target.outputDir, { recursive: true });
+
+  // `resolveContainedPath` ran before rendering, but rendering is caller-controlled data work and a
+  // path component could be replaced meanwhile. Re-run the no-symlink containment walk after the
+  // directory exists and immediately before staging bytes into it.
+  const relativeOutput = path.relative(root, target.outputDir);
+  const verifiedOutput = await resolveContainedPath(root, relativeOutput, {
+    mustExist: true,
+    label: "output",
+  });
+  if (path.resolve(verifiedOutput) !== path.resolve(target.outputDir)) {
+    throw new Error("output path must stay inside the repository");
+  }
+
+  const owned = await previouslyWritten(target.outputDir);
+  const current = new Set(target.payloads.map(({ name }) => name));
+  const stale = MANAGED_ARTIFACT_NAMES.filter((name) => !current.has(name) && owned.has(name));
+  const staged: StagedFile[] = [];
+  try {
+    for (const payload of target.payloads) staged.push(await stage(target.outputDir, payload));
+    const manifest = await stage(target.outputDir, {
+      name: MANIFEST_NAME,
+      body: `${JSON.stringify(target.manifest, null, 2)}\n`,
+    });
+    return {
+      outputDir: target.outputDir,
+      payloads: staged,
+      manifest,
+      stale,
+    };
+  } catch (error) {
+    await cleanupStaged(staged);
+    throw error;
+  }
+}
+
+async function verifyCurrentDestinations(target: PreparedArtifacts): Promise<void> {
+  for (const file of [...target.payloads, target.manifest]) {
+    try {
+      const metadata = await lstat(file.destination);
+      if (!metadata.isFile()) {
+        throw new Error(`${path.basename(file.destination)} is not a regular artifact file`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
+
+async function verifyStaleArtifacts(target: PreparedArtifacts): Promise<void> {
+  for (const name of target.stale) {
+    try {
+      const metadata = await lstat(path.join(target.outputDir, name));
+      if (metadata.isDirectory()) throw new Error(`${name} is a directory, not a managed artifact`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
+
+async function cleanupStaged(files: readonly StagedFile[]): Promise<void> {
+  await Promise.all(files.map(({ temporary }) => rm(temporary, { force: true }).catch(() => undefined)));
 }
 
 async function stage(
   outputDir: string,
   payload: { readonly name: string; readonly body: string },
-): Promise<{ temporary: string; destination: string }> {
+): Promise<StagedFile> {
   const temporary = path.join(outputDir, `.${payload.name}.${randomUUID()}.tmp`);
   await writeFile(temporary, payload.body, { encoding: "utf8", flag: "wx" });
   return { temporary, destination: path.join(outputDir, payload.name) };
