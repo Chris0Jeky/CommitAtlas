@@ -1,0 +1,45 @@
+name: Repair static Action bundle
+
+on:
+  push:
+    branches: [fix/static-publication-preflight]
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/static-publication-preflight
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Rebuild tracked Action bundle
+        run: npm run build:action
+
+      - name: Commit exact generated bundle
+        shell: bash
+        run: |
+          git add action/dist
+          if git diff --cached --quiet; then
+            echo "Action bundle was already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build(action): regenerate static bundle"
+          git push origin HEAD:fix/static-publication-preflight
