@@ -19,101 +19,11 @@ jobs:
         with:
           ref: fix/studio-case-canonicalization
 
-      - name: Apply route-key alignment
+      - name: Update legacy key assertion
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          source = Path('app/studio/studio-urls.ts')
-          text = source.read_text()
-          old_owner_key = 'owner: options.owner.trim().toLowerCase(),'
-          old_repo_key = 'repo: project.repo.trim().toLowerCase(),'
-          if old_owner_key not in text or old_repo_key not in text:
-              raise SystemExit('configuration key normalization anchors missing')
-          text = text.replace(old_owner_key, 'owner: options.owner.trim(),', 1)
-          text = text.replace(old_repo_key, 'repo: project.repo.trim(),', 1)
-
-          route_anchor = '  const query = new URLSearchParams();\n  const projects = options.projects ?? [];\n'
-          route_replacement = '  const query = new URLSearchParams();\n  const owner = options.owner.trim();\n  const projects = options.projects ?? [];\n'
-          if route_anchor not in text:
-              raise SystemExit('route setup anchor missing')
-          text = text.replace(route_anchor, route_replacement, 1)
-
-          owner_query = 'query.set(kind === "projects" ? "owner" : "user", options.owner);'
-          user_query = 'query.set("user", options.owner);'
-          if owner_query not in text or user_query not in text:
-              raise SystemExit('route owner query anchors missing')
-          text = text.replace(owner_query, 'query.set(kind === "projects" ? "owner" : "user", owner);', 1)
-          text = text.replace(user_query, 'query.set("user", owner);', 1)
-          source.write_text(text)
-
-          focused = Path('app/studio/studio-case-canonicalization.test.ts')
-          focused.write_text('''import assert from "node:assert/strict";
-          import test from "node:test";
-          import {
-            buildStudioConfigurationKey,
-            buildStudioRouteUrl,
-            isStudioPreviewCurrent,
-            type StudioCardKind,
-            type StudioRouteOptions,
-          } from "./studio-urls";
-
-          const mixedCase: StudioRouteOptions = {
-            owner: "OctoCat",
-            theme: "ember",
-            demo: false,
-            days: 365,
-            motion: "subtle",
-            layout: "wide",
-            projects: [{ repo: "Hello-World", lifecycle: "active", workflow: "CI.yml" }],
-          };
-
-          const lowerCase: StudioRouteOptions = {
-            ...mixedCase,
-            owner: "octocat",
-            projects: [{ repo: "hello-world", lifecycle: "active", workflow: "CI.yml" }],
-          };
-
-          test("case-only Studio edits require fresh validation for their changed URLs", () => {
-            const mixedKey = buildStudioConfigurationKey(mixedCase);
-            const lowerKey = buildStudioConfigurationKey(lowerCase);
-            assert.notEqual(mixedKey, lowerKey);
-            assert.equal(isStudioPreviewCurrent(lowerKey, { key: mixedKey }), false);
-
-            const kinds: readonly StudioCardKind[] = [
-              "atlas",
-              "profile",
-              "streak",
-              "breakdown",
-              "rhythm",
-              "activity",
-              "languages",
-              "projects",
-            ];
-            for (const kind of kinds) {
-              assert.notEqual(
-                buildStudioRouteUrl(kind, mixedCase),
-                buildStudioRouteUrl(kind, lowerCase),
-                `${kind} URL did not reflect its case-only identity edit`,
-              );
-            }
-            assert.notEqual(
-              buildStudioRouteUrl("projects", mixedCase, "json"),
-              buildStudioRouteUrl("projects", lowerCase, "json"),
-            );
-          });
-
-          test("Studio route identity trims surrounding whitespace consistently", () => {
-            const spaced: StudioRouteOptions = {
-              ...lowerCase,
-              owner: " octocat ",
-              projects: [{ repo: " hello-world ", lifecycle: "active", workflow: " CI.yml " }],
-            };
-            assert.equal(buildStudioConfigurationKey(spaced), buildStudioConfigurationKey(lowerCase));
-            assert.equal(buildStudioRouteUrl("atlas", spaced), buildStudioRouteUrl("atlas", lowerCase));
-          });
-          '''.replace('          ', ''))
 
           existing = Path('app/studio/studio-urls.test.ts')
           text = existing.read_text()
@@ -135,12 +45,12 @@ jobs:
           npm ci
           npm run test:studio
 
-      - name: Commit source and tests
+      - name: Commit test and remove applicator
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/apply-studio-case-boundary.yml
-          git add app/studio/studio-urls.ts app/studio/studio-urls.test.ts app/studio/studio-case-canonicalization.test.ts
-          git commit -m "fix(studio): bind URL casing to preview validation"
+          git add app/studio/studio-urls.test.ts
+          git commit -m "test(studio): pin case-sensitive preview identity"
           git push origin HEAD:fix/studio-case-canonicalization
