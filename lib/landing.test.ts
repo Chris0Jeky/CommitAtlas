@@ -135,10 +135,6 @@ test("landingThemedAtlasUrl swaps in a non-default theme and keeps the landing c
   assert.equal(parsed.searchParams.get("days"), "365");
   assert.equal(parsed.searchParams.get("layout"), "wide");
 
-  // Boundary: an empty theme is passed through as an empty param rather than falling back.
-  const empty = parseUrl(landingThemedAtlasUrl(""));
-  assert.equal(empty.searchParams.get("theme"), "");
-  assert.equal(empty.searchParams.has("theme"), true);
 });
 
 test("landingSnapshot resolves in demo mode without any network request", async () => {

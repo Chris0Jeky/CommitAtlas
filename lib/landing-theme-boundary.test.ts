@@ -5,7 +5,7 @@ import { landingThemedAtlasUrl } from "./landing";
 test("landingThemedAtlasUrl rejects blank or unshipped theme ids", () => {
   for (const theme of ["", "neon"]) {
     assert.throws(
-      () => landingThemedAtlasUrl(theme),
+      () => landingThemedAtlasUrl(theme as never),
       /landing theme must be a shipped card theme/,
     );
   }
