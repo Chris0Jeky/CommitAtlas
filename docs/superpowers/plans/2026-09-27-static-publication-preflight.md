@@ -39,10 +39,11 @@
 - Consumes: existing `generateStaticFromSnapshot` public API and fixture helpers.
 - Produces: regressions for blocked variant preparation and stale-cleanup payload integrity.
 
-- [ ] Add a test that seeds a primary Atlas, blocks the variant output path with a regular file, attempts a changed paired snapshot, and asserts primary Atlas plus manifest are byte-identical.
-- [ ] Extend the cleanup-interruption test to use a changed snapshot and assert Atlas plus manifest remain byte-identical after the rejected run.
-- [ ] Run `npm --prefix packages/static test` and observe both new assertions fail against current publication order.
-- [ ] Commit the RED tests.
+- [x] Add a test that seeds a primary Atlas, blocks the variant output path with a regular file, attempts a changed paired snapshot, and asserts primary Atlas plus manifest are byte-identical.
+- [x] Extend the cleanup-interruption test to use a changed snapshot and assert Atlas plus manifest remain byte-identical after the rejected run.
+- [x] Add a render-time symlink replacement regression and require the outside directory to remain untouched.
+- [x] Run the focused tests against the original implementation and observe all three fail for the intended reasons.
+- [x] Commit the RED tests.
 
 ### Task 2: Prepare all outputs before publication
 
@@ -51,14 +52,15 @@
 
 **Interfaces:**
 - Consumes: rendered target payloads and manifests from `generateStaticFromSnapshot`.
-- Produces: prepared target records containing output directory, owned names, staged payloads, staged manifest, and current names.
+- Produces: prepared target records containing output directory, owned names, staged payloads, staged manifest, and stale managed names.
 
-- [ ] Add `prepareArtifacts(root, target)` that creates the directory, re-runs contained-path validation with `mustExist: true`, reads prior ownership, and stages every payload plus manifest.
-- [ ] Prepare all targets before any cleanup or rename; clean all temporary files if any preparation fails.
-- [ ] Remove stale owned artifacts across all prepared targets before installing any payload.
-- [ ] Install payloads and then manifests, cleaning remaining temporary files in `finally`.
-- [ ] Run the focused static suite and verify GREEN.
-- [ ] Commit the implementation.
+- [x] Add `prepareArtifacts(root, target)` that creates the directory, re-runs contained-path validation with `mustExist: true`, reads prior ownership, and stages every payload plus manifest.
+- [x] Prepare all targets before any cleanup or rename; clean all temporary files if any preparation fails.
+- [x] Validate stale paths across all targets before removing any stale managed artifact.
+- [x] Remove stale owned artifacts across all prepared targets before installing any payload.
+- [x] Install payloads and then manifests, cleaning remaining temporary files in `finally`.
+- [x] Run the focused static suite and verify all 41 tests pass.
+- [x] Commit the implementation.
 
 ### Task 3: Distribution and exact-head verification
 
@@ -69,6 +71,16 @@
 - Consumes: Task 2 static source.
 - Produces: Action bundle byte-equivalent to the source implementation.
 
-- [ ] Rebuild with `npm run build:action` in GitHub Actions when local dependencies are unavailable.
-- [ ] Verify `npm run test:action` and full `npm run check` at the exact PR head.
-- [ ] Review the complete branch for containment, cleanup, and recovery regressions.
+- [x] Rebuild with `npm run build:action` under Node 22.13.0 using locked dependencies.
+- [x] Commit the generated Action bundle and remove the temporary write-enabled workflow.
+- [x] Merge current `main` into the branch and remove the reconciliation workflow in the same merge commit.
+- [ ] Verify `npm run test:action`, the full `npm run check`, and production dependency audit at the final owner-authored PR head.
+- [ ] Complete fresh review of the final branch and resolve any findings before merge.
+
+## Execution Receipt
+
+- Original implementation: all three new failure-path regressions failed as intended.
+- Implemented source: focused publication regressions and the complete static package suite passed, 41/41.
+- Generated distribution: `npm run build:action` completed on GitHub Actions and pushed `97ff557`.
+- Base reconciliation: clean merge of current `main` pushed as `6f0918e`; temporary workflows are absent from the durable tree.
+- Remaining gate: owner-authored exact-head CI and fresh review.
