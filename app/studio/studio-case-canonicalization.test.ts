@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  isStudioPreviewCurrent,
   type StudioCardKind,
   type StudioRouteOptions,
 } from "./studio-urls";
@@ -23,8 +24,11 @@ const lowerCase: StudioRouteOptions = {
   projects: [{ repo: "hello-world", lifecycle: "active", workflow: "CI.yml" }],
 };
 
-test("case-equivalent Studio configurations emit byte-identical URLs", () => {
-  assert.equal(buildStudioConfigurationKey(mixedCase), buildStudioConfigurationKey(lowerCase));
+test("case-only Studio edits require fresh validation for their changed URLs", () => {
+  const mixedKey = buildStudioConfigurationKey(mixedCase);
+  const lowerKey = buildStudioConfigurationKey(lowerCase);
+  assert.notEqual(mixedKey, lowerKey);
+  assert.equal(isStudioPreviewCurrent(lowerKey, { key: mixedKey }), false);
 
   const kinds: readonly StudioCardKind[] = [
     "atlas",
@@ -37,15 +41,24 @@ test("case-equivalent Studio configurations emit byte-identical URLs", () => {
     "projects",
   ];
   for (const kind of kinds) {
-    assert.equal(
+    assert.notEqual(
       buildStudioRouteUrl(kind, mixedCase),
       buildStudioRouteUrl(kind, lowerCase),
-      `${kind} changed despite an equivalent validation key`,
+      `${kind} URL did not reflect its case-only identity edit`,
     );
   }
-  assert.equal(
+  assert.notEqual(
     buildStudioRouteUrl("projects", mixedCase, "json"),
     buildStudioRouteUrl("projects", lowerCase, "json"),
-    "the project JSON URL changed despite an equivalent validation key",
   );
+});
+
+test("Studio route identity trims surrounding whitespace consistently", () => {
+  const spaced: StudioRouteOptions = {
+    ...lowerCase,
+    owner: " octocat ",
+    projects: [{ repo: " hello-world ", lifecycle: "active", workflow: " CI.yml " }],
+  };
+  assert.equal(buildStudioConfigurationKey(spaced), buildStudioConfigurationKey(lowerCase));
+  assert.equal(buildStudioRouteUrl("atlas", spaced), buildStudioRouteUrl("atlas", lowerCase));
 });
