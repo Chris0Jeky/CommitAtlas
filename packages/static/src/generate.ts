@@ -298,6 +298,12 @@ async function publishArtifacts(root: string, targets: readonly StaticWriteTarge
     // earlier theme still contains only temporary files, which the shared `finally` removes.
     for (const target of targets) prepared.push(await prepareArtifacts(root, target));
 
+    // Preflight every visible destination across every theme before cleanup or the first rename.
+    // Existing regular files are valid replacement targets; missing files are new artifacts. A
+    // directory, symlink, or other special entry would make a later rename fail after an earlier
+    // theme had already committed, so reject the whole publication while only temp files exist.
+    for (const target of prepared) await verifyCurrentDestinations(target);
+
     // Detect a caller-replaced directory before deleting any stale file in any theme. Missing files
     // are fine (the previous manifest can outlive a manual deletion), while directories are not a
     // valid CommitAtlas artifact and make non-recursive cleanup fail.
@@ -355,6 +361,19 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
   } catch (error) {
     await cleanupStaged(staged);
     throw error;
+  }
+}
+
+async function verifyCurrentDestinations(target: PreparedArtifacts): Promise<void> {
+  for (const file of [...target.payloads, target.manifest]) {
+    try {
+      const metadata = await lstat(file.destination);
+      if (!metadata.isFile()) {
+        throw new Error(`${path.basename(file.destination)} is not a regular artifact file`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
   }
 }
 
