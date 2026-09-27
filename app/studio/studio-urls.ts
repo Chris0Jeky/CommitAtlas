@@ -34,7 +34,7 @@ export interface StudioRouteOptions {
 
 export function buildStudioConfigurationKey(options: StudioRouteOptions): string {
   return JSON.stringify({
-    owner: options.owner.trim().toLowerCase(),
+    owner: options.owner.trim(),
     theme: options.theme,
     demo: options.demo,
     days: options.days ?? null,
@@ -43,7 +43,7 @@ export function buildStudioConfigurationKey(options: StudioRouteOptions): string
     projects: (options.projects ?? [])
       .filter((project) => project.repo.trim())
       .map((project) => ({
-        repo: project.repo.trim().toLowerCase(),
+        repo: project.repo.trim(),
         lifecycle: project.lifecycle,
         workflow: project.workflow?.trim() ?? "",
       })),
@@ -95,10 +95,11 @@ export function buildStudioRouteUrl(
   projectSurface: StudioProjectSurface = "svg",
 ): string {
   const query = new URLSearchParams();
+  const owner = options.owner.trim();
   const projects = options.projects ?? [];
 
   if (kind === "projects" || kind === "atlas") {
-    query.set(kind === "projects" ? "owner" : "user", options.owner);
+    query.set(kind === "projects" ? "owner" : "user", owner);
     if (kind === "projects" || projects.length > 0) {
       query.set("repos", projects.map((project) => project.repo.trim()).join(","));
       query.set("states", projects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","));
@@ -112,7 +113,7 @@ export function buildStudioRouteUrl(
       .filter((workflow): workflow is string => Boolean(workflow));
     if (workflows.length > 0) query.set("workflows", workflows.join(","));
   } else {
-    query.set("user", options.owner);
+    query.set("user", owner);
   }
 
   query.set("demo", String(options.demo));
