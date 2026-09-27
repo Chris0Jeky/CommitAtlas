@@ -191,7 +191,7 @@ test("emits ambient motion in hosted URLs and treats it as route-affecting confi
   assert.notEqual(ambient, subtle);
 });
 test("binds a successful origin to the exact route-affecting configuration", () => {
-  const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };
+  const baseline = { owner: " octocat ", theme: "ember", demo: true, projects };
   const key = buildStudioConfigurationKey(baseline);
 
   assert.equal(key, buildStudioConfigurationKey({
@@ -199,6 +199,7 @@ test("binds a successful origin to the exact route-affecting configuration", () 
     owner: "octocat",
     projects: projects.map((project) => ({ ...project, repo: project.repo.trim() })),
   }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "Octocat" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "other" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, theme: "paper" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, demo: false }));
