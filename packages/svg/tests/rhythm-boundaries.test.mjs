@@ -71,11 +71,16 @@ test("rhythm cards render only the latest twelve weekly buckets", () => {
   assert.equal(fromA, exactlyTwelve);
   assert.equal(fromB, exactlyTwelve);
 
-  const changedRecentBucket = renderRhythmCard({
+  const changedOldestRetainedBucket = renderRhythmCard({
+    ...base,
+    trend: { ...base.trend, buckets: [99, ...latestTwelve.slice(1)] },
+  }, { motion: "none" });
+  const changedNewestRetainedBucket = renderRhythmCard({
     ...base,
     trend: { ...base.trend, buckets: [...latestTwelve.slice(0, 11), 99] },
   }, { motion: "none" });
-  assert.notEqual(changedRecentBucket, exactlyTwelve);
+  assert.notEqual(changedOldestRetainedBucket, exactlyTwelve);
+  assert.notEqual(changedNewestRetainedBucket, exactlyTwelve);
 });
 
 function escapeRegex(value) {
