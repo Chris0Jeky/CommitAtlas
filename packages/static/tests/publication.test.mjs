@@ -36,6 +36,7 @@ test("prepares every theme output before changing an existing primary snapshot",
     );
     assert.equal(await readFile(path.join(primaryOutput, "atlas.svg"), "utf8"), originalAtlas);
     assert.equal(await readFile(path.join(primaryOutput, "manifest.json"), "utf8"), originalManifest);
+    await assertNoStagedFiles(primaryOutput);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -55,7 +56,11 @@ test("rechecks output containment after render-time path replacement", async () 
       get() {
         if (!replaced) {
           replaced = true;
-          symlinkSync(outside, path.join(root, "assets", "commitatlas"), "dir");
+          symlinkSync(
+            outside,
+            path.join(root, "assets", "commitatlas"),
+            process.platform === "win32" ? "junction" : "dir",
+          );
         }
         return base.profile;
       },
@@ -93,10 +98,16 @@ test("keeps previous payload bytes with the ownership record when cleanup is int
     );
     assert.equal(await readFile(path.join(output, "atlas.svg"), "utf8"), ownedAtlas);
     assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);
+    await assertNoStagedFiles(output);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+async function assertNoStagedFiles(outputDir) {
+  const entries = await readdir(outputDir);
+  assert.deepEqual(entries.filter((name) => /^\..+\.tmp$/.test(name)), []);
+}
 
 function staticConfig(overrides = {}) {
   return parseStaticConfig({
