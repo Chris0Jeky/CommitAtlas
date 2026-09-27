@@ -160,12 +160,13 @@ test("keeps previous payload bytes with the ownership record when cleanup is int
     const ownedAtlas = await readFile(path.join(output, "atlas.svg"), "utf8");
     const ownedManifest = await readFile(path.join(output, "manifest.json"), "utf8");
 
-    // A non-recursive rm over this directory throws while collecting a stale managed artifact.
+    // A directory in place of a stale managed artifact is rejected before any cleanup runs.
     await rm(path.join(output, "projects.md"), { force: true });
     await mkdir(path.join(output, "projects.md"));
-    await writeFile(path.join(output, "projects.md", "blocker.txt"), "makes rm throw\n");
+    await writeFile(path.join(output, "projects.md", "blocker.txt"), "blocks stale cleanup\n");
     await assert.rejects(
       generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: portfolio("A changed Octocat") }),
+      /projects\.md is a directory/,
     );
     assert.equal(await readFile(path.join(output, "atlas.svg"), "utf8"), ownedAtlas);
     assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);
