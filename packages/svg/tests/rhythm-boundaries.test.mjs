@@ -23,7 +23,7 @@ const base = {
   },
 };
 
-test("rhythm cards state new, flat, and downward trends explicitly", () => {
+test("rhythm cards state new, flat, and downward trends visibly and accessibly", () => {
   const cases = [
     {
       trend: { ...base.trend, previous28Days: 0, changePercent: null, direction: "new" },
@@ -41,7 +41,12 @@ test("rhythm cards state new, flat, and downward trends explicitly", () => {
 
   for (const { trend, expected } of cases) {
     const output = renderRhythmCard({ ...base, trend }, { motion: "none" });
-    assert.match(output, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const description = output.match(/<desc\b[^>]*>([\s\S]*?)<\/desc>/)?.[1] ?? "";
+    const visibleText = [...output.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)]
+      .map((match) => match[1])
+      .join(" ");
+    assert.match(description, new RegExp(escapeRegex(expected)));
+    assert.match(visibleText, new RegExp(escapeRegex(expected)));
   }
 });
 
@@ -72,3 +77,7 @@ test("rhythm cards render only the latest twelve weekly buckets", () => {
   }, { motion: "none" });
   assert.notEqual(changedRecentBucket, exactlyTwelve);
 });
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
