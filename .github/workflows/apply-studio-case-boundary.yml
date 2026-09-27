@@ -27,15 +27,25 @@ jobs:
 
           source = Path('app/studio/studio-urls.ts')
           text = source.read_text()
-          text = text.replace('owner: options.owner.trim().toLowerCase(),', 'owner: options.owner.trim(),', 1)
-          text = text.replace('repo: project.repo.trim().toLowerCase(),', 'repo: project.repo.trim(),', 1)
-          anchor = '  const query = new URLSearchParams();\n  const projects = options.projects ?? [];\n'
-          replacement = '  const query = new URLSearchParams();\n  const owner = options.owner.trim();\n  const projects = options.projects ?? [];\n'
-          if anchor not in text:
+          old_owner_key = 'owner: options.owner.trim().toLowerCase(),'
+          old_repo_key = 'repo: project.repo.trim().toLowerCase(),'
+          if old_owner_key not in text or old_repo_key not in text:
+              raise SystemExit('configuration key normalization anchors missing')
+          text = text.replace(old_owner_key, 'owner: options.owner.trim(),', 1)
+          text = text.replace(old_repo_key, 'repo: project.repo.trim(),', 1)
+
+          route_anchor = '  const query = new URLSearchParams();\n  const projects = options.projects ?? [];\n'
+          route_replacement = '  const query = new URLSearchParams();\n  const owner = options.owner.trim();\n  const projects = options.projects ?? [];\n'
+          if route_anchor not in text:
               raise SystemExit('route setup anchor missing')
-          text = text.replace(anchor, replacement, 1)
-          text = text.replace('query.set(kind === "projects" ? "owner" : "user", options.owner);', 'query.set(kind === "projects" ? "owner" : "user", owner);', 1)
-          text = text.replace('query.set("user", options.owner);', 'query.set("user", owner);', 1)
+          text = text.replace(route_anchor, route_replacement, 1)
+
+          owner_query = 'query.set(kind === "projects" ? "owner" : "user", options.owner);'
+          user_query = 'query.set("user", options.owner);'
+          if owner_query not in text or user_query not in text:
+              raise SystemExit('route owner query anchors missing')
+          text = text.replace(owner_query, 'query.set(kind === "projects" ? "owner" : "user", owner);', 1)
+          text = text.replace(user_query, 'query.set("user", owner);', 1)
           source.write_text(text)
 
           focused = Path('app/studio/studio-case-canonicalization.test.ts')
@@ -95,7 +105,7 @@ jobs:
           });
 
           test("Studio route identity trims surrounding whitespace consistently", () => {
-            const spaced = {
+            const spaced: StudioRouteOptions = {
               ...lowerCase,
               owner: " octocat ",
               projects: [{ repo: " hello-world ", lifecycle: "active", workflow: " CI.yml " }],
@@ -107,22 +117,17 @@ jobs:
 
           existing = Path('app/studio/studio-urls.test.ts')
           text = existing.read_text()
-          old = '  const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };'
-          new = '  const baseline = { owner: " octocat ", theme: "ember", demo: true, projects };'
-          if old not in text:
+          old_baseline = '  const baseline = { owner: " Octocat ", theme: "ember", demo: true, projects };'
+          new_baseline = '  const baseline = { owner: " octocat ", theme: "ember", demo: true, projects };'
+          if old_baseline not in text:
               raise SystemExit('baseline key test anchor missing')
-          text = text.replace(old, new, 1)
-          key_anchor = '''  assert.equal(key, buildStudioConfigurationKey({
-            ...baseline,
-            owner: "octocat",
-            projects: projects.map((project) => ({ ...project, repo: project.repo.trim() })),
-          }));
-          '''
-          key_replacement = key_anchor + '''  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "Octocat" }));
-          '''
-          if key_anchor not in text:
-              raise SystemExit('key equality assertion anchor missing')
-          existing.write_text(text.replace(key_anchor, key_replacement, 1))
+          text = text.replace(old_baseline, new_baseline, 1)
+
+          stable_anchor = '  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "other" }));'
+          inserted = '  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, owner: "Octocat" }));\n' + stable_anchor
+          if stable_anchor not in text:
+              raise SystemExit('stable key assertion anchor missing')
+          existing.write_text(text.replace(stable_anchor, inserted, 1))
           PY
 
       - name: Verify focused Studio suite
