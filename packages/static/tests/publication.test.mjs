@@ -118,6 +118,36 @@ test("rechecks output containment after render-time path replacement", async () 
   }
 });
 
+/** A missing output directory under a swapped parent must not be created outside the root. */
+test("does not create output directories through a render-time parent symlink", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-mkdir-race-root-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "commitatlas-output-mkdir-race-outside-"));
+  try {
+    const base = portfolio();
+    let replaced = false;
+    const raced = { ...base };
+    Object.defineProperty(raced, "profile", {
+      enumerable: true,
+      get() {
+        if (!replaced) {
+          replaced = true;
+          symlinkSync(outside, path.join(root, "assets"), process.platform === "win32" ? "junction" : "dir");
+        }
+        return base.profile;
+      },
+    });
+
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: staticConfig({ cards: ["atlas"] }), snapshot: raced }),
+      /symbolic links|inside the repository/i,
+    );
+    assert.deepEqual(await readdir(outside), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
 /** Failed stale cleanup must not expose new bytes under the previous ownership manifest. */
 test("keeps previous payload bytes with the ownership record when cleanup is interrupted", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-cleanup-preflight-"));
@@ -130,12 +160,13 @@ test("keeps previous payload bytes with the ownership record when cleanup is int
     const ownedAtlas = await readFile(path.join(output, "atlas.svg"), "utf8");
     const ownedManifest = await readFile(path.join(output, "manifest.json"), "utf8");
 
-    // A non-recursive rm over this directory throws while collecting a stale managed artifact.
+    // A directory in place of a stale managed artifact is rejected before any cleanup runs.
     await rm(path.join(output, "projects.md"), { force: true });
     await mkdir(path.join(output, "projects.md"));
-    await writeFile(path.join(output, "projects.md", "blocker.txt"), "makes rm throw\n");
+    await writeFile(path.join(output, "projects.md", "blocker.txt"), "blocks stale cleanup\n");
     await assert.rejects(
       generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: portfolio("A changed Octocat") }),
+      /projects\.md is a directory/,
     );
     assert.equal(await readFile(path.join(output, "atlas.svg"), "utf8"), ownedAtlas);
     assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);

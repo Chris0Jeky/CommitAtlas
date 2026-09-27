@@ -328,7 +328,7 @@ async function publishArtifacts(root: string, targets: readonly StaticWriteTarge
 }
 
 async function prepareArtifacts(root: string, target: StaticWriteTarget): Promise<PreparedArtifacts> {
-  await mkdir(target.outputDir, { recursive: true });
+  await mkdirContained(root, target.outputDir);
 
   // `resolveContainedPath` ran before rendering, but rendering is caller-controlled data work and a
   // path component could be replaced meanwhile. Re-run the no-symlink containment walk after the
@@ -361,6 +361,31 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
   } catch (error) {
     await cleanupStaged(staged);
     throw error;
+  }
+}
+
+/**
+ * Creates `outputDir` one component at a time, refusing any existing symlink or non-directory.
+ * A recursive mkdir would follow a parent swapped for a symlink during rendering and create empty
+ * directories outside the repository before the containment re-check could reject the path.
+ */
+async function mkdirContained(root: string, outputDir: string): Promise<void> {
+  let current = root;
+  for (const part of path.relative(root, outputDir).split(path.sep)) {
+    current = path.join(current, part);
+    let metadata;
+    try {
+      metadata = await lstat(current);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      // Another writer may create the same missing prefix first; the lstat below still validates it.
+      await mkdir(current).catch((mkdirError: NodeJS.ErrnoException) => {
+        if (mkdirError.code !== "EEXIST") throw mkdirError;
+      });
+      metadata = await lstat(current);
+    }
+    if (metadata.isSymbolicLink()) throw new Error("Repository paths must not traverse symbolic links");
+    if (!metadata.isDirectory()) throw new Error("output path component is not a directory");
   }
 }
 
