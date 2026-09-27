@@ -1,0 +1,32 @@
+name: Reconcile static publication branch
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.head_ref == 'fix/static-publication-preflight' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out full branch history
+        uses: actions/checkout@v7
+        with:
+          ref: fix/static-publication-preflight
+          fetch-depth: 0
+
+      - name: Merge current main and remove this workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
+          git rm .github/workflows/reconcile-static-main.yml
+          git commit -m "Merge main into static publication preflight"
+          git push origin HEAD:fix/static-publication-preflight
