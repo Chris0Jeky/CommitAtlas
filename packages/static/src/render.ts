@@ -75,7 +75,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   const dashboardWidth = config.layout === "compact" ? 480 : 860;
   const common = { theme: config.theme, motion: config.motion } as const;
   const { profile, contributions, metrics, projects } = snapshot;
-  const lastActive = [...contributions.days].reverse().find((day) => day.count > 0)?.date;
+  const sortedCalendarDays = [...contributions.days].sort((left, right) => left.date.localeCompare(right.date));
+  const lastActive = [...sortedCalendarDays].reverse().find((day) => day.count > 0)?.date;
   const artifacts: Partial<Record<StaticArtifactName, string>> = {};
 
   if (selected.has("atlas")) {
