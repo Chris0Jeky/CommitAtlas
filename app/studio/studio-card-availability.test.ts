@@ -5,6 +5,7 @@ import {
   hasCurrentLiveLanguages,
   isStudioCardAvailable,
   isStudioRefreshUnresolved,
+  projectsForValidatedPreview,
   resolveStudioLiveEvidence,
 } from "./studio-card-availability";
 import type { StudioCardKind } from "./studio-urls";
@@ -61,6 +62,20 @@ test("omits Languages when a live preview has only a truncated repository list",
       hasCurrentLanguages: false,
     })),
     ["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "projects"],
+  );
+});
+
+test("omits every configured project when the project board failed", () => {
+  const projects = [
+    { repo: "Hello-World", lifecycle: "active" },
+    { repo: "Spoon-Knife", lifecycle: "maintenance" },
+  ];
+
+  assert.deepEqual(projectsForValidatedPreview(projects, false), []);
+  assert.deepEqual(
+    projectsForValidatedPreview(projects, true),
+    projects,
+    "a successful board keeps the validated project inputs",
   );
 });
 
