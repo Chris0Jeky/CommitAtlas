@@ -147,6 +147,8 @@ const starterContributions: ContributionSnapshot = {
 
 let nextProjectId = 3;
 const PLACEHOLDER_BASE_URL = "https://your-commitatlas-host.example";
+// Client-side mirror of the shared REPOSITORY rule in packages/github/src/validation.ts.
+const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
 
 export default function StudioClient() {
   const [handle, setHandle] = useState("octocat");
@@ -277,6 +279,13 @@ export default function StudioClient() {
       return;
     }
 
+    const invalidRepo = activeProjects.find((project) => !REPOSITORY.test(project.repo.trim()));
+    if (invalidRepo) {
+      setPhase("error");
+      setNotice(retainedPreviewNotice("Enter a valid repository name before previewing.", profile.login));
+      return;
+    }
+
     const requestedConfigurationKey = buildStudioConfigurationKey({
       owner: login,
       projects: activeProjects,
@@ -295,22 +304,25 @@ export default function StudioClient() {
       const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=${STUDIO_PREVIEW_DAYS}`)
         .then((value) => ({ value, error: null }))
         .catch((error: unknown) => ({ value: null, error }));
-      const [nextProfile, contributionResult, nextBoard] = await Promise.all([
+      const boardPromise = (activeProjects.length
+        ? fetchJson<ProjectBoardSnapshot>(buildStudioRouteUrl("projects", {
+            owner: login,
+            projects: activeProjects,
+            theme,
+            demo,
+          }, "json"))
+        : Promise.resolve(null))
+        .then((value) => ({ value, error: null }))
+        .catch((error: unknown) => ({ value: null, error }));
+      const [nextProfile, contributionResult, boardResult] = await Promise.all([
         fetchJson<ProfileSnapshot>(`/api/v1/profile?${common}`),
         contributionPromise,
-        activeProjects.length
-          ? fetchJson<ProjectBoardSnapshot>(buildStudioRouteUrl("projects", {
-              owner: login,
-              projects: activeProjects,
-              theme,
-              demo,
-            }, "json"))
-          : Promise.resolve(null),
+        boardPromise,
       ]);
 
       setProfile(nextProfile);
       setContributions(contributionResult.value);
-      setBoard(nextBoard);
+      setBoard(boardResult.value);
       setPreviewConfiguration({
         owner: login,
         projects: activeProjects.map((project) => ({ ...project })),
@@ -343,7 +355,9 @@ export default function StudioClient() {
       setNotice(
         contributionResult.error
           ? contributionUnavailableNotice()
-          : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
+          : boardResult.error
+            ? "Available public signals loaded. Project board is unavailable for this preview and was omitted; no value was guessed."
+            : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
       );
     } catch (error) {
       setPhase("error");
