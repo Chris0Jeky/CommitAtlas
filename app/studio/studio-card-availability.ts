@@ -6,6 +6,14 @@ export interface StudioCardAvailability {
   hasCurrentLanguages: boolean;
 }
 
+/** Keep project inputs only when the project-board response validated them. */
+export function projectsForValidatedPreview<T>(
+  projects: readonly T[],
+  boardAvailable: boolean,
+): T[] {
+  return boardAvailable ? [...projects] : [];
+}
+
 export function isStudioCardAvailable(
   kind: StudioCardKind,
   availability: StudioCardAvailability,

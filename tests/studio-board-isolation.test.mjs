@@ -61,6 +61,16 @@ test("board 500 still commits fresh profile and contributions", async () => {
   );
   assert.ok(clientSource.includes("boardResult.value"), "settled board value must drive setBoard");
   assert.ok(clientSource.includes("boardResult.error"), "settled board error must drive the notice");
+  assert.match(
+    clientSource,
+    /projectsForValidatedPreview\(activeProjects,\s*!boardResult\.error\)/,
+    "a failed board must remove its project inputs from validated output",
+  );
+  assert.match(
+    clientSource,
+    /projects:\s*previewConfiguration\.projects/,
+    "README Markdown must use the sanitized validated project list",
+  );
 
   // Simulate: profile 200 + contributions 200 + board 500 with settled wrappers.
   const nextProfile = { login: "octocat" };
@@ -74,10 +84,12 @@ test("board 500 still commits fresh profile and contributions", async () => {
     boardPromise,
   ]);
 
-  const state = { profile: null, contribs: null, board: "untouched", validated: false, notice: "" };
+  const activeProjects = [{ repo: "Hello-World" }, { repo: "Hello-World" }];
+  const state = { profile: null, contribs: null, board: "untouched", projects: activeProjects, validated: false, notice: "" };
   state.profile = profile;
   state.contribs = contributions.value;
   state.board = boardResult.value;
+  state.projects = boardResult.error ? [] : activeProjects;
   state.validated = true;
   state.notice = contributions.error
     ? "contribution unavailable"
@@ -88,6 +100,7 @@ test("board 500 still commits fresh profile and contributions", async () => {
   assert.deepEqual(state.profile, nextProfile);
   assert.deepEqual(state.contribs, { totalContributions: 1 });
   assert.equal(state.board, null);
+  assert.deepEqual(state.projects, []);
   assert.equal(state.validated, true);
   assert.match(state.notice, /unavailable|omitted/i);
 });
