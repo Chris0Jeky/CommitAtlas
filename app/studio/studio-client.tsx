@@ -6,6 +6,7 @@ import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
 import {
   isStudioCardAvailable,
+  projectsForValidatedPreview,
   resolveStudioLiveEvidence,
 } from "./studio-card-availability";
 import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./studio-markdown";
@@ -147,6 +148,8 @@ const starterContributions: ContributionSnapshot = {
 
 let nextProjectId = 3;
 const PLACEHOLDER_BASE_URL = "https://your-commitatlas-host.example";
+// Client-side mirror of the shared REPOSITORY rule in packages/github/src/validation.ts.
+const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
 
 export default function StudioClient() {
   const [handle, setHandle] = useState("octocat");
@@ -204,6 +207,7 @@ export default function StudioClient() {
   }), [previewConfiguration]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
   const visibleBoard = configurationIsValidated ? board : null;
+  const visibleProjectDrafts = configurationIsValidated ? previewConfiguration.projects : activeProjects;
   const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
     ? configurationChangedNotice()
     : notice;
@@ -249,17 +253,17 @@ export default function StudioClient() {
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
       baseUrl,
-      owner: handle.trim() || "octocat",
-      projects: activeProjects,
-      theme,
-      demo,
+      owner: previewConfiguration.owner,
+      projects: previewConfiguration.projects,
+      theme: previewConfiguration.theme,
+      demo: previewConfiguration.demo,
       selectedCards,
       hasCurrentContributions,
       hasCurrentLanguages,
-      motion,
-      layout,
+      motion: previewConfiguration.motion,
+      layout: previewConfiguration.layout,
     });
-  }, [activeProjects, baseUrl, demo, handle, hasCurrentContributions, hasCurrentLanguages, layout, motion, selectedCards, theme]);
+  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, selectedCards]);
   const previewIsValidated = configurationIsValidated && !refreshUnresolved;
   const markdownReady = previewIsValidated && isCopyableStudioOrigin(baseUrl);
   const visibleMarkdown = markdownReady
@@ -274,6 +278,13 @@ export default function StudioClient() {
     if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
       setPhase("error");
       setNotice(retainedPreviewNotice("Enter a valid GitHub handle before previewing.", profile.login));
+      return;
+    }
+
+    const invalidRepo = activeProjects.find((project) => !REPOSITORY.test(project.repo.trim()));
+    if (invalidRepo) {
+      setPhase("error");
+      setNotice(retainedPreviewNotice("Enter a valid repository name before previewing.", profile.login));
       return;
     }
 
@@ -295,25 +306,28 @@ export default function StudioClient() {
       const contributionPromise = fetchJson<ContributionSnapshot>(`/api/v1/contributions?${common}&days=${STUDIO_PREVIEW_DAYS}`)
         .then((value) => ({ value, error: null }))
         .catch((error: unknown) => ({ value: null, error }));
-      const [nextProfile, contributionResult, nextBoard] = await Promise.all([
+      const boardPromise = (activeProjects.length
+        ? fetchJson<ProjectBoardSnapshot>(buildStudioRouteUrl("projects", {
+            owner: login,
+            projects: activeProjects,
+            theme,
+            demo,
+          }, "json"))
+        : Promise.resolve(null))
+        .then((value) => ({ value, error: null }))
+        .catch((error: unknown) => ({ value: null, error }));
+      const [nextProfile, contributionResult, boardResult] = await Promise.all([
         fetchJson<ProfileSnapshot>(`/api/v1/profile?${common}`),
         contributionPromise,
-        activeProjects.length
-          ? fetchJson<ProjectBoardSnapshot>(buildStudioRouteUrl("projects", {
-              owner: login,
-              projects: activeProjects,
-              theme,
-              demo,
-            }, "json"))
-          : Promise.resolve(null),
+        boardPromise,
       ]);
 
       setProfile(nextProfile);
       setContributions(contributionResult.value);
-      setBoard(nextBoard);
+      setBoard(boardResult.value);
       setPreviewConfiguration({
         owner: login,
-        projects: activeProjects.map((project) => ({ ...project })),
+        projects: projectsForValidatedPreview(activeProjects, !boardResult.error),
         theme,
         demo,
         motion,
@@ -343,7 +357,9 @@ export default function StudioClient() {
       setNotice(
         contributionResult.error
           ? contributionUnavailableNotice()
-          : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
+          : boardResult.error
+            ? "Available public signals loaded. Project board is unavailable for this preview and was omitted; no value was guessed."
+            : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
       );
     } catch (error) {
       setPhase("error");
@@ -525,11 +541,11 @@ export default function StudioClient() {
             )}
           </div>
 
-          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? activeProjects.length} declared projects</h3></div><span>Open links below</span></div>
+          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? visibleProjectDrafts.length} declared projects</h3></div><span>Open links below</span></div>
           <div className="dashboard-list">
             {(visibleBoard?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
-            {!visibleBoard && activeProjects.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
-            {!activeProjects.length && <div className="empty-projects"><strong>No projects selected</strong><span>Add a repository to build a project-health dashboard.</span></div>}
+            {!visibleBoard && visibleProjectDrafts.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
+            {!visibleProjectDrafts.length && <div className="empty-projects"><strong>No project board available</strong><span>Add repositories or run Preview again to build a project-health dashboard.</span></div>}
           </div>
 
           <div className="markdown-panel">
