@@ -198,7 +198,7 @@ probe.
 
 They are rendered inside an `<img>` on GitHub, which sets two hard constraints the web surface does
 not have. **No webfont can load**, so the cards use a system stack and have to survive substitution
-on whatever machine renders them — an embedded `@font-face` would spend the whole 30 KiB budget
+on whatever machine renders them — an embedded `@font-face` would spend the whole 30,000 UTF-8-byte budget
 before any data was drawn. And **the card carries its own opaque background**, so it is a plate on
 the reader's page rather than part of it.
 
