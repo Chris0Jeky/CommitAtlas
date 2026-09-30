@@ -127,6 +127,11 @@ test("unconfigured pins its tone, word, and pulse flag", () => {
   assert.equal(CI_STATE_PRESENTATION.unconfigured.pulses, false);
 });
 
+test("summariseCiStates fails closed on an unknown CI state", () => {
+  assert.throws(() => summariseCiStates(["bogus"] as never), /unknown CI state/);
+  assert.throws(() => summariseCiStates(["passing", "bogus"] as never), /unknown CI state/);
+});
+
 test("an unknown CI state has no presentation and never falls back to a healthy tone", () => {
   const byKey = CI_STATE_PRESENTATION as unknown as Record<string, unknown>;
   assert.equal(byKey["bogus"], undefined);
