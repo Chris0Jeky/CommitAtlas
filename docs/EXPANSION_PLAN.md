@@ -201,7 +201,7 @@ immediate static path for readers who request it.
 
 | Class | UTF-8 bytes | Animated elements | Looping groups |
 | --- | --- | --- | --- |
-| instrument (existing cards) | ≤ 30 KiB (unchanged) | ≤ 24 | ≤ 3 |
+| instrument (existing cards) | < 30,000 UTF-8 bytes (unchanged) | ≤ 24 | ≤ 3 |
 | map / signature / finding | ≤ 80 KiB | ≤ 64 | ≤ 6 |
 | scene / hero composition | ≤ 120 KiB | ≤ 96 | ≤ 6 |
 
