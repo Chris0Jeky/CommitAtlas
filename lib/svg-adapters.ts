@@ -7,6 +7,7 @@ import {
 } from "@/packages/core/src/index";
 import type {
   ActivityCardData,
+  CardDataState,
   CardSource,
   ContributionBreakdownCardData,
   LanguagesCardData,
@@ -31,6 +32,19 @@ function toCardSource(freshness: Freshness): CardSource {
   return freshness.source === "github-profile-html" ? "public-profile" : "public-github";
 }
 
+function toCardDataState(freshness: Freshness): CardDataState | undefined {
+  return freshness.mode === "partial" || freshness.mode === "stale" || freshness.mode === "unavailable"
+    ? freshness.mode
+    : undefined;
+}
+
+function toCardEvidence(
+  freshness: Freshness,
+): { readonly source: CardSource; readonly dataState?: CardDataState } {
+  const dataState = toCardDataState(freshness);
+  return { source: toCardSource(freshness), ...(dataState ? { dataState } : {}) };
+}
+
 function contributionCurrentDay(snapshot: ContributionSnapshot, asOf: string): "closed" | "open" {
   return snapshot.freshness.generatedAt.slice(0, 10) === asOf ? "open" : "closed";
 }
@@ -43,7 +57,7 @@ export function toProfileCard(snapshot: ProfileSnapshot): ProfileCardData {
     repositories: snapshot.publicRepositories,
     followers: snapshot.followers,
     following: snapshot.following,
-    source: toCardSource(snapshot.freshness),
+    ...toCardEvidence(snapshot.freshness),
     ...(snapshot.repositoriesTruncated ? {} : { stars: snapshot.stars }),
   };
 }
@@ -80,7 +94,7 @@ export function toStreakCard(snapshot: ContributionSnapshot, expectedDays: numbe
     total,
     activeDays,
     lastActive,
-    source: toCardSource(snapshot.freshness),
+    ...toCardEvidence(snapshot.freshness),
   };
 }
 
@@ -93,7 +107,7 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
     days: series.points.map(({ date, count, level }) => ({ date, count, level })),
     total: series.total,
     periodLabel: `${series.from} → ${series.to}`,
-    source: toCardSource(snapshot.freshness),
+    ...toCardEvidence(snapshot.freshness),
   };
 }
 
@@ -129,16 +143,16 @@ export function toContributionMetricsCards(
   if (!metrics.window.complete || metrics.window.observedDays !== expectedDays) {
     throw new GitHubApiError("invalid_response", "GitHub returned an incomplete contribution window");
   }
-  const source = toCardSource(snapshot.freshness);
+  const evidence = toCardEvidence(snapshot.freshness);
   return {
     breakdown: {
-      source,
+      ...evidence,
       window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
       breakdown: metrics.breakdown,
       basis: metrics.breakdownBasis,
     },
     rhythm: {
-      source,
+      ...evidence,
       window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
       activeDays: metrics.activeDays,
       density: metrics.density,
@@ -166,7 +180,7 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
     );
   }
   return {
-    source: toCardSource(snapshot.freshness),
+    ...toCardEvidence(snapshot.freshness),
     languages: snapshot.primaryLanguages.map((language) => ({
       name: language.name,
       percentage: language.share,
@@ -175,7 +189,7 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
 }
 
 export function toProjectBoard(snapshot: ProjectBoardSnapshot): ProjectBoardData {
-  return { source: toCardSource(snapshot.freshness), projects: snapshot.projects.map(toProjectSignal) };
+  return { ...toCardEvidence(snapshot.freshness), projects: snapshot.projects.map(toProjectSignal) };
 }
 
 function toProjectSignal(project: ProjectSnapshot): ProjectSignal {
