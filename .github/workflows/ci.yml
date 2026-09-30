@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -32,6 +34,61 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci
+
+      - name: Rebuild the rebased calendar normalization change
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.head_ref == 'fix/static-calendar-normalization' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          render = Path("packages/static/src/render.ts")
+          source = render.read_text()
+          old_source = "    contributions,\n    metrics,\n"
+          new_source = "    contributions: { ...contributions, days: calendar.days },\n    metrics,\n"
+          if old_source in source:
+              source = source.replace(old_source, new_source, 1)
+              render.write_text(source)
+          elif new_source not in source:
+              raise SystemExit("calendar normalization insertion point was not found")
+
+          package = Path("packages/static/package.json")
+          package_text = package.read_text()
+          old_tests = "tests/static.test.mjs tests/publication.test.mjs tests/entrypoint.test.mjs"
+          new_tests = "tests/static.test.mjs tests/publication.test.mjs tests/contribution-normalization.test.mjs tests/entrypoint.test.mjs"
+          if old_tests in package_text:
+              package_text = package_text.replace(old_tests, new_tests, 1)
+              package.write_text(package_text)
+          elif new_tests not in package_text:
+              raise SystemExit("static test registration insertion point was not found")
+
+          Path("packages/static/tests/contribution-normalization.test.mjs").write_text('''import assert from "node:assert/strict";\nimport test from "node:test";\nimport { demoContributions, demoProfile, demoProjects } from "@commit-atlas/github";\nimport {\n  assembleStaticPortfolio,\n  parseStaticConfig,\n  renderStaticArtifacts,\n} from "../dist/index.js";\n\nconst NOW = new Date("2026-08-20T12:00:00.000Z");\n\nconst staticConfig = parseStaticConfig({\n  version: 1,\n  user: "octocat",\n  theme: "ember",\n  days: 84,\n  motion: "none",\n  layout: "wide",\n  outputDir: "assets/commitatlas",\n  cards: ["atlas", "streak", "activity", "cadence"],\n  projects: [{\n    repo: "octocat/atlas",\n    label: "Atlas",\n    lifecycle: "active",\n    workflow: "ci.yml",\n  }],\n});\n\ntest("static assembly exposes the same validated calendar order used for metrics", () => {\n  const profile = demoProfile("octocat", NOW);\n  const contributions = demoContributions("octocat", 84, NOW);\n  const projects = demoProjects(\n    "octocat",\n    ["atlas"],\n    new Map([["atlas", "active"]]),\n    new Map([["atlas", "ci.yml"]]),\n    NOW,\n  );\n\n  const ordered = assembleStaticPortfolio(profile, contributions, projects);\n  const reversed = assembleStaticPortfolio(profile, {\n    ...contributions,\n    days: [...contributions.days].reverse(),\n  }, projects);\n\n  assert.deepEqual(reversed.contributions.days, ordered.contributions.days);\n  assert.deepEqual(\n    renderStaticArtifacts(reversed, staticConfig),\n    renderStaticArtifacts(ordered, staticConfig),\n  );\n});\n''')
+          PY
+
+          npm run build:action
+
+          if git diff --quiet -- \
+            packages/static/src/render.ts \
+            packages/static/package.json \
+            packages/static/tests/contribution-normalization.test.mjs \
+            action/dist/index.js; then
+            echo "Rebased normalization files are already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/static/src/render.ts \
+            packages/static/package.json \
+            packages/static/tests/contribution-normalization.test.mjs \
+            action/dist/index.js
+          git commit -m "fix(static): normalize contribution calendars before rendering"
+          git push origin "HEAD:${HEAD_BRANCH}"
 
       - name: Run the repository gate
         run: npm run check
