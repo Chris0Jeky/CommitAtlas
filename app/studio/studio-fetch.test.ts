@@ -33,6 +33,11 @@ test("rejects a string body with an invalid shape error", async () => {
   await assert.rejects(fetchJson("/api/v1/profile"), /invalid response shape/);
 });
 
+test("rejects an array body with an invalid shape error", async () => {
+  stubFetch([{ login: "octocat" }]);
+  await assert.rejects(fetchJson("/api/v1/profile"), /invalid response shape/);
+});
+
 test("keeps the non-OK status message unchanged", async () => {
   stubFetch({ error: { message: "" } }, false, 500);
   await assert.rejects(fetchJson("/api/v1/profile"), /Request failed with 500/);

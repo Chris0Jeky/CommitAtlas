@@ -9,6 +9,6 @@ export async function fetchJson<T>(url: string): Promise<T> {
     throw new Error(message);
   }
   const json: unknown = await response.json();
-  if (typeof json !== "object" || json === null) throw new Error("invalid response shape");
+  if (typeof json !== "object" || json === null || Array.isArray(json)) throw new Error("invalid response shape");
   return json as T;
 }
