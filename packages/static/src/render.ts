@@ -58,7 +58,7 @@ export function assembleStaticPortfolio(
   return {
     version: 1,
     profile,
-    contributions,
+    contributions: { ...contributions, days: calendar.days },
     metrics,
     projects,
     freshness: {
