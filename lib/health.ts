@@ -179,7 +179,10 @@ export function summariseCiStates(states: readonly CiState[]): CiReading {
     failing: 0,
     pending: 0,
   };
-  for (const state of states) counts[state] += 1;
+  for (const state of states) {
+    if (!(state in counts)) throw new Error(`unknown CI state: ${String(state)}`);
+    counts[state] += 1;
+  }
 
   const passing = counts.passing;
   const attention = counts.failing + counts.pending + counts.stale;
