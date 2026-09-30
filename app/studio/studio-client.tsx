@@ -40,6 +40,7 @@ import {
   pulseboardSmallCount,
   whenPulseboardReady,
 } from "@/lib/pulseboard";
+import { fetchJson } from "./studio-fetch";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
 type CardKind = StudioCardKind;
@@ -642,19 +643,6 @@ function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: s
   const ci = starterCiPresentation(project.workflow);
   const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", safeProjectActionUrl(project.docs)], ["Install", safeProjectActionUrl(project.install)], ["Download", safeProjectActionUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
   return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
-}
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
-  if (!response.ok) {
-    let message = `Request failed with ${response.status}`;
-    try {
-      const payload = await response.json() as { error?: { message?: string } };
-      if (payload.error?.message) message = payload.error.message;
-    } catch { /* The status remains the truthful fallback. */ }
-    throw new Error(message);
-  }
-  return response.json() as Promise<T>;
 }
 
 /**
