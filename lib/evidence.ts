@@ -104,7 +104,11 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export function formatUtcDate(date: string): string {
   const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!parsed) return date;
-  const [, year, month, day] = parsed;
+  const [, yearPart, monthPart, dayPart] = parsed;
+  const year = Number(yearPart), month = Number(monthPart), day = Number(dayPart);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (!daysInMonth || day < 1 || day > daysInMonth) return date;
   return `${Number(day)} ${MONTHS[Number(month) - 1] ?? month} ${year}`;
 }
 
