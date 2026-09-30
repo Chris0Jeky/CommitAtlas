@@ -159,6 +159,13 @@ test("window boundaries print as UTC days, never as a local timestamp", () => {
   assert.equal(formatUtcDate("not-a-date"), "not-a-date");
 });
 
+test("impossible calendar dates are echoed rather than formatted as nonsense", () => {
+  assert.equal(formatUtcDate("2026-13-45"), "2026-13-45");
+  assert.equal(formatUtcDate("2026-00-10"), "2026-00-10");
+  assert.equal(formatUtcDate("2026-02-31"), "2026-02-31");
+  assert.equal(formatUtcDate("2024-02-29"), "29 Feb 2024"); // control: valid leap day still formats
+});
+
 // A fixed demo-free snapshot for value pinning. Every number is hand-chosen so the printed
 // strings asserted below are exact: a wrong interpolation, a moved compactCount threshold, or a
 // reformatted date fails the equality rather than a fuzzy match.
