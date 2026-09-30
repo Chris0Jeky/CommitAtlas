@@ -35,7 +35,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 
 - Eight hosted SVG routes and the live Studio run on the public Cloudflare Worker.
 - Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`. In this compatibility slice, every non-`none` profile remains byte-identical to the existing subtle load motion.
-- The source CLI and bundled Node 24 Action generate ten card types from one public snapshot: the hosted eight plus static Cadence and Releases cards.
+- The source CLI and bundled Node 24 Action generate eleven card types from one public snapshot: the hosted eight plus static Cadence, Releases, and Delivery cards.
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
