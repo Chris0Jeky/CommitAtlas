@@ -185,6 +185,21 @@ export function parsePulseCapsule(input: unknown, nowMs: number = Date.now()): P
       throw new PulseCapsuleError("malformed", "capsule is not valid JSON");
     }
   }
+  if (typeof input !== "string") {
+    try {
+      const serialized = JSON.stringify(candidate);
+      if (
+        typeof serialized === "string" &&
+        new TextEncoder().encode(serialized).length > PULSE_CAPSULE_MAX_BYTES
+      ) {
+        throw new PulseCapsuleError("oversized", "capsule exceeds the 256 KiB input bound");
+      }
+    } catch (error) {
+      if (error instanceof PulseCapsuleError) {
+        throw error;
+      }
+    }
+  }
   if (!isRecord(candidate)) {
     throw new PulseCapsuleError("malformed", "capsule must be a JSON object");
   }
