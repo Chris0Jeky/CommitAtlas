@@ -1,4 +1,4 @@
-import { ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/core";
+import { CiStateSchema, ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/core";
 import { safeHttpsUrl, type PortfolioSnapshot, type ProjectReleaseSignal, type ProjectSnapshot } from "@commit-atlas/github";
 import type { StaticConfig } from "./config.js";
 
@@ -178,6 +178,8 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
   if ((project.releaseState === "published") !== Boolean(project.release)) {
     throw new Error(`Release observation mismatch for ${project.repo}`);
   }
+  const ciState = CiStateSchema.safeParse(project.ci.state);
+  if (!ciState.success) throw new Error(`${project.repo} CI state is invalid`);
   const links = ProjectLinksSchema.parse(entry.links);
   const actions: ProjectCatalogAction[] = [];
   addAction(actions, "source", "Source", project.sourceUrl, "snapshot");
@@ -202,7 +204,7 @@ function buildEntry(entry: ProjectManifestEntry, project: ProjectSnapshot): Proj
     openIssuesAndPullRequests: boundedCount(project.openIssuesAndPullRequests, "open issues and pull requests"),
     ...(project.pushedAt ? { pushedAt: boundedText(project.pushedAt, "pushedAt", 80) } : {}),
     ci: {
-      state: project.ci.state,
+      state: ciState.data,
       label: boundedText(project.ci.label, "CI label", MAX_LABEL),
       workflow: project.ci.workflow ? boundedText(project.ci.workflow, "workflow", MAX_LABEL) : null,
       ...(project.ci.url ? { url: validatedObservedUrl(project.ci.url, "CI") } : {}),

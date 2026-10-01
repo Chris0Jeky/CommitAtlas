@@ -87,7 +87,7 @@ implied by this producer checkpoint.
   boundaries, window-scoped, busiest day named, empty windows stated); Latest releases lists the
   most recent published release per curated project, newest first, with unreleased projects counted
   rather than hidden. Both are static-only — no hosted route — drawn from data the snapshot already
-  fetches, and covered by the frozen-motion, well-formedness, and 30 KiB gates. Review: one
+  fetches, and covered by the frozen-motion, well-formedness, and 30,000 UTF-8-byte gates. Review: one
   fresh-context adversarial pass plus eight Codex P2s triaged (six fixed across `a6e5551`/`7e44801`,
   two declined on-thread with reasons). Profile wiring landed via
   [Chris0Jeky/Chris0Jeky#5](https://github.com/Chris0Jeky/Chris0Jeky/pull/5): pin moved to
@@ -128,9 +128,9 @@ implied by this producer checkpoint.
   present, exactly four mix bars in one ink, both section numerals, the density key, no `Inter` in
   any font stack, and every `font-family` value free of the double quote that produced malformed
   XML on the first attempt. Tag structure is balanced at 54 open / 54 close / 72 self-closing.
-- All eight cards measured against the 30 KiB budget on the live origin: atlas 19,987, activity
+- All eight cards measured against the 30,000 UTF-8-byte budget on the live origin: atlas 19,987, activity
   24,321, rhythm 5,527, breakdown 5,273, languages 4,164, profile 3,764, projects 3,371, streak
-  3,332. The largest has 6.2 KiB of headroom.
+  3,332. The largest has 5,679 bytes (5.5 KiB) of headroom.
 - **Released: [v0.2.0](https://github.com/Chris0Jeky/CommitAtlas/releases/tag/v0.2.0)**, tagged at
   `5fea6e625616a0df9ecd8e14a75f9eae74ea8500` on `main` — the merge of PR #72, with the branch's five
   commits intact and nothing squashed. Not a draft, not a prerelease, and marked latest. No package
@@ -383,10 +383,11 @@ implied by this producer checkpoint.
   correctly decayed into `stale`. The rule was right and the fixture was wrong; PR #51 made the
   fixture relative and `main` is green again. No product behavior changed.
 - 2026-08-23: the Cloudflare Workers deployment answers on every probed surface —
-  `node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev` passes 14/14,
-  covering health, the landing page, the Studio (matched on its own title), all eight synthetic
-  cards asserted script-free, the `motion=none` CSP branch, and two distinct bounded-`400` rejection
-  paths.
+  `node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev` passes 18/18,
+  covering health, the landing page, the Studio (matched on its own title), robots and sitemap
+  consistency, structured data honesty, all eight synthetic cards asserted script-free, the
+  `motion=none` CSP branch, the fixed production motion probe, and two distinct bounded-`400`
+  rejection paths.
 - Final `npm.cmd run check` passed at `1cdabfa`: core 20, GitHub/API 79, Studio 34, SVG 25,
   static generator 9, Action 2, packaging 3, rendered product/API 28, plus TypeScript, ESLint, four
   package builds/packs, Action bundle parity, and the production Vinext build.
