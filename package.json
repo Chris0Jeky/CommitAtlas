@@ -49,7 +49,7 @@
     "test:studio": "tsx --test app/studio/studio-card-availability.test.ts app/studio/studio-case-canonicalization.test.ts app/studio/studio-markdown.test.ts app/studio/studio-messages.test.ts app/studio/studio-presentation.test.ts app/studio/studio-refresh-lifecycle.test.ts app/studio/studio-urls.test.ts",
     "test:svg": "npm --prefix packages/svg test",
     "test:static": "npm --prefix packages/static test",
-    "test:static-src": "tsx --test tests/static-config.test.ts tests/projects-catalog.test.ts",
+    "test:static-src": "tsx --test tests/static-config.test.ts tests/projects-catalog.test.ts tests/projects-catalog-ci-state-boundary.test.ts",
     "build:core": "npm --prefix packages/core run build",
     "build:github": "npm --prefix packages/github run build",
     "build:static": "npm --prefix packages/static run build",
