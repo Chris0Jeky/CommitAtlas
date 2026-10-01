@@ -16,8 +16,19 @@ export async function jsonResponse(
   value: unknown,
   options: { edgeSeconds: number; publicData: boolean },
 ): Promise<Response> {
-  const body = JSON.stringify(value);
-  const etag = await canonicalEtag(value);
+  let body: string;
+  let etag: string;
+  try {
+    body = JSON.stringify(value);
+    etag = await canonicalEtag(value);
+  } catch {
+    return errorJson(
+      "internal_error",
+      "CommitAtlas could not complete the request",
+      500,
+      new Date().toISOString(),
+    );
+  }
   const headers = successHeaders(etag, options);
   if (ifNoneMatch(request.headers.get("if-none-match"), etag)) {
     return new Response(null, { status: 304, headers });
