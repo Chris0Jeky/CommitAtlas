@@ -36,5 +36,14 @@ jobs:
       - name: Run the repository gate
         run: npm run check
 
+      - name: Diagnose generated server bundle
+        if: always()
+        run: |
+          if [ -f dist/server/index.js ]; then
+            node scripts/assert-node-importable-server-bundle.mjs
+          else
+            echo "dist/server/index.js was not produced"
+          fi
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
