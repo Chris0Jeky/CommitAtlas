@@ -1457,6 +1457,38 @@ test("atlas card states a public-profile source as PUBLIC PROFILE VIEW", () => {
   assert.doesNotMatch(synthetic, /PUBLIC PROFILE VIEW/);
 });
 
+test("cards state degraded data independently of public-source provenance", () => {
+  const fixed = {
+    window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
+    activity: [{ date: "2026-02-25", count: 1 }],
+    peakDay: { date: "2026-02-25", count: 1 },
+    generatedAt: "2026-02-25T18:00:00.000Z",
+    source: "public-github",
+  };
+  const cases = [
+    { dataState: "partial", marker: "PARTIAL SNAPSHOT", title: "Partial snapshot:", description: "Partially observed public GitHub data" },
+    { dataState: "stale", marker: "STALE SNAPSHOT", title: "Stale snapshot:", description: "Stale public GitHub data" },
+    { dataState: "unavailable", marker: "DATA UNAVAILABLE", title: "Data unavailable:", description: "Public GitHub data was unavailable" },
+  ];
+
+  for (const expected of cases) {
+    const profile = renderProfileCard({
+      name: "Octocat", login: "octocat", repositories: 1, followers: 2, following: 3,
+      source: "public-github", dataState: expected.dataState,
+    }, { motion: "none" });
+    assertSafeSvg(profile);
+    assert.match(profile, new RegExp(`>${expected.marker}<`), expected.dataState);
+    assert.match(profile, new RegExp(`<title>${expected.title}`), expected.dataState);
+    assert.match(profile, new RegExp(`<desc>${expected.description}`), expected.dataState);
+
+    const atlas = renderAtlasCard(atlasFixture({ ...fixed, dataState: expected.dataState }), { motion: "none" });
+    assertSafeSvg(atlas);
+    assert.match(atlas, new RegExp(`>${expected.marker}<`), expected.dataState);
+    assert.match(atlas, new RegExp(`<title>${expected.title}`), expected.dataState);
+    assert.match(atlas, new RegExp(`<desc>${expected.description}`), expected.dataState);
+  }
+});
+
 test("atlas card states a missing or unrecognised source as SOURCE UNKNOWN", () => {
   const fixed = {
     window: { from: "2026-01-01", to: "2026-02-25", days: 56 },
