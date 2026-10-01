@@ -62,3 +62,11 @@ test("roll-forward installs every payload before publishing any manifest", () =>
     { target: 1, name: "manifest.json", action: "install-next" },
   ]);
 });
+
+test("global manifest ordering stays idempotent after the chosen generation is complete", () => {
+  const rolledBack = planPublicationRecovery(journal(), "committing", observations(PREVIOUS));
+  const rolledForward = planPublicationRecovery(journal(), "committed", observations(NEXT));
+
+  assert.deepEqual(rolledBack.steps, []);
+  assert.deepEqual(rolledForward.steps, []);
+});
