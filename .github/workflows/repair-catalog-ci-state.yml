@@ -39,19 +39,14 @@ jobs:
               raise SystemExit('unexpected core import shape')
           source = source.replace(old_import, new_import)
 
-          anchor = '''  if ((project.releaseState === "published") !== Boolean(project.release)) {
-            throw new Error(`Release observation mismatch for ${project.repo}`);
-          }
-          const links = ProjectLinksSchema.parse(entry.links);'''
-          replacement = '''  if ((project.releaseState === "published") !== Boolean(project.release)) {
-            throw new Error(`Release observation mismatch for ${project.repo}`);
-          }
-          const ciState = CiStateSchema.safeParse(project.ci.state);
-          if (!ciState.success) throw new Error(`${project.repo} CI state is invalid`);
-          const links = ProjectLinksSchema.parse(entry.links);'''
-          if source.count(anchor) != 1:
-              raise SystemExit('unexpected buildEntry shape')
-          source = source.replace(anchor, replacement)
+          marker = '  const links = ProjectLinksSchema.parse(entry.links);'
+          validation = (
+              '  const ciState = CiStateSchema.safeParse(project.ci.state);\n'
+              '  if (!ciState.success) throw new Error(`${project.repo} CI state is invalid`);\n'
+          )
+          if source.count(marker) != 1:
+              raise SystemExit('unexpected buildEntry marker')
+          source = source.replace(marker, validation + marker)
 
           old_state = '      state: project.ci.state,'
           new_state = '      state: ciState.data,'
