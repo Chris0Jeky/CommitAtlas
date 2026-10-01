@@ -200,7 +200,11 @@ export function planPublicationRecovery(
   });
   if (observed.size > 0) throw new Error("publication observations contain an unexpected destination");
 
-  const ordered = direction === "rollback" ? [...classified].reverse() : classified;
+  const payloads = classified.filter(({ operation }) => operation.name !== "manifest.json");
+  const manifests = classified.filter(({ operation }) => operation.name === "manifest.json");
+  const ordered = direction === "rollback"
+    ? [...payloads].reverse().concat([...manifests].reverse())
+    : payloads.concat(manifests);
   const steps = ordered.flatMap(({ target, operation, state }): RecoveryStep[] => {
     if (direction === "rollback") {
       if (state === "previous") return [];
