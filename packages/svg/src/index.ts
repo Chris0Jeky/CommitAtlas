@@ -608,7 +608,7 @@ function svgEnd(): string { return "</svg>"; }
  * Type stacks.
  *
  * System faces only, and not by preference. These cards render as SVG inside an `<img>` on
- * GitHub, where no webfont can load and an embedded `@font-face` would spend the entire 30 KiB
+ * GitHub, where no webfont can load and an embedded `@font-face` would spend the entire 30,000 UTF-8-byte
  * budget before any data was drawn. Geist is the chassis face on the web surface; here the design
  * has to survive substitution on whatever machine renders it, so it is drawn at the stack that
  * actually paints. `Inter` is deliberately absent — it is almost never installed, so naming it
