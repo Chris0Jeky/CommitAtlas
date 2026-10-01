@@ -98,6 +98,7 @@ export function recoveryDirection(phase: PublicationPhase): RecoveryDirection {
 
 export function validatePublicationJournal(value: unknown): PublicationJournal {
   if (!isRecord(value)) throw new Error("publication journal must be an object");
+  assertKnownKeys(value, ["version", "generator", "transactionId", "createdAt", "targets"], "publication journal");
   if (value.version !== 1 || value.generator !== "CommitAtlas") {
     throw new Error("publication journal identity is invalid");
   }
@@ -113,7 +114,9 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
 
   const outputDirs = new Set<string>();
   const targets = value.targets.map((target, targetIndex) => {
-    if (!isRecord(target) || typeof target.outputDir !== "string" || !isSafeRelativePath(target.outputDir)) {
+    if (!isRecord(target)) throw new Error(`publication target ${targetIndex} must be an object`);
+    assertKnownKeys(target, ["outputDir", "operations"], `publication target ${targetIndex}`);
+    if (typeof target.outputDir !== "string" || !isSafeRelativePath(target.outputDir)) {
       throw new Error(`publication target ${targetIndex} has an unsafe outputDir`);
     }
     const outputKey = target.outputDir.toLowerCase();
@@ -213,7 +216,9 @@ export function planPublicationRecovery(
 }
 
 function validateOperation(value: unknown, target: number, index: number): PublicationOperation {
-  if (!isRecord(value) || typeof value.name !== "string" || !ARTIFACT_NAME.test(value.name)) {
+  if (!isRecord(value)) throw new Error(`publication operation ${target}:${index} must be an object`);
+  assertKnownKeys(value, ["name", "action", "previous", "next"], `publication operation ${target}:${index}`);
+  if (typeof value.name !== "string" || !ARTIFACT_NAME.test(value.name)) {
     throw new Error(`publication operation ${target}:${index} has an unsafe artifact name`);
   }
   if (value.action !== "create" && value.action !== "replace" && value.action !== "remove") {
@@ -239,7 +244,9 @@ function validateOperation(value: unknown, target: number, index: number): Publi
 }
 
 function validateVersion(value: unknown, label: string): PublicationFileVersion {
-  if (!isRecord(value) || typeof value.sha256 !== "string" || !SHA256.test(value.sha256)) {
+  if (!isRecord(value)) throw new Error(`publication ${label} version must be an object`);
+  assertKnownKeys(value, ["sha256", "bytes"], `publication ${label} version`);
+  if (typeof value.sha256 !== "string" || !SHA256.test(value.sha256)) {
     throw new Error(`publication ${label} digest is invalid`);
   }
   if (!Number.isSafeInteger(value.bytes) || (value.bytes as number) < 0 || (value.bytes as number) > 96 * 1024) {
@@ -270,6 +277,17 @@ function sameVersion(
 ): boolean {
   return expected !== undefined && observation.kind === "file" &&
     observation.sha256 === expected.sha256 && observation.bytes === expected.bytes;
+}
+
+function assertKnownKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string,
+): void {
+  const known = new Set(allowed);
+  for (const key of Object.keys(value)) {
+    if (!known.has(key)) throw new Error(`${label} contains unknown field ${key}`);
+  }
 }
 
 function isSafeRelativePath(value: string): boolean {
