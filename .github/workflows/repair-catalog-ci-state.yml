@@ -1,0 +1,78 @@
+name: Repair catalog CI boundary
+
+on:
+  push:
+    branches: [fix/catalog-ci-state-boundary]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/catalog-ci-state-boundary
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply the narrow production repair
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/static/src/projects-catalog.ts')
+          source = path.read_text(encoding='utf-8')
+
+          old_import = 'import { ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/core";'
+          new_import = 'import { CiStateSchema, ProjectLinksSchema, type ProjectManifestEntry } from "@commit-atlas/core";'
+          if source.count(old_import) != 1:
+              raise SystemExit('unexpected core import shape')
+          source = source.replace(old_import, new_import)
+
+          anchor = '''  if ((project.releaseState === "published") !== Boolean(project.release)) {
+            throw new Error(`Release observation mismatch for ${project.repo}`);
+          }
+          const links = ProjectLinksSchema.parse(entry.links);'''
+          replacement = '''  if ((project.releaseState === "published") !== Boolean(project.release)) {
+            throw new Error(`Release observation mismatch for ${project.repo}`);
+          }
+          const ciState = CiStateSchema.safeParse(project.ci.state);
+          if (!ciState.success) throw new Error(`${project.repo} CI state is invalid`);
+          const links = ProjectLinksSchema.parse(entry.links);'''
+          if source.count(anchor) != 1:
+              raise SystemExit('unexpected buildEntry shape')
+          source = source.replace(anchor, replacement)
+
+          old_state = '      state: project.ci.state,'
+          new_state = '      state: ciState.data,'
+          if source.count(old_state) != 1:
+              raise SystemExit('unexpected catalog CI assignment')
+          source = source.replace(old_state, new_state)
+
+          path.write_text(source, encoding='utf-8')
+          PY
+
+      - name: Verify focused repair and rebuild the Action
+        run: |
+          npm run typecheck
+          npm run test:static-src
+          npm run build:action
+
+      - name: Commit durable source, tests, and bundle
+        run: |
+          rm .github/workflows/repair-catalog-ci-state.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/static/src/projects-catalog.ts tests/projects-catalog-ci-state-boundary.test.ts package.json action/dist .github/workflows/repair-catalog-ci-state.yml
+          git commit -m "fix(static): reject unknown catalog CI states"
+          git push origin HEAD:fix/catalog-ci-state-boundary
