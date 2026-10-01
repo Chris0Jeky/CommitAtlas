@@ -121,9 +121,12 @@ export interface RenderOptions {
 }
 
 export type CardSource = "public-github" | "public-profile" | "synthetic-demo" | "public-pulse";
+export type CardDataState = "partial" | "stale" | "unavailable";
 
 export interface SourceLabelledCardData {
   readonly source?: CardSource;
+  /** Degraded observation state, kept separate from source provenance. */
+  readonly dataState?: CardDataState;
 }
 
 export interface ProfileCardData extends SourceLabelledCardData {
@@ -421,6 +424,8 @@ export interface AtlasCardData {
   };
   readonly generatedAt: string;
   readonly source: CardSource;
+  /** Degraded observation state, kept separate from source provenance. */
+  readonly dataState?: CardDataState;
 }
 
 const DEFAULT_OPTIONS: Required<Pick<RenderOptions, "theme" | "width" | "height">> = {
@@ -603,7 +608,7 @@ function svgEnd(): string { return "</svg>"; }
  * Type stacks.
  *
  * System faces only, and not by preference. These cards render as SVG inside an `<img>` on
- * GitHub, where no webfont can load and an embedded `@font-face` would spend the entire 30 KiB
+ * GitHub, where no webfont can load and an embedded `@font-face` would spend the entire 30,000 UTF-8-byte
  * budget before any data was drawn. Geist is the chassis face on the web surface; here the design
  * has to survive substitution on whatever machine renders it, so it is drawn at the stack that
  * actually paints. `Inter` is deliberately absent — it is almost never installed, so naming it
@@ -709,32 +714,60 @@ function link(textValue: string, href: string | undefined, x: number, y: number,
   return safe ? `<a href="${escapeXml(safe)}" target="_blank" rel="noopener" aria-label="${label}">${body}</a>` : body;
 }
 
+type EffectiveDataState = CardDataState | "synthetic-demo";
+
+function effectiveDataState(
+  source: CardSource | undefined,
+  dataState: CardDataState | undefined,
+): EffectiveDataState | null {
+  if (source === "synthetic-demo") return "synthetic-demo";
+  return dataState === "partial" || dataState === "stale" || dataState === "unavailable"
+    ? dataState
+    : null;
+}
+
+function sourceDescriptionLead(state: EffectiveDataState | null): string | null {
+  if (state === "synthetic-demo") return "Synthetic demonstration data, not live GitHub data.";
+  if (state === "partial") return "Partially observed public GitHub data; some signals may be missing.";
+  if (state === "stale") return "Stale public GitHub data; this snapshot may no longer reflect current state.";
+  if (state === "unavailable") return "Public GitHub data was unavailable when this snapshot was generated; displayed signals may be incomplete or absent.";
+  return null;
+}
+
 function sourceMetadata(
   source: CardSource | undefined,
+  dataState: CardDataState | undefined,
   title: string,
   description: string,
 ): { title: string; description: string } {
-  if (source !== "synthetic-demo") return { title, description };
+  const state = effectiveDataState(source, dataState);
+  const lead = sourceDescriptionLead(state);
+  if (!state || !lead) return { title, description };
+  const titlePrefix = state === "synthetic-demo" ? "Synthetic demo"
+    : state === "partial" ? "Partial snapshot"
+      : state === "stale" ? "Stale snapshot" : "Data unavailable";
   return {
-    title: boundedLabel(`Synthetic demo: ${title}`, "Synthetic demo card", MAX_TITLE_LENGTH),
-    description: boundedLabel(
-      `Synthetic demonstration data, not live GitHub data. ${description}`,
-      "Synthetic demonstration data, not live GitHub data.",
-      MAX_DESCRIPTION_LENGTH,
-    ),
+    title: boundedLabel(`${titlePrefix}: ${title}`, `${titlePrefix} card`, MAX_TITLE_LENGTH),
+    description: boundedLabel(`${lead} ${description}`, lead, MAX_DESCRIPTION_LENGTH),
   };
 }
 
 function sourceMarker(
   source: CardSource | undefined,
+  dataState: CardDataState | undefined,
   x: number,
   y: number,
   theme: SvgTheme,
   anchor: "start" | "end" = "end",
 ): string {
-  return source === "synthetic-demo"
-    ? `<g aria-hidden="true">${text(x, y, "SYNTHETIC DEMO", 10, theme.warning, 750, anchor)}</g>`
-    : "";
+  const state = effectiveDataState(source, dataState);
+  const label = state === "synthetic-demo" ? "SYNTHETIC DEMO"
+    : state === "partial" ? "PARTIAL SNAPSHOT"
+      : state === "stale" ? "STALE SNAPSHOT"
+        : state === "unavailable" ? "DATA UNAVAILABLE" : null;
+  if (!label) return "";
+  const color = state === "unavailable" ? theme.muted : theme.warning;
+  return `<g aria-hidden="true">${text(x, y, label, 10, color, 750, anchor)}</g>`;
 }
 
 function cardMotionStyle(motion: RenderOptions["motion"]): string {
@@ -760,11 +793,11 @@ export function renderProfileCard(data: ProfileCardData, options?: RenderOptions
   const compact = o.height < 200;
   const bioY = compact && data.location ? 94 : 103;
   const locationY = compact ? 110 : 127;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
-  out += sourceMarker(data.source, 34, 31, t, "start");
+  out += sourceMarker(data.source, data.dataState, 34, 31, t, "start");
   out += `<circle cx="64" cy="73" r="31" fill="${t.accent}"/><text x="64" y="82" fill="${t.background}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="24" font-weight="800" text-anchor="middle">${escapeXml(([...name][0] ?? "?").toUpperCase())}</text>`;
   out += text(112, 54, name, 24, t.text, 750) + text(112, 77, `@${login}`, 13, t.muted);
   if (bio) out += text(112, bioY, bio, 13, t.text);
@@ -804,14 +837,14 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   const currentOpen = data.boundary?.current === "open";
   const currentCount = finite(data.current);
   const currentValue = `${formatNumber(currentCount, false)}${currentOpen ? "+" : ""}`;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const accessibleDescription = data.boundary
     ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(currentCount, false)} days${currentThrough ? ` through ${currentThrough}` : ""}. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
-  out += sourceMarker(data.source, width - 34, 31, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 31, t);
   out += numeral(34, 48, 1, "CONTRIBUTION STREAK", t);
   const currentLabel = currentCount <= 0
     ? "no current streak"
@@ -835,7 +868,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   const max = Math.max(1, ...days.map((day) => finite(day.count)));
   const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
   const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const accessibilitySummary = days.map((day) => `${day.date} ${formatNumber(day.count, false)}`).join("; ");
   const accessibleDescription = accessibilitySummary
     ? `${metadata.description} Contributions by date, chronologically: ${accessibilitySummary}`
@@ -843,7 +876,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, periodLabel, t);
-  out += sourceMarker(data.source, width - 34, 29, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 29, t);
   out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const grid = calendarGrid(days);
   const columns = grid.columns; const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
@@ -895,7 +928,7 @@ export function renderContributionBreakdownCard(
   );
   const t = o.theme;
   const width = o.width;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
   const total = values.reduce((sum, value) => sum + value, 0);
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
@@ -912,7 +945,7 @@ export function renderContributionBreakdownCard(
   out += numeral(34, 48, 1, "CONTRIBUTION BREAKDOWN", t);
   out += `<rect x="${width - 150}" y="31" width="116" height="22" fill="${t.background}" stroke="${t.border}"/>`;
   out += mono(width - 92, 46, basisLabel, 10, data.basis === "public-profile-percentages" ? t.warning : t.positive, 600, "middle", 0.1);
-  out += sourceMarker(data.source, width - 34, 70, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
     : `${windowFrom} → ${windowTo} · ${formatNumber(data.window.days, false)} days`;
@@ -974,13 +1007,13 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const throughPriorDay = currentThrough && currentThrough !== data.window.to;
   const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
   const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${level}; this is not a GitHub rank. ${basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "PERSONAL CONSISTENCY", t);
-  out += sourceMarker(data.source, width - 34, 48, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 48, t);
   const radius = compact ? 42 : 43;
   const centerX = compact ? 91 : 88;
   const centerY = compact ? 120 : 112;
@@ -1033,11 +1066,11 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
   const percentageFor = (item: LanguageStat): number => Number.isFinite(item.percentage)
     ? Math.min(100, finite(item.percentage))
     : finite(item.bytes) / Math.max(1, byteTotal) * 100;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, "LANGUAGES", t);
-  out += sourceMarker(data.source, width - 34, 48, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 48, t);
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
   languages.forEach((item, index) => {
     const raw = percentageFor(item);
@@ -1062,10 +1095,10 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
   const columns = normalizedWidth >= 620 ? 2 : 1; const rows = Math.max(1, Math.ceil(projects.length / columns));
   const o = optionsFor(options, 68 + rows * 90, "Project signals", "Project lifecycle and CI signals for selected GitHub repositories.", 68 + rows * 90, 700); const t = o.theme; const width = o.width;
   const height = o.height; const cardWidth = (width - 48 - (columns - 1) * 12) / columns;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   let out = svgStart(width, height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
-  out += sourceMarker(data.source, width - 24, 18, t);
+  out += sourceMarker(data.source, data.dataState, width - 24, 18, t);
   out += numeral(24, 34, 1, "PROJECT SIGNALS", t);
   if (projects.length < totalProjects) out += text(width - 24, 34, `${projects.length} of ${totalProjects} shown`, 11, t.muted, 500, "end");
   projects.forEach((project, index) => {
@@ -1148,7 +1181,7 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
   const busiestDays = normalizedTotal > 0
     ? shares.flatMap((share, index) => share === maxShare ? [index] : [])
     : [];
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const busiestDescription = busiestDays.length > 1
     ? ` Busiest days: ${busiestDays.map((index) => WEEKDAY_NAMES[index]).join(", ")} at ${maxShare.toFixed(1).replace(/\.0$/, "")}%.`
     : "";
@@ -1162,7 +1195,7 @@ export function renderCadenceCard(data: CadenceCardData, options?: RenderOptions
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "WEEKLY CADENCE", t);
-  out += sourceMarker(data.source, width - 34, 31, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 31, t);
   if (normalizedTotal === 0) {
     out += text(34, o.height / 2 + 6, "No contributions observed in this window", 13, t.muted, 550);
     return out + `</g>` + svgEnd();
@@ -1233,7 +1266,7 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   // shrink margins but never clip a release row out of the panel.
   const rowsHeight = 92 + rows * 34 + 30;
   const o = optionsFor(options, rowsHeight, "Latest releases", "The most recent published release per curated project, newest first.", rowsHeight, 420); const t = o.theme; const width = o.width;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const absenceSentence = absentCount > 0
     ? ` ${absentCount} of ${observed} observed curated projects have no published release observed.`
     : "";
@@ -1254,7 +1287,7 @@ export function renderReleasesCard(data: ReleasesCardData, options?: RenderOptio
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "LATEST RELEASES", t);
-  out += sourceMarker(data.source, width - 34, 31, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 31, t);
   if (!releases.length) {
     if (unavailableCount > 0) {
       const allUnavailable = observed === 0;
@@ -1684,7 +1717,7 @@ export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions
     "Operator-reviewed Pulseboard probe capsule. Sampled checks, not time-weighted uptime; CI health is shown separately.",
     rowsHeight, 420);
   const t = o.theme; const width = o.width;
-  const metadata = sourceMetadata(data.source, o.title, o.description);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const windowLabel = isValidIsoDate(data.windowStart) && isValidIsoDate(data.windowEnd)
     ? `${data.windowStart} → ${data.windowEnd}` : null;
   const rowSentence = (row: PulseProjectRow): string => {
@@ -1708,7 +1741,7 @@ export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += numeral(34, 48, 1, "PUBLIC PULSE", t);
-  out += sourceMarker(data.source, width - 34, 31, t);
+  out += sourceMarker(data.source, data.dataState, width - 34, 31, t);
   if (windowLabel) out += mono(width - 34, 64, windowLabel, 10, t.muted, 500, "end", 0.04);
   if (status !== "live") {
     out += text(34, 100, status === "expired" ? "Pulse capsule expired" : "Pulse capsule unavailable", 16, t.muted, 700);
@@ -1765,9 +1798,13 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const height = o.height;
   const name = truncateText(data.profile.name || data.profile.login || "GitHub user", narrow ? 22 : 30);
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
-  const sourceLabel = data.source === "synthetic-demo" ? "SYNTHETIC PREVIEW"
-    : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
-      : data.source === "public-github" ? "PUBLIC GITHUB" : "SOURCE UNKNOWN";
+  const effectiveState = effectiveDataState(data.source, data.dataState);
+  const sourceLabel = effectiveState === "synthetic-demo" ? "SYNTHETIC PREVIEW"
+    : effectiveState === "partial" ? "PARTIAL SNAPSHOT"
+      : effectiveState === "stale" ? "STALE SNAPSHOT"
+        : effectiveState === "unavailable" ? "DATA UNAVAILABLE"
+          : data.source === "public-profile" ? "PUBLIC PROFILE VIEW"
+            : data.source === "public-github" ? "PUBLIC GITHUB" : "SOURCE UNKNOWN";
   const breakdownQualifier = data.breakdownBasis === "public-profile-percentages"
     ? "Public profile activity percentage mix from calendar-year views, not scoped to this contribution window"
     : "Breakdown";
@@ -1783,13 +1820,21 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ? `Streak to ${currentStreakThrough.slice(5)}`
     : "Current streak";
   const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${windowDays} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak${currentStreakThrough ? ` through ${currentStreakThrough}` : ""} and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
-  let out = svgStart(width, height, t, o.title, o.description, accessibleDescription);
+  const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
+  const stateLead = sourceDescriptionLead(effectiveState);
+  const accessibleWithState = stateLead ? `${stateLead} ${accessibleDescription}` : accessibleDescription;
+  let out = svgStart(width, height, t, metadata.title, metadata.description, accessibleWithState);
   out += atlasMotionStyle(options?.motion);
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
   out += `<g class="atlas-enter"><circle cx="30" cy="32" r="16" fill="${t.accent}"/>`;
   out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
   out += text(56, 29, name, 18, t.text, 760) + text(56, 47, `@${login}`, 10, t.muted, 550);
-  out += text(width - 22, 28, sourceLabel, 9, data.source === "synthetic-demo" ? t.warning : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted, 700, "end");
+  const sourceColor = effectiveState === "synthetic-demo" || effectiveState === "partial" || effectiveState === "stale"
+    ? t.warning
+    : effectiveState === "unavailable"
+      ? t.muted
+      : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted;
+  out += text(width - 22, 28, sourceLabel, 9, sourceColor, 700, "end");
   out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 

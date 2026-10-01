@@ -55,6 +55,42 @@ test("profile adapter falls back to login and preserves source-backed stars", ()
   });
 });
 
+test("card adapters preserve degraded data state separately from source provenance", () => {
+  const profileSnapshot: ProfileSnapshot = {
+    version: 1, login: "octocat", name: "Octocat", profileUrl: "https://github.com/octocat",
+    publicRepositories: 1, followers: 2, following: 3, stars: 4, forks: 0,
+    primaryLanguages: [{ name: "TypeScript", repositories: 1, share: 100 }],
+    latestPushAt: null, repositoriesTruncated: false, freshness,
+  };
+  const board: ProjectBoardSnapshot = {
+    version: 1, owner: "octocat", freshness, projects: [],
+  };
+  const days = Array.from({ length: 7 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 7, 14 + index)).toISOString().slice(0, 10),
+    count: index % 2, level: index % 2,
+  }));
+
+  for (const mode of ["partial", "stale", "unavailable"] as const) {
+    const degradedFreshness = { generatedAt: freshness.generatedAt, source: "github-rest" as const, mode };
+    const degradedProfile = { ...profileSnapshot, freshness: degradedFreshness };
+    const degradedContributions = { ...contributions(days), freshness: degradedFreshness };
+    const degradedBoard = { ...board, freshness: degradedFreshness };
+
+    for (const card of [
+      toProfileCard(degradedProfile),
+      toLanguagesCard(degradedProfile),
+      toStreakCard(degradedContributions, 7),
+      toActivityCard(degradedContributions, 7),
+      toContributionMetricsCards(degradedContributions, 7).breakdown,
+      toContributionMetricsCards(degradedContributions, 7).rhythm,
+      toProjectBoard(degradedBoard),
+    ]) {
+      assert.equal(card.source, "public-github");
+      assert.equal(card.dataState, mode);
+    }
+  }
+});
+
 test("contribution adapters sort leap-day input and use its latest UTC day as as-of", () => {
   const snapshot = contributions([
     { date: "2024-03-02", count: 3 },

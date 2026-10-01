@@ -19,6 +19,7 @@ import {
   renderRhythmCard,
   renderStreakCard,
   type AtlasCardData,
+  type CardDataState,
   type CardSource,
   type ProjectSignal,
 } from "@commit-atlas/svg";
@@ -30,6 +31,19 @@ export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, str
 function toCardSource(freshness: Freshness): CardSource {
   if (freshness.mode === "demo" || freshness.source === "synthetic-demo") return "synthetic-demo";
   return freshness.source === "github-profile-html" ? "public-profile" : "public-github";
+}
+
+function toCardDataState(freshness: Freshness): CardDataState | undefined {
+  return freshness.mode === "partial" || freshness.mode === "stale" || freshness.mode === "unavailable"
+    ? freshness.mode
+    : undefined;
+}
+
+function toCardEvidence(
+  freshness: Freshness,
+): { readonly source: CardSource; readonly dataState?: CardDataState } {
+  const dataState = toCardDataState(freshness);
+  return { source: toCardSource(freshness), ...(dataState ? { dataState } : {}) };
 }
 
 export function assembleStaticPortfolio(
@@ -58,7 +72,7 @@ export function assembleStaticPortfolio(
   return {
     version: 1,
     profile,
-    contributions,
+    contributions: { ...contributions, days: calendar.days },
     metrics,
     projects,
     freshness: {
@@ -96,7 +110,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       followers: profile.followers,
       following: profile.following,
       contributions: metrics.total,
-      source: toCardSource(profile.freshness),
+      ...toCardEvidence(profile.freshness),
       ...(profile.repositoriesTruncated ? {} : { stars: profile.stars }),
     }, { ...common, width });
   }
@@ -110,7 +124,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       boundary: metrics.streak.boundary,
       total: metrics.total,
       activeDays: metrics.activeDays,
-      source: toCardSource(contributions.freshness),
+      ...toCardEvidence(contributions.freshness),
       ...(lastActive ? { lastActive } : {}),
     }, { ...common, width });
   }
@@ -119,12 +133,12 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       days: contributions.days,
       total: metrics.total,
       periodLabel: `${metrics.window.from} → ${metrics.window.to}`,
-      source: toCardSource(contributions.freshness),
+      ...toCardEvidence(contributions.freshness),
     }, { ...common, width });
   }
   if (selected.has("breakdown")) {
     artifacts["breakdown.svg"] = renderContributionBreakdownCard({
-      source: toCardSource(contributions.freshness),
+      ...toCardEvidence(contributions.freshness),
       window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
       breakdown: metrics.breakdown,
       basis: metrics.breakdownBasis,
@@ -132,7 +146,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   }
   if (selected.has("rhythm")) {
     artifacts["rhythm.svg"] = renderRhythmCard({
-      source: toCardSource(contributions.freshness),
+      ...toCardEvidence(contributions.freshness),
       window: { from: metrics.window.from, to: metrics.window.to, days: metrics.window.days },
       activeDays: metrics.activeDays,
       density: metrics.density,
@@ -152,19 +166,19 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   if (selected.has("languages")) {
     if (profile.repositoriesTruncated) throw new Error("Language distribution is unavailable for a truncated repository list");
     artifacts["languages.svg"] = renderLanguagesCard({
-      source: toCardSource(profile.freshness),
+      ...toCardEvidence(profile.freshness),
       languages: profile.primaryLanguages.map((language) => ({ name: language.name, percentage: language.share })),
     }, { ...common, width });
   }
   if (selected.has("projects")) {
     artifacts["projects.svg"] = renderProjectBoard({
-      source: toCardSource(projects?.freshness ?? snapshot.freshness),
+      ...toCardEvidence(projects?.freshness ?? snapshot.freshness),
       projects: (projects?.projects ?? []).map(toProjectSignal),
     }, { ...common, width: dashboardWidth });
   }
   if (selected.has("cadence")) {
     artifacts["cadence.svg"] = renderCadenceCard({
-      source: toCardSource(contributions.freshness),
+      ...toCardEvidence(contributions.freshness),
       days: contributions.days,
     }, { ...common, width });
   }
@@ -173,7 +187,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     const projectsWithReleaseEvidence = projectStates
       .filter((project) => project.releaseState !== "unavailable");
     artifacts["releases.svg"] = renderReleasesCard({
-      source: toCardSource(projects?.freshness ?? snapshot.freshness),
+      ...toCardEvidence(projects?.freshness ?? snapshot.freshness),
       releases: projectsWithReleaseEvidence.flatMap((project) => project.release
         ? [{ project: project.name, tag: project.release.tag, publishedAt: project.release.publishedAt }]
         : []),
@@ -227,7 +241,7 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
       unavailable: projectStates.filter((project) => ["unavailable", "unconfigured"].includes(project.ci.state)).length,
     },
     generatedAt: snapshot.freshness.generatedAt,
-    source: toCardSource(snapshot.freshness),
+    ...toCardEvidence(snapshot.freshness),
   };
 }
 

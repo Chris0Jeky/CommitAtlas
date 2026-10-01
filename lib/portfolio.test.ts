@@ -77,6 +77,18 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.equal(atlas.source, "public-github");
 });
 
+test("atlas input preserves degraded data state separately from public-source provenance", () => {
+  for (const mode of ["partial", "stale", "unavailable"] as const) {
+    const degraded = assemblePortfolioSnapshot(profile, {
+      ...contributions,
+      freshness: { generatedAt, source: "github-rest", mode },
+    }, projects);
+    const atlas = toAtlasCard(degraded);
+    assert.equal(atlas.source, "public-github");
+    assert.equal(atlas.dataState, mode);
+  }
+});
+
 test("keeps an open final UTC day from erasing yesterday's portfolio streak", () => {
   const openContributions: ContributionSnapshot = {
     ...contributions,

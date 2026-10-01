@@ -221,6 +221,40 @@ test("atlas card uses the same source mapping as every sibling card", () => {
   assert.match(syntheticSource["streak.svg"], />SYNTHETIC DEMO<\/text>/);
 });
 
+test("propagates degraded freshness truth to every static card", () => {
+  const base = snapshot();
+  const withFreshness = (freshness) => ({
+    ...base,
+    profile: { ...base.profile, freshness },
+    contributions: { ...base.contributions, freshness },
+    projects: { ...base.projects, freshness },
+    freshness,
+  });
+  const cases = [
+    { mode: "partial", marker: "PARTIAL SNAPSHOT", title: "Partial snapshot:", description: "Partially observed public GitHub data" },
+    { mode: "stale", marker: "STALE SNAPSHOT", title: "Stale snapshot:", description: "Stale public GitHub data" },
+    { mode: "unavailable", marker: "DATA UNAVAILABLE", title: "Data unavailable:", description: "Public GitHub data was unavailable" },
+  ];
+  const standalone = [
+    "profile.svg", "streak.svg", "activity.svg", "breakdown.svg", "rhythm.svg",
+    "languages.svg", "projects.svg", "cadence.svg", "releases.svg",
+  ];
+
+  for (const expected of cases) {
+    const rendered = renderStaticArtifacts(withFreshness({
+      generatedAt, source: "github-rest", mode: expected.mode,
+    }), config());
+    assert.match(rendered["atlas.svg"], new RegExp(`>${expected.marker}<`), expected.mode);
+    assert.match(rendered["atlas.svg"], new RegExp(`<title>${expected.title}`), expected.mode);
+    assert.match(rendered["atlas.svg"], new RegExp(`<desc>${expected.description}`), expected.mode);
+    for (const name of standalone) {
+      assert.match(rendered[name], new RegExp(`>${expected.marker}<`), `${expected.mode}: ${name}`);
+      assert.match(rendered[name], new RegExp(`<title>${expected.title}`), `${expected.mode}: ${name}`);
+      assert.match(rendered[name], new RegExp(`<desc>${expected.description}`), `${expected.mode}: ${name}`);
+    }
+  }
+});
+
 test("preserves the declared planned lifecycle in static project SVGs", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({

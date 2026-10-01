@@ -57,7 +57,7 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
             <p className="spec-rows">
               ROUTE &nbsp;<b>/api/v1/cards/atlas.svg</b>
               <br />
-              SIZE &nbsp;&nbsp;<b>860×380 fixed · &lt;30 KiB</b>
+              SIZE &nbsp;&nbsp;<b>860×380 fixed · &lt;30,000 UTF-8 bytes</b>
               <br />
               LIMITS <b>No script · No foreignObject · No external refs</b>
               <br />

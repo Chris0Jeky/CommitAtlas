@@ -12,7 +12,7 @@ import type {
   ProjectLifecycle,
   ProjectWorkflow,
 } from "./github/types";
-import type { AtlasCardData } from "@/packages/svg/src/index";
+import type { AtlasCardData, CardDataState, CardSource } from "@/packages/svg/src/index";
 
 export interface PortfolioRequest {
   user: string;
@@ -91,6 +91,18 @@ export function assemblePortfolioSnapshot(
   };
 }
 
+function toCardEvidence(
+  freshness: PortfolioSnapshot["freshness"],
+): { readonly source: CardSource; readonly dataState?: CardDataState } {
+  const source: CardSource = freshness.mode === "demo" || freshness.source === "synthetic-demo"
+    ? "synthetic-demo"
+    : freshness.source === "github-profile-html" ? "public-profile" : "public-github";
+  const dataState = freshness.mode === "partial" || freshness.mode === "stale" || freshness.mode === "unavailable"
+    ? freshness.mode
+    : undefined;
+  return { source, ...(dataState ? { dataState } : {}) };
+}
+
 export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   const { profile, contributions, metrics, projects } = snapshot;
   const projectStates = projects?.projects ?? [];
@@ -132,8 +144,6 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     }),
     ...(projects ? { projects: { total: projectStates.length, passing, attention, unavailable } } : {}),
     generatedAt: snapshot.freshness.generatedAt,
-    source: snapshot.freshness.mode === "demo" ? "synthetic-demo"
-      : snapshot.freshness.source === "github-profile-html" ? "public-profile"
-        : "public-github",
+    ...toCardEvidence(snapshot.freshness),
   };
 }
