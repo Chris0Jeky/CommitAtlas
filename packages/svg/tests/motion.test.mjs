@@ -322,7 +322,7 @@ for (const backend of ["css", "smil"]) {
         assert.deepEqual(positions[times.findLastIndex(start => start <= time)], expected);
       }
     }
-    assertXml(output);
+    assertWellFormedXml(output);
     assert.equal(stripMotion(output), render(plan({ backend, profile: "none" }).add({ primitive: "scan", target: "marker", decorative: true, params: { x: 80, y: -20, steps: 4 } }).compile()));
     assert.equal(compiled.counters.bytesAdded, Buffer.byteLength(compiled.style + compiled.bindings[0].children, "utf8"));
     const sweep = render(plan({ backend }).add(applications[4]).compile());
@@ -359,7 +359,7 @@ test("SMIL flow follows the plot spline across the whole numeric path", () => {
   }
   assert.match(flow, /path="M0 0 L10 0 L10 100" keyPoints="0;1"/u);
   assert.doesNotMatch(flow, /calcMode="linear"/u);
-  assertXml(render(compiled));
+  assertWellFormedXml(render(compiled));
   assert.equal(compiled.counters.bytesAdded, Buffer.byteLength(plot + flow, "utf8"));
   const unsupported = plan({ backend: "css" }).add(applications[8]).compile();
   assert.equal(unsupported.unsupported.length, 1);
