@@ -14,7 +14,7 @@ export interface MotionParameterMap {
   enter: TranslationParams;
   stagger: TranslationParams & { readonly index?: number; readonly staggerMs?: number };
   breathe: OriginParams & { readonly scale?: number };
-  scan: TranslationParams;
+  scan: TranslationParams & { readonly steps?: number };
   sweep: TranslationParams;
   rotate: OriginParams;
   orbit: OriginParams;
@@ -48,6 +48,7 @@ export interface MotionPlanOptions {
 export interface MotionValues {
   readonly x: number; readonly y: number; readonly cx: number; readonly cy: number;
   readonly scale: number; readonly length: number; readonly minOpacity: number;
+  readonly steps: number;
   readonly points: readonly (readonly [number, number])[];
 }
 export interface CompiledMotionApplication {

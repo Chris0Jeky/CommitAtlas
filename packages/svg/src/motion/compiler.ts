@@ -10,7 +10,7 @@ import type { CompiledMotionApplication, CompiledMotionPlan, MotionApplication, 
 
 const PARAMETER_KEYS: Record<MotionPrimitive, readonly string[]> = {
   enter: ["x", "y"], stagger: ["x", "y", "index", "staggerMs"], breathe: ["cx", "cy", "scale"],
-  scan: ["x", "y"], sweep: ["x", "y"], rotate: ["cx", "cy"], orbit: ["cx", "cy"],
+  scan: ["x", "y", "steps"], sweep: ["x", "y"], rotate: ["cx", "cy"], orbit: ["cx", "cy"],
   plot: ["length"], flow: ["points"], twinkle: ["minOpacity"], pulse: ["minOpacity", "state"],
   acquisitionFailure: ["cx", "cy"],
 };
@@ -107,6 +107,7 @@ export class MotionPlan {
       cx: number(params.cx, 0, "cx", -10_000, 10_000), cy: number(params.cy, 0, "cy", -10_000, 10_000),
       scale: number(params.scale, 1.045, "scale", 1, 1.1), length: number(params.length, 100, "length", 1, 10_000),
       minOpacity: number(params.minOpacity, primitive === "twinkle" ? 0.35 : 0.45, "opacity", 0.35, 1),
+      steps: number(params.steps, 2, "steps", 1, 96, true),
       points: Object.freeze(points),
     });
     for (const previous of this.collected.filter(item => item.target === target)) {

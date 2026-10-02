@@ -13,7 +13,13 @@ export function encodeSmilMotion(app: CompiledMotionApplication, options: Motion
   switch (app.primitive) {
     case "enter": case "stagger":
       return transform("translate", `${n(v.x)} ${n(v.y)};0 0`, spline("0 0 .58 1", 1));
-    case "scan": case "sweep":
+    case "scan": {
+      // Match CSS steps(N,end): hold zero until 1/N, with the endpoint at time 1.
+      const positions = Array.from({ length: v.steps + 1 }, (_, index) => `${n(v.x * index / v.steps)} ${n(v.y * index / v.steps)}`);
+      const times = Array.from({ length: v.steps + 1 }, (_, index) => n(index / v.steps));
+      return transform("translate", positions.join(";"), ` calcMode="discrete" keyTimes="${times.join(";")}"`);
+    }
+    case "sweep":
       return transform("translate", `0 0;${n(v.x)} ${n(v.y)}`);
     case "rotate": case "orbit":
       return transform("rotate", `0 ${n(v.cx)} ${n(v.cy)};360 ${n(v.cx)} ${n(v.cy)}`);
@@ -26,7 +32,7 @@ export function encodeSmilMotion(app: CompiledMotionApplication, options: Motion
     case "plot":
       return node("animate", `attributeName="stroke-dashoffset" values="${n(v.length)};0"${spline(".4 0 .2 1", 1)}`);
     case "flow":
-      return node("animateMotion", `path="${v.points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${n(x)} ${n(y)}`).join(" ")}" calcMode="linear"`);
+      return node("animateMotion", `path="${v.points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${n(x)} ${n(y)}`).join(" ")}" keyPoints="0;1"${spline(".4 0 .2 1", 1)}`);
     case "pulse": case "twinkle":
       return node("animate", `attributeName="opacity" values="1;${n(v.minOpacity)};1"${spline(".42 0 .58 1", 2)}`);
     case "acquisitionFailure":
