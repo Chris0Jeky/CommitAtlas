@@ -101,11 +101,11 @@ instances. Reusing the same namespace, scene, options, and ordered applications 
 | `enter` | translate keyframe | `animateTransform` translate | 400 ms, delay at least 60 ms; finished base during delay; fill none/remove |
 | `stagger` | delayed translate keyframe | delayed `animateTransform` | M3: 400 ms, 14 ms per index, plus the 60 ms entrance delay |
 | `breathe` | scale about an explicit origin | compensated translate plus additive scale | M4: 4.5 s, 1 → 1.045 → 1; decorative |
-| `scan` | translate marker | `animateTransform` translate | 5.6 s; default x offset 100 |
+| `scan` | translate marker with `steps(N,end)` | discrete `animateTransform` translate | 5.6 s; default x offset 100; `steps` integer 1–96, default 2; holds the base position until the first step ends |
 | `sweep` | translate beam | `animateTransform` translate | M6: 7 s; default x offset 70 |
 | `rotate` / `orbit` | rotation with viewBox origin | rotation with user-coordinate center | 12 s; decorative |
 | `plot` | stroke-dashoffset | `animate` stroke-dashoffset | M1: 9 s; caller supplies the dash array and an already-visible underlying trace |
-| `flow` | **unsupported**, omitted and reported | `animateMotion` | 9 s; decorative; 2–32 bounded numeric coordinate pairs, no raw path/CSS input |
+| `flow` | **unsupported**, omitted and reported | `animateMotion` with plot's `.4 0 .2 1` spline over total path length | 9 s; decorative; 2–32 bounded numeric coordinate pairs, no raw path/CSS input |
 | `twinkle` | opacity keyframe | `animate` opacity | 7 s; scene-family decoration only; minimum opacity 0.35 |
 | `pulse` | opacity keyframe | `animate` opacity | M5: 2.4 s; decorative lamp with explicit `state: "pending"`; default floor 0.45 |
 | `acquisitionFailure` | relative needle rotation sequence | `animateTransform` values list | M7: 1.2 s one-shot hunt/stutter/return; decorative needle, steady NO SIGNAL base |
