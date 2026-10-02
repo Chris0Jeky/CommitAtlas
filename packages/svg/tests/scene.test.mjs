@@ -120,6 +120,67 @@ test("unavailable is owned, static, readable and seeded; reserved projection sea
   }
 });
 
+test("signature captions reject zero-alpha paint while retaining painted controls", () => {
+  const lens = svg.createPublicDemoLensContext({ dataClass: "C0", scope: "public-demo", coverage: { complete: 1, partial: 0, unavailable: 0, total: 1, warnings: [] }, privacyNote: "Synthetic public context." });
+  const inputs = sceneInputs({ lens });
+  const definition = exampleScene({ id: "paint-signature", family: "signature", budget: "map" });
+  const painted = (fill, inherited = false) => exampleScene({ ...definition, render(model, context) {
+    const output = definition.render(model, context);
+    return inherited ? output.replace(/<text x="10" y="80">[\s\S]*?<\/text>/u, `<g fill="${fill}">$&</g>`) : output.replace('<text x="10" y="80">', `<text x="10" y="80" fill="${fill}">`);
+  } });
+  for (const fill of ["transparent", "TRANSPARENT", "#1230", "#12345600", "rgba(0,0,0,0)", "rgba(0, 0, 0, 0%)", "rgb(0 0 0 / 0%)", "hsla(0,0%,0%,0)", "hsl(0 0% 0% / 0)", "color(srgb 0 0 0 / 0)", "rgba(0,\n0,0,0)", "rgb(0 0 0 /\r\n0)"]) {
+    for (const inherited of [false, true]) assert.throws(() => svg.renderSceneDefinition(painted(fill, inherited), inputs, sceneContext), /visible|coverage|privacy/u, fill);
+  }
+  for (const fill of ["#1234", "#12345601", "rgba(0,0,0,0.5)", "rgb(0 0 0 / 50%)", "hsl(0 0% 0% / 1)", "black"]) {
+    assert.equal(svg.renderSceneDefinition(painted(fill), inputs, sceneContext).unavailable, false, fill);
+  }
+});
+
+test("root accessible naming agrees with the scene title", () => {
+  const definition = exampleScene();
+  const stale = exampleScene({ render(model, context) { return definition.render(model, context).replace(/aria-label="[^"]*"/u, 'aria-label="Unrelated scene"'); } });
+  assert.throws(() => svg.renderSceneDefinition(stale, sceneInputs(), sceneContext), /accessible|accessibility|title/u);
+  const encoded = exampleScene({ render(model, context) { return definition.render(model, context).replace('aria-label="Example', 'aria-label="&#69;xample'); } });
+  assert.equal(svg.renderSceneDefinition(encoded, sceneInputs(), sceneContext).unavailable, false);
+  const labelled = (wrong = false) => exampleScene({ render(model, context) {
+    const id = svg.sceneElementId(context, "accessible-title");
+    const extra = wrong ? `<text id="${id}">Unrelated scene</text>` : "";
+    return definition.render(model, context).replace('role="img"', `role="img" aria-labelledby="${id}"`).replace("<title>", wrong ? "<title>" : `<title id="${id}">`).replace("</svg>", `${extra}</svg>`);
+  } });
+  assert.throws(() => svg.renderSceneDefinition(labelled(true), sceneInputs(), sceneContext), /accessible|accessibility|title/u);
+  assert.equal(svg.renderSceneDefinition(labelled(), sceneInputs(), sceneContext).unavailable, false);
+  const described = (wrong = false) => exampleScene({ render(model, context) {
+    const id = svg.sceneElementId(context, "accessible-description");
+    const extra = wrong ? `<text id="${id}">Unrelated description</text>` : "";
+    return definition.render(model, context).replace('role="img"', `role="img" aria-describedby="${id}"`).replace("<desc>", wrong ? "<desc>" : `<desc id="${id}">`).replace("</svg>", `${extra}</svg>`);
+  } });
+  assert.throws(() => svg.renderSceneDefinition(described(true), sceneInputs(), sceneContext), /accessible|accessibility|description/u);
+  assert.equal(svg.renderSceneDefinition(described(), sceneInputs(), sceneContext).unavailable, false);
+  for (const value of ["true", "TRUE", " true "]) {
+    const hidden = exampleScene({ render(model, context) { return definition.render(model, context).replace('role="img"', `role="img" aria-hidden="${value}"`); } });
+    assert.throws(() => svg.renderSceneDefinition(hidden, sceneInputs(), sceneContext), /accessible|accessibility|root/u);
+  }
+});
+
+test("scene validation accepts trusted scan and flow timing from either compiler backend", () => {
+  const base = exampleScene();
+  const definition = exampleScene({ render(model, context) {
+    const accessibility = base.accessibility(model);
+    const motion = svg.compileSceneMotion(context, [
+      { primitive: "scan", target: "marker", decorative: true, params: { x: 80 } },
+      { primitive: "flow", target: "particle", decorative: true, params: { points: [[0, 0], [10, 0], [10, 100]] } },
+    ], { target: "github-readme" });
+    const wrappers = motion.bindings.map(binding => `<g id="${binding.id}" class="${binding.className}"><circle cx="0" cy="0" r="1"/>${binding.children}</g>`).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${svg.escapeXml(accessibility.title)}"><title>${svg.escapeXml(accessibility.title)}</title><desc>${svg.escapeXml(accessibility.description)}</desc>${motion.style}${wrappers}</svg>`;
+  } });
+  for (const backend of ["css", "smil"]) {
+    const result = svg.renderSceneDefinition(definition, sceneInputs(), { ...sceneContext, backend, motion: "ambient" });
+    assert.equal(result.counters.animatedElements, backend === "smil" ? 2 : 1);
+    assert.equal(result.counters.bytes, Buffer.byteLength(result.svg));
+    assertWellFormedXml(result.svg);
+  }
+});
+
 test("engine counts actual compiler targets/groups and rejects missing, altered or unowned motion", () => {
   const definition = exampleScene();
   for (const backend of ["css", "smil"]) {

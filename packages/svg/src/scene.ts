@@ -227,6 +227,11 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
   const titles = document.root.children.filter(node => node.name === "title");
   const descriptions = document.root.children.filter(node => node.name === "desc");
   if (titles.length !== 1 || descriptions.length !== 1 || sceneXmlText(titles[0]!) !== sceneSafeText(accessibility.title) || sceneXmlText(descriptions[0]!) !== sceneSafeText(accessibility.description)) throw new Error("scene title and description must match accessibility contract");
+  if (document.root.attrs["aria-label"] !== sceneSafeText(accessibility.title)) throw new Error("scene root accessible name must match accessibility title");
+  for (const [attribute, node] of [["aria-labelledby", titles[0]!], ["aria-describedby", descriptions[0]!]] as const) {
+    const reference = document.root.attrs[attribute];
+    if (reference !== undefined && reference.trim() !== node.attrs.id) throw new Error("scene root accessibility references must identify its title and description");
+  }
   if (!unavailable && definition.family === "signature") {
     const common = sceneSafeText(sceneLensDescription(ownedInputs.lens!));
     const visible = sceneVisibleText(document.root);

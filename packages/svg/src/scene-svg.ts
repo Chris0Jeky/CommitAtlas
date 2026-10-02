@@ -87,6 +87,20 @@ export function sceneXmlText(node: SceneXmlNode): string {
 
 const NON_FRAME_ELEMENTS = new Set(["defs", "linearGradient", "radialGradient", "clipPath", "mask", "filter", "pattern", "marker", "title", "desc", "style"]);
 
+function paintedFill(fill: string): boolean {
+  if (fill === "none" || fill === "transparent") return false;
+  if (/^#[0-9a-f]{4}$/u.test(fill)) return fill[4] !== "0";
+  if (/^#[0-9a-f]{8}$/u.test(fill)) return fill.slice(-2) !== "00";
+  const color = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(([\s\S]*)\)$/u.exec(fill);
+  if (!color) return true;
+  const components = color[2]!;
+  const comma = components.split(",");
+  const alpha = components.includes("/") ? components.slice(components.lastIndexOf("/") + 1).trim() :
+    comma.length === 4 && ["rgba", "hsla", "rgb", "hsl"].includes(color[1]!) ? comma[3]!.trim() : undefined;
+  if (alpha === undefined || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?%?$/u.test(alpha)) return true;
+  return Number(alpha.replace(/%$/u, "")) > 0;
+}
+
 /** Common signature context must be in rendered, accessible text, rather than a definition. */
 export function sceneVisibleText(root: SceneXmlNode): string {
   interface Presentation { fillOpacity: number; fill: string; fontSize: number }
@@ -104,7 +118,7 @@ export function sceneVisibleText(root: SceneXmlNode): string {
     return match[2] === "%" ? inherited * amount / 100 : match[2] === "em" ? inherited * amount : match[2] === "rem" ? 16 * amount : amount;
   };
   const walk = (node: SceneXmlNode, inherited: Presentation, withinText: boolean): string => {
-    if (NON_FRAME_ELEMENTS.has(node.name) || node.attrs["aria-hidden"] === "true" ||
+    if (NON_FRAME_ELEMENTS.has(node.name) || node.attrs["aria-hidden"]?.trim().toLowerCase() === "true" ||
       opacity(node.attrs.opacity, 1) <= 0) return "";
     const fill = node.attrs.fill?.trim().toLowerCase();
     const presentation = {
@@ -113,7 +127,7 @@ export function sceneVisibleText(root: SceneXmlNode): string {
       fontSize: fontSize(node.attrs["font-size"], inherited.fontSize),
     };
     if (withinText || node.name === "text") {
-      const visible = presentation.fillOpacity > 0 && presentation.fill !== "none" && presentation.fontSize > 0;
+      const visible = presentation.fillOpacity > 0 && paintedFill(presentation.fill) && presentation.fontSize > 0;
       return node.parts.map(part => typeof part === "string" ? visible ? part : "" : walk(part, presentation, true)).join("");
     }
     return node.children.map(child => walk(child, presentation, false)).filter(Boolean).join(" ");
@@ -122,12 +136,12 @@ export function sceneVisibleText(root: SceneXmlNode): string {
 }
 
 const ELEMENTS = new Set(["svg", "title", "desc", "g", "defs", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "tspan", "linearGradient", "radialGradient", "stop", "clipPath", "mask", "filter", "feGaussianBlur", "feMerge", "feMergeNode", "feOffset", "feFlood", "feComposite", "feColorMatrix", "pattern", "marker", "a", "use", "style", "animate", "animateTransform", "animateMotion"]);
-const ATTRIBUTES = new Set(("id class xmlns role aria-label aria-labelledby aria-describedby aria-hidden viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset opacity transform transform-origin transform-box font-family font-size font-weight font-style text-anchor dominant-baseline letter-spacing textLength lengthAdjust dx dy href gradientUnits gradientTransform offset stop-color stop-opacity clip-path clip-rule clipPathUnits mask maskUnits maskContentUnits filter filterUnits primitiveUnits stdDeviation in in2 result mode type values color-interpolation-filters patternUnits patternContentUnits patternTransform markerWidth markerHeight markerUnits refX refY orient preserveAspectRatio data-scene-seed attributeName begin dur repeatCount repeatDur additive calcMode keyTimes keySplines path").split(" "));
+const ATTRIBUTES = new Set(("id class xmlns role aria-label aria-labelledby aria-describedby aria-hidden viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset opacity transform transform-origin transform-box font-family font-size font-weight font-style text-anchor dominant-baseline letter-spacing textLength lengthAdjust dx dy href gradientUnits gradientTransform offset stop-color stop-opacity clip-path clip-rule clipPathUnits mask maskUnits maskContentUnits filter filterUnits primitiveUnits stdDeviation in in2 result mode type values color-interpolation-filters patternUnits patternContentUnits patternTransform markerWidth markerHeight markerUnits refX refY orient preserveAspectRatio data-scene-seed attributeName begin dur repeatCount repeatDur additive calcMode keyTimes keySplines keyPoints path").split(" "));
 const MOTION = new Set(["animate", "animateTransform", "animateMotion"]);
 
 export function validateSceneSvg(document: SceneXmlDocument, prefix: string, compiled?: CompiledMotionPlan): void {
   const { root, nodes } = document;
-  if (root.name !== "svg" || root.attrs.xmlns !== "http://www.w3.org/2000/svg" || root.attrs.role !== "img" || !root.attrs["aria-label"]?.trim()) throw new Error("scene SVG requires accessible SVG root");
+  if (root.name !== "svg" || root.attrs.xmlns !== "http://www.w3.org/2000/svg" || root.attrs.role !== "img" || !root.attrs["aria-label"]?.trim() || root.attrs["aria-hidden"]?.trim().toLowerCase() === "true") throw new Error("scene SVG requires accessible SVG root");
   const ids = new Map<string, SceneXmlNode>();
   const parents = new Map<SceneXmlNode, SceneXmlNode>();
   for (const node of nodes) {

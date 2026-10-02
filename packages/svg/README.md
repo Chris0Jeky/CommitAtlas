@@ -201,7 +201,9 @@ the same scene/instance namespace. External resources, unknown/cross-namespace r
 overrides, event handlers, scripts, images and foreign objects are rejected. Only HTTPS links to
 `github.com` on `<a>` are allowlisted. The dependency-free XML scanner accepts a strict subset:
 double-quoted attributes, XML whitespace, and predefined/numeric entities; no DTD, comments or
-processing instructions. It is shared by card, motion, delivery and scene tests.
+processing instructions. It is shared by card, motion, delivery and scene tests. The decoded root
+`aria-label` must match the scene's accessibility title. Optional root `aria-labelledby` and
+`aria-describedby` references identify the direct title and description respectively.
 
 `createPublicDemoLensContext({ dataClass: "C0", scope: "public-demo", coverage, privacyNote })`
 creates an owned synthetic consumer context. `PublicDemoCoverage` contains integer complete,
@@ -210,7 +212,8 @@ bounded warning strings. Privacy text is nonempty and at most 240 characters.
 `sceneLensDescription({ coverage, privacyNote })` provides the common caption. Signature models
 must carry identical `model.lens.coverage` and `model.lens.privacyNote`, and expose the caption
 both in visible text and their accessible description. Hidden or definition-only text cannot
-satisfy that requirement.
+satisfy that requirement. Named transparent paint, zero-alpha hex colors and zero-alpha numeric
+CSS color functions also cannot satisfy it; these remain structural checks, not pixel proof.
 
 This C0 factory is scaffolding for public synthetic scenes, not a `PublicLensProjection.v1`
 artifact reader, producer schema validator, freshness check or export permission. Raw artifacts,
