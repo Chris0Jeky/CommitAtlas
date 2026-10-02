@@ -25,6 +25,20 @@ const eslintConfig = defineConfig([
   jsxA11y.flatConfigs.recommended,
   next.configs["core-web-vitals"],
   {
+    files: ["packages/svg/src/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": ["error",
+        ...[["Date", "now"], ["Math", "random"], ["crypto", "randomUUID"]].flatMap(([owner, member]) => [
+          { selector: `MemberExpression[object.name='${owner}'][property.name='${member}'], MemberExpression[object.name='${owner}'][property.value='${member}']`, message: "SVG output must use snapshot time or seeded randomness." },
+          ...["name", "value"].flatMap(ownerKey => ["name", "value"].map(memberKey => ({ selector: `MemberExpression[object.object.name=/^(globalThis|window|self)$/][object.property.${ownerKey}='${owner}'][property.${memberKey}='${member}']`, message: "SVG output must use snapshot time or seeded randomness." }))),
+        ]),
+        { selector: "NewExpression[callee.name='Date'][arguments.length=0], NewExpression[callee.object.name=/^(globalThis|window|self)$/][callee.property.name='Date'][arguments.length=0], NewExpression[callee.object.name=/^(globalThis|window|self)$/][callee.property.value='Date'][arguments.length=0]", message: "SVG dates must have an explicit snapshot-derived argument." },
+        { selector: "CallExpression[callee.name='Date'], CallExpression[callee.object.name=/^(globalThis|window|self)$/][callee.property.name='Date'], CallExpression[callee.object.name=/^(globalThis|window|self)$/][callee.property.value='Date']", message: "Calling Date without new reads the process clock." },
+        { selector: "ImportSpecifier[imported.name='randomUUID']", message: "SVG output must use a deterministic namespace." },
+      ],
+    },
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.browser,

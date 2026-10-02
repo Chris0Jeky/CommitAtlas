@@ -559,6 +559,20 @@ primitive/backend fixture documents. These do not qualify GitHub raw/Camo, SVG-a
 Firefox/WebKit, or render-cost budgets. #113/#114 remain the acceptance gates; #126 remains dependent
 on #113 before renderer adoption. This is development evidence, not a deployment or main-state claim.
 
+## Scene engine development checkpoint - 2026-10-02
+
+The #128 stack on #125 adds the §6 scene interfaces, immutable registry/model seeds, explicit
+unavailable composition, scoped compiler accounting and shared XML/scene contracts. No real scene,
+route, config entry or backend default is activated. Signature tests use an invented C0 common
+coverage/privacy context; raw Lens artifacts, C1 contexts and unresolved coverage scores are rejected.
+Finding/identity schema adapters remain reserved and produce explicit unavailable output.
+
+Windows Node 22.13.0 typecheck, lint and 150 SVG tests passed during focused qualification. Independent
+review reproduced and corrected hidden-caption, invalid XML whitespace and animated-clone counter
+defects. A planted Math.random failed the real lint command and was removed. Full local qualification
+is coordinated separately; no browser pixel, GitHub raw/Camo, Firefox/WebKit or producer compatibility
+claim is implied by this structural engine/harness checkpoint. The public demonstration remains unchanged.
+
 ## Clean resume commands (from checkout root)
 
 ```powershell

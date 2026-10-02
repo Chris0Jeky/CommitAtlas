@@ -163,6 +163,71 @@ derived `percentage` together and can be passed directly to `renderLanguagesCard
 render an optional source-backed aggregate `stars` value when supplied and leave it absent
 otherwise. Partial bytes/percentage mixtures are rejected because their basis is ambiguous.
 
+## Scene contract and registry
+
+The additive scene API implements EXPANSION_PLAN §6. No real scene is registered by importing
+the package; the `example` composition lives only in tests. Existing cards, routes, config,
+renderer metadata, and backend defaults keep their current behavior.
+
+`SceneInputs`, `RenderContext`, and `SceneDefinition<Model>` retain the documented interfaces.
+`ScenePack` is `orbital | survey | spectral | terminal`; `BudgetClass` names the compiler's three
+budget classes. The caller supplies every context option, including an explicit CSS/SMIL backend
+and stable, distinct `instanceNamespace` for each inline slot. The `seed` field accepts a string
+placeholder: the engine replaces it with `stableHash(canonicalJson(model))` before rendering.
+It inserts or verifies the root `data-scene-seed` marker so a model change changes the output.
+
+| Export | Contract |
+| --- | --- |
+| `registerScene(definition)` | Freezes the definition and copied metadata arrays, retaining its callbacks; duplicate kebab-case IDs throw. A scene may narrow its family's budget. |
+| `getScene(id)` / `listScenes()` | Return the frozen registered definition or undefined, and a sorted frozen registry snapshot. |
+| `renderScene(id, inputs, context)` | Returns the validated SVG string; unknown IDs, invalid contexts, unsafe markup and over-budget output throw. |
+| `renderSceneDefinition(definition, inputs, context)` | Validates a definition without registering it; returns a frozen `SceneRenderResult` with SVG, computed seed, exact final UTF-8 bytes, animated targets/groups, unavailable state, inline-style and reduced-motion metadata. |
+| `sceneUnavailable(reason)` | Creates the explicit unavailable model. The engine supplies its static readable composition and description, bypassing the scene renderer. |
+| `sceneElementId(context, key)` / `sceneClassName(context, key)` | Produce validated, length-delimited IDs/classes within the active renderer's namespace. |
+| `compileSceneMotion(context, applications, { target })` | Compiles exactly one plan per active render, with the definition's family/budget and the explicit context backend. `target` is mandatory. |
+
+Inputs and models are canonical JSON copied and deeply frozen before callbacks and seeding.
+Accessors and non-JSON models fail closed. A renderer returns complete SVG with one direct
+`<title>` and `<desc>` matching `accessibility(model)`. Descriptions must explain all factual
+text/readings, geometry, colour, position, stroke and motion state; the harness fixtures declare
+those meanings explicitly. Caller-declared decorative motion still requires scene review.
+
+Bind the compiler's IDs/classes to identity-transform, opacity-1 `<g>` wrappers, include its style
+once at the root and each binding's animation children exactly once inside that wrapper. The
+engine checks those fragments against the trusted compiler report and measures the complete SVG;
+handwritten styles/animations, altered fragments, and animated reusable definitions/clones fail.
+Static same-document references remain available. All IDs/classes and paint references must use
+the same scene/instance namespace. External resources, unknown/cross-namespace references, namespace
+overrides, event handlers, scripts, images and foreign objects are rejected. Only HTTPS links to
+`github.com` on `<a>` are allowlisted. The dependency-free XML scanner accepts a strict subset:
+double-quoted attributes, XML whitespace, and predefined/numeric entities; no DTD, comments or
+processing instructions. It is shared by card, motion, delivery and scene tests.
+
+`createPublicDemoLensContext({ dataClass: "C0", scope: "public-demo", coverage, privacyNote })`
+creates an owned synthetic consumer context. `PublicDemoCoverage` contains integer complete,
+partial, unavailable and total counts (each 0–1,000,000, counts sum to total), plus at most eight
+bounded warning strings. Privacy text is nonempty and at most 240 characters.
+`sceneLensDescription({ coverage, privacyNote })` provides the common caption. Signature models
+must carry identical `model.lens.coverage` and `model.lens.privacyNote`, and expose the caption
+both in visible text and their accessible description. Hidden or definition-only text cannot
+satisfy that requirement.
+
+This C0 factory is scaffolding for public synthetic scenes, not a `PublicLensProjection.v1`
+artifact reader, producer schema validator, freshness check or export permission. Raw artifacts,
+C1 contexts, score fields and schema versions are rejected; a serialized copy must be validated
+through the factory again. No coverage score or conversion is inferred. The unresolved producer
+coverage scale remains behind #145 and PROJECTION_CONTRACTS. `ResearchFindingProjection` and
+`IdentityConfig` are opaque reserved types; supplying either currently yields explicit unavailable
+output until their dedicated schema adapters arrive. No real projection or private fixture is used.
+
+`tests/scene-harness.mjs` exports `assertSceneContract(definition, fixtures)`. Supply ready,
+one-field changed and unavailable input fixtures; declare each consumed text field path, printed
+readings, and description tokens for every nondecorative encoding. It checks double renders,
+seed/output changes, both explicit backends, supported packs/profiles, frame-zero twins,
+namespaced instances, safe XML/injection, counters, accessibility and unavailable composition.
+The package test script also checks the source-scoped ESLint clock/random restrictions. The
+engine has no browser qualification claim; #113/#114 still govern backend and measured budgets.
+
 ## Manual public pulse capsules
 
 `renderPulseCard(data, { nowMs, theme?, motion? })` renders the separately validated

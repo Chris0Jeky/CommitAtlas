@@ -1,3 +1,4 @@
+import { assertWellFormedXml } from "./scene-harness.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as svg from "../dist/index.js";
@@ -28,29 +29,6 @@ function stripMotion(output) {
   return output.replace(/<style>[\s\S]*?<\/style>/gu, "").replace(/<animate(?:Transform|Motion)?\b[^>]*\/>/gu, "");
 }
 
-// The same dependency-free scanner used by the card tests, with duplicate attributes rejected.
-function assertXml(output) {
-  const stack = [];
-  const tag = /^<(\/)?([A-Za-z][A-Za-z0-9:_-]*)((?:\s+[A-Za-z][A-Za-z0-9:_-]*="[^"<>]*")*)\s*(\/?)>/u;
-  const entity = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/u;
-  let index = 0;
-  while (index < output.length) {
-    const open = output.indexOf("<", index);
-    assert.doesNotMatch(output.slice(index, open < 0 ? output.length : open), entity);
-    if (open < 0) break;
-    const match = tag.exec(output.slice(open));
-    assert.ok(match, `malformed XML at ${open}`);
-    const [, closing, name, attrs, selfClosing] = match;
-    assert.doesNotMatch(attrs, entity);
-    const names = [...attrs.matchAll(/\s+([A-Za-z][A-Za-z0-9:_-]*)=/gu)].map(entry => entry[1]);
-    assert.equal(new Set(names).size, names.length);
-    if (closing) assert.equal(stack.pop(), name);
-    else if (!selfClosing) stack.push(name);
-    index = open + match[0].length;
-  }
-  assert.deepEqual(stack, []);
-}
-
 test("motion compiler is available through the existing package entrypoint", () => {
   assert.equal(typeof svg.MotionPlan, "function");
   assert.deepEqual(svg.MOTION_PRIMITIVES, applications.map(app => app.primitive));
@@ -61,7 +39,7 @@ for (const backend of ["css", "smil"]) {
     test(`${backend} ${application.primitive} emits well-formed, removable motion`, () => {
       const compiled = plan({ backend }).add(application).compile();
       const still = plan({ backend, profile: "none" }).add(application).compile();
-      assertXml(render(compiled));
+      assertWellFormedXml(render(compiled));
       assert.equal(stripMotion(render(compiled)), render(still));
       assert.doesNotMatch(render(compiled), /\bboth\b|backwards|fill="freeze"/u);
       if (backend === "css" && application.primitive === "flow") {
