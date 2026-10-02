@@ -62,7 +62,7 @@ export class MotionPlan {
     if (typeof opts.target !== "string" || !Object.hasOwn(MOTION_BACKEND_DEFAULTS, opts.target)) throw new Error("invalid target");
     if (opts.backend !== undefined && opts.backend !== "css" && opts.backend !== "smil") throw new Error("invalid backend");
     const familyBudgetClass = MOTION_BUDGET_CLASS[input.family];
-    const budgetClass = input.budgetClass ?? familyBudgetClass;
+    const budgetClass = input.budgetClass === undefined ? familyBudgetClass : input.budgetClass;
     if (typeof budgetClass !== "string" || !Object.hasOwn(MOTION_BUDGETS, budgetClass)) throw new Error("invalid budget class");
     const familyBudget = MOTION_BUDGETS[familyBudgetClass];
     const selectedBudget = MOTION_BUDGETS[budgetClass];

@@ -155,6 +155,16 @@ test("a scene may select a stricter budget without raising its family's default 
   assert.throws(() => builder.compile(), /animated element budget/u);
 });
 
+test("budget class defaults only on omission or undefined and rejects null/coercible values", () => {
+  for (const budgetClass of [null, { toString: () => "scene" }, "", 0, false]) {
+    assert.throws(() => plan({ budgetClass }), /budget class/u);
+  }
+  assert.equal(plan().compile().budgetClass, "scene");
+  assert.equal(plan({ budgetClass: undefined }).compile().budgetClass, "scene");
+  assert.equal(plan({ budgetClass: "scene" }).compile().budgetClass, "scene");
+  assert.equal(plan({ family: "signature", budgetClass: "instrument" }).compile().budgetClass, "instrument");
+});
+
 test("namespaces are deterministic and unambiguous across inline instances", () => {
   const compile = overrides => plan(overrides).add(applications[0]).compile();
   assert.deepEqual(compile({}), compile({}));
