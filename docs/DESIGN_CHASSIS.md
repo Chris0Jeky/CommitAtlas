@@ -167,8 +167,13 @@ Hosted URLs and the Studio expose `none | subtle | ambient`; static/package call
 `cinematic`. This slice changes the contract rather than the visuals: `subtle`, `ambient`, and
 `cinematic` remain byte-identical, transform-only load motion, while `none` remains still.
 
-The [expansion programme](./EXPANSION_PLAN.md) will differentiate the compatibility profiles through
-a measured CSS/SMIL motion compiler only after github.com `<img>` evidence supports that backend.
+The additive `MotionPlan` compiler now encodes M1/M3–M7 in CSS and SMIL without applying them to
+existing cards. M3 stagger is 400 ms/14 ms; M4/M5/M6 remain 4.5/2.4/7 s. Decorative-only scale,
+opacity, rotation, and path motion preserve underlying readings. README loops are bounded to
+45 seconds with fill none/remove; CSS supplies a reduced-motion override and SMIL requires a static
+twin. Per-target backend defaults remain provisional until #113 completes the matrix.
+The [expansion programme](./EXPANSION_PLAN.md) will differentiate the renderer compatibility
+profiles only after github.com `<img>` evidence supports that backend.
 Any new motion ref a scene introduces is recorded in the table here as M10 onward.
 
 ## Where this departs from the handoff

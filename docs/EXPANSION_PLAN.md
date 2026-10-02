@@ -205,6 +205,11 @@ immediate static path for readers who request it.
 | map / signature / finding | ≤ 80 KiB | ≤ 64 | ≤ 6 |
 | scene / hero composition | ≤ 120 KiB | ≤ 96 | ≤ 6 |
 
+The compiler retains the existing instrument test's stricter **<30,000-byte** gate; the map and
+scene limits above use KiB. `MotionPlan.compile({ baseBytes })` checks total finished geometry
+plus emitted motion nodes, with exact counters for distinct emitted targets and looping groups.
+The additive compiler does not yet alter any existing card's renderer.
+
 These are `hypothesis`-rung numbers and are printed as such in the plan until Phase 0 measures
 README render cost and Camo behaviour; the constants live in `motion/profile.ts` with the test that
 holds every scene to them.
