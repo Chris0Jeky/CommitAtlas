@@ -61,6 +61,89 @@ repository's pinned `nodejs_compat` flag.
 Built package artifacts contain compiled JavaScript and TypeScript declarations in `dist`. The
 package is source-installable but is not currently published to npm.
 
+## Motion compiler
+
+`MotionPlan` is an additive primitive compiler; existing card renderers still use their unchanged
+compatibility motion. It performs no DOM edits, fetches, timers, or model generation. A scene binds
+each returned `id` and `className` to an **identity-transform wrapper** around its finished base
+geometry, with wrapper base opacity 1, adds `style` once, and inserts `children` inside the matching wrapper. Keep those bindings
+in the `none` twin too: removing only `<style>` and `<animate*>` nodes then reproduces that twin
+byte-for-byte. Put existing positioning transforms on a child, and use a zero-origin SVG viewBox.
+
+```ts
+import { MotionPlan } from "@commit-atlas/svg";
+
+const motion = new MotionPlan({
+  instanceNamespace: "profileHero", // stable and distinct for every inline scene slot
+  sceneId: "survey",
+  family: "scene",
+  profile: "ambient",
+  target: "github-readme",
+  backend: "smil", // optional; selects the provisional per-target default when absent
+}).add({
+  primitive: "breathe", target: "reticle", decorative: true,
+  params: { cx: 120, cy: 80 },
+});
+const bindings = motion.compile().bindings;
+// Render finished geometry with these bindings, then measure its exact UTF-8 size.
+const compiled = motion.compile({ baseBytes: finishedGeometryBytes });
+// Return compiled.style + bound base geometry with each binding.children inserted.
+```
+
+Every generated wrapper ID, class, keyframe, and animation ID has a length-delimited namespace
+and scene prefix. `instanceNamespace` accepts `[A-Za-z][A-Za-z0-9_-]{0,31}`; scene IDs accept
+lowercase kebab case up to 48 characters. Logical target and loop-group keys accept the same
+identifier alphabet up to 64 characters. Caller namespaces must be distinct when inlining multiple
+instances. Reusing the same namespace, scene, options, and ordered applications is deterministic.
+
+| Primitive | CSS | SMIL | Defaults and restrictions |
+| --- | --- | --- | --- |
+| `enter` | translate keyframe | `animateTransform` translate | 400 ms, delay at least 60 ms; finished base during delay; fill none/remove |
+| `stagger` | delayed translate keyframe | delayed `animateTransform` | M3: 400 ms, 14 ms per index, plus the 60 ms entrance delay |
+| `breathe` | scale about an explicit origin | compensated translate plus additive scale | M4: 4.5 s, 1 → 1.045 → 1; decorative |
+| `scan` | translate marker | `animateTransform` translate | 5.6 s; default x offset 100 |
+| `sweep` | translate beam | `animateTransform` translate | M6: 7 s; default x offset 70 |
+| `rotate` / `orbit` | rotation with viewBox origin | rotation with user-coordinate center | 12 s; decorative |
+| `plot` | stroke-dashoffset | `animate` stroke-dashoffset | M1: 9 s; caller supplies the dash array and an already-visible underlying trace |
+| `flow` | **unsupported**, omitted and reported | `animateMotion` | 9 s; decorative; 2–32 bounded numeric coordinate pairs, no raw path/CSS input |
+| `twinkle` | opacity keyframe | `animate` opacity | 7 s; scene-family decoration only; minimum opacity 0.35 |
+| `pulse` | opacity keyframe | `animate` opacity | M5: 2.4 s; decorative lamp with explicit `state: "pending"`; default floor 0.45 |
+| `acquisitionFailure` | relative needle rotation sequence | `animateTransform` values list | M7: 1.2 s one-shot hunt/stutter/return; decorative needle, steady NO SIGNAL base |
+
+Parameters are closed, bounded numbers; no arbitrary CSS, easing, markup, or path strings are
+accepted. Durations are integer 60–20,000 ms, delays integer 0–44,999 ms (entrances ≥60 ms),
+coordinates ±10,000, scale 1–1.1, and opacity 0.35–1. Inputs are copied; later caller mutations do
+not alter the plan. Text/reading wrappers may only translate; `plot` animates the overlay of an
+already-readable trace. Different properties may animate on one wrapper, but conflicting properties
+and inconsistent decorative classification throw. `subtle` accepts only enter/stagger up to 600 ms;
+`cinematic` requires the scene/hero budget class. Renderers remain responsible for declaring which
+profiles their individual compositions support and for keeping unavailable signals steady.
+
+README looping motion under `ambient` or `cinematic` ends at the exported
+`README_MOTION_INTERVAL_MS` (45 seconds from document load), accounting for each application’s delay.
+CSS uses a possibly fractional iteration count; SMIL uses `repeatDur`. Both remove the animation
+effect afterward, returning to the finished base. Web and Studio loop indefinitely. One-shot
+effects stay one-shot. The compiler rejects a README delay/duration that would overrun the interval.
+
+CSS emits a reduced-motion media override and reports `inlineStyles: true` when a style is present.
+SMIL reports `inlineStyles: false` and `reducedMotion: "none-twin-required"`: it cannot honor the
+media preference itself. A consumer must select a static twin on a supported embedding surface.
+No GitHub sanitizer, CSS/SMIL playback, or pause-control compatibility is implied by this compiler.
+Until [#113](https://github.com/Chris0Jeky/CommitAtlas/issues/113) completes its matrix,
+`MOTION_DEFAULTS_PROVISIONAL` stays true: `github-readme → smil`, `web/studio → css` are placeholders.
+
+`MOTION_BUDGETS` names the provisional instrument/map/scene classes: respectively <30,000 / ≤80 KiB /
+≤120 KiB total UTF-8 bytes, 24/64/96 animated elements, and 3/6/6 looping groups. Instrument retains
+the stricter existing card gate. Map, signature, and finding families use map; scene and hero use
+scene. An optional `budgetClass` may narrow the family's default limits, never increase them;
+for example a compact signature scene may select instrument. `MOTION_BUDGETS_PROVISIONAL` remains
+true pending measured render cost. `counters` count
+distinct emitted targets, distinct emitted looping `loopGroup` keys (defaulting to each target),
+and the exact UTF-8 bytes of emitted style/animation nodes. Stable binding attributes are part of
+`baseBytes`, not bytes added relative to the `none` twin. Always supply the complete measured base
+size at final compilation: the compiler cannot measure caller-owned geometry. Over-budget plans
+throw instead of truncating. Unsupported applications emit no animation and contribute no counters.
+
 Renderer inputs are bounded for portable README use: dimensions clamp to renderer-safe ranges,
 accessible title and description labels are length-limited, and activity cards accept up to a
 full 366-day window while remaining below the 30KB SVG output budget. Caller-supplied prose on
