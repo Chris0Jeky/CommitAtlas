@@ -21,6 +21,7 @@ export function encodeCssMotion(app: CompiledMotionApplication, options: MotionP
       break;
     case "scan": case "sweep":
       frames = `from{transform:translate(0px,0px)}to{transform:translate(${n(v.x)}px,${n(v.y)}px)}`;
+      if (app.primitive === "scan") easing = `steps(${v.steps},end)`;
       break;
     case "breathe":
       frames = `0%,100%{transform:scale(1)}50%{transform:scale(${n(v.scale)})}`;

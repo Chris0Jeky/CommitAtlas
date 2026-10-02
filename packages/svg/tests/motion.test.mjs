@@ -322,3 +322,68 @@ test("encoders retain serialized timings and nonzero rotation centers", () => {
     }
   }
 });
+
+for (const backend of ["css", "smil"]) {
+  test(`${backend} scan holds discrete positions while sweep stays continuous`, () => {
+    const scan = params => plan({ backend }).add({ primitive: "scan", target: "marker", decorative: true, params }).compile();
+    const defaultScan = scan();
+    assert.match(render(defaultScan), backend === "css"
+      ? /animation-timing-function:steps\(2,end\);/u
+      : /values="0 0;50 0;100 0" calcMode="discrete" keyTimes="0;0.5;1"/u);
+    assert.equal(defaultScan.applications[0].values.steps, 2);
+    const compiled = scan({ x: 80, y: -20, steps: 4 });
+    const output = render(compiled);
+    if (backend === "css") {
+      assert.match(output, /animation-timing-function:steps\(4,end\);/u);
+      assert.match(output, /from\{transform:translate\(0px,0px\)\}to\{transform:translate\(80px,-20px\)\}/u);
+    } else {
+      assert.match(output, /values="0 0;20 -5;40 -10;60 -15;80 -20" calcMode="discrete" keyTimes="0;0.25;0.5;0.75;1"/u);
+      const times = /keyTimes="([^"]+)"/u.exec(output)[1].split(";").map(Number);
+      const positions = /values="([^"]+)"/u.exec(output)[1].split(";").map(value => value.split(" ").map(Number));
+      for (const [time, expected] of [[0, [0, 0]], [0.249, [0, 0]], [0.25, [20, -5]], [0.749, [40, -10]], [0.75, [60, -15]], [1, [80, -20]]]) {
+        assert.deepEqual(positions[times.findLastIndex(start => start <= time)], expected);
+      }
+    }
+    assertXml(output);
+    assert.equal(stripMotion(output), render(plan({ backend, profile: "none" }).add({ primitive: "scan", target: "marker", decorative: true, params: { x: 80, y: -20, steps: 4 } }).compile()));
+    assert.equal(compiled.counters.bytesAdded, Buffer.byteLength(compiled.style + compiled.bindings[0].children, "utf8"));
+    const sweep = render(plan({ backend }).add(applications[4]).compile());
+    assert.match(sweep, backend === "css" ? /animation-timing-function:linear;/u : /values="0 0;70 0"/u);
+    assert.doesNotMatch(sweep, /steps\(|calcMode="discrete"|keyTimes=/u);
+  });
+}
+
+test("scan steps are a closed bounded integer parameter", () => {
+  for (const steps of [1, 2, 96]) {
+    for (const backend of ["css", "smil"]) {
+      const compiled = plan({ backend }).add({ ...applications[3], params: { steps } }).compile();
+      assert.equal(compiled.applications[0].values.steps, steps);
+      if (backend === "smil") {
+        assert.equal(/values="([^"]+)"/u.exec(compiled.bindings[0].children)[1].split(";").length, steps + 1);
+        assert.equal(/keyTimes="([^"]+)"/u.exec(compiled.bindings[0].children)[1].split(";").length, steps + 1);
+      }
+    }
+  }
+  for (const steps of [0, -1, 97, 2.5, NaN, Infinity, null, "2", { toString: () => "2" }]) {
+    assert.throws(() => plan().add({ ...applications[3], params: { steps } }), /steps/u);
+  }
+  assert.throws(() => plan().add({ ...applications[4], params: { steps: 2 } }), /unknown/u);
+});
+
+test("SMIL flow follows the plot spline across the whole numeric path", () => {
+  const compiled = plan({ backend: "smil" })
+    .add({ primitive: "plot", target: "trace", decorative: false, params: { length: 110, delayMs: 900 } })
+    .add({ primitive: "flow", target: "particle", decorative: true, params: { points: [[0, 0], [10, 0], [10, 100]], delayMs: 900 } }).compile();
+  const [plot, flow] = compiled.bindings.map(binding => binding.children);
+  for (const output of [plot, flow]) {
+    assert.match(output, /calcMode="spline" keyTimes="0;1" keySplines="\.4 0 \.2 1"/u);
+    assert.match(output, /begin="0.9s" dur="9s" fill="remove" repeatCount="indefinite" repeatDur="44.1s"/u);
+  }
+  assert.match(flow, /path="M0 0 L10 0 L10 100" keyPoints="0;1"/u);
+  assert.doesNotMatch(flow, /calcMode="linear"/u);
+  assertXml(render(compiled));
+  assert.equal(compiled.counters.bytesAdded, Buffer.byteLength(plot + flow, "utf8"));
+  const unsupported = plan({ backend: "css" }).add(applications[8]).compile();
+  assert.equal(unsupported.unsupported.length, 1);
+  assert.equal(unsupported.counters.bytesAdded, 0);
+});
