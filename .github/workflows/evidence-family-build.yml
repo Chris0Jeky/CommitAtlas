@@ -1,0 +1,44 @@
+name: Temporary evidence source-family build
+on:
+  push:
+    branches: [feat/evidence-coverage-scene]
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/evidence-coverage-scene'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify and apply source-family repair
+        run: |
+          echo '92c4bce4eac98eebdca9b3b9199e623744d292367bc14c4f7360e4627a789a21  .evidence-family.patch' | sha256sum -c
+          git apply --check --index .evidence-family.patch
+          git apply --index .evidence-family.patch
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Validate source and regenerate Action
+        run: |
+          for script in typecheck lint test:svg test:static build:action; do
+            npm run "$script" > /tmp/check.log 2>&1 || { tail -100 /tmp/check.log; exit 1; }
+            tail -8 /tmp/check.log
+          done
+          node --test action/action.test.mjs action/evidence-output.test.mjs
+      - name: Publish tested source and bundle to this feature branch only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -- action/dist
+          git rm -- .evidence-family.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(svg): bind evidence rows to their producer families'
+          AUTH_HEADER=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:refs/heads/feat/evidence-coverage-scene
