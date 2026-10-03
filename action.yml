@@ -26,6 +26,8 @@ inputs:
     required: false
 
 outputs:
+  scenes:
+    description: JSON array of generated scene paths across the primary and paired themes, relative to the repository root.
   manifest:
     description: Repository-relative path to the generated manifest.
   atlas:

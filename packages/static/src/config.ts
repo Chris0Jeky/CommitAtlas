@@ -7,7 +7,8 @@ import {
   parseManifest,
   type ProjectManifest,
 } from "@commit-atlas/core";
-import type { MotionProfile } from "@commit-atlas/svg";
+import type { IdentityConfig, MotionProfile, ScenePack } from "@commit-atlas/svg";
+import { MAX_STATIC_SCENES, STATIC_SCENE_PACKS, staticSceneOptions } from "./scene-config.js";
 import { z } from "zod";
 
 export const STATIC_CARD_NAMES = [
@@ -51,6 +52,9 @@ const RawStaticConfigSchema = z.object({
   outputDir: RelativePathSchema,
   cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...DEFAULT_STATIC_CARD_NAMES]),
   projects: z.array(z.unknown()).min(1).max(6),
+  scenes: z.array(z.string().max(48)).max(MAX_STATIC_SCENES).default([]),
+  scenePack: z.enum(STATIC_SCENE_PACKS).default("survey"),
+  identity: z.unknown().optional(),
 }).strict();
 
 export interface StaticConfig {
@@ -65,6 +69,9 @@ export interface StaticConfig {
   readonly outputDir: string;
   readonly cards: readonly StaticCardName[];
   readonly projects: ProjectManifest["projects"];
+  readonly scenes?: readonly string[];
+  readonly scenePack?: ScenePack;
+  readonly identity?: Pick<IdentityConfig, "name" | "tagline"> & { readonly focus?: readonly string[] };
 }
 
 export interface StaticThemeVariant {
@@ -80,6 +87,7 @@ export interface LoadedStaticConfig {
 
 export function parseStaticConfig(input: unknown): StaticConfig {
   const raw = RawStaticConfigSchema.parse(input);
+  const sceneOptions = staticSceneOptions(raw);
   const cards = [...new Set(raw.cards)];
   if (cards.length !== raw.cards.length) throw new Error("cards must not contain duplicates");
   if (raw.responsiveAtlas && !cards.includes("atlas")) {
@@ -118,6 +126,9 @@ export function parseStaticConfig(input: unknown): StaticConfig {
     outputDir,
     cards,
     projects: manifest.projects,
+    scenes: sceneOptions.definitions.map(({ id }) => id),
+    scenePack: sceneOptions.pack,
+    ...(sceneOptions.identity ? { identity: sceneOptions.identity } : {}),
   };
 }
 

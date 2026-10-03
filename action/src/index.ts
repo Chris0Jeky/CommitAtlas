@@ -1,6 +1,6 @@
 import path from "node:path";
 import * as core from "@actions/core";
-import { generateStatic } from "@commit-atlas/static";
+import { generateStatic, generatedScenePaths } from "@commit-atlas/static";
 
 async function run(): Promise<void> {
   const root = process.env.GITHUB_WORKSPACE;
@@ -21,6 +21,7 @@ async function run(): Promise<void> {
 
   const outputRoot = relative(root, result.outputDir);
   core.setOutput("manifest", `${outputRoot}/manifest.json`);
+  core.setOutput("scenes", JSON.stringify(generatedScenePaths(result)));
   const generated = new Set(result.manifest.artifacts.map((artifact) => artifact.path));
   for (const [output, artifact] of [
     ["atlas", "atlas.svg"],

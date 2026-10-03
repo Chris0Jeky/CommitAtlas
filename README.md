@@ -191,6 +191,25 @@ Read [PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) for the concise map and [
 
 CommitAtlas does not invent a global developer rank, language proficiency, CI result, project lifecycle, release, download URL, or private evidence. It shows source-backed facts, explicitly configured intent, transparent derivations, availability, and freshness.
 
+### Static scene configuration
+
+Static config v1 accepts `scenes: []`, `scenePack: "survey"`, and optional
+bounded `identity` text. Defaults preserve existing card artifacts. Only
+registered scenes may be selected; the production registry remains empty
+until scene-specific implementations land. Selected scenes render from one
+snapshot for every configured theme, with hashes in the existing manifest.
+The Action's `scenes` output is a JSON array of generated paths (`[]` when
+disabled), including during dry-run.
+
+```json
+{ "scenes": [], "scenePack": "survey", "identity": { "name": "Synthetic owner", "focus": ["Software"] } }
+```
+
+Add these fields to an existing complete config. Update any exact consumer
+artifact allowlist with selected `scene-<id>.svg` names before enabling them.
+See [the scene delivery contract](docs/STATIC_GENERATOR_PLAN.md#registered-scene-delivery)
+for identity limits, ownership rules and paired-theme behavior.
+
 ## License
 
 CommitAtlas is licensed under [GPL-3.0-only](LICENSE).
