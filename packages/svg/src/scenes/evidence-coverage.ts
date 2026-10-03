@@ -71,7 +71,11 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
   const mixValid = mix && mix.every(value => basis === 'public-profile-percentages'
     ? typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
     : count(value, Number.MAX_SAFE_INTEGER));
-  if (sourceKnown && current(contributionMode) && mixValid && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
+  const mixTotal = mix?.reduce((sum, value) => sum + value, 0);
+  // Match the public parser/core rounding tolerance and its explicit zero-activity form.
+  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 ||
+    typeof mixTotal === 'number' && mixTotal >= 99 && mixTotal <= 101;
+  if (sourceKnown && current(contributionMode) && mixValid && mixConsistent && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
     rows[1] = { id: 'mix', label: 'ACTIVITY MIX',
       detail: basis === 'public-profile-percentages' ? 'ANNUAL PERCENTAGES · NOT WINDOW-SCOPED' : 'EXACT COUNTS · WINDOW-SCOPED',
       coverage: { state: 'complete', observed: 4, total: 4 } };
