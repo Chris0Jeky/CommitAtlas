@@ -1,59 +1,30 @@
-name: Temporary evidence scene build
+name: Temporary evidence source recovery
 on:
   push:
     branches: [feat/evidence-coverage-scene]
 permissions:
-  contents: write
-concurrency:
-  group: temporary-evidence-scene-build
-  cancel-in-progress: false
+  contents: read
 jobs:
-  build:
+  snapshot:
     if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/evidence-coverage-scene'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify and apply the source-bound implementation delta
+      - name: Archive tracked public source only
         run: |
-          python3 - <<'PY'
-          import base64, hashlib, pathlib, zlib
-          encoded = b''.join(pathlib.Path(f'.evidence-patch-{i}.b64').read_bytes() for i in (1, 2))
-          patch = zlib.decompress(base64.b64decode(encoded, validate=True))
-          assert hashlib.sha256(patch).hexdigest() == 'fc230465d17d85f514f319b315a34cfaaba8202a59cad18484ca5d9062792805'
-          pathlib.Path('/tmp/evidence-coverage.patch').write_bytes(patch)
-          PY
-          git apply --check --index /tmp/evidence-coverage.patch
-          git apply --index /tmp/evidence-coverage.patch
-          git apply --check --index .evidence-fixture-fix.patch
-          git apply --index .evidence-fixture-fix.patch
-      - uses: actions/setup-node@v7
+          mkdir /tmp/evidence-source
+          git rev-parse HEAD > /tmp/evidence-source/source-sha.txt
+          git ls-tree -r HEAD > /tmp/evidence-source/source-tree.txt
+          git archive --format=tar.gz HEAD > /tmp/evidence-source/source.tar.gz
+          cd /tmp/evidence-source
+          sha256sum source.tar.gz > sha256sums.txt
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: 22.13.0
-          cache: npm
-      - name: Install locked dependencies
-        run: npm ci > /tmp/install.log 2>&1 || { tail -60 /tmp/install.log; exit 1; }
-      - name: Validate source, scene and static contracts
-        run: |
-          for script in typecheck lint test:svg test:static build:action; do
-            echo "Checking $script"
-            npm run "$script" > /tmp/check.log 2>&1 || { tail -100 /tmp/check.log; exit 1; }
-            tail -8 /tmp/check.log
-          done
-      - name: Execute the rebuilt Action with synthetic-only requests
-        run: node --test action/action.test.mjs action/evidence-output.test.mjs
-      - name: Publish verified source and generated bundle to this feature branch only
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git add -- action/dist
-          git rm -- .evidence-patch-1.b64 .evidence-patch-2.b64 .evidence-fixture-fix.patch
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git diff --cached --stat
-          git commit -m 'feat(svg): add snapshot-grounded evidence coverage scene'
-          AUTH_HEADER=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:refs/heads/feat/evidence-coverage-scene
+          name: evidence-source-recovery
+          path: /tmp/evidence-source/*
+          retention-days: 3
+          if-no-files-found: error
