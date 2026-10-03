@@ -22,12 +22,20 @@ no artifacts. Existing standalone card selections are unchanged.
 | Row | Snapshot input | Meaning of the bar |
 | --- | --- | --- |
 | Contribution calendar | `contributions.freshness` and `metrics.window.days`, `observedDays`, `complete` | Observed days in the requested window, not contribution volume. A complete zero calendar is still observed. |
-| Activity mix | `contributions.freshness`, `breakdownBasis`, `commits`, `issues`, `pullRequests`, `reviews` | Presence of all four bounded fields. Public-profile percentages, including fractional weighted percentages, are explicitly annual and not window-scoped. Exact counts are labelled separately. |
+| Activity mix | `contributions.freshness`, `breakdownBasis`, `commits`, `issues`, `pullRequests`, `reviews` | Presence of all four bounded, consistent fields. Public-profile percentages, including fractional weighted percentages, are explicitly annual and not window-scoped. Exact counts are labelled separately. |
 | CI | `projects.freshness` and each `projects[].ci.state` | Current passing, failing or pending observations divided by declared projects. Stale, unconfigured and unavailable states are named but never counted as current. Complete coverage does not imply passing CI. |
-| Releases | `projects.freshness`, each `releaseState` and `release` presence | Published releases or observed absence divided by declared projects. Unavailable lookups never become a claim that no release exists. |
+| Releases | `projects.freshness`, each `releaseState` and validated `release` record | Published releases or observed absence divided by declared projects. Unavailable lookups never become a claim that no release exists. |
 | Line changes | The public snapshot collection contract | NOT OBSERVED. No line-change total is inferred from contributions. |
 | Private activity | The public snapshot collection contract | NOT REQUESTED. No private source is fetched or projected. |
 | Snapshot | `freshness.mode` | A neutral literal mode badge, not a manufactured completeness fraction. |
+
+The root snapshot must name a known source before any row can be authorized.
+Annual percentages must total 99–101, matching producer rounding; the all-zero
+exception requires both an observed zero contribution total and a nonempty zero
+calendar. Exact counts are not percentage-normalized. Published releases require
+a non-array record with bounded tag/name, a valid UTC publication timestamp,
+credential-free HTTPS URL and a null or well-formed optional download record.
+Malformed release evidence cannot erase independently observed CI states.
 
 Known source identities and consistent counts are required before observations
 receive coverage ink. Unknown provenance, unavailable sources and stale source

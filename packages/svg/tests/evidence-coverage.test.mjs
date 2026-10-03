@@ -207,3 +207,58 @@ test('unknown source provenance cannot authorize calendar, mix or board observat
   }
   assert.equal(render(inputs, { motion: 'ambient' }).counters.animatedElements, 0);
 });
+
+test('unknown root source makes the whole scene unavailable despite valid nested evidence', () => {
+  for (const source of ['unknown', '', null, 7, {}]) for (const mode of ['live', 'demo', 'partial', 'stale']) {
+    const inputs = coverageInputs();
+    Object.assign(inputs.snapshot.freshness, { source, mode });
+    const rendered = render(inputs, { motion: 'ambient', backend: 'smil' });
+    assert.equal(rendered.unavailable, true, JSON.stringify({ source, mode }));
+    assert.equal(rendered.counters.animatedElements, 0);
+    assert.doesNotMatch(rendered.svg, /PUBLIC SNAPSHOT|COMPLETE|<animate/u);
+    const doc = assertWellFormedXml(rendered.svg);
+    assert.equal(doc.nodes.filter(node => /-row-/u.test(node.attrs.id ?? '')).length, 7);
+  }
+});
+
+test('malformed published releases cannot grant complete coverage or a scan target', () => {
+  const valid = coverageInputs().snapshot.projects.projects[0].release;
+  const invalid = [null, [], {}, true, 'v1'];
+  for (const key of Object.keys(valid)) {
+    const missing = { ...valid }; delete missing[key]; invalid.push(missing);
+  }
+  invalid.push(
+    { ...valid, tag: '' }, { ...valid, tag: 't'.repeat(201) }, { ...valid, name: 0 },
+    { ...valid, name: 'n'.repeat(201) }, { ...valid, url: 'javascript:alert(1)' },
+    { ...valid, url: 'https://user:password@github.com/release' },
+    { ...valid, url: `https://github.com/${'a'.repeat(501)}` },
+    { ...valid, publishedAt: '' }, { ...valid, publishedAt: '2026-02-30T00:00:00Z' },
+    { ...valid, publishedAt: 'invalid' }, { ...valid, download: {} }, { ...valid, download: [] },
+    { ...valid, download: { name: 'asset', url: 'http://github.com/asset' } },
+  );
+  for (const release of invalid) {
+    const inputs = coverageInputs();
+    inputs.snapshot.projects.projects.forEach(project => { project.releaseState = 'published'; project.release = release; });
+    assert.deepEqual(row('releases', inputs).coverage, { state: 'unavailable' }, JSON.stringify(release));
+    assert.equal(row('releases', inputs).detail, '6 UNAVAILABLE');
+    const doc = assertWellFormedXml(render(inputs, { motion: 'ambient', backend: 'smil' }).svg);
+    const node = doc.nodes.find(item => item.attrs.id?.endsWith('-row-releases'));
+    assert.doesNotMatch(node.raw, /COMPLETE|6\/6|<animate|-target-scan/u);
+    assert.equal(row('ci', inputs).coverage.observed, 4, 'release validation must not erase separate CI evidence');
+  }
+});
+
+test('valid bounded release records and confirmed absence remain observations', () => {
+  const inputs = coverageInputs();
+  const release = { ...inputs.snapshot.projects.projects[0].release,
+    tag: '界'.repeat(200), name: '😀'.repeat(200), publishedAt: '2026-01-07T00:00:00.500Z',
+    download: { name: '😀'.repeat(255), url: 'https://github.com/scene-demo/atlas/releases/download/v1/asset.zip' },
+  };
+  inputs.snapshot.projects.projects.forEach((project, i) => {
+    project.releaseState = i % 2 === 0 ? 'published' : 'none';
+    project.release = i % 2 === 0 ? release : null;
+  });
+  assert.deepEqual(row('releases', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
+  assert.equal(row('releases', inputs).detail, '3 PUBLISHED · 3 NONE');
+  assertWellFormedXml(render(inputs).svg);
+});

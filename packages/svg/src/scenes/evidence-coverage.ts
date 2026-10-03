@@ -1,4 +1,5 @@
-import type { DataMode, PortfolioSnapshot, ProjectSnapshot } from '@commit-atlas/github';
+import { isRecord, safeHttpsUrl } from '@commit-atlas/github';
+import type { ContributionSnapshot, DataMode, PortfolioSnapshot, ProjectSnapshot } from '@commit-atlas/github';
 import { escapeXml, themes } from '../index.js';
 import { compileSceneMotion, sceneClassName, sceneElementId, sceneUnavailable } from '../scene.js';
 import type { RenderContext, SceneDefinition, SceneUnavailable } from '../scene.js';
@@ -29,6 +30,27 @@ function count(value: unknown, maximum = 1_000_000): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= maximum;
 }
 function current(value: DataMode): boolean { return value === 'live' || value === 'demo'; }
+function knownSource(value: unknown): boolean { return typeof value === 'string' && SOURCES.includes(value); }
+function boundedText(value: unknown, maximum: number, nonempty = true): value is string {
+  return typeof value === 'string' && (!nonempty || value.trim() !== '') && [...value].length <= maximum;
+}
+function publishedRelease(value: unknown): boolean {
+  if (!isRecord(value) || !boundedText(value.tag, 200) || !boundedText(value.name, 200, false) ||
+    !safeHttpsUrl(value.url) || !boundedText(value.publishedAt, 35)) return false;
+  // GitHub release timestamps use UTC. Refuse rolled-over dates/times as well as missing fields.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u.test(value.publishedAt)) return false;
+  const timestamp = Date.parse(value.publishedAt);
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 19) !== value.publishedAt.slice(0, 19)) return false;
+  return value.download === null || isRecord(value.download) &&
+    boundedText(value.download.name, 255, false) && safeHttpsUrl(value.download.url) !== null;
+}
+function observedZeroActivity(value: ContributionSnapshot): boolean {
+  if (value.totalContributions !== 0 || !Array.isArray(value.days) || value.days.length < 1 || value.days.length > 366) return false;
+  for (let i = 0; i < value.days.length; i++) {
+    if (!isRecord(value.days[i]) || value.days[i]!.count !== 0) return false;
+  }
+  return true;
+}
 function fraction(observed: number, total: number): CoverageState {
   if (total === 0) return NOT_OBSERVED;
   if (observed === 0) return NO_SIGNAL;
@@ -52,12 +74,12 @@ function summary<T extends string>(states: readonly T[], vocabulary: readonly T[
 
 function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavailable {
   const overall = mode(snapshot.freshness?.mode);
-  if (overall === 'unavailable') return sceneUnavailable(UNAVAILABLE_REASON);
+  if (overall === 'unavailable' || !knownSource(snapshot.freshness?.source)) return sceneUnavailable(UNAVAILABLE_REASON);
   const rows = unavailableRows();
   const contributions = snapshot.contributions;
   const contributionMode = overall === 'stale' ? 'stale' : mode(contributions?.freshness?.mode);
   const source = contributions?.freshness?.source;
-  const sourceKnown = typeof source === 'string' && SOURCES.includes(source);
+  const sourceKnown = knownSource(source);
   const window = snapshot.metrics?.window;
   const windowValid = window && count(window.days, 366) && window.days > 0 && count(window.observedDays, window.days) &&
     typeof window.complete === 'boolean' && window.complete === (window.observedDays === window.days);
@@ -73,7 +95,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
     : count(value, Number.MAX_SAFE_INTEGER));
   const mixTotal = mix?.reduce((sum, value) => sum + value, 0);
   // Match the public parser/core rounding tolerance and its explicit zero-activity form.
-  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 ||
+  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 && observedZeroActivity(contributions) ||
     typeof mixTotal === 'number' && mixTotal >= 99 && mixTotal <= 101;
   if (sourceKnown && current(contributionMode) && mixValid && mixConsistent && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
     rows[1] = { id: 'mix', label: 'ACTIVITY MIX',
@@ -83,7 +105,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
 
   const board = snapshot.projects;
   const boardMode = overall === 'stale' ? 'stale' : mode(board?.freshness?.mode);
-  const boardSourceKnown = typeof board?.freshness?.source === 'string' && SOURCES.includes(board.freshness.source);
+  const boardSourceKnown = knownSource(board?.freshness?.source);
   if (board === null || Array.isArray(board?.projects) && board.projects.length === 0) {
     rows[2] = { id: 'ci', label: 'CI', detail: 'NOT CONFIGURED', coverage: NOT_OBSERVED };
     rows[3] = { id: 'releases', label: 'RELEASES', detail: 'NOT REQUESTED', coverage: NOT_OBSERVED };
@@ -95,7 +117,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
     });
     const releases = board.projects.map((project: ProjectSnapshot) => {
       if (project?.releaseState === 'none' && project.release === null) return 'none';
-      if (project?.releaseState === 'published' && project.release && typeof project.release === 'object') return 'published';
+      if (project?.releaseState === 'published' && publishedRelease(project.release)) return 'published';
       return 'unavailable';
     });
     rows[2] = { id: 'ci', label: 'CI', detail: summary(ci, CI_STATES),
