@@ -81,8 +81,7 @@ const PHASE_INDEX = new Map<PublicationPhase, number>(
 );
 const COMMITTED_INDEX = PHASE_INDEX.get("committed")!;
 const SHA256 = /^[a-f0-9]{64}$/;
-// Unlike $, the absolute end check also rejects a trailing line terminator.
-const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}(?![\s\S])/;
+const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
 const ARTIFACT_NAME = /^[a-z0-9][a-z0-9-]*\.(?:svg|json|md)$/;
 
 export function assertPublicationPhase(value: unknown): PublicationPhase {
@@ -94,14 +93,14 @@ export function assertPublicationPhase(value: unknown): PublicationPhase {
 
 /** Status writes may be retried, but may never skip or move backwards. */
 export function assertPhaseAdvance(from: PublicationPhase, to: PublicationPhase): void {
-  const fromIndex = PHASE_INDEX.get(from)!;
-  const toIndex = PHASE_INDEX.get(to)!;
+  const fromIndex = PHASE_INDEX.get(assertPublicationPhase(from))!;
+  const toIndex = PHASE_INDEX.get(assertPublicationPhase(to))!;
   if (toIndex === fromIndex || toIndex === fromIndex + 1) return;
   throw new Error(`publication phase cannot advance from ${from} to ${to}`);
 }
 
 export function recoveryDirection(phase: PublicationPhase): RecoveryDirection {
-  return PHASE_INDEX.get(phase)! >= COMMITTED_INDEX ? "roll-forward" : "rollback";
+  return PHASE_INDEX.get(assertPublicationPhase(phase))! >= COMMITTED_INDEX ? "roll-forward" : "rollback";
 }
 
 export function validatePublicationJournal(value: unknown): PublicationJournal {
@@ -247,6 +246,10 @@ export function planPublicationRecovery(
     ? [...payloads].reverse().concat([...manifests].reverse())
     : payloads.concat(manifests);
   const steps = ordered.flatMap(({ target, operation, state }): RecoveryStep[] => {
+    // The validated observation matches both generations when a replacement is byte-identical.
+    // Classifying it as previous alone must not schedule an endless roll-forward rewrite.
+    if (operation.action === "replace" && operation.previous!.sha256 === operation.next!.sha256 &&
+      operation.previous!.bytes === operation.next!.bytes) return [];
     if (direction === "rollback") {
       if (state === "previous") return [];
       if (operation.action === "create") return [{ target, name: operation.name, action: "remove-next" }];
