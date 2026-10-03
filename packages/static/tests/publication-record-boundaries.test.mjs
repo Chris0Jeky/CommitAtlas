@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validatePublicationJournal, planPublicationRecoveryFromStatus } from "../dist/publication-protocol.js";
+import * as codec from "../dist/publication-codec.js";
 
 const version = { sha256: "a".repeat(64), bytes: 7 };
 const journal = () => ({
@@ -57,4 +58,26 @@ test("journal copying never invokes caller-supplied array methods or species", (
       assert.equal(called, false, `${field}/${override} must not be invoked`);
     }
   }
+});
+
+test("record byte limits use the actual typed-array span without invoking length overrides", () => {
+  for (const [encode, decode, input, limit] of [
+    [codec.encodePublicationJournal, codec.decodePublicationJournal, journal(), codec.MAX_PUBLICATION_JOURNAL_BYTES],
+    [codec.encodePublicationStatus, codec.decodePublicationStatus, status("prepared"), codec.MAX_PUBLICATION_STATUS_BYTES],
+  ]) {
+    const oversized = new Uint8Array(limit + 1).fill(0xff);
+    Object.defineProperty(oversized, "byteLength", { value: 1 });
+    assert.throws(() => decode(oversized), /byte limit/, "limit must precede UTF-8 decoding");
+    const valid = encode(input);
+    let called = false;
+    Object.defineProperty(valid, "byteLength", { get() { called = true; throw new Error("untrusted byteLength getter"); } });
+    assert.deepEqual(decode(valid), input);
+    assert.equal(called, false);
+    assert.throws(() => decode(new Proxy(encode(input), {})), /publication.*bytes/i);
+  }
+  const huge = journal();
+  huge.targets[0].operations[0].name = "a".repeat(codec.MAX_PUBLICATION_JOURNAL_BYTES) + ".svg";
+  const bytes = new TextEncoder().encode(JSON.stringify(huge) + "\n");
+  Object.defineProperty(bytes, "byteLength", { value: 1 });
+  assert.throws(() => codec.decodePublicationJournal(bytes), /byte limit/);
 });

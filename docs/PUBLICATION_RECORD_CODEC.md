@@ -8,7 +8,7 @@ The existing production generator and manifest format are unchanged.
 `encodePublicationJournal`, `decodePublicationJournal`, `encodePublicationStatus`,
 and `decodePublicationStatus`. Encoders accept values validated by the existing
 protocol schemas and return fresh UTF-8 `Uint8Array` bytes. Decoders accept byte
-views (including Node Buffers), enforce a nonempty byte limit before decoding,
+views (including Node Buffers), enforce a nonempty byte limit through the intrinsic typed-array length getter before decoding,
 use fatal UTF-8 decoding, parse JSON, and validate the resulting record.
 
 A journal may occupy at most 65,536 bytes; a status at most 512 bytes. These are
@@ -56,10 +56,12 @@ The ordinary packaging and Action reproducibility gates still run in CI.
 
 ## Verification
 
-The twelve codec/protocol tests cover detached deterministic encoding, all nine phases and
+The thirteen codec/protocol tests cover detached deterministic encoding, all nine phases and
 status/journal mismatch, byte bounds and sliced views, malformed UTF-8, BOMs,
 duplicate keys, noncanonical and truncated JSON, schema errors, all 128 bounded
-operations and sparse input rejection. They run in the explicit static test
+operations, sparse input rejection and spoofed typed-array lengths. Own length
+properties/getters cannot bypass the pre-decode limit; incompatible proxies are
+rejected before decoding. They run in the explicit static test
 script. Focused local validation uses strict standalone TypeScript compilation;
 full repository integration is the exact-head Actions gate.
 
