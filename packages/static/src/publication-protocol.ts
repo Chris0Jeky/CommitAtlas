@@ -48,6 +48,13 @@ export interface PublicationJournal {
   readonly targets: readonly PublicationTarget[];
 }
 
+export interface PublicationStatus {
+  readonly version: 1;
+  readonly generator: "CommitAtlas";
+  readonly transactionId: string;
+  readonly phase: PublicationPhase;
+}
+
 export interface PublicationObservation {
   readonly target: number;
   readonly name: string;
@@ -74,7 +81,8 @@ const PHASE_INDEX = new Map<PublicationPhase, number>(
 );
 const COMMITTED_INDEX = PHASE_INDEX.get("committed")!;
 const SHA256 = /^[a-f0-9]{64}$/;
-const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
+// Unlike $, the absolute end check also rejects a trailing line terminator.
+const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}(?![\s\S])/;
 const ARTIFACT_NAME = /^[a-z0-9][a-z0-9-]*\.(?:svg|json|md)$/;
 
 export function assertPublicationPhase(value: unknown): PublicationPhase {
@@ -144,6 +152,38 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
   };
 }
 
+/** Parse the bounded durable phase record without retaining caller-owned objects. */
+export function validatePublicationStatus(value: unknown): PublicationStatus {
+  if (!isRecord(value)) throw new Error("publication status must be an object");
+  assertKnownKeys(value, ["version", "generator", "transactionId", "phase"], "publication status");
+  if (value.version !== 1 || value.generator !== "CommitAtlas") {
+    throw new Error("publication status identity is invalid");
+  }
+  if (typeof value.transactionId !== "string" || !TRANSACTION_ID.test(value.transactionId)) {
+    throw new Error("publication status transactionId is invalid");
+  }
+  return {
+    version: 1,
+    generator: "CommitAtlas",
+    transactionId: value.transactionId,
+    phase: assertPublicationPhase(value.phase),
+  };
+}
+
+/** Durable recovery must bind its phase to the same transaction before inspecting destinations. */
+export function planPublicationRecoveryFromStatus(
+  journalValue: unknown,
+  statusValue: unknown,
+  observations: readonly PublicationObservation[],
+): RecoveryPlan {
+  const journal = validatePublicationJournal(journalValue);
+  const status = validatePublicationStatus(statusValue);
+  if (status.transactionId !== journal.transactionId) {
+    throw new Error("publication status transactionId does not match the publication journal");
+  }
+  return planPublicationRecovery(journal, status.phase, observations);
+}
+
 export function classifyObservation(
   operation: PublicationOperation,
   observation: PublicationObservation,
@@ -168,6 +208,7 @@ export function classifyObservation(
 /**
  * Plans one whole-transaction recovery direction. Any missing, duplicate, unexpected, or drifted
  * observation aborts planning before a recovery step can be returned.
+ * Durable-storage callers must use planPublicationRecoveryFromStatus to verify phase provenance.
  */
 export function planPublicationRecovery(
   journalValue: unknown,

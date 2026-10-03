@@ -1,45 +1,10 @@
+import { assertXml10, assertWellFormedXml } from "./scene-harness.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderDeliveryCard } from "../dist/index.js";
 import { deliveryFixture, emptyDeliveryFixture } from "./delivery.fixture.mjs";
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
-
-function assertXml10(output) {
-  for (const character of output) {
-    const codePoint = character.codePointAt(0);
-    assert.ok(
-      codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d ||
-      (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
-      (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
-      (codePoint >= 0x10000 && codePoint <= 0x10ffff),
-      `forbidden XML 1.0 character U+${codePoint.toString(16).toUpperCase()}`,
-    );
-  }
-}
-
-const XML_ENTITY = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/;
-const XML_TAG = /^<(\/?)([A-Za-z][\w:.-]*)((?:\s+[A-Za-z][\w:.-]*\s*=\s*"[^"<]*")*)\s*(\/?)>/;
-
-function assertWellFormedXml(output) {
-  const stack = [];
-  let index = 0;
-  while (index < output.length) {
-    const open = output.indexOf("<", index);
-    const textRun = output.slice(index, open === -1 ? output.length : open);
-    assert.doesNotMatch(textRun, />/, "unescaped '>' in text content");
-    assert.doesNotMatch(textRun, XML_ENTITY, "unescaped '&' in text content");
-    if (open === -1) break;
-    const tag = XML_TAG.exec(output.slice(open));
-    assert.ok(tag, `malformed tag at offset ${open}: ${JSON.stringify(output.slice(open, open + 90))}`);
-    const [matched, closing, name, attributes, selfClosing] = tag;
-    assert.doesNotMatch(attributes, XML_ENTITY, `unescaped '&' in <${name}> attributes`);
-    if (closing) assert.equal(stack.pop(), name, `mismatched closing tag </${name}>`);
-    else if (!selfClosing) stack.push(name);
-    index = open + matched.length;
-  }
-  assert.deepEqual(stack, [], `unclosed elements: ${stack.join(", ")}`);
-}
 
 const GEOMETRY_ATTRIBUTE = /\s(stroke-dasharray|stroke-width|height|width|x1|y1|x2|y2|cx|cy|rx|x|y|r)="([^"]*)"/g;
 

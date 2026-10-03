@@ -543,6 +543,36 @@ implied by this producer checkpoint.
   seven-row diagnostic once, then running #113's unfiltered three-engine raw/Camo matrix. The owner
   gates in #115–#122 and #170 remain open, and no motion behaviour from the programme is on `main`.
 
+## Motion compiler development checkpoint — 2026-10-02
+
+The #125 branch adds a dependency-free `MotionPlan` compiler for twelve primitives, with CSS and
+SMIL encodings and explicit unsupported CSS flow. Existing renderers and hosted defaults retain
+their compatibility output. Generated namespaces are deterministic, base geometry survives
+animation-node removal, content motion is constrained, and README loops encode a 45-second bound.
+Named budgets remain hypotheses; a scene can select a stricter class without increasing limits.
+
+Windows Node 22.13.0 source checks and 137 SVG tests pass. A full `npm run check` passed before the
+final stricter-budget option; that option has the complete focused proving gate. A synthetic inline
+Chromium 153.0.8010.12 check exercised both backends' centered breathe, delayed entrance and finite
+endpoint with controlled animation clocks, plus CSS reduced motion. System.Xml accepted all 24
+primitive/backend fixture documents. These do not qualify GitHub raw/Camo, SVG-as-image playback,
+Firefox/WebKit, or render-cost budgets. #113/#114 remain the acceptance gates; #126 remains dependent
+on #113 before renderer adoption. This is development evidence, not a deployment or main-state claim.
+
+## Scene engine development checkpoint - 2026-10-02
+
+The #128 stack on #125 adds the §6 scene interfaces, immutable registry/model seeds, explicit
+unavailable composition, scoped compiler accounting and shared XML/scene contracts. No real scene,
+route, config entry or backend default is activated. Signature tests use an invented C0 common
+coverage/privacy context; raw Lens artifacts, C1 contexts and unresolved coverage scores are rejected.
+Finding/identity schema adapters remain reserved and produce explicit unavailable output.
+
+Windows Node 22.13.0 typecheck, lint and 150 SVG tests passed during focused qualification. Independent
+review reproduced and corrected hidden-caption, invalid XML whitespace and animated-clone counter
+defects. A planted Math.random failed the real lint command and was removed. Full local qualification
+is coordinated separately; no browser pixel, GitHub raw/Camo, Firefox/WebKit or producer compatibility
+claim is implied by this structural engine/harness checkpoint. The public demonstration remains unchanged.
+
 ## Clean resume commands (from checkout root)
 
 ```powershell

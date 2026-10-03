@@ -6,9 +6,26 @@
  */
 
 export { canonicalJson, seededRandom, stableHash } from "./seed.js";
+export {
+  registerScene, getScene, listScenes, renderScene, renderSceneDefinition, sceneUnavailable,
+  compileSceneMotion, sceneElementId, sceneClassName, createPublicDemoLensContext, sceneLensDescription,
+} from "./scene.js";
+export type {
+  SceneInputs, RenderContext, SceneDefinition, SceneUnavailable, ScenePack, BudgetClass,
+  SceneRenderResult, PublicLensProjection, PublicDemoCoverage, ResearchFindingProjection, IdentityConfig,
+} from "./scene.js";
+export { MotionPlan } from "./motion/compiler.js";
+export { MOTION_PRIMITIVES } from "./motion/types.js";
+export type { MotionApplication, MotionParameterMap, MotionPlanOptions, MotionBinding, CompiledMotionPlan } from "./motion/types.js";
+export {
+  MOTION_BACKEND_DEFAULTS, MOTION_DEFAULTS_PROVISIONAL, MOTION_BUDGETS, MOTION_BUDGETS_PROVISIONAL,
+  INSTRUMENT_MOTION_BUDGET, MAP_MOTION_BUDGET, SCENE_MOTION_BUDGET, MOTION_BUDGET_CLASS,
+  README_MOTION_INTERVAL_MS, ENTRANCE_MIN_DELAY_MS, SUBTLE_MAX_DURATION_MS, MOTION_TIMINGS,
+} from "./motion/profile.js";
+export type { MotionProfile, MotionBackend, MotionTarget, MotionFamily, MotionBudgetClass } from "./motion/profile.js";
+import type { MotionProfile } from "./motion/profile.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
-export type MotionProfile = "none" | "subtle" | "ambient" | "cinematic";
 export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
 
 export interface MotionRenderMetadata {
