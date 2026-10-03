@@ -226,3 +226,12 @@ Existing symlink/containment and cross-theme preflight checks still apply.
 `scene-<id>.svg` entries before enabling scenes.** Merely enabling a broad wildcard
 is not a substitute for reviewing the chosen definitions. Source tests and static
 rendering are not evidence that GitHub/Camo supports a motion backend.
+
+Scene delivery uses `MOTION_BACKEND_DEFAULTS["github-readme"]` rather than
+forcing the web/CSS backend. That policy is still provisional; it is not
+browser qualification, and consumers remain responsible for the existing
+reduced-motion/none-twin delivery requirements. Validated scene artifacts
+use the engine's scene byte ceiling (currently 120 KiB); individual scene
+definitions may impose smaller budgets. Existing fixed-card and text
+limits are unchanged. Prior scene ownership entries use the same ceiling
+so a valid large scene remains eligible for cleanup when disabled.
