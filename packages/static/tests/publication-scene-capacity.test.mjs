@@ -76,8 +76,8 @@ test("largest bounded four-target records fit a 128 KiB canonical control record
   const ops = Array.from({ length: 96 }, (_, i) => replace(`${String(i).padStart(60, "a")}.svg`));
   const record = journal(ops, 4);
   record.transactionId = "t".repeat(64);
-  // Escaped quotes exercise serialization expansion while paths retain their existing schema.
-  record.targets.forEach((target, i) => { target.outputDir = '"'.repeat(239) + i; });
+  // Six-byte JSON escapes exercise maximum per-code-unit expansion under the existing path schema.
+  record.targets.forEach((target, i) => { target.outputDir = '\u0001'.repeat(239) + i; });
   const encoded = encodePublicationJournal(record);
   assert.ok(encoded.length > 64 * 1024 && encoded.length < MAX_PUBLICATION_JOURNAL_BYTES);
   assert.deepEqual(decodePublicationJournal(encoded), record);
