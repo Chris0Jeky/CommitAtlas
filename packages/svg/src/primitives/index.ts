@@ -15,8 +15,10 @@ export interface MetricOptions extends PrimitivePosition {
 }
 export interface BadgeOptions extends PrimitivePosition { readonly label: string; readonly width?: number }
 export type CoverageState =
-  | { readonly state: "complete" | "partial"; readonly observed: number; readonly total: number }
-  | { readonly state: "unavailable" | "not-observed" };
+  | { readonly state: "complete"; readonly observed: number; readonly total: number }
+  | { readonly state: "partial"; readonly observed: number; readonly total: number }
+  | { readonly state: "unavailable" }
+  | { readonly state: "not-observed" };
 export interface CoverageOptions extends PrimitivePosition { readonly width?: number }
 
 const SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
