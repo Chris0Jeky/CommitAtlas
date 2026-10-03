@@ -1,0 +1,26 @@
+name: Temporary scene policy proof
+on:
+  push:
+    branches: [feat/static-scene-delivery]
+permissions:
+  contents: read
+jobs:
+  proof:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/static-scene-delivery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Reproduce the two review findings without changing implementation
+        run: |
+          cat .scene-policy-tests.inc >> packages/static/tests/scenes.test.mjs
+          npm --prefix packages/static run build
+          node --test --test-name-pattern='scene delivery' packages/static/tests/scenes.test.mjs
