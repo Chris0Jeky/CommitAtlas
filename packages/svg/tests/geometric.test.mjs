@@ -188,3 +188,13 @@ test("dense geometry respects small, fractional, large and clamped viewport boun
     }
   }
 });
+
+test("a single positive terrain sample has a visible bounded mark without a peak label", () => {
+  for (const theme of Object.keys(themes)) {
+    const fragment = render("terrain", { series: [5], width: 160, height: 96 }, { ...ctx, theme });
+    assertBounds(fragment, 160, 96);
+    const marks = document(fragment).nodes.filter(node => node.name === "circle" && Number(node.attrs.r) > 0);
+    assert.equal(marks.length, 1, "valid single-sample activity must not disappear into move-only paths");
+    assert.doesNotMatch(fragment, /UNAVAILABLE|NO OBSERVED ACTIVITY/u);
+  }
+});
