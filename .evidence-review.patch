@@ -1,0 +1,30 @@
+diff --git a/packages/svg/package.json b/packages/svg/package.json
+index a72bcfa..d292ce5 100644
+--- a/packages/svg/package.json
++++ b/packages/svg/package.json
+@@ -34,7 +34,7 @@
+     "clean": "node ../../scripts/clean-package-dist.mjs",
+     "prebuild": "npm --prefix ../github run build",
+     "build": "node ../../scripts/build-package.mjs",
+-    "test": "npm run build && node --test tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs tests/field.test.mjs tests/evidence-coverage.test.mjs",
++    "test": "npm run build && node --test tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs tests/field.test.mjs tests/evidence-coverage.test.mjs tests/evidence-percentage.test.mjs",
+     "prepack": "npm run build",
+     "pack:dry-run": "npm pack --dry-run"
+   },
+diff --git a/packages/svg/src/scenes/evidence-coverage.ts b/packages/svg/src/scenes/evidence-coverage.ts
+index 5dad4a5..2d7ca15 100644
+--- a/packages/svg/src/scenes/evidence-coverage.ts
++++ b/packages/svg/src/scenes/evidence-coverage.ts
+@@ -71,7 +71,11 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
+   const mixValid = mix && mix.every(value => basis === 'public-profile-percentages'
+     ? typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
+     : count(value, Number.MAX_SAFE_INTEGER));
+-  if (sourceKnown && current(contributionMode) && mixValid && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
++  const mixTotal = mix?.reduce((sum, value) => sum + value, 0);
++  // Match the public parser/core rounding tolerance and its explicit zero-activity form.
++  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 ||
++    typeof mixTotal === 'number' && mixTotal >= 99 && mixTotal <= 101;
++  if (sourceKnown && current(contributionMode) && mixValid && mixConsistent && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
+     rows[1] = { id: 'mix', label: 'ACTIVITY MIX',
+       detail: basis === 'public-profile-percentages' ? 'ANNUAL PERCENTAGES · NOT WINDOW-SCOPED' : 'EXACT COUNTS · WINDOW-SCOPED',
+       coverage: { state: 'complete', observed: 4, total: 4 } };
