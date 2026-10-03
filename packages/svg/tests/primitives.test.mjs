@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { escapeXml, themes } from "../dist/index.js";
-import { parseSceneXml, validateSceneSvg } from "../dist/scene-svg.js";
+import { parseSceneXml, sceneXmlText, validateSceneSvg } from "../dist/scene-svg.js";
 import { SCENE_INJECTION } from "./scene-harness.mjs";
 
 const primitives = await import("../dist/primitives/index.js").catch(error => {
@@ -162,4 +162,31 @@ test("family stamps, stale slots and survey defaults remain deterministic and bo
 test("short automatic-width badges retain their full visible label", () => {
   const label = "Coverage, not a score";
   assert.match(primitives.badge(context, { label }), />Coverage, not a score<\/text>/u);
+});
+
+
+test("minimum-width titles and readings budget wide glyphs conservatively", () => {
+  for (const label of ["W".repeat(80), "界".repeat(80), "😀".repeat(80)]) {
+    const framed = document(primitives.frame(context, { title: label, ref: "01", family: "scene", width: 320 }));
+    const title = framed.nodes.find(node => node.name === "text" && node.attrs["font-size"] === "22");
+    assert.ok([...sceneXmlText(title)].length * 22 <= 280, "wide title must fit the available width");
+    const reading = document(primitives.metric(context, { label: "Wide reading", value: label, width: 120 }));
+    const value = reading.nodes.find(node => node.name === "text" && node.attrs["font-size"] === "26");
+    assert.ok([...sceneXmlText(value)].length * 26 <= 120, "wide reading must fit the available width");
+  }
+});
+
+test("wide glyph badges preserve full accessible text within their visible budget", () => {
+  for (const label of ["W".repeat(80), "M".repeat(80), "界".repeat(80), "😀".repeat(80)]) {
+    const fragment = primitives.badge(context, { label, width: 140 });
+    const parsed = document(fragment);
+    const visible = parsed.nodes.find(node => node.name === "text");
+    assert.ok([...sceneXmlText(visible)].length * 11 <= 116);
+    assert.ok(fragment.includes(escapeXml(label)), "full label remains accessible");
+  }
+});
+
+test("the narrowest unavailable metric retains its complete literal status", () => {
+  const parsed = document(primitives.metric(context, { label: "Commits", value: null, width: 120 }));
+  assert.ok(parsed.nodes.some(node => node.name === "text" && sceneXmlText(node) === "UNAVAILABLE"));
 });
