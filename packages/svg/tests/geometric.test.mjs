@@ -27,7 +27,7 @@ function assertBounds(fragment, width, height) {
     }
     if (a.d) {
       // The geometry vocabulary deliberately emits only absolute M/L coordinate pairs and Z.
-      assert.match(a.d, /^[MLZ0-9., \-]+$/u);
+      assert.match(a.d, /^[MLZ0-9., -]+$/u);
       const values = a.d.match(/-?\d+(?:\.\d+)?/gu).map(Number);
       assert.equal(values.length % 2, 0);
       for (let i = 0; i < values.length; i += 2) assert.ok(values[i] >= 0 && values[i] <= width && values[i + 1] >= 0 && values[i + 1] <= height, a.d);
