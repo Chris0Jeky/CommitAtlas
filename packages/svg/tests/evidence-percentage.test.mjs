@@ -50,3 +50,21 @@ test('exact counts are not subject to a percentage total', () => {
   assert.equal(row.detail, 'EXACT COUNTS · WINDOW-SCOPED');
   assert.deepEqual(row.coverage, { state: 'complete', observed: 4, total: 4 });
 });
+
+test('zero percentages require an observed zero total and zero calendar, not contradictory activity', () => {
+  const scene = getScene('evidence-coverage');
+  for (const [total, days] of [
+    [1, [{ date: '2026-01-07', count: 0 }]],
+    [0, [{ date: '2026-01-07', count: 1 }]],
+    [null, [{ date: '2026-01-07', count: 0 }]],
+    [0, []], [0, null], [0, [{}]], [0, [{ count: null }]],
+  ]) {
+    const inputs = inputsFor([0, 0, 0, 0]);
+    Object.assign(inputs.snapshot.contributions, { totalContributions: total, days });
+    const row = scene.buildModel(inputs).rows.find(item => item.id === 'mix');
+    assert.equal(row.coverage.state, 'unavailable', JSON.stringify({ total, days }));
+    const rendered = renderSceneDefinition(scene, inputs, { ...sceneContext, motion: 'ambient', backend: 'smil' });
+    const node = assertWellFormedXml(rendered.svg).nodes.find(item => item.attrs.id?.endsWith('-row-mix'));
+    assert.doesNotMatch(node.raw, /COMPLETE|4\/4|<animate|-target-scan/u);
+  }
+});
