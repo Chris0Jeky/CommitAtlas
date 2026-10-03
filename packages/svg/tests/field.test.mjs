@@ -143,7 +143,7 @@ test("duplicate keys, forged recipes, wrong themes and conflicting extra applica
 });
 
 test("path grammar, coordinate, key, seed and ink boundaries fail before markup", () => {
-  for (const d of ["", "M0 0", "M0 0LNaN 1", "M0 0L1e999 1", "M-1 0L1 1", "M0 0L321 1", "m0 0l1 1", 'M0 0L1 1\"/><script/>', "M0 0C1 1 2 2 3 3", "M0 0L1 1Z"]) {
+  for (const d of ["", "M0 0", "M0 0LNaN 1", "M0 0L1e999 1", "M-1 0L1 1", "M0 0L321 1", "m0 0l1 1", 'M0 0L1 1"/><script/>', "M0 0C1 1 2 2 3 3", "M0 0L1 1Z"]) {
     assert.throws(() => fields.plotterPath(context, { key: "trace", d }), /path/u, d);
   }
   assert.throws(() => fields.particleField(context, { key: 'x"', count: 1 }), /key/u);

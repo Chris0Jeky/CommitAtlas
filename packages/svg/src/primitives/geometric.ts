@@ -97,6 +97,10 @@ export function terrain(context: PrimitiveContext, options: TerrainOptions): str
       : points.map(([x, y]) => [x, bounds.height - 40 - (bounds.height - 40 - y) * scale]);
     output += `<path d="${path(contour)}" fill="none" stroke="${zero ? theme.muted : theme.density[i]}"/>`;
   }
+  if (!zero && points.length === 1 && peaks.length === 0) {
+    const [x, y] = points[0]!;
+    output += circle(x, y, 3, theme.chrome, true);
+  }
   if (zero) output += svgText(8, bounds.height - 20, "NO OBSERVED ACTIVITY IN WINDOW", theme.muted, bounds.width - 16, 9);
   for (const peak of peaks) {
     const [x, y] = points[peak.index]!;
