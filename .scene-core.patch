@@ -1,0 +1,296 @@
+diff --git a/action.yml b/action.yml
+index feed1d3..e87a1ae 100644
+--- a/action.yml
++++ b/action.yml
+@@ -26,6 +26,8 @@ inputs:
+     required: false
+ 
+ outputs:
++  scenes:
++    description: JSON array of generated scene paths across the primary and paired themes, relative to the repository root.
+   manifest:
+     description: Repository-relative path to the generated manifest.
+   atlas:
+diff --git a/action/action.test.mjs b/action/action.test.mjs
+index 5382a2d..87bcdee 100644
+--- a/action/action.test.mjs
++++ b/action/action.test.mjs
+@@ -9,7 +9,7 @@ test("action keeps delivery credentials optional and exposes generated evidence
+   assert.match(metadata, /github-token:\r?\n[\s\S]*?required: false/);
+   assert.match(metadata, /dry-run:/);
+   for (const output of [
+-    "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
++    "scenes", "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
+     "rhythm", "languages", "projects", "cadence", "releases", "delivery", "delivery-json",
+     "projects-json", "projects-markdown",
+   ]) {
+@@ -25,3 +25,10 @@ test("checked bundle contains delivery generation but no source map or token sen
+   assert.match(bundle, /github-token/);
+   assert.doesNotMatch(bundle, /must-not-leave-process|sourceMappingURL=/);
+ });
++
++test("Action reports the aggregate scene output from generated results", async () => {
++  const source = await readFile(new URL("./src/index.ts", import.meta.url), "utf8");
++  assert.match(source, /core\.setOutput\("scenes", JSON\.stringify\(generatedScenePaths\(result\)\)\)/);
++  const bundle = await readFile(new URL("./dist/index.js", import.meta.url), "utf8");
++  assert.match(bundle, /setOutput\)\("scenes"|setOutput\("scenes"/);
++});
+diff --git a/action/src/index.ts b/action/src/index.ts
+index bd85b84..4cdc0cd 100644
+--- a/action/src/index.ts
++++ b/action/src/index.ts
+@@ -1,6 +1,6 @@
+ import path from "node:path";
+ import * as core from "@actions/core";
+-import { generateStatic } from "@commit-atlas/static";
++import { generateStatic, generatedScenePaths } from "@commit-atlas/static";
+ 
+ async function run(): Promise<void> {
+   const root = process.env.GITHUB_WORKSPACE;
+@@ -21,6 +21,7 @@ async function run(): Promise<void> {
+ 
+   const outputRoot = relative(root, result.outputDir);
+   core.setOutput("manifest", `${outputRoot}/manifest.json`);
++  core.setOutput("scenes", JSON.stringify(generatedScenePaths(result)));
+   const generated = new Set(result.manifest.artifacts.map((artifact) => artifact.path));
+   for (const [output, artifact] of [
+     ["atlas", "atlas.svg"],
+diff --git a/packages/static/src/config.ts b/packages/static/src/config.ts
+index b6cd274..545adf0 100644
+--- a/packages/static/src/config.ts
++++ b/packages/static/src/config.ts
+@@ -7,7 +7,8 @@ import {
+   parseManifest,
+   type ProjectManifest,
+ } from "@commit-atlas/core";
+-import type { MotionProfile } from "@commit-atlas/svg";
++import type { IdentityConfig, MotionProfile, ScenePack } from "@commit-atlas/svg";
++import { MAX_STATIC_SCENES, STATIC_SCENE_PACKS, staticSceneOptions } from "./scene-config.js";
+ import { z } from "zod";
+ 
+ export const STATIC_CARD_NAMES = [
+@@ -51,6 +52,9 @@ const RawStaticConfigSchema = z.object({
+   outputDir: RelativePathSchema,
+   cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...DEFAULT_STATIC_CARD_NAMES]),
+   projects: z.array(z.unknown()).min(1).max(6),
++  scenes: z.array(z.string().max(48)).max(MAX_STATIC_SCENES).default([]),
++  scenePack: z.enum(STATIC_SCENE_PACKS).default("survey"),
++  identity: z.unknown().optional(),
+ }).strict();
+ 
+ export interface StaticConfig {
+@@ -65,6 +69,9 @@ export interface StaticConfig {
+   readonly outputDir: string;
+   readonly cards: readonly StaticCardName[];
+   readonly projects: ProjectManifest["projects"];
++  readonly scenes?: readonly string[];
++  readonly scenePack?: ScenePack;
++  readonly identity?: Pick<IdentityConfig, "name" | "tagline"> & { readonly focus?: readonly string[] };
+ }
+ 
+ export interface StaticThemeVariant {
+@@ -80,6 +87,7 @@ export interface LoadedStaticConfig {
+ 
+ export function parseStaticConfig(input: unknown): StaticConfig {
+   const raw = RawStaticConfigSchema.parse(input);
++  const sceneOptions = staticSceneOptions(raw);
+   const cards = [...new Set(raw.cards)];
+   if (cards.length !== raw.cards.length) throw new Error("cards must not contain duplicates");
+   if (raw.responsiveAtlas && !cards.includes("atlas")) {
+@@ -118,6 +126,9 @@ export function parseStaticConfig(input: unknown): StaticConfig {
+     outputDir,
+     cards,
+     projects: manifest.projects,
++    scenes: sceneOptions.definitions.map(({ id }) => id),
++    scenePack: sceneOptions.pack,
++    ...(sceneOptions.identity ? { identity: sceneOptions.identity } : {}),
+   };
+ }
+ 
+diff --git a/packages/static/src/generate.ts b/packages/static/src/generate.ts
+index 216925a..ea6472e 100644
+--- a/packages/static/src/generate.ts
++++ b/packages/static/src/generate.ts
+@@ -19,6 +19,7 @@ import {
+ import { renderDeliveryCard, renderDeliveryEvidence } from "./delivery.js";
+ import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
+ import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
++import { isSceneArtifactName } from "./scene-config.js";
+ 
+ const MAX_ARTIFACT_BYTES = 96 * 1024;
+ const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
+@@ -177,6 +178,23 @@ export async function generateStaticFromSnapshot(options: {
+   };
+ }
+ 
++/** Repository-relative paths for primary and variant scene outputs, also available during dry-run. */
++export function generatedScenePaths(result: GenerateStaticResult): readonly string[] {
++  const paths: string[] = [];
++  for (const target of [result, ...result.variants]) {
++    for (const artifact of target.manifest.artifacts) {
++      if (!isSceneArtifactName(artifact.path)) continue;
++      const relative = path.relative(result.root, path.join(target.outputDir, artifact.path)).replaceAll("\\", "/");
++      if (!relative || relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) {
++        throw new Error("scene output escaped the repository");
++      }
++      if (paths.includes(relative)) throw new Error("duplicate scene output path");
++      paths.push(relative);
++    }
++  }
++  return Object.freeze(paths);
++}
++
+ function validateDeliverySnapshot(
+   config: StaticConfig,
+   snapshot: PortfolioSnapshot,
+@@ -344,7 +362,10 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
+ 
+   const owned = await previouslyWritten(target.outputDir);
+   const current = new Set(target.payloads.map(({ name }) => name));
+-  const stale = MANAGED_ARTIFACT_NAMES.filter((name) => !current.has(name) && owned.has(name));
++  const candidates = new Set<string>([
++    ...MANAGED_ARTIFACT_NAMES, ...[...owned].filter(isSceneArtifactName),
++  ]);
++  const stale = [...candidates].filter((name) => !current.has(name) && owned.has(name));
+   const staged: StagedFile[] = [];
+   try {
+     for (const payload of target.payloads) staged.push(await stage(target.outputDir, payload));
+@@ -434,7 +455,7 @@ async function stage(
+  * Anything unreadable, non-CommitAtlas, or malformed yields
+  * an empty set, so cleanup does nothing rather than guessing — deleting a caller's file is the worse
+  * failure than leaving a stale artifact behind. Callers intersect the result with
+- * `MANAGED_ARTIFACT_NAMES`, so a tampered manifest cannot direct a delete at an arbitrary path.
++ * the fixed managed names or canonical, integrity-bearing scene names, never arbitrary paths.
+  */
+ async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>> {
+   let parsed: unknown;
+@@ -443,13 +464,20 @@ async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>
+   } catch {
+     return new Set();
+   }
+-  if (typeof parsed !== "object" || parsed === null) return new Set();
++  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return new Set();
+   const record = parsed as Partial<StaticManifest>;
+   if (record.version !== 1 || record.generator !== "CommitAtlas" || !Array.isArray(record.artifacts)) return new Set();
+   const names = new Set<string>();
+   for (const artifact of record.artifacts) {
+     const artifactPath: unknown = (artifact as { path?: unknown } | null)?.path;
+-    if (typeof artifactPath === "string") names.add(artifactPath);
++    if (typeof artifactPath !== "string") continue;
++    // Dynamic scene names require a complete integrity-bearing ownership entry. Existing fixed
++    // card ownership records retain their historical compatibility. Never infer ownership by glob.
++    if (isSceneArtifactName(artifactPath)) {
++      if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > MAX_ARTIFACT_BYTES ||
++        typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;
++    }
++    names.add(artifactPath);
+   }
+   return names;
+ }
+diff --git a/packages/static/src/render.ts b/packages/static/src/render.ts
+index 2f8ebf4..e9529d5 100644
+--- a/packages/static/src/render.ts
++++ b/packages/static/src/render.ts
+@@ -8,6 +8,7 @@ import type {
+   ProjectSnapshot,
+ } from "@commit-atlas/github";
+ import {
++  renderSceneDefinition,
+   renderActivityCard,
+   renderAtlasCard,
+   renderCadenceCard,
+@@ -24,8 +25,9 @@ import {
+   type ProjectSignal,
+ } from "@commit-atlas/svg";
+ import type { StaticCardName, StaticConfig } from "./config.js";
++import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
+ 
+-export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg";
++export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg" | SceneArtifactName;
+ export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
+ 
+ function toCardSource(freshness: Freshness): CardSource {
+@@ -84,6 +86,7 @@ export function assembleStaticPortfolio(
+ }
+ 
+ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: StaticConfig): StaticSvgArtifacts {
++  const scenes = staticSceneOptions(config);
+   const selected = new Set(config.cards);
+   const width = config.layout === "compact" ? 480 : 720;
+   const dashboardWidth = config.layout === "compact" ? 480 : 860;
+@@ -195,6 +198,15 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
+       projectsUnavailable: projectStates.length - projectsWithReleaseEvidence.length,
+     }, { ...common, width });
+   }
++  for (const definition of scenes.definitions) {
++    const rendered = renderSceneDefinition(definition, {
++      snapshot, ...(scenes.identity ? { identity: scenes.identity } : {}),
++    }, {
++      theme: config.theme, pack: scenes.pack, motion: config.motion, backend: "css",
++      layout: config.layout, instanceNamespace: "static", seed: "",
++    });
++    artifacts[sceneArtifactName(definition.id)] = rendered.svg;
++  }
+   return artifacts;
+ }
+ 
+diff --git a/packages/svg/src/index.ts b/packages/svg/src/index.ts
+index 1ec8185..d6124a1 100644
+--- a/packages/svg/src/index.ts
++++ b/packages/svg/src/index.ts
+@@ -6,6 +6,7 @@
+  */
+ 
+ export { canonicalJson, seededRandom, stableHash } from "./seed.js";
++export { createIdentityConfig } from "./identity.js";
+ export {
+   registerScene, getScene, listScenes, renderScene, renderSceneDefinition, sceneUnavailable,
+   compileSceneMotion, sceneElementId, sceneClassName, createPublicDemoLensContext, sceneLensDescription,
+diff --git a/packages/svg/src/scene.ts b/packages/svg/src/scene.ts
+index 2e4b059..c5237f1 100644
+--- a/packages/svg/src/scene.ts
++++ b/packages/svg/src/scene.ts
+@@ -1,5 +1,7 @@
+ import type { PortfolioSnapshot } from "@commit-atlas/github";
+ import type { ThemeName } from "./index.js";
++import { createIdentityConfig, isIdentityConfig, type IdentityConfig } from "./identity.js";
++export type { IdentityConfig } from "./identity.js";
+ import { MotionPlan } from "./motion/compiler.js";
+ import { MOTION_BUDGETS } from "./motion/profile.js";
+ import type { MotionBackend, MotionBudgetClass, MotionProfile, MotionTarget } from "./motion/profile.js";
+@@ -11,7 +13,6 @@ export type ScenePack = "orbital" | "survey" | "spectral" | "terminal";
+ export type BudgetClass = MotionBudgetClass;
+ declare const lensBrand: unique symbol;
+ declare const findingBrand: unique symbol;
+-declare const identityBrand: unique symbol;
+ export interface PublicDemoCoverage {
+   readonly complete: number; readonly partial: number; readonly unavailable: number; readonly total: number;
+   readonly warnings: readonly string[];
+@@ -23,7 +24,6 @@ export interface PublicLensProjection {
+   readonly coverage: PublicDemoCoverage; readonly privacyNote: string;
+ }
+ export interface ResearchFindingProjection { readonly [findingBrand]: true }
+-export interface IdentityConfig { readonly [identityBrand]: true }
+ export interface SceneInputs {
+   readonly snapshot: PortfolioSnapshot;
+   readonly lens?: PublicLensProjection;
+@@ -183,12 +183,17 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
+   const data = record(inputs, ["snapshot", "lens", "findings", "identity"], "scene inputs");
+   if (!data.snapshot || typeof data.snapshot !== "object") throw new Error("scene snapshot is required");
+   let unavailableReason: string | undefined;
+-  if (data.findings !== undefined || data.identity !== undefined) unavailableReason = "Projection or identity schema adapter is unavailable.";
++  if (data.findings !== undefined) unavailableReason = "Finding projection schema adapter is unavailable.";
++  if (data.identity !== undefined && !isIdentityConfig(data.identity)) unavailableReason = "Validated static identity is unavailable.";
+   if (data.lens !== undefined && (!data.lens || typeof data.lens !== "object" || !authenticLensContexts.has(data.lens))) unavailableReason = "Validated synthetic lens context is unavailable.";
+   if (definition.family === "signature" && data.lens === undefined) unavailableReason = "Validated lens coverage and privacy context is unavailable.";
+   // Optional fields are omitted rather than allowing undefined into canonical JSON.
+   const supplied = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+-  const ownedInputs = own(supplied) as unknown as SceneInputs;
++  const copiedInputs = own(supplied) as unknown as SceneInputs;
++  const ownedInputs: SceneInputs = Object.freeze({
++    ...copiedInputs,
++    ...(!unavailableReason && copiedInputs.identity ? { identity: createIdentityConfig(copiedInputs.identity) } : {}),
++  });
+   if (!unavailableReason && ownedInputs.lens) authenticLensContexts.add(ownedInputs.lens);
+   const model = own(unavailableReason ? sceneUnavailable(unavailableReason) : definition.buildModel(ownedInputs));
+   const unavailable = !!model && typeof model === "object" && Object.hasOwn(model, "state") && (model as SceneUnavailable).state === "unavailable";

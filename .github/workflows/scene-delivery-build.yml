@@ -1,0 +1,44 @@
+name: Temporary scene delivery build
+on:
+  push:
+    branches: [feat/static-scene-delivery]
+permissions:
+  contents: write
+concurrency:
+  group: temporary-scene-delivery-build
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/static-scene-delivery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Apply bounded implementation patch
+        run: |
+          git apply --check --index .scene-core.patch
+          git apply --index .scene-core.patch
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Validate source and static integration
+        run: npm run typecheck && npm run lint && npm run test:static
+      - name: Rebuild and check Action bundle
+        run: npm run build:action && node --test action/action.test.mjs
+      - name: Commit only this branch's validated implementation and generated bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -- action/dist
+          git rm -- .github/workflows/scene-delivery-build.yml .scene-core.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --cached --stat
+          git commit -m 'feat(static): integrate registered scenes and rebuild the Action bundle'
+          AUTH_HEADER=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:refs/heads/feat/static-scene-delivery
