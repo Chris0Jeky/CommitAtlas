@@ -39,7 +39,13 @@ numbers and unsupported value types are rejected. A derived reading's formula,
 coverage and limitations remain the scene's responsibility.
 
 `badge` is a neutral annotation, not a health assessment. Long visible labels are
-truncated while a nested title retains their full escaped text. All supplied
+truncated while a nested title retains their full escaped text. Visible text uses
+a conservative full-em budget per code point, including the ellipsis, rather
+than assuming every system-font fallback has a narrow monospace advance.
+Automatic badges use the same budget, up to 320 pixels; explicit widths remain
+bounded to 64–640. At the narrowest metric width, the unavailable status uses a
+smaller font so the full word remains visible. This is deterministic layout
+budgeting, not runtime browser-font measurement. All supplied
 text is bounded to 160 UTF-16 code units; shared XML escaping also replaces
 characters forbidden by XML 1.0. Primitives do not fetch fonts or other resources.
 

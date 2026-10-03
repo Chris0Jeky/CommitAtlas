@@ -50,7 +50,8 @@ function text(x: number, y: number, value: string, ink: string, size = 11, mono 
   return `<text x="${x}" y="${y}" fill="${ink}" font-family="${mono ? MONO : SANS}" font-size="${size}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
 }
 function clipped(value: string, width: number, size: number): string {
-  return truncateText(value, Math.max(1, Math.floor(width / (size * 0.65))));
+  // A full em per code point remains conservative when system-font fallback widens glyphs.
+  return truncateText(value, Math.max(1, Math.floor(width / size)));
 }
 
 /** An opaque corner-cut plate, family stamp, reference, and optional frozen stale strip. */
@@ -87,9 +88,10 @@ export function metric(context: PrimitiveContext, options: MetricOptions): strin
   else throw new Error("invalid metric value");
   const unit = options.unit === undefined ? "" : boundedText(options.unit);
   const description = `${label}: ${value}${unit && options.value !== null ? ` ${unit}` : ""}`;
+  const readingSize = options.value === null ? Math.min(14, Math.floor(width / value.length)) : 26;
   let output = `<g transform="${position(options)}"><title>${escapeXml(description)}</title>`;
   output += text(0, 12, clipped(label, width, 11), theme.muted);
-  output += text(0, 42, clipped(value, width, options.value === null ? 14 : 26), options.value === null ? theme.muted : theme.text, options.value === null ? 14 : 26, false);
+  output += text(0, 42, clipped(value, width, readingSize), options.value === null ? theme.muted : theme.text, readingSize, false);
   if (unit && options.value !== null) output += text(0, 62, clipped(unit, width, 10), theme.muted, 10);
   return `${output}</g>`;
 }
@@ -97,7 +99,7 @@ export function metric(context: PrimitiveContext, options: MetricOptions): strin
 /** Neutral annotation. It carries no health meaning or caller-supplied colour. */
 export function badge(context: PrimitiveContext, options: BadgeOptions): string {
   const theme = palette(context), label = boundedText(options.label);
-  const width = number(options.width ?? Math.min(240, Math.max(64, label.length * 8 + 24)), 64, 640, "dimension");
+  const width = number(options.width ?? Math.min(320, Math.max(64, [...label.trim()].length * 11 + 24)), 64, 640, "dimension");
   return `<g transform="${position(options)}"><title>${escapeXml(label)}</title>` +
     `<rect x="0" y="0" width="${width}" height="26" rx="3" fill="none" stroke="${theme.muted}"/>` +
     text(12, 17, clipped(label, width - 24, 11), theme.muted) + "</g>";
