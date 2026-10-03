@@ -59,7 +59,7 @@
     "pack:svg": "npm --prefix packages/svg run pack:dry-run",
     "pack:static": "npm --prefix packages/static run pack:dry-run",
     "test:packaging": "node --test tests/package-packaging.test.mjs",
-    "test:action": "npm run build:action && node --test action/action.test.mjs && git diff --exit-code -- action/dist",
+    "test:action": "npm run build:action && node --test action/action.test.mjs action/evidence-output.test.mjs && git diff --exit-code -- action/dist",
     "test:deploy-tooling": "node --test tests/deployed-origin.test.mjs tests/deployment-verification.test.mjs",
     "test:motion-probes": "node --test tests/motion-probes.test.mjs tests/motion-probes-hosted-response.test.mjs tests/motion-ledger-integrity.test.mjs tests/motion-probes-direct-report.test.mjs",
     "test:observatory": "node observatory/check.mjs && tsx --test lib/observatory-route.test.ts lib/pulseboard.test.ts",

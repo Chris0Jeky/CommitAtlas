@@ -165,9 +165,15 @@ otherwise. Partial bytes/percentage mixtures are rejected because their basis is
 
 ## Scene contract and registry
 
-The additive scene API implements EXPANSION_PLAN §6. No real scene is registered by importing
-the package; the `example` composition lives only in tests. Existing cards, routes, config,
-renderer metadata, and backend defaults keep their current behavior.
+The additive scene API implements EXPANSION_PLAN §6. The lazy built-in registry includes
+`evidence-coverage`; the `example` composition lives only in tests. Existing card defaults,
+routes, renderer metadata, and backend policies keep their current behavior. See
+[the evidence coverage guide](../../docs/EVIDENCE_COVERAGE_SCENE.md) for its opt-in contract.
+
+`SceneDefinition.renderUnavailable` is optional. It receives the validated unavailable record,
+context and engine-owned accessible text, not unchecked source inputs. Final naming, markup,
+visible UNAVAILABLE and budget checks still apply, and no motion can be requested. Definitions
+without this callback retain the generic fallback.
 
 `SceneInputs`, `RenderContext`, and `SceneDefinition<Model>` retain the documented interfaces.
 `ScenePack` is `orbital | survey | spectral | terminal`; `BudgetClass` names the compiler's three

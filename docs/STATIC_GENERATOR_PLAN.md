@@ -177,8 +177,9 @@ Static config v1 accepts additive `scenes`, `scenePack`, and `identity` fields. 
 defaults to `survey`; the other recognized packs are `orbital`, `spectral`, and
 `terminal`, but a selected definition must actually support the chosen pack and
 motion profile. There are at most 32 selected, unique, registered scene IDs.
-The production registry is intentionally empty until scene-specific changes land;
-this integration does not publish a synthetic example as a real scene.
+The first production definition is `evidence-coverage` (survey, none/subtle/ambient).
+It is opt-in; the integration example remains test-only. See
+[EVIDENCE_COVERAGE_SCENE.md](EVIDENCE_COVERAGE_SCENE.md) for its exact source mapping.
 
 ```json
 {

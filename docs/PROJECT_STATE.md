@@ -12,6 +12,17 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+### Source-only scene foundation (2026-10-03)
+
+PRs #295–#298 added geometric/field primitives, static scene delivery and pure recovery
+record hardening. The #133 implementation adds opt-in `evidence-coverage`, including
+paired static/Action output, explicit provenance/coverage and neutral unavailable rows.
+See [EVIDENCE_COVERAGE_SCENE.md](EVIDENCE_COVERAGE_SCENE.md) for its contract. The
+release/deployment checkpoint below is historical and is not updated by these source
+changes. #186 remains browser-evidence gated; #256 still requires production recovery
+policy, storage and platform interruption work. No P1 completion or profile adoption
+is claimed.
+
 ### Delivery producer maintenance (2026-09-25, PR #227)
 
 The draft producer supports scoped public PR-flow JSON/SVG and paired manifests, with
