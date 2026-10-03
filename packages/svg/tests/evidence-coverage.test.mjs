@@ -101,6 +101,7 @@ test('only current observation rows receive scan targets; policy and stale rows 
 test('zero contributions and observed release absence are not missing data', () => {
   const inputs = coverageInputs();
   Object.assign(inputs.snapshot.contributions, { breakdownBasis: 'exact-counts', commits: 0, issues: 0, pullRequests: 0, reviews: 0, totalContributions: 0 });
+  inputs.snapshot.contributions.freshness.source = 'github-graphql';
   inputs.snapshot.contributions.days.forEach(day => { day.count = 0; });
   inputs.snapshot.projects.projects.forEach(project => { project.releaseState = 'none'; project.release = null; });
   assert.equal(row('calendar', inputs).coverage.state, 'complete');
@@ -261,4 +262,32 @@ test('valid bounded release records and confirmed absence remain observations', 
   assert.deepEqual(row('releases', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
   assert.equal(row('releases', inputs).detail, '3 PUBLISHED · 3 NONE');
   assertWellFormedXml(render(inputs).svg);
+});
+
+test('contribution observations require a producer-compatible source and breakdown basis', () => {
+  for (const source of ['github-rest', 'github-graphql', 'github-profile-html', 'synthetic-demo']) {
+    for (const breakdownBasis of ['exact-counts', 'public-profile-percentages']) {
+      const inputs = coverageInputs();
+      Object.assign(inputs.snapshot.contributions, { breakdownBasis });
+      inputs.snapshot.contributions.freshness.source = source;
+      const accepted = source === 'github-profile-html' ? breakdownBasis === 'public-profile-percentages'
+        : source !== 'github-rest' && breakdownBasis === 'exact-counts';
+      for (const id of ['calendar', 'mix']) {
+        assert.equal(row(id, inputs).coverage.state, accepted ? 'complete' : 'unavailable', `${source}/${breakdownBasis}/${id}`);
+      }
+      assertWellFormedXml(render(inputs).svg);
+    }
+  }
+});
+
+test('project evidence requires a REST or synthetic board, not a contribution-only source', () => {
+  for (const source of ['github-rest', 'github-graphql', 'github-profile-html', 'synthetic-demo']) {
+    const inputs = coverageInputs(); inputs.snapshot.projects.freshness.source = source;
+    const accepted = source === 'github-rest' || source === 'synthetic-demo';
+    for (const id of ['ci', 'releases']) {
+      assert.equal(row(id, inputs).coverage.state, accepted ? 'partial' : 'unavailable', `${source}/${id}`);
+    }
+    assert.equal(row('calendar', inputs).coverage.state, 'complete', 'independent contribution source survives');
+    assertWellFormedXml(render(inputs).svg);
+  }
 });

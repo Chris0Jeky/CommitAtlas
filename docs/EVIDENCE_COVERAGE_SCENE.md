@@ -30,6 +30,10 @@ no artifacts. Existing standalone card selections are unchanged.
 | Snapshot | `freshness.mode` | A neutral literal mode badge, not a manufactured completeness fraction. |
 
 The root snapshot must name a known source before any row can be authorized.
+Contribution rows require the producer's exact source/basis combination: profile
+HTML with annual percentages, or GraphQL/synthetic demo with exact counts.
+REST is not a contribution producer. Project boards require REST or synthetic
+demo provenance; contribution-only sources cannot authorize project observations.
 Annual percentages must total 99–101, matching producer rounding; the all-zero
 exception requires both an observed zero contribution total and a nonempty zero
 calendar. Exact counts are not percentage-normalized. Published releases require

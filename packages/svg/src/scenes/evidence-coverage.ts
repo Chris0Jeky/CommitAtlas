@@ -79,7 +79,9 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
   const contributions = snapshot.contributions;
   const contributionMode = overall === 'stale' ? 'stale' : mode(contributions?.freshness?.mode);
   const source = contributions?.freshness?.source;
-  const sourceKnown = knownSource(source);
+  const basis = contributions?.breakdownBasis;
+  const sourceKnown = source === 'github-profile-html' && basis === 'public-profile-percentages' ||
+    (source === 'github-graphql' || source === 'synthetic-demo') && basis === 'exact-counts';
   const window = snapshot.metrics?.window;
   const windowValid = window && count(window.days, 366) && window.days > 0 && count(window.observedDays, window.days) &&
     typeof window.complete === 'boolean' && window.complete === (window.observedDays === window.days);
@@ -89,7 +91,6 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
       ? `${window.observedDays} OF ${window.days} DAYS OBSERVED` : `${contributionMode.toUpperCase()} · CURRENT WINDOW UNVERIFIED`,
     coverage: sourceKnown && windowValid && calendarCurrent ? fraction(window.observedDays, window.days) : NO_SIGNAL };
   const mix = contributions && [contributions.commits, contributions.issues, contributions.pullRequests, contributions.reviews];
-  const basis = contributions?.breakdownBasis;
   const mixValid = mix && mix.every(value => basis === 'public-profile-percentages'
     ? typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
     : count(value, Number.MAX_SAFE_INTEGER));
@@ -105,7 +106,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
 
   const board = snapshot.projects;
   const boardMode = overall === 'stale' ? 'stale' : mode(board?.freshness?.mode);
-  const boardSourceKnown = knownSource(board?.freshness?.source);
+  const boardSourceKnown = board?.freshness?.source === 'github-rest' || board?.freshness?.source === 'synthetic-demo';
   if (board === null || Array.isArray(board?.projects) && board.projects.length === 0) {
     rows[2] = { id: 'ci', label: 'CI', detail: 'NOT CONFIGURED', coverage: NOT_OBSERVED };
     rows[3] = { id: 'releases', label: 'RELEASES', detail: 'NOT REQUESTED', coverage: NOT_OBSERVED };
