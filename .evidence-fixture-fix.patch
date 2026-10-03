@@ -1,0 +1,26 @@
+diff --git a/action/evidence-network.fixture.mjs b/action/evidence-network.fixture.mjs
+index 458f35d..3e262ab 100644
+--- a/action/evidence-network.fixture.mjs
++++ b/action/evidence-network.fixture.mjs
+@@ -5,7 +5,7 @@ for (let i = 0; i < 365; i++) {
+   const day = new Date(Date.UTC(2026, 0, i + 1)).toISOString().slice(0, 10);
+   cells.push(`<td data-date="${day}" data-level="0"></td><tool-tip>No contributions on ${day}.</tool-tip>`);
+ }
+-const html = `<div data-percentages="{&quot;Commits&quot;:0,&quot;Pull requests&quot;:0,&quot;Issues&quot;:0,&quot;Code review&quot;:0}">${cells.join('')}</div>`;
++const html = `<div>${cells.join('')}</div>`;
+ globalThis.fetch = async (input, init) => {
+   const url = new URL(input instanceof Request ? input.url : String(input));
+   if (new Headers(init?.headers).has('authorization')) throw new Error('Synthetic Action must not receive a credential');
+diff --git a/action/evidence-output.test.mjs b/action/evidence-output.test.mjs
+index f36abac..8fd2964 100644
+--- a/action/evidence-output.test.mjs
++++ b/action/evidence-output.test.mjs
+@@ -17,7 +17,7 @@ test('executed Action bundle retains built-in registration and reports paired sc
+         version: 1, user: 'scene-demo', days: 7, theme: 'ember', motion: 'none',
+         outputDir: 'assets/commitatlas', cards: ['profile'], scenes: ['evidence-coverage'],
+         themes: [{ theme: 'paper', outputDir: 'assets/commitatlas/light' }],
+-        projects: [{ repo: 'scene-demo/atlas', lifecycle: 'active' }],
++        projects: [{ repo: 'scene-demo/atlas', label: 'Synthetic Atlas', lifecycle: 'active' }],
+       }));
+       await exec('git', ['add', '.commitatlas.json'], { cwd: root, windowsHide: true });
+       const output = path.join(root, 'action-output.txt'), summary = path.join(root, 'action-summary.md');
