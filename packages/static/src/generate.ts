@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { SCENE_MOTION_BUDGET } from "@commit-atlas/svg";
 import {
   GitHubClient,
   fetchDeliverySnapshot,
@@ -274,7 +275,7 @@ function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>
     const bytes = Buffer.byteLength(body, "utf8");
     if (name.endsWith(".svg")) {
       if (!body.startsWith("<svg") || !body.endsWith("</svg>")) throw new Error(`Renderer returned an invalid ${name} artifact`);
-      if (bytes > MAX_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static artifact size limit`);
+      if (bytes > (isSceneArtifactName(name) ? SCENE_MOTION_BUDGET.bytes : MAX_ARTIFACT_BYTES)) throw new Error(`${name} exceeded the static artifact size limit`);
       if (/<script\b|<foreignObject\b|<image\b/i.test(body)) throw new Error(`${name} contains a forbidden SVG element`);
     } else {
       if (bytes > MAX_TEXT_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static text artifact size limit`);
@@ -477,7 +478,7 @@ async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>
     // Dynamic scene names require a complete integrity-bearing ownership entry. Existing fixed
     // card ownership records retain their historical compatibility. Never infer ownership by glob.
     if (isSceneArtifactName(artifactPath)) {
-      if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > MAX_ARTIFACT_BYTES ||
+      if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > SCENE_MOTION_BUDGET.bytes ||
         typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;
     }
     names.add(artifactPath);

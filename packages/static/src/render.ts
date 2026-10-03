@@ -8,7 +8,7 @@ import type {
   ProjectSnapshot,
 } from "@commit-atlas/github";
 import {
-  renderSceneDefinition,
+  renderSceneDefinition, MOTION_BACKEND_DEFAULTS,
   renderActivityCard,
   renderAtlasCard,
   renderCadenceCard,
@@ -202,7 +202,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     const rendered = renderSceneDefinition(definition, {
       snapshot, ...(scenes.identity ? { identity: scenes.identity } : {}),
     }, {
-      theme: config.theme, pack: scenes.pack, motion: config.motion, backend: "css",
+      theme: config.theme, pack: scenes.pack, motion: config.motion, backend: MOTION_BACKEND_DEFAULTS["github-readme"],
       layout: config.layout, instanceNamespace: "static", seed: "",
     });
     artifacts[sceneArtifactName(definition.id)] = rendered.svg;
