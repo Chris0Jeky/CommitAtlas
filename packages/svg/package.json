@@ -23,13 +23,18 @@
       "types": "./dist/primitives/geometric.d.ts",
       "import": "./dist/primitives/geometric.js",
       "default": "./dist/primitives/geometric.js"
+    },
+    "./primitives/field": {
+      "types": "./dist/primitives/field.d.ts",
+      "import": "./dist/primitives/field.js",
+      "default": "./dist/primitives/field.js"
     }
   },
   "scripts": {
     "clean": "node ../../scripts/clean-package-dist.mjs",
     "prebuild": "npm --prefix ../github run build",
     "build": "node ../../scripts/build-package.mjs",
-    "test": "npm run build && node --test tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs",
+    "test": "npm run build && node --test tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs tests/field.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },

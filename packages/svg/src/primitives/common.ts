@@ -51,8 +51,11 @@ export function path(points: readonly (readonly [number, number])[], close = fal
   return points.map(([x, y], i) => `${i ? "L" : "M"}${coordinate(x)} ${coordinate(y)}`).join("") + (close ? "Z" : "");
 }
 export function begin(title: string): string { return `<g><title>${escapeXml(title)}</title>`; }
+export function limitNotice(bounds: Box, theme: SvgTheme, clamped = false): string {
+  return bounds.clamped || clamped ? svgText(8, bounds.height - 6, "GEOMETRY CLAMPED", theme.muted, bounds.width - 16, 9) : "";
+}
 export function end(bounds: Box, theme: SvgTheme, clamped = false): string {
-  return (bounds.clamped || clamped ? svgText(8, bounds.height - 6, "GEOMETRY CLAMPED", theme.muted, bounds.width - 16, 9) : "") + "</g>";
+  return limitNotice(bounds, theme, clamped) + "</g>";
 }
 export function unavailable(bounds: Box, theme: SvgTheme, title: string): string {
   return begin(`${title}: unavailable`) +
