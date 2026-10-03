@@ -1,0 +1,14 @@
+--- a/packages/static/src/generate.ts
++++ b/packages/static/src/generate.ts
+@@ -262,7 +262,10 @@
+ }
+ 
+ function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>): { name: string; body: string }[] {
+-  const payloads = Object.entries(rendered).sort(([left], [right]) => left.localeCompare(right));
++  const payloads = Object.entries(rendered).map(([name, body]): [string, string] => {
++    if (typeof body !== "string") throw new Error(`Renderer returned a non-text ${name} artifact`);
++    return [name, body];
++  }).sort(([left], [right]) => left.localeCompare(right));
+   if (payloads.length === 0) throw new Error("No static cards were selected");
+   for (const [name, body] of payloads) {
+     if (!/^[a-z0-9-]+\.(svg|json|md)$/.test(name) || path.basename(name) !== name) {

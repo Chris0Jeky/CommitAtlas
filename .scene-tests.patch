@@ -1,0 +1,64 @@
+--- a/packages/static/tests/scenes.test.mjs
++++ b/packages/static/tests/scenes.test.mjs
+@@ -37,7 +37,7 @@
+ }
+ function hash(value) { return createHash("sha256").update(value).digest("hex"); }
+ 
+- test("legacy configs retain their original artifact list with scenes disabled", () => {
++test("legacy configs retain their original artifact list with scenes disabled", () => {
+   const parsed = config();
+   assert.deepEqual(parsed.scenes, []);
+   assert.equal(parsed.scenePack, "survey");
+@@ -162,3 +162,52 @@
+   assert.equal(svg.renderSceneDefinition(fixture, { snapshot, identity }, context).unavailable, false);
+   assert.equal(svg.renderSceneDefinition(fixture, { snapshot, identity: structuredClone(identity) }, context).unavailable, true);
+ });
++
++test("a later-theme scene render failure preserves all previous visible bytes", async () => temporary(async root => {
++  const previous = await staticApi.generateStaticFromSnapshot({ root, snapshot, config: config({ cards: ["profile"] }) });
++  const before = await readFile(path.join(previous.outputDir, "profile.svg"), "utf8");
++  const manifest = await readFile(path.join(previous.outputDir, "manifest.json"), "utf8");
++  const broken = { ...fixture, id: "static-fails-paper", render(model, context) {
++    if (context.theme === "paper") throw new Error("synthetic later-theme failure");
++    return fixture.render.call(this, model, context);
++  } };
++  svg.registerScene(broken);
++  await assert.rejects(staticApi.generateStaticFromSnapshot({ root, snapshot, config: config({
++    cards: ["profile"], scenes: [broken.id], themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }],
++  }) }), /synthetic later-theme failure/);
++  assert.equal(await readFile(path.join(previous.outputDir, "profile.svg"), "utf8"), before);
++  assert.equal(await readFile(path.join(previous.outputDir, "manifest.json"), "utf8"), manifest);
++  assert.deepEqual((await readdir(previous.outputDir)).sort(), ["manifest.json", "profile.svg"]);
++}));
++
++test("retired canonical scene ids can be cleaned using their prior integrity-bearing entry", async () => temporary(async root => {
++  const previous = await staticApi.generateStaticFromSnapshot({ root, snapshot, config: config({ cards: ["profile"] }) });
++  const body = "previously generated synthetic scene";
++  await writeFile(path.join(previous.outputDir, "scene-retired.svg"), body);
++  await writeFile(path.join(previous.outputDir, "manifest.json"), JSON.stringify({
++    ...previous.manifest, artifacts: [...previous.manifest.artifacts, { path: "scene-retired.svg", bytes: Buffer.byteLength(body), sha256: hash(body) }],
++  }));
++  assert.equal(svg.getScene("retired"), undefined);
++  await staticApi.generateStaticFromSnapshot({ root, snapshot, config: config({ cards: ["profile"] }) });
++  await assert.rejects(readFile(path.join(previous.outputDir, "scene-retired.svg")), { code: "ENOENT" });
++}));
++
++test("aggregate Action paths are empty for legacy results and reject escaped or duplicate targets", async () => temporary(async root => {
++  const legacy = await staticApi.generateStaticFromSnapshot({ root, snapshot, dryRun: true, config: config({ cards: ["profile"] }) });
++  assert.deepEqual(staticApi.generatedScenePaths(legacy), []);
++  const result = await staticApi.generateStaticFromSnapshot({ root, snapshot, dryRun: true,
++    config: config({ cards: ["profile"], scenes: [fixture.id] }) });
++  assert.throws(() => staticApi.generatedScenePaths({ ...result, outputDir: path.dirname(root) }), /escaped/);
++  assert.throws(() => staticApi.generatedScenePaths({ ...result, variants: [result] }), /duplicate/);
++}));
++
++test("scene options reject sparse or duplicated programmatic ids and do not call element accessors", () => {
++  for (const scenes of [new Array(1), [fixture.id, fixture.id], null, ["static-example\n"]]) {
++    assert.throws(() => staticApi.renderStaticArtifacts(snapshot, { ...config(), scenes }), /scene/);
++  }
++  let called = false;
++  const scenes = [];
++  Object.defineProperty(scenes, "0", { get() { called = true; return fixture.id; } });
++  assert.throws(() => staticApi.renderStaticArtifacts(snapshot, { ...config(), scenes }), /scene/);
++  assert.equal(called, false);
++});
