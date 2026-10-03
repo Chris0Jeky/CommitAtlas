@@ -27,3 +27,34 @@ test("journal validation rejects holes and accessors before a false empty recove
     assert.equal(called, false, "array accessors must not be evaluated");
   }
 });
+
+test("journal copying never invokes caller-supplied array methods or species", () => {
+  for (const field of ["targets", "operations"]) {
+    for (const override of ["map", "map-getter", "iterator", "species"]) {
+      const input = journal();
+      const original = field === "targets" ? input.targets : input.targets[0].operations;
+      let called = false;
+      let list = original;
+      if (override === "map") list.map = () => { called = true; return []; };
+      else if (override === "map-getter") Object.defineProperty(list, "map", { get() { called = true; return () => []; } });
+      else if (override === "iterator") list[Symbol.iterator] = function* () { called = true; };
+      else {
+        class CallerArray extends Array {
+          static get [Symbol.species]() { called = true; return Array; }
+        }
+        list = new CallerArray(...original);
+      }
+      if (field === "targets") input.targets = list;
+      else input.targets[0].operations = list;
+      const parsed = validatePublicationJournal(input);
+      assert.equal(parsed.targets.length, 1, `${field}/${override} must retain the destination`);
+      assert.equal(parsed.targets[0].operations.length, 1, `${field}/${override} must retain the operation`);
+      assert.equal(Object.getPrototypeOf(parsed.targets), Array.prototype);
+      assert.equal(Object.getPrototypeOf(parsed.targets[0].operations), Array.prototype);
+      const observations = [{ target: 0, name: "atlas.svg", kind: "missing" }];
+      assert.deepEqual(planPublicationRecoveryFromStatus(input, status("committed"), observations).steps,
+        [{ target: 0, name: "atlas.svg", action: "install-next" }]);
+      assert.equal(called, false, `${field}/${override} must not be invoked`);
+    }
+  }
+});

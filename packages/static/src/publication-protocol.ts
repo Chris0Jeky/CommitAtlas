@@ -119,9 +119,9 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
     throw new Error("publication journal must contain between one and four targets");
   }
 
-  assertDenseEntries(value.targets, "publication journal targets");
+  const targetEntries = denseEntries(value.targets, "publication journal targets");
   const outputDirs = new Set<string>();
-  const targets = value.targets.map((target, targetIndex) => {
+  const targets = targetEntries.map((target, targetIndex) => {
     if (!isRecord(target)) throw new Error(`publication target ${targetIndex} must be an object`);
     assertKnownKeys(target, ["outputDir", "operations"], `publication target ${targetIndex}`);
     if (typeof target.outputDir !== "string" || !isSafeRelativePath(target.outputDir)) {
@@ -133,9 +133,9 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
     if (!Array.isArray(target.operations) || target.operations.length < 1 || target.operations.length > 32) {
       throw new Error(`publication target ${targetIndex} has an invalid operation count`);
     }
-    assertDenseEntries(target.operations, `publication target ${targetIndex} operations`);
+    const operationEntries = denseEntries(target.operations, `publication target ${targetIndex} operations`);
     const names = new Set<string>();
-    const operations = target.operations.map((operation, operationIndex) => {
+    const operations = operationEntries.map((operation, operationIndex) => {
       const parsed = validateOperation(operation, targetIndex, operationIndex);
       if (names.has(parsed.name)) throw new Error(`publication target ${targetIndex} repeats ${parsed.name}`);
       names.add(parsed.name);
@@ -340,13 +340,17 @@ function assertKnownKeys(
   }
 }
 
-function assertDenseEntries(value: readonly unknown[], label: string): void {
+/** Copy data descriptors into a plain array without invoking caller methods or Array species. */
+function denseEntries(value: readonly unknown[], label: string): unknown[] {
+  const result: unknown[] = [];
   for (let index = 0; index < value.length; index++) {
     const descriptor = Object.getOwnPropertyDescriptor(value, index);
     if (!descriptor || !("value" in descriptor)) {
       throw new Error(`${label} must contain data entries, not accessors or holes`);
     }
+    result.push(descriptor.value);
   }
+  return result;
 }
 
 function isSafeRelativePath(value: string): boolean {

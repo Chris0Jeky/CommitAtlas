@@ -32,8 +32,10 @@ It does not migrate or rewrite any existing publication files.
 
 The journal validator now rejects sparse or accessor-backed target/operation
 arrays. Previously `Array.map` and `flatMap` could skip holes, allowing an invalid
-programmatic journal to produce an empty recovery plan. These checks run before
-mapping and do not invoke array-entry getters.
+programmatic journal to produce an empty recovery plan. Descriptor values are copied into fresh plain arrays before
+mapping, without invoking array-entry getters, supplied map/iterator methods,
+or Array subclass species. This also prevents overridden map methods from
+silently omitting validated destinations.
 
 Encoders also validate the serialized round trip. This prevents a sparse
 in-memory array from becoming JSON null entries in an unreadable durable record.
@@ -54,7 +56,7 @@ The ordinary packaging and Action reproducibility gates still run in CI.
 
 ## Verification
 
-The eleven codec/protocol tests cover detached deterministic encoding, all nine phases and
+The twelve codec/protocol tests cover detached deterministic encoding, all nine phases and
 status/journal mismatch, byte bounds and sliced views, malformed UTF-8, BOMs,
 duplicate keys, noncanonical and truncated JSON, schema errors, all 128 bounded
 operations and sparse input rejection. They run in the explicit static test
