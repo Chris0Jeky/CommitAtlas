@@ -119,6 +119,7 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
     throw new Error("publication journal must contain between one and four targets");
   }
 
+  assertDenseEntries(value.targets, "publication journal targets");
   const outputDirs = new Set<string>();
   const targets = value.targets.map((target, targetIndex) => {
     if (!isRecord(target)) throw new Error(`publication target ${targetIndex} must be an object`);
@@ -132,6 +133,7 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
     if (!Array.isArray(target.operations) || target.operations.length < 1 || target.operations.length > 32) {
       throw new Error(`publication target ${targetIndex} has an invalid operation count`);
     }
+    assertDenseEntries(target.operations, `publication target ${targetIndex} operations`);
     const names = new Set<string>();
     const operations = target.operations.map((operation, operationIndex) => {
       const parsed = validateOperation(operation, targetIndex, operationIndex);
@@ -335,6 +337,15 @@ function assertKnownKeys(
   const known = new Set(allowed);
   for (const key of Object.keys(value)) {
     if (!known.has(key)) throw new Error(`${label} contains unknown field ${key}`);
+  }
+}
+
+function assertDenseEntries(value: readonly unknown[], label: string): void {
+  for (let index = 0; index < value.length; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, index);
+    if (!descriptor || !("value" in descriptor)) {
+      throw new Error(`${label} must contain data entries, not accessors or holes`);
+    }
   }
 }
 

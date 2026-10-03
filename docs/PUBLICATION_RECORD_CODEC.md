@@ -16,7 +16,9 @@ control-record limits, not payload limits. Existing protocol bounds of four
 targets, 32 operations per target, and 96 KiB per payload remain unchanged. The
 codec rejects a schema-valid record that exceeds its serialized byte limit.
 Future scene inventories and any increase to operation counts must be reconciled
-with these limits before a v2 writer is enabled.
+with these limits before a v2 writer is enabled. In particular, the new static
+scene delivery limit is 120 KiB while the proposed journal still permits only
+96 KiB per payload; this codec does not silently widen that separate contract.
 
 ## One wire representation
 
@@ -27,6 +29,11 @@ fields, extra whitespace, alternative numeric spellings, missing LF, a BOM and
 trailing content are rejected. This deliberately strict format is for a future
 store using these encoders, not a permissive parser for manually authored JSON.
 It does not migrate or rewrite any existing publication files.
+
+The journal validator now rejects sparse or accessor-backed target/operation
+arrays. Previously `Array.map` and `flatMap` could skip holes, allowing an invalid
+programmatic journal to produce an empty recovery plan. These checks run before
+mapping and do not invoke array-entry getters.
 
 Encoders also validate the serialized round trip. This prevents a sparse
 in-memory array from becoming JSON null entries in an unreadable durable record.
@@ -47,7 +54,7 @@ The ordinary packaging and Action reproducibility gates still run in CI.
 
 ## Verification
 
-The ten codec tests cover detached deterministic encoding, all nine phases and
+The eleven codec/protocol tests cover detached deterministic encoding, all nine phases and
 status/journal mismatch, byte bounds and sliced views, malformed UTF-8, BOMs,
 duplicate keys, noncanonical and truncated JSON, schema errors, all 128 bounded
 operations and sparse input rejection. They run in the explicit static test
