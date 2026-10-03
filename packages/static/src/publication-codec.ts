@@ -6,7 +6,7 @@ import {
   type PublicationStatus,
 } from "./publication-protocol.js";
 
-export const MAX_PUBLICATION_JOURNAL_BYTES = 64 * 1024;
+export const MAX_PUBLICATION_JOURNAL_BYTES = 128 * 1024;
 export const MAX_PUBLICATION_STATUS_BYTES = 512;
 const typedArrayByteLength = Object.getOwnPropertyDescriptor(
   Object.getPrototypeOf(Uint8Array.prototype), "byteLength",

@@ -82,6 +82,10 @@ const PHASE_INDEX = new Map<PublicationPhase, number>(
 const COMMITTED_INDEX = PHASE_INDEX.get("committed")!;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
+const MAX_OPERATIONS_PER_TARGET = 96;
+const MAX_ARTIFACT_NAME_LENGTH = 64;
+// Pure protocol mirror of canonical scene names; capacity tests bind this to static delivery.
+const SCENE_ARTIFACT_NAME = /^scene-[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.svg$/;
 const ARTIFACT_NAME = /^[a-z0-9][a-z0-9-]*\.(?:svg|json|md)$/;
 
 export function assertPublicationPhase(value: unknown): PublicationPhase {
@@ -130,7 +134,7 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
     const outputKey = target.outputDir.toLowerCase();
     if (outputDirs.has(outputKey)) throw new Error("publication target outputDir values must be unique");
     outputDirs.add(outputKey);
-    if (!Array.isArray(target.operations) || target.operations.length < 1 || target.operations.length > 32) {
+    if (!Array.isArray(target.operations) || target.operations.length < 1 || target.operations.length > MAX_OPERATIONS_PER_TARGET) {
       throw new Error(`publication target ${targetIndex} has an invalid operation count`);
     }
     const operationEntries = denseEntries(target.operations, `publication target ${targetIndex} operations`);
@@ -268,14 +272,16 @@ export function planPublicationRecovery(
 function validateOperation(value: unknown, target: number, index: number): PublicationOperation {
   if (!isRecord(value)) throw new Error(`publication operation ${target}:${index} must be an object`);
   assertKnownKeys(value, ["name", "action", "previous", "next"], `publication operation ${target}:${index}`);
-  if (typeof value.name !== "string" || !ARTIFACT_NAME.test(value.name)) {
+  if (typeof value.name !== "string" || value.name.length > MAX_ARTIFACT_NAME_LENGTH || !ARTIFACT_NAME.test(value.name)) {
     throw new Error(`publication operation ${target}:${index} has an unsafe artifact name`);
   }
   if (value.action !== "create" && value.action !== "replace" && value.action !== "remove") {
     throw new Error(`publication operation ${target}:${index} has an invalid action`);
   }
-  const previous = value.previous === undefined ? undefined : validateVersion(value.previous, "previous");
-  const next = value.next === undefined ? undefined : validateVersion(value.next, "next");
+  // The scene ID is at most 48 characters, plus the scene- prefix and .svg suffix.
+  const byteLimit = value.name.length <= 58 && SCENE_ARTIFACT_NAME.test(value.name) ? 120 * 1024 : 96 * 1024;
+  const previous = value.previous === undefined ? undefined : validateVersion(value.previous, "previous", byteLimit);
+  const next = value.next === undefined ? undefined : validateVersion(value.next, "next", byteLimit);
   if (value.action === "create" && (previous !== undefined || next === undefined)) {
     throw new Error("create operations require next bytes and no previous bytes");
   }
@@ -293,13 +299,13 @@ function validateOperation(value: unknown, target: number, index: number): Publi
   };
 }
 
-function validateVersion(value: unknown, label: string): PublicationFileVersion {
+function validateVersion(value: unknown, label: string, byteLimit: number): PublicationFileVersion {
   if (!isRecord(value)) throw new Error(`publication ${label} version must be an object`);
   assertKnownKeys(value, ["sha256", "bytes"], `publication ${label} version`);
   if (typeof value.sha256 !== "string" || !SHA256.test(value.sha256)) {
     throw new Error(`publication ${label} digest is invalid`);
   }
-  if (!Number.isSafeInteger(value.bytes) || (value.bytes as number) < 0 || (value.bytes as number) > 96 * 1024) {
+  if (!Number.isSafeInteger(value.bytes) || (value.bytes as number) < 0 || (value.bytes as number) > byteLimit) {
     throw new Error(`publication ${label} byte length is invalid`);
   }
   return { sha256: value.sha256, bytes: value.bytes as number };

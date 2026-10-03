@@ -11,14 +11,35 @@ protocol schemas and return fresh UTF-8 `Uint8Array` bytes. Decoders accept byte
 views (including Node Buffers), enforce a nonempty byte limit through the intrinsic typed-array length getter before decoding,
 use fatal UTF-8 decoding, parse JSON, and validate the resulting record.
 
-A journal may occupy at most 65,536 bytes; a status at most 512 bytes. These are
-control-record limits, not payload limits. Existing protocol bounds of four
-targets, 32 operations per target, and 96 KiB per payload remain unchanged. The
-codec rejects a schema-valid record that exceeds its serialized byte limit.
-Future scene inventories and any increase to operation counts must be reconciled
-with these limits before a v2 writer is enabled. In particular, the new static
-scene delivery limit is 120 KiB while the proposed journal still permits only
-96 KiB per payload; this codec does not silently widen that separate contract.
+A journal may occupy at most 131,072 bytes; a status at most 512 bytes. These
+are control-record limits, not payload limits. The pure protocol accepts up to
+four targets and 96 operations per target. Canonical `scene-<id>.svg` names
+(with the static contract's 48-character scene IDs) accept up to 120 KiB per
+recorded generation. Other artifact names keep their existing 96 KiB ceiling;
+this does not widen the production generator's stricter per-type limits.
+
+Artifact names are now capped at 64 ASCII characters before serialization.
+This bounds record size as well as operation count. The encoder's final byte
+check and decoder's intrinsic pre-decode byte check remain independent guards.
+The canonical representation of existing short records is unchanged. This is
+an internal proposed-store schema change, not a migration of production files;
+previously schema-valid names over 64 characters are intentionally rejected.
+
+### Inventory capacity
+
+One transition may contain the union of the old and new selections. The current
+maximum is 16 fixed generated filenames, up to 32 retired scenes, up to 32 new
+scenes, plus the manifest: **81 operations per target**. A 96-operation cap
+provides bounded headroom without dropping stale cleanup operations to fit a
+32-operation journal. The 128 KiB record limit accommodates four full targets
+with maximum-length names and hashes; tests also exercise JSON escaping growth.
+
+The scene-capacity suite cross-checks the static card/scene inventory and scene
+naming contract, preserves global manifest-last recovery in every phase, and
+compares the large-payload boundary with `SCENE_MOTION_BUDGET.bytes`. Revisit
+these bounds explicitly when the static inventory or provisional scene budget
+changes. Raising a record limit does not approve a destination or prove file
+ownership; those remain the storage adapter's separate responsibilities.
 
 ## One wire representation
 
@@ -56,14 +77,16 @@ The ordinary packaging and Action reproducibility gates still run in CI.
 
 ## Verification
 
-The thirteen codec/protocol tests cover detached deterministic encoding, all nine phases and
+The original thirteen codec/protocol tests cover detached deterministic encoding, all nine phases and
 status/journal mismatch, byte bounds and sliced views, malformed UTF-8, BOMs,
-duplicate keys, noncanonical and truncated JSON, schema errors, all 128 bounded
+duplicate keys, noncanonical and truncated JSON, schema errors, all 384 bounded
 operations, sparse input rejection and spoofed typed-array lengths. Own length
 properties/getters cannot bypass the pre-decode limit; incompatible proxies are
 rejected before decoding. They run in the explicit static test
 script. Focused local validation uses strict standalone TypeScript compilation;
-full repository integration is the exact-head Actions gate.
+full repository integration is the exact-head Actions gate. Seven additional scene-capacity
+tests cover full old/new inventories, scene/name limits, fixed-output limits,
+maximum records, canonical compatibility, and the static naming contract.
 
 The remaining #256 decisions and work include ownership migration, a bounded
 control store, incomplete-reader status, stale-lock policy, platform flushing
