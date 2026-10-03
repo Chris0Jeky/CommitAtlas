@@ -37,7 +37,7 @@ test("journal copying never invokes caller-supplied array methods or species", (
       let list = original;
       if (override === "map") list.map = () => { called = true; return []; };
       else if (override === "map-getter") Object.defineProperty(list, "map", { get() { called = true; return () => []; } });
-      else if (override === "iterator") list[Symbol.iterator] = function* () { called = true; };
+      else if (override === "iterator") list[Symbol.iterator] = () => { called = true; return [][Symbol.iterator](); };
       else {
         class CallerArray extends Array {
           static get [Symbol.species]() { called = true; return Array; }
