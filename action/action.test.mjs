@@ -9,7 +9,7 @@ test("action keeps delivery credentials optional and exposes generated evidence 
   assert.match(metadata, /github-token:\r?\n[\s\S]*?required: false/);
   assert.match(metadata, /dry-run:/);
   for (const output of [
-    "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
+    "scenes", "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
     "rhythm", "languages", "projects", "cadence", "releases", "delivery", "delivery-json",
     "projects-json", "projects-markdown",
   ]) {
@@ -24,4 +24,11 @@ test("checked bundle contains delivery generation but no source map or token sen
   assert.match(bundle, /delivery\.json/);
   assert.match(bundle, /github-token/);
   assert.doesNotMatch(bundle, /must-not-leave-process|sourceMappingURL=/);
+});
+
+test("Action reports the aggregate scene output from generated results", async () => {
+  const source = await readFile(new URL("./src/index.ts", import.meta.url), "utf8");
+  assert.match(source, /core\.setOutput\("scenes", JSON\.stringify\(generatedScenePaths\(result\)\)\)/);
+  const bundle = await readFile(new URL("./dist/index.js", import.meta.url), "utf8");
+  assert.match(bundle, /setOutput\)\("scenes"|setOutput\("scenes"/);
 });

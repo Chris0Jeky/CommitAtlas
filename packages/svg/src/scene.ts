@@ -1,5 +1,7 @@
 import type { PortfolioSnapshot } from "@commit-atlas/github";
 import type { ThemeName } from "./index.js";
+import { createIdentityConfig, isIdentityConfig, type IdentityConfig } from "./identity.js";
+export type { IdentityConfig } from "./identity.js";
 import { MotionPlan } from "./motion/compiler.js";
 import { MOTION_BUDGETS } from "./motion/profile.js";
 import type { MotionBackend, MotionBudgetClass, MotionProfile, MotionTarget } from "./motion/profile.js";
@@ -11,7 +13,6 @@ export type ScenePack = "orbital" | "survey" | "spectral" | "terminal";
 export type BudgetClass = MotionBudgetClass;
 declare const lensBrand: unique symbol;
 declare const findingBrand: unique symbol;
-declare const identityBrand: unique symbol;
 export interface PublicDemoCoverage {
   readonly complete: number; readonly partial: number; readonly unavailable: number; readonly total: number;
   readonly warnings: readonly string[];
@@ -23,7 +24,6 @@ export interface PublicLensProjection {
   readonly coverage: PublicDemoCoverage; readonly privacyNote: string;
 }
 export interface ResearchFindingProjection { readonly [findingBrand]: true }
-export interface IdentityConfig { readonly [identityBrand]: true }
 export interface SceneInputs {
   readonly snapshot: PortfolioSnapshot;
   readonly lens?: PublicLensProjection;
@@ -183,12 +183,17 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
   const data = record(inputs, ["snapshot", "lens", "findings", "identity"], "scene inputs");
   if (!data.snapshot || typeof data.snapshot !== "object") throw new Error("scene snapshot is required");
   let unavailableReason: string | undefined;
-  if (data.findings !== undefined || data.identity !== undefined) unavailableReason = "Projection or identity schema adapter is unavailable.";
+  if (data.findings !== undefined) unavailableReason = "Finding projection schema adapter is unavailable.";
+  if (data.identity !== undefined && !isIdentityConfig(data.identity)) unavailableReason = "Validated static identity is unavailable.";
   if (data.lens !== undefined && (!data.lens || typeof data.lens !== "object" || !authenticLensContexts.has(data.lens))) unavailableReason = "Validated synthetic lens context is unavailable.";
   if (definition.family === "signature" && data.lens === undefined) unavailableReason = "Validated lens coverage and privacy context is unavailable.";
   // Optional fields are omitted rather than allowing undefined into canonical JSON.
   const supplied = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
-  const ownedInputs = own(supplied) as unknown as SceneInputs;
+  const copiedInputs = own(supplied) as unknown as SceneInputs;
+  const ownedInputs: SceneInputs = Object.freeze({
+    ...copiedInputs,
+    ...(!unavailableReason && copiedInputs.identity ? { identity: createIdentityConfig(copiedInputs.identity) } : {}),
+  });
   if (!unavailableReason && ownedInputs.lens) authenticLensContexts.add(ownedInputs.lens);
   const model = own(unavailableReason ? sceneUnavailable(unavailableReason) : definition.buildModel(ownedInputs));
   const unavailable = !!model && typeof model === "object" && Object.hasOwn(model, "state") && (model as SceneUnavailable).state === "unavailable";

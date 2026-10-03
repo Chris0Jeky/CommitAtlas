@@ -6,6 +6,7 @@
  */
 
 export { canonicalJson, seededRandom, stableHash } from "./seed.js";
+export { createIdentityConfig } from "./identity.js";
 export {
   registerScene, getScene, listScenes, renderScene, renderSceneDefinition, sceneUnavailable,
   compileSceneMotion, sceneElementId, sceneClassName, createPublicDemoLensContext, sceneLensDescription,

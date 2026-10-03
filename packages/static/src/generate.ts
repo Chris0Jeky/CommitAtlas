@@ -19,6 +19,7 @@ import {
 import { renderDeliveryCard, renderDeliveryEvidence } from "./delivery.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
+import { isSceneArtifactName } from "./scene-config.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
 const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
@@ -177,6 +178,23 @@ export async function generateStaticFromSnapshot(options: {
   };
 }
 
+/** Repository-relative paths for primary and variant scene outputs, also available during dry-run. */
+export function generatedScenePaths(result: GenerateStaticResult): readonly string[] {
+  const paths: string[] = [];
+  for (const target of [result, ...result.variants]) {
+    for (const artifact of target.manifest.artifacts) {
+      if (!isSceneArtifactName(artifact.path)) continue;
+      const relative = path.relative(result.root, path.join(target.outputDir, artifact.path)).replaceAll("\\", "/");
+      if (!relative || relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) {
+        throw new Error("scene output escaped the repository");
+      }
+      if (paths.includes(relative)) throw new Error("duplicate scene output path");
+      paths.push(relative);
+    }
+  }
+  return Object.freeze(paths);
+}
+
 function validateDeliverySnapshot(
   config: StaticConfig,
   snapshot: PortfolioSnapshot,
@@ -244,7 +262,10 @@ async function fetchStaticPortfolio(
 }
 
 function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>): { name: string; body: string }[] {
-  const payloads = Object.entries(rendered).sort(([left], [right]) => left.localeCompare(right));
+  const payloads = Object.entries(rendered).map(([name, body]): [string, string] => {
+    if (typeof body !== "string") throw new Error(`Renderer returned a non-text ${name} artifact`);
+    return [name, body];
+  }).sort(([left], [right]) => left.localeCompare(right));
   if (payloads.length === 0) throw new Error("No static cards were selected");
   for (const [name, body] of payloads) {
     if (!/^[a-z0-9-]+\.(svg|json|md)$/.test(name) || path.basename(name) !== name) {
@@ -344,7 +365,10 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
 
   const owned = await previouslyWritten(target.outputDir);
   const current = new Set(target.payloads.map(({ name }) => name));
-  const stale = MANAGED_ARTIFACT_NAMES.filter((name) => !current.has(name) && owned.has(name));
+  const candidates = new Set<string>([
+    ...MANAGED_ARTIFACT_NAMES, ...[...owned].filter(isSceneArtifactName),
+  ]);
+  const stale = [...candidates].filter((name) => !current.has(name) && owned.has(name));
   const staged: StagedFile[] = [];
   try {
     for (const payload of target.payloads) staged.push(await stage(target.outputDir, payload));
@@ -434,7 +458,7 @@ async function stage(
  * Anything unreadable, non-CommitAtlas, or malformed yields
  * an empty set, so cleanup does nothing rather than guessing — deleting a caller's file is the worse
  * failure than leaving a stale artifact behind. Callers intersect the result with
- * `MANAGED_ARTIFACT_NAMES`, so a tampered manifest cannot direct a delete at an arbitrary path.
+ * the fixed managed names or canonical, integrity-bearing scene names, never arbitrary paths.
  */
 async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>> {
   let parsed: unknown;
@@ -443,13 +467,20 @@ async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>
   } catch {
     return new Set();
   }
-  if (typeof parsed !== "object" || parsed === null) return new Set();
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return new Set();
   const record = parsed as Partial<StaticManifest>;
   if (record.version !== 1 || record.generator !== "CommitAtlas" || !Array.isArray(record.artifacts)) return new Set();
   const names = new Set<string>();
   for (const artifact of record.artifacts) {
     const artifactPath: unknown = (artifact as { path?: unknown } | null)?.path;
-    if (typeof artifactPath === "string") names.add(artifactPath);
+    if (typeof artifactPath !== "string") continue;
+    // Dynamic scene names require a complete integrity-bearing ownership entry. Existing fixed
+    // card ownership records retain their historical compatibility. Never infer ownership by glob.
+    if (isSceneArtifactName(artifactPath)) {
+      if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > MAX_ARTIFACT_BYTES ||
+        typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;
+    }
+    names.add(artifactPath);
   }
   return names;
 }

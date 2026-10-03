@@ -8,6 +8,7 @@ import type {
   ProjectSnapshot,
 } from "@commit-atlas/github";
 import {
+  renderSceneDefinition,
   renderActivityCard,
   renderAtlasCard,
   renderCadenceCard,
@@ -24,8 +25,9 @@ import {
   type ProjectSignal,
 } from "@commit-atlas/svg";
 import type { StaticCardName, StaticConfig } from "./config.js";
+import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
 
-export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg";
+export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg" | SceneArtifactName;
 export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
 
 function toCardSource(freshness: Freshness): CardSource {
@@ -84,6 +86,7 @@ export function assembleStaticPortfolio(
 }
 
 export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: StaticConfig): StaticSvgArtifacts {
+  const scenes = staticSceneOptions(config);
   const selected = new Set(config.cards);
   const width = config.layout === "compact" ? 480 : 720;
   const dashboardWidth = config.layout === "compact" ? 480 : 860;
@@ -194,6 +197,15 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       projectsObserved: projectsWithReleaseEvidence.length,
       projectsUnavailable: projectStates.length - projectsWithReleaseEvidence.length,
     }, { ...common, width });
+  }
+  for (const definition of scenes.definitions) {
+    const rendered = renderSceneDefinition(definition, {
+      snapshot, ...(scenes.identity ? { identity: scenes.identity } : {}),
+    }, {
+      theme: config.theme, pack: scenes.pack, motion: config.motion, backend: "css",
+      layout: config.layout, instanceNamespace: "static", seed: "",
+    });
+    artifacts[sceneArtifactName(definition.id)] = rendered.svg;
   }
   return artifacts;
 }
