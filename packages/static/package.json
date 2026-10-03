@@ -26,7 +26,7 @@
     "prebuild": "npm --prefix ../core run build && npm --prefix ../github run build && npm --prefix ../svg run build",
     "clean": "node ../../scripts/clean-package-dist.mjs",
     "build": "node ../../scripts/build-package.mjs",
-    "test": "npm run build && node --test tests/static.test.mjs tests/publication.test.mjs tests/publication-protocol.test.mjs tests/publication-manifest-order.test.mjs tests/publication-status.test.mjs tests/contribution-normalization.test.mjs tests/entrypoint.test.mjs tests/code-span.test.mjs tests/delivery.test.mjs tests/delivery-generation.test.mjs",
+    "test": "npm run build && node --test tests/static.test.mjs tests/publication.test.mjs tests/publication-protocol.test.mjs tests/publication-manifest-order.test.mjs tests/publication-status.test.mjs tests/publication-recovery-boundaries.test.mjs tests/contribution-normalization.test.mjs tests/entrypoint.test.mjs tests/code-span.test.mjs tests/delivery.test.mjs tests/delivery-generation.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },
