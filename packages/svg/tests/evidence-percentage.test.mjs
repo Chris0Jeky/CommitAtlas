@@ -46,6 +46,7 @@ test('the public parser zero-activity representation remains an observed zero', 
 test('exact counts are not subject to a percentage total', () => {
   const inputs = inputsFor([25, 25, 25, 0]);
   inputs.snapshot.contributions.breakdownBasis = 'exact-counts';
+  inputs.snapshot.contributions.freshness.source = 'github-graphql';
   const row = getScene('evidence-coverage').buildModel(inputs).rows.find(row => row.id === 'mix');
   assert.equal(row.detail, 'EXACT COUNTS · WINDOW-SCOPED');
   assert.deepEqual(row.coverage, { state: 'complete', observed: 4, total: 4 });
