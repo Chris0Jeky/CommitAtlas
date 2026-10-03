@@ -1,12 +1,12 @@
 {
   "version": "0.2.0",
-  "sdk": "3.3.0",
+  "sdk": "3.3.1",
   "source": "Chris0Jeky/Pulseboard:observatory",
   "installs": {
     "public/pulseboard.js": {
       "project": "commitatlas",
       "release": "unattributed",
-      "sha256": "5be6b60402a70e748a1ad29574886925784327c1735065dc96f456d06e5e9677"
+      "sha256": "6c7e138281ba3fc82cb2cd3fd91a6ed0a0e41bf080543ce13a97a7b4d6c2443e"
     }
   }
 }
