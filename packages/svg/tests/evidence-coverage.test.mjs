@@ -127,6 +127,7 @@ test('partial, stale, unavailable and unknown provenance cannot become complete 
   }
   const partial = coverageInputs();
   partial.snapshot.contributions.freshness.mode = 'partial';
+  partial.snapshot.contributions.days = partial.snapshot.contributions.days.slice(0, 3);
   Object.assign(partial.snapshot.metrics.window, { observedDays: 3, complete: false });
   assert.deepEqual(row('calendar', partial).coverage, { state: 'partial', observed: 3, total: 7 });
   partial.snapshot.metrics.window.observedDays = 8;
@@ -290,4 +291,63 @@ test('project evidence requires a REST or synthetic board, not a contribution-on
     assert.equal(row('calendar', inputs).coverage.state, 'complete', 'independent contribution source survives');
     assertWellFormedXml(render(inputs).svg);
   }
+});
+
+test('calendar completeness requires bounded valid raw days, not a window claim alone', () => {
+  const days = coverageInputs().snapshot.contributions.days;
+  const invalid = [null, [], days.slice(0, -1), new Array(7),
+    [...days, days[0]], [...days, { date: '2026-02-30', count: 0 }],
+    ...[null, -1, 0.5, 100001, '0'].map(count => [{ ...days[0], count }, ...days.slice(1)]),
+    [{ ...days[0], level: 5 }, ...days.slice(1)], [{ count: 0 }, ...days.slice(1)],
+    Array.from({ length: 401 }, () => days[0]),
+  ];
+  for (const calendar of invalid) {
+    const inputs = coverageInputs(); inputs.snapshot.contributions.days = calendar;
+    assert.equal(row('calendar', inputs).coverage.state, 'unavailable', JSON.stringify(calendar));
+    assert.equal(row('ci', inputs).coverage.observed, 4, 'independent board observations remain valid');
+    if (calendar && Object.keys(calendar).length === calendar.length) {
+      const doc = assertWellFormedXml(render(inputs, { motion: 'ambient', backend: 'smil' }).svg);
+      const node = doc.nodes.find(item => item.attrs.id?.endsWith('-row-calendar'));
+      assert.doesNotMatch(node.raw, /COMPLETE|7\/7|<animate|-target-scan/u);
+    }
+  }
+});
+
+test('calendar window dates, span and raw in-window cardinality must agree', () => {
+  for (const changes of [
+    { from: '2026-02-30' }, { to: 'invalid' }, { from: '2026-01-02' },
+    { from: '2026-01-08', to: '2026-01-14' }, { from: '2026-01-07', to: '2026-01-01' },
+    { from: null }, { to: '2026-01-07T00:00:00Z' },
+    { observedDays: 6, complete: false },
+  ]) {
+    const inputs = coverageInputs(); Object.assign(inputs.snapshot.metrics.window, changes);
+    assert.equal(row('calendar', inputs).coverage.state, 'unavailable', JSON.stringify(changes));
+  }
+});
+
+test('genuine partial calendars and unordered extra dates retain exact observed coverage', () => {
+  const inputs = coverageInputs();
+  inputs.snapshot.contributions.freshness.mode = 'partial';
+  inputs.snapshot.contributions.days = inputs.snapshot.contributions.days.slice(0, 3).reverse();
+  inputs.snapshot.contributions.days.push({ date: '2025-12-31', count: 0 });
+  Object.assign(inputs.snapshot.metrics.window, { observedDays: 3, complete: false });
+  assert.deepEqual(row('calendar', inputs).coverage, { state: 'partial', observed: 3, total: 7 });
+  assert.equal(row('calendar', inputs).detail, '3 OF 7 DAYS OBSERVED');
+  assertWellFormedXml(render(inputs).svg);
+});
+
+test('calendar validation preserves leap dates and the core bounded calendar contract', () => {
+  const inputs = coverageInputs();
+  inputs.snapshot.contributions.days = [
+    { date: '2024-02-28', count: 0 }, { date: '2024-02-29', count: 100000, level: 4 },
+    { date: '2024-03-01', count: 0 },
+  ];
+  Object.assign(inputs.snapshot.metrics.window, { from: '2024-02-28', to: '2024-03-01', days: 3, observedDays: 3, complete: true });
+  assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 3, total: 3 });
+  inputs.snapshot.contributions.days = Array.from({ length: 400 }, (_, i) => ({
+    date: new Date(Date.UTC(2023, 1, i + 1)).toISOString().slice(0, 10), count: 0,
+  }));
+  const end = inputs.snapshot.contributions.days.at(-1).date;
+  Object.assign(inputs.snapshot.metrics.window, { from: end, to: end, days: 1, observedDays: 1, complete: true });
+  assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 1, total: 1 });
 });
