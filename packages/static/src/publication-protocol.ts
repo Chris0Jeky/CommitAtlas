@@ -226,7 +226,11 @@ export function planPublicationRecovery(
   const expected = flattenOperations(journal);
   const observed = new Map<string, PublicationObservation>();
 
-  for (const observation of observations) {
+  if (!Array.isArray(observations) || observations.length !== expected.length) {
+    throw new Error("publication observations do not cover the complete transaction");
+  }
+  for (const value of denseEntries(observations, "publication observations")) {
+    const observation = validateObservation(value);
     const key = operationKey(observation.target, observation.name);
     if (observed.has(key)) throw new Error(`publication observation repeats ${key}`);
     observed.set(key, observation);
@@ -267,6 +271,44 @@ export function planPublicationRecovery(
   });
 
   return { transactionId: journal.transactionId, phase, direction, steps };
+}
+
+/** Snapshot closed observation records without executing caller-owned field accessors. */
+function validateObservation(value: unknown): PublicationObservation {
+  if (!isRecord(value)) throw new Error("publication observation must be an object");
+  const fields: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const allowed = ["target", "name", "kind", "sha256", "bytes"];
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string" || !allowed.includes(key)) {
+      throw new Error("publication observation contains an unknown field");
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !("value" in descriptor)) {
+      throw new Error("publication observation must contain data fields, not accessors");
+    }
+    fields[key] = descriptor.value;
+  }
+  const { target, name, kind, sha256, bytes } = fields;
+  if (typeof target !== "number" || !Number.isSafeInteger(target) || target < 0) {
+    throw new Error("publication observation target is invalid");
+  }
+  if (typeof name !== "string" || name.length > MAX_ARTIFACT_NAME_LENGTH || !ARTIFACT_NAME.test(name)) {
+    throw new Error("publication observation has an unsafe artifact name");
+  }
+  if (kind !== "missing" && kind !== "file" && kind !== "other") {
+    throw new Error("publication observation kind is invalid");
+  }
+  if (kind === "file") {
+    if (typeof sha256 !== "string" || !SHA256.test(sha256) ||
+      typeof bytes !== "number" || !Number.isSafeInteger(bytes) || bytes < 0) {
+      throw new Error("publication observation file version is invalid");
+    }
+    return { target, name, kind, sha256, bytes };
+  }
+  if (sha256 !== undefined || bytes !== undefined) {
+    throw new Error("publication observation without a file cannot contain a file version");
+  }
+  return { target, name, kind };
 }
 
 function validateOperation(value: unknown, target: number, index: number): PublicationOperation {
