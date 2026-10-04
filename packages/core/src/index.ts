@@ -179,6 +179,28 @@ export function contributionCalendarDays(input: unknown): ContributionDay[] {
   return parseContributionCalendar(input).days;
 }
 
+/**
+ * Automatic windows grow back over observed history instead of taking a fixed
+ * size: the window spans from the earliest active day through `asOf`, clamped
+ * to the API floor and the two-year renderer ceiling, and never wider than the
+ * fetched history so adapters cannot see an incomplete window. A history with
+ * no activity resolves to its full fetched span, honestly empty.
+ */
+export const AUTO_WINDOW_DAYS = 731;
+export const AUTO_WINDOW_MIN_DAYS = 7;
+
+export function resolveAutoWindow(days: readonly { readonly date: string; readonly count: number }[]): number {
+  if (days.length === 0) throw new Error("Cannot resolve an automatic window from an empty calendar");
+  const sorted = [...days].sort((left, right) => left.date.localeCompare(right.date));
+  const asOf = sorted.at(-1)?.date;
+  const oldest = sorted[0]?.date;
+  if (!asOf || !oldest) throw new Error("Cannot resolve an automatic window from an empty calendar");
+  const span = Math.min(dateDistance(oldest, asOf) + 1, AUTO_WINDOW_DAYS);
+  const earliestActive = sorted.find((day) => day.count > 0)?.date;
+  if (!earliestActive) return Math.max(span, 1);
+  return Math.min(Math.max(dateDistance(earliestActive, asOf) + 1, AUTO_WINDOW_MIN_DAYS), span);
+}
+
 function addUtcDays(date: string, offset: number): string {
   const result = new Date(`${date}T00:00:00.000Z`);
   result.setUTCDate(result.getUTCDate() + offset);

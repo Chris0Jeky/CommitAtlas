@@ -91,7 +91,9 @@ test("accepts bounded opposite-scheme theme outputs and rejects ambiguous varian
 test("accepts two-year contribution windows and rejects wider ones", () => {
   assert.equal(parseStaticConfig({ ...rawConfig(), days: 366 }).days, 366);
   assert.equal(parseStaticConfig({ ...rawConfig(), days: 730 }).days, 730);
+  assert.equal(parseStaticConfig({ ...rawConfig(), days: "auto" }).days, "auto");
   assert.throws(() => parseStaticConfig({ ...rawConfig(), days: 731 }), /too_big|at most/i);
+  assert.throws(() => parseStaticConfig({ ...rawConfig(), days: "automatic" }), /invalid/i);
 });
 
 test("two-year compact activity grids fit the 480px viewBox", () => {
