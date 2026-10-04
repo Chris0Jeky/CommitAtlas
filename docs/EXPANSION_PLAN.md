@@ -271,12 +271,12 @@ Contract tests every scene must pass, written once in a shared harness and run p
 7. No `Date.now`, `Math.random`, or `crypto.randomUUID` in `packages/svg/src` — an ESLint
    restriction, not a review convention.
 
-The #128 implementation is an additive engine and shared contract harness, with no real scene
-registered yet. Renderers compile one scoped motion plan with an explicit backend/target; final
+The #128 implementation introduced the additive engine and shared contract harness. The
+#133 implementation adds the first opt-in registered scene, `evidence-coverage`. Renderers compile one scoped motion plan with an explicit backend/target; final
 SVG bytes and trusted emitted targets/groups enforce the provisional classes. Signature fixtures
 use a validated C0 consumer-only common context. This is not the raw Lens projection reader:
-producer coverage semantics and freshness validation remain behind #145. Finding and identity
-schema adapters remain reserved. See `packages/svg/README.md` for the public API and strict SVG subset.
+producer coverage semantics and freshness validation remain behind #145. The finding
+schema adapter remains reserved; #132 adds the bounded static identity adapter. See `packages/svg/README.md` for the public API and strict SVG subset.
 
 ## 7. Scene catalogue
 

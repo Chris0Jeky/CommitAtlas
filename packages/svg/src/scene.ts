@@ -1,3 +1,4 @@
+import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
 import type { ThemeName } from "./index.js";
 import { createIdentityConfig, isIdentityConfig, type IdentityConfig } from "./identity.js";
@@ -48,6 +49,8 @@ export interface SceneDefinition<Model> {
   readonly budget: BudgetClass;
   buildModel(inputs: SceneInputs): Model | SceneUnavailable;
   render(model: Model, context: RenderContext): string;
+  /** Optional static unavailable composition, with engine-owned naming and no source inputs. */
+  renderUnavailable?(state: SceneUnavailable, context: RenderContext, accessibility: Readonly<{ title: string; description: string }>): string;
   accessibility(model: Model): { title: string; description: string };
 }
 export interface SceneRenderResult {
@@ -58,7 +61,7 @@ export interface SceneRenderResult {
 }
 const registry = new Map<string, SceneDefinition<unknown>>();
 const authenticLensContexts = new WeakSet<object>();
-interface RenderSession { readonly definition: SceneDefinition<unknown>; compiled?: CompiledMotionPlan }
+interface RenderSession { readonly unavailable: boolean; readonly definition: SceneDefinition<unknown>; compiled?: CompiledMotionPlan }
 const sessions = new WeakMap<RenderContext, RenderSession>();
 const PACKS = ["orbital", "survey", "spectral", "terminal"];
 const PROFILES = ["none", "subtle", "ambient", "cinematic"];
@@ -120,7 +123,7 @@ export function sceneUnavailable(reason: string): SceneUnavailable {
   return Object.freeze({ state: "unavailable", reason: text(reason, 240, "unavailable reason") });
 }
 function definitionSnapshot<Model>(input: SceneDefinition<Model>): SceneDefinition<Model> {
-  const data = record(input, ["id", "family", "supportedPacks", "supportedMotion", "budget", "buildModel", "render", "accessibility"], "scene definition");
+  const data = record(input, ["id", "family", "supportedPacks", "supportedMotion", "budget", "buildModel", "render", "accessibility", "renderUnavailable"], "scene definition");
   if (typeof data.id !== "string" || data.id.length > 48 || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u.test(data.id)) throw new Error("invalid scene id");
   if (!["instrument", "map", "signature", "scene", "finding"].includes(data.family as string)) throw new Error("invalid scene family");
   if (typeof data.budget !== "string" || !Object.hasOwn(MOTION_BUDGETS, data.budget)) throw new Error("invalid scene budget class");
@@ -129,16 +132,25 @@ function definitionSnapshot<Model>(input: SceneDefinition<Model>): SceneDefiniti
     if (!Array.isArray(list) || list.length === 0 || list.length > choices.length || new Set(list).size !== list.length || list.some(value => !choices.includes(value))) throw new Error(`invalid ${name}`);
   }
   for (const callback of ["buildModel", "render", "accessibility"]) if (typeof data[callback] !== "function") throw new Error(`invalid scene ${callback}`);
+  if (data.renderUnavailable !== undefined && typeof data.renderUnavailable !== "function") throw new Error("invalid scene renderUnavailable");
   new MotionPlan({ instanceNamespace: "validation", sceneId: data.id, family: data.family as SceneDefinition<Model>["family"], profile: "none", target: "web", backend: "css", budgetClass: data.budget as BudgetClass });
   return Object.freeze({ ...input, supportedPacks: Object.freeze([...input.supportedPacks]), supportedMotion: Object.freeze([...input.supportedMotion]) });
 }
+let builtinsLoaded = false;
+function loadBuiltins(): void {
+  if (builtinsLoaded) return;
+  const builtin = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
+  registry.set(builtin.id, builtin);
+  builtinsLoaded = true;
+}
 export function registerScene<Model>(definition: SceneDefinition<Model>): void {
+  loadBuiltins();
   const snapshot = definitionSnapshot(definition);
   if (registry.has(snapshot.id)) throw new Error(`duplicate scene id: ${snapshot.id}`);
   registry.set(snapshot.id, snapshot as unknown as SceneDefinition<unknown>);
 }
-export function getScene(id: string): SceneDefinition<unknown> | undefined { return registry.get(id); }
-export function listScenes(): readonly SceneDefinition<unknown>[] { return Object.freeze([...registry.values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); }
+export function getScene(id: string): SceneDefinition<unknown> | undefined { loadBuiltins(); return registry.get(id); }
+export function listScenes(): readonly SceneDefinition<unknown>[] { loadBuiltins(); return Object.freeze([...registry.values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); }
 function validateContext(input: RenderContext, definition: SceneDefinition<unknown>): RenderContext {
   const data = record(input, ["theme", "pack", "motion", "backend", "layout", "instanceNamespace", "seed"], "render context");
   if (!["ember", "aurora", "midnight", "paper"].includes(data.theme as string) || !PACKS.includes(data.pack as string) || !PROFILES.includes(data.motion as string) || !["css", "smil"].includes(data.backend as string) || !["wide", "compact"].includes(data.layout as string) || typeof data.seed !== "string") throw new Error("invalid render context enum or seed");
@@ -163,6 +175,7 @@ export function sceneClassName(context: RenderContext, name: string): string {
 export function compileSceneMotion(context: RenderContext, applications: readonly MotionApplication[], options: { readonly target: MotionTarget }): CompiledMotionPlan {
   const active = session(context);
   if (active.compiled) throw new Error("only one scene motion plan may compile per render");
+  if (active.unavailable && (!Array.isArray(applications) || applications.length > 0)) throw new Error("unavailable scenes cannot request motion");
   const args = record(options, ["target"], "scene motion options");
   const builder = new MotionPlan({ instanceNamespace: context.instanceNamespace, sceneId: active.definition.id, family: active.definition.family,
     profile: context.motion, backend: context.backend, target: args.target as MotionTarget, budgetClass: active.definition.budget });
@@ -200,15 +213,15 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
   if (unavailable) record(model, ["state", "reason"], "unavailable model");
   const seed = stableHash(canonicalJson(model));
   const context = Object.freeze({ ...validatedContext, seed });
-  const active: RenderSession = { definition };
+  const active: RenderSession = { definition, unavailable };
   let output: string;
   let accessibility: { title: string; description: string };
   sessions.set(context, active);
   try {
     if (unavailable) {
       const reason = text((model as SceneUnavailable).reason, 240, "unavailable reason");
-      accessibility = { title: `${definition.id}: unavailable`, description: `Scene unavailable. ${reason}` };
-      output = `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${sceneEscapeXml(accessibility.title)}" viewBox="0 0 640 120"><title>${sceneEscapeXml(accessibility.title)}</title><desc>${sceneEscapeXml(accessibility.description)}</desc><rect width="640" height="120" fill="#11110f"/><text x="24" y="42" fill="#edf0e2">UNAVAILABLE</text><text x="24" y="76" fill="#edf0e2">${sceneEscapeXml(reason)}</text></svg>`;
+      accessibility = Object.freeze({ title: `${definition.id}: unavailable`, description: `Scene unavailable. ${reason}` });
+      output = definition.renderUnavailable ? definition.renderUnavailable(model as SceneUnavailable, context, accessibility) : `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${sceneEscapeXml(accessibility.title)}" viewBox="0 0 640 120"><title>${sceneEscapeXml(accessibility.title)}</title><desc>${sceneEscapeXml(accessibility.description)}</desc><rect width="640" height="120" fill="#11110f"/><text x="24" y="42" fill="#edf0e2">UNAVAILABLE</text><text x="24" y="76" fill="#edf0e2">${sceneEscapeXml(reason)}</text></svg>`;
     } else {
       accessibility = definition.accessibility(model);
       record(accessibility, ["title", "description"], "scene accessibility");
@@ -242,6 +255,7 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
     const visible = sceneVisibleText(document.root);
     if (!visible.includes(common) || !sceneXmlText(descriptions[0]!).includes(common)) throw new Error("signature must visibly and accessibly include lens coverage and privacy context");
   }
+  if (unavailable && !sceneVisibleText(document.root).includes("UNAVAILABLE")) throw new Error("unavailable scenes must visibly display UNAVAILABLE");
   const bytes = new TextEncoder().encode(output).length;
   const budget = MOTION_BUDGETS[definition.budget];
   const counters = { bytes, animatedElements: active.compiled?.counters.animatedElements ?? 0, loopingGroups: active.compiled?.counters.loopingGroups ?? 0 };

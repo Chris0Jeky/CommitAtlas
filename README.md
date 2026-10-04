@@ -195,20 +195,22 @@ CommitAtlas does not invent a global developer rank, language proficiency, CI re
 
 Static config v1 accepts `scenes: []`, `scenePack: "survey"`, and optional
 bounded `identity` text. Defaults preserve existing card artifacts. Only
-registered scenes may be selected; the production registry remains empty
-until scene-specific implementations land. Selected scenes render from one
+registered scenes may be selected; `evidence-coverage` is the first available
+production definition, showing observed coverage and unavailable source states. Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
 The Action's `scenes` output is a JSON array of generated paths (`[]` when
 disabled), including during dry-run.
 
 ```json
-{ "scenes": [], "scenePack": "survey", "identity": { "name": "Synthetic owner", "focus": ["Software"] } }
+{ "scenes": ["evidence-coverage"], "scenePack": "survey" }
 ```
 
 Add these fields to an existing complete config. Update any exact consumer
 artifact allowlist with selected `scene-<id>.svg` names before enabling them.
 See [the scene delivery contract](docs/STATIC_GENERATOR_PLAN.md#registered-scene-delivery)
-for identity limits, ownership rules and paired-theme behavior.
+for identity limits, ownership rules and paired-theme behavior. The
+[evidence coverage guide](docs/EVIDENCE_COVERAGE_SCENE.md) documents the input-to-row
+mapping, unavailable states and opt-in requirements.
 
 ## License
 
