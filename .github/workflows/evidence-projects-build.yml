@@ -1,0 +1,45 @@
+name: Temporary evidence project identity build
+on:
+  push:
+    branches: [feat/evidence-coverage-scene]
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/feat/evidence-coverage-scene'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify and apply project identity repair
+        run: |
+          sed -i 's/^ diff --git/diff --git/' .evidence-projects.patch
+          echo '3ec55240cfd3b65a62d8a0bfc982806e1f48f54081984c2e5539621ee64c3e41  .evidence-projects.patch' | sha256sum -c
+          git apply --check --index .evidence-projects.patch
+          git apply --index .evidence-projects.patch
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Validate source and rebuild Action
+        run: |
+          for script in typecheck lint test:svg test:static build:action; do
+            npm run "$script" > /tmp/check.log 2>&1 || { tail -100 /tmp/check.log; exit 1; }
+            tail -8 /tmp/check.log
+          done
+          node --test action/action.test.mjs action/evidence-output.test.mjs
+      - name: Save tested fix and bundle to this feature branch only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -- action/dist
+          git rm -f -- .evidence-projects.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(svg): reject duplicate and malformed project identities'
+          AUTH_HEADER=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push origin HEAD:refs/heads/feat/evidence-coverage-scene

@@ -1,0 +1,97 @@
+diff --git a/docs/EVIDENCE_COVERAGE_SCENE.md b/docs/EVIDENCE_COVERAGE_SCENE.md
+index 5ee934a..0a69104 100644
+--- a/docs/EVIDENCE_COVERAGE_SCENE.md
++++ b/docs/EVIDENCE_COVERAGE_SCENE.md
+@@ -39,6 +39,10 @@ Contribution rows require the producer's exact source/basis combination: profile
+ HTML with annual percentages, or GraphQL/synthetic demo with exact counts.
+ REST is not a contribution producer. Project boards require REST or synthetic
+ demo provenance; contribution-only sources cannot authorize project observations.
++Boards must also contain one to six valid repository identities, unique after
++case-insensitive normalization as in the canonical project manifest. Duplicate
++or malformed identities invalidate both board denominators, not unrelated
++contribution observations.
+ Annual percentages must total 99–101, matching producer rounding; the all-zero
+ exception requires both an observed zero contribution total and a nonempty zero
+ calendar. Exact counts are not percentage-normalized. Published releases require
+ diff --git a/packages/svg/src/scenes/evidence-coverage.ts b/packages/svg/src/scenes/evidence-coverage.ts
+index 785837a..2bf05ea 100644
+--- a/packages/svg/src/scenes/evidence-coverage.ts
++++ b/packages/svg/src/scenes/evidence-coverage.ts
+@@ -73,6 +73,22 @@ function calendarMatches(window: PortfolioSnapshot['metrics']['window'], days: R
+ function observedZeroActivity(value: ContributionSnapshot, days: ReadonlyMap<string, number> | null): boolean {
+   return value.totalContributions === 0 && days !== null && [...days.values()].every(value => value === 0);
+ }
++/** Keep the declared-project denominator aligned with canonical manifest identity rules. */
++function uniqueProjects(value: unknown): value is ProjectSnapshot[] {
++  if (!Array.isArray(value) || value.length < 1 || value.length > 6) return false;
++  const seen = new Set<string>();
++  for (let i = 0; i < value.length; i++) {
++    const project: unknown = value[i];
++    if (!isRecord(project) || typeof project.repo !== 'string') return false;
++    const slug = project.repo.trim(), parts = slug.split('/');
++    if (parts.length !== 2 || !/^(?!-)(?!.*--)[A-Za-z0-9-]{1,39}(?<!-)$/u.test(parts[0]!) ||
++      !/^(?!\.{1,2}$)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/u.test(parts[1]!)) return false;
++    const key = slug.toLowerCase();
++    if (seen.has(key)) return false;
++    seen.add(key);
++  }
++  return true;
++}
+ function fraction(observed: number, total: number): CoverageState {
+   if (total === 0) return NOT_OBSERVED;
+   if (observed === 0) return NO_SIGNAL;
+@@ -133,7 +149,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
+   if (board === null || Array.isArray(board?.projects) && board.projects.length === 0) {
+     rows[2] = { id: 'ci', label: 'CI', detail: 'NOT CONFIGURED', coverage: NOT_OBSERVED };
+     rows[3] = { id: 'releases', label: 'RELEASES', detail: 'NOT REQUESTED', coverage: NOT_OBSERVED };
+-  } else if (boardSourceKnown && board && Array.isArray(board.projects) && board.projects.length <= 6 &&
++  } else if (boardSourceKnown && board && uniqueProjects(board.projects) &&
+     (current(boardMode) || boardMode === 'partial')) {
+     const ci = board.projects.map(project => {
+       const state = project?.ci?.state;
+diff --git a/packages/svg/tests/evidence-coverage.test.mjs b/packages/svg/tests/evidence-coverage.test.mjs
+index f07c660..9daf6aa 100644
+--- a/packages/svg/tests/evidence-coverage.test.mjs
++++ b/packages/svg/tests/evidence-coverage.test.mjs
+@@ -351,3 +351,41 @@ test('calendar validation preserves leap dates and the core bounded calendar con
+   Object.assign(inputs.snapshot.metrics.window, { from: end, to: end, days: 1, observedDays: 1, complete: true });
+   assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 1, total: 1 });
+ });
++
++test('duplicate project identities never inflate CI or release coverage', () => {
++  for (const repo of ['scene-demo/project-0', 'SCENE-DEMO/PROJECT-0', ' scene-demo/project-0 ']) {
++    const inputs = coverageInputs(); inputs.snapshot.projects.projects[1].repo = repo;
++    for (const id of ['ci', 'releases']) assert.equal(row(id, inputs).coverage.state, 'unavailable', repo);
++    const doc = assertWellFormedXml(render(inputs, { motion: 'ambient', backend: 'smil' }).svg);
++    for (const id of ['ci', 'releases']) {
++      const node = doc.nodes.find(item => item.attrs.id?.endsWith(`-row-${id}`));
++      assert.doesNotMatch(node.raw, /PASSING|PUBLISHED|COMPLETE|<animate|-target-scan/u);
++    }
++    assert.equal(row('calendar', inputs).coverage.state, 'complete');
++  }
++  const inputs = coverageInputs();
++  inputs.snapshot.projects.projects = Array.from({ length: 6 }, () => inputs.snapshot.projects.projects[0]);
++  assert.equal(row('ci', inputs).coverage.state, 'unavailable');
++  assert.equal(row('releases', inputs).coverage.state, 'unavailable');
++});
++
++test('malformed repository identities cannot count as declared observed projects', () => {
++  for (const repo of [undefined, null, {}, '', 'owner', 'owner/repo/extra', 'a--b/repo', '-a/repo',
++    'owner/..', 'owner/a..b', 'owner/a b', 'owner/界', `${'a'.repeat(40)}/repo`, `owner/${'a'.repeat(101)}`]) {
++    const inputs = coverageInputs(); inputs.snapshot.projects.projects = [inputs.snapshot.projects.projects[0]];
++    inputs.snapshot.projects.projects[0].repo = repo;
++    for (const id of ['ci', 'releases']) assert.equal(row(id, inputs).coverage.state, 'unavailable', String(repo));
++  }
++});
++
++test('distinct canonical project identities retain coverage at manifest name bounds', async () => {
++  const { parseRepositorySlug } = await import('../../core/dist/index.js');
++  const repos = ['owner/one', 'OWNER/two', `a/${'r'.repeat(100)}`, `${'o'.repeat(39)}/r`, 'owner/dot.repo', ' owner/repo_name '];
++  const inputs = coverageInputs();
++  inputs.snapshot.projects.projects.forEach((project, i) => {
++    assert.doesNotThrow(() => parseRepositorySlug(repos[i]));
++    project.repo = repos[i]; project.ci.state = 'passing'; project.releaseState = 'none'; project.release = null;
++  });
++  assert.deepEqual(row('ci', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
++  assert.deepEqual(row('releases', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
++});
