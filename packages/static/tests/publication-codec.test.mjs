@@ -23,7 +23,7 @@ test("bounded publication codec exposes four explicit record operations", () => 
   for (const name of ["encodePublicationJournal", "decodePublicationJournal", "encodePublicationStatus", "decodePublicationStatus"]) {
     assert.equal(typeof codec[name], "function", `missing ${name}`);
   }
-  assert.equal(codec.MAX_PUBLICATION_JOURNAL_BYTES, 64 * 1024);
+  assert.equal(codec.MAX_PUBLICATION_JOURNAL_BYTES, 128 * 1024);
   assert.equal(codec.MAX_PUBLICATION_STATUS_BYTES, 512);
 });
 
@@ -110,16 +110,16 @@ test("schema validation remains mandatory for both encoders and decoders", () =>
   }
 });
 
-test("all bounded operations fit, while oversized journal names cannot escape the byte limit", () => {
+test("all bounded operations fit, while oversized journal names fail schema validation", () => {
   const maximum = { ...journal(), targets: Array.from({ length: 4 }, (_, i) => ({
     outputDir: `assets/theme-${i}`,
-    operations: Array.from({ length: 32 }, (_, j) => ({ name: `scene-${j}.svg`, action: "replace", previous: version, next: version })),
+    operations: Array.from({ length: 96 }, (_, j) => ({ name: `scene-example-${j}.svg`, action: "replace", previous: version, next: version })),
   })) };
   const encoded = codec.encodePublicationJournal(maximum);
   assert.ok(encoded.byteLength < codec.MAX_PUBLICATION_JOURNAL_BYTES);
   assert.deepEqual(codec.decodePublicationJournal(encoded), maximum);
   maximum.targets[0].operations[0].name = "a".repeat(codec.MAX_PUBLICATION_JOURNAL_BYTES) + ".svg";
-  assert.throws(() => codec.encodePublicationJournal(maximum), /publication.*byte limit/i);
+  assert.throws(() => codec.encodePublicationJournal(maximum), /publication.*artifact name/i);
 });
 
 test("sparse in-memory journals cannot be encoded into unreadable durable records", () => {
