@@ -44,12 +44,34 @@ function publishedRelease(value: unknown): boolean {
   return value.download === null || isRecord(value.download) &&
     boundedText(value.download.name, 255, false) && safeHttpsUrl(value.download.url) !== null;
 }
-function observedZeroActivity(value: ContributionSnapshot): boolean {
-  if (value.totalContributions !== 0 || !Array.isArray(value.days) || value.days.length < 1 || value.days.length > 366) return false;
-  for (let i = 0; i < value.days.length; i++) {
-    if (!isRecord(value.days[i]) || value.days[i]!.count !== 0) return false;
+function utcDay(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value ? timestamp : null;
+}
+/** Mirror the core calendar's bounded day records without deriving a new metric or filling gaps. */
+function calendarDays(value: unknown): ReadonlyMap<string, number> | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 400) return null;
+  const days = new Map<string, number>();
+  for (let i = 0; i < value.length; i++) {
+    const day: unknown = value[i];
+    if (!isRecord(day) || typeof day.date !== 'string' || utcDay(day.date) === null ||
+      !count(day.count, 100_000) || day.level !== undefined && !count(day.level, 4) ||
+      Object.keys(day).some(key => !['date', 'count', 'level'].includes(key)) || days.has(day.date)) return null;
+    days.set(day.date, day.count);
   }
-  return true;
+  return days;
+}
+function calendarMatches(window: PortfolioSnapshot['metrics']['window'], days: ReadonlyMap<string, number> | null): boolean {
+  if (!days) return false;
+  const from = utcDay(window.from), to = utcDay(window.to);
+  if (from === null || to === null || (to - from) / 86_400_000 + 1 !== window.days) return false;
+  let observed = 0;
+  for (const date of days.keys()) if (date >= window.from && date <= window.to) observed++;
+  return observed === window.observedDays;
+}
+function observedZeroActivity(value: ContributionSnapshot, days: ReadonlyMap<string, number> | null): boolean {
+  return value.totalContributions === 0 && days !== null && [...days.values()].every(value => value === 0);
 }
 function fraction(observed: number, total: number): CoverageState {
   if (total === 0) return NOT_OBSERVED;
@@ -83,8 +105,9 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
   const sourceKnown = source === 'github-profile-html' && basis === 'public-profile-percentages' ||
     (source === 'github-graphql' || source === 'synthetic-demo') && basis === 'exact-counts';
   const window = snapshot.metrics?.window;
+  const days = calendarDays(contributions?.days);
   const windowValid = window && count(window.days, 366) && window.days > 0 && count(window.observedDays, window.days) &&
-    typeof window.complete === 'boolean' && window.complete === (window.observedDays === window.days);
+    typeof window.complete === 'boolean' && window.complete === (window.observedDays === window.days) && calendarMatches(window, days);
   const calendarCurrent = current(contributionMode) || contributionMode === 'partial' && windowValid && !window.complete;
   rows[0] = { id: 'calendar', label: source === 'github-profile-html' ? 'PUBLIC PROFILE VIEW' : 'CONTRIBUTION CALENDAR',
     detail: sourceKnown && windowValid && calendarCurrent
@@ -96,7 +119,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
     : count(value, Number.MAX_SAFE_INTEGER));
   const mixTotal = mix?.reduce((sum, value) => sum + value, 0);
   // Match the public parser/core rounding tolerance and its explicit zero-activity form.
-  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 && observedZeroActivity(contributions) ||
+  const mixConsistent = basis !== 'public-profile-percentages' || mixTotal === 0 && observedZeroActivity(contributions, days) ||
     typeof mixTotal === 'number' && mixTotal >= 99 && mixTotal <= 101;
   if (sourceKnown && current(contributionMode) && mixValid && mixConsistent && (basis === 'exact-counts' || basis === 'public-profile-percentages')) {
     rows[1] = { id: 'mix', label: 'ACTIVITY MIX',

@@ -69,3 +69,13 @@ test('zero percentages require an observed zero total and zero calendar, not con
     assert.doesNotMatch(node.raw, /COMPLETE|4\/4|<animate|-target-scan/u);
   }
 });
+
+test('zero-percentage exception requires valid unique dated calendar observations', () => {
+  for (const days of [[{ count: 0 }], [{ date: '2026-02-30', count: 0 }],
+    [{ date: '2026-01-07', count: 0 }, { date: '2026-01-07', count: 0 }]]) {
+    const inputs = inputsFor([0, 0, 0, 0]);
+    Object.assign(inputs.snapshot.contributions, { totalContributions: 0, days });
+    const row = getScene('evidence-coverage').buildModel(inputs).rows.find(item => item.id === 'mix');
+    assert.equal(row.coverage.state, 'unavailable', JSON.stringify(days));
+  }
+});

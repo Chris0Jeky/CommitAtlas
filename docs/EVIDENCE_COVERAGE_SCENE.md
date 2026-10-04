@@ -30,6 +30,11 @@ no artifacts. Existing standalone card selections are unchanged.
 | Snapshot | `freshness.mode` | A neutral literal mode badge, not a manufactured completeness fraction. |
 
 The root snapshot must name a known source before any row can be authorized.
+Calendar coverage additionally requires unique, valid UTC day records within the
+core calendar bounds (at most 400 records, counts 0–100,000, optional levels 0–4).
+The declared window dates and inclusive span must agree with its day count, and
+its observed-day count must equal the raw records inside that window. Missing
+days are never filled as zero. The same raw validation guards zero-activity mix.
 Contribution rows require the producer's exact source/basis combination: profile
 HTML with annual percentages, or GraphQL/synthetic demo with exact counts.
 REST is not a contribution producer. Project boards require REST or synthetic
