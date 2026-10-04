@@ -127,3 +127,19 @@ test("all-200 happy path still commits every signal", async () => {
   assert.deepEqual(boardResult.value, { projects: [] });
   assert.equal(boardResult.error, null);
 });
+
+test("optional project URL inputs cannot trap submit behind native validation", () => {
+  // type="url" blocks form submission on invalid text with no app notice, while
+  // safeProjectActionUrl already drops invalid values downstream — so the inputs
+  // must not ask the browser to validate them. inputMode keeps URL keyboards.
+  const urlInputs = clientSource
+    .split("\n")
+    .filter((line) => line.includes("URL (optional)") && line.includes("<input"));
+  assert.equal(urlInputs.length, 3, "expected the docs, install, and download project inputs");
+  for (const line of urlInputs) {
+    assert.doesNotMatch(line, /type="url"/, "optional project URLs must not use native url validation");
+    assert.match(line, /type="text"/, "optional project URLs stay explicit text inputs");
+    assert.match(line, /inputMode="url"/, "optional project URLs keep the URL keyboard hint");
+  }
+  assert.match(clientSource, /safeProjectActionUrl\(/, "invalid URLs must still be dropped downstream");
+});
