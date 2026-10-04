@@ -351,3 +351,41 @@ test('calendar validation preserves leap dates and the core bounded calendar con
   Object.assign(inputs.snapshot.metrics.window, { from: end, to: end, days: 1, observedDays: 1, complete: true });
   assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 1, total: 1 });
 });
+
+test('duplicate project identities never inflate CI or release coverage', () => {
+  for (const repo of ['scene-demo/project-0', 'SCENE-DEMO/PROJECT-0', ' scene-demo/project-0 ']) {
+    const inputs = coverageInputs(); inputs.snapshot.projects.projects[1].repo = repo;
+    for (const id of ['ci', 'releases']) assert.equal(row(id, inputs).coverage.state, 'unavailable', repo);
+    const doc = assertWellFormedXml(render(inputs, { motion: 'ambient', backend: 'smil' }).svg);
+    for (const id of ['ci', 'releases']) {
+      const node = doc.nodes.find(item => item.attrs.id?.endsWith(`-row-${id}`));
+      assert.doesNotMatch(node.raw, /PASSING|PUBLISHED|COMPLETE|<animate|-target-scan/u);
+    }
+    assert.equal(row('calendar', inputs).coverage.state, 'complete');
+  }
+  const inputs = coverageInputs();
+  inputs.snapshot.projects.projects = Array.from({ length: 6 }, () => inputs.snapshot.projects.projects[0]);
+  assert.equal(row('ci', inputs).coverage.state, 'unavailable');
+  assert.equal(row('releases', inputs).coverage.state, 'unavailable');
+});
+
+test('malformed repository identities cannot count as declared observed projects', () => {
+  for (const repo of [undefined, null, {}, '', 'owner', 'owner/repo/extra', 'a--b/repo', '-a/repo',
+    'owner/..', 'owner/a..b', 'owner/a b', 'owner/界', `${'a'.repeat(40)}/repo`, `owner/${'a'.repeat(101)}`]) {
+    const inputs = coverageInputs(); inputs.snapshot.projects.projects = [inputs.snapshot.projects.projects[0]];
+    inputs.snapshot.projects.projects[0].repo = repo;
+    for (const id of ['ci', 'releases']) assert.equal(row(id, inputs).coverage.state, 'unavailable', String(repo));
+  }
+});
+
+test('distinct canonical project identities retain coverage at manifest name bounds', async () => {
+  const { parseRepositorySlug } = await import('../../core/dist/index.js');
+  const repos = ['owner/one', 'OWNER/two', `a/${'r'.repeat(100)}`, `${'o'.repeat(39)}/r`, 'owner/dot.repo', ' owner/repo_name '];
+  const inputs = coverageInputs();
+  inputs.snapshot.projects.projects.forEach((project, i) => {
+    assert.doesNotThrow(() => parseRepositorySlug(repos[i]));
+    project.repo = repos[i]; project.ci.state = 'passing'; project.releaseState = 'none'; project.release = null;
+  });
+  assert.deepEqual(row('ci', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
+  assert.deepEqual(row('releases', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
+});

@@ -39,6 +39,10 @@ Contribution rows require the producer's exact source/basis combination: profile
 HTML with annual percentages, or GraphQL/synthetic demo with exact counts.
 REST is not a contribution producer. Project boards require REST or synthetic
 demo provenance; contribution-only sources cannot authorize project observations.
+Boards must also contain one to six valid repository identities, unique after
+case-insensitive normalization as in the canonical project manifest. Duplicate
+or malformed identities invalidate both board denominators, not unrelated
+contribution observations.
 Annual percentages must total 99–101, matching producer rounding; the all-zero
 exception requires both an observed zero contribution total and a nonempty zero
 calendar. Exact counts are not percentage-normalized. Published releases require

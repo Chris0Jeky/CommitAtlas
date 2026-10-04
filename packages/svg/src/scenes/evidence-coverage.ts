@@ -73,6 +73,22 @@ function calendarMatches(window: PortfolioSnapshot['metrics']['window'], days: R
 function observedZeroActivity(value: ContributionSnapshot, days: ReadonlyMap<string, number> | null): boolean {
   return value.totalContributions === 0 && days !== null && [...days.values()].every(value => value === 0);
 }
+/** Keep the declared-project denominator aligned with canonical manifest identity rules. */
+function uniqueProjects(value: unknown): value is ProjectSnapshot[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 6) return false;
+  const seen = new Set<string>();
+  for (let i = 0; i < value.length; i++) {
+    const project: unknown = value[i];
+    if (!isRecord(project) || typeof project.repo !== 'string') return false;
+    const slug = project.repo.trim(), parts = slug.split('/');
+    if (parts.length !== 2 || !/^(?!-)(?!.*--)[A-Za-z0-9-]{1,39}(?<!-)$/u.test(parts[0]!) ||
+      !/^(?!\.{1,2}$)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/u.test(parts[1]!)) return false;
+    const key = slug.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+  }
+  return true;
+}
 function fraction(observed: number, total: number): CoverageState {
   if (total === 0) return NOT_OBSERVED;
   if (observed === 0) return NO_SIGNAL;
@@ -133,7 +149,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
   if (board === null || Array.isArray(board?.projects) && board.projects.length === 0) {
     rows[2] = { id: 'ci', label: 'CI', detail: 'NOT CONFIGURED', coverage: NOT_OBSERVED };
     rows[3] = { id: 'releases', label: 'RELEASES', detail: 'NOT REQUESTED', coverage: NOT_OBSERVED };
-  } else if (boardSourceKnown && board && Array.isArray(board.projects) && board.projects.length <= 6 &&
+  } else if (boardSourceKnown && board && uniqueProjects(board.projects) &&
     (current(boardMode) || boardMode === 'partial')) {
     const ci = board.projects.map(project => {
       const state = project?.ci?.state;
