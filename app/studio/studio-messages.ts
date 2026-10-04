@@ -4,7 +4,7 @@ export function retainedPreviewNotice(reason: string, login: string): string {
 }
 
 export function contributionUnavailableNotice(): string {
-  return "Available public signals loaded. Streak and Activity are unavailable for this preview and were omitted from README Markdown; no value was guessed.";
+  return "Available public signals loaded. Atlas, Streak, Breakdown, Rhythm, and Activity are unavailable for this preview and were omitted from README Markdown; no value was guessed.";
 }
 
 export function configurationChangedNotice(): string {
@@ -13,4 +13,8 @@ export function configurationChangedNotice(): string {
 
 export function unconfirmedEvidenceNotice(): string {
   return "Evidence-backed cards are held back from README Markdown until a preview run confirms this configuration. The previous preview stays visible.";
+}
+
+export function previewLoadedNotice(demo: boolean): string {
+  return `${demo ? "Synthetic" : "Live public"} preview loaded. Source is shown on each card below.`;
 }

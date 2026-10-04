@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   configurationChangedNotice,
   contributionUnavailableNotice,
+  previewLoadedNotice,
   retainedPreviewNotice,
   unconfirmedEvidenceNotice,
 } from "./studio-messages";
@@ -23,7 +24,7 @@ test("normalizes terminal punctuation without creating a doubled stop", () => {
 
 test("describes unavailable contributions without inventing a failure cause", () => {
   const notice = contributionUnavailableNotice();
-  assert.match(notice, /Streak and Activity are unavailable/);
+  assert.match(notice, /Atlas, Streak, Breakdown, Rhythm, and Activity are unavailable/);
   assert.match(notice, /omitted from README Markdown/);
   assert.doesNotMatch(notice, /token|rate limit|outage/i);
 });
@@ -41,4 +42,15 @@ test("explains withheld cards without claiming the retained preview was lost", (
   assert.match(notice, /previous preview stays visible/);
   // Covers both the in-flight and failed-refresh states, so it must not assert either.
   assert.doesNotMatch(notice, /failed|loading|error|retry/i);
+});
+
+test("promises only the provenance the gallery actually shows", () => {
+  assert.equal(
+    previewLoadedNotice(false),
+    "Live public preview loaded. Source is shown on each card below.",
+  );
+  assert.equal(
+    previewLoadedNotice(true),
+    "Synthetic preview loaded. Source is shown on each card below.",
+  );
 });
