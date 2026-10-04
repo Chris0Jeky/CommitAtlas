@@ -172,7 +172,8 @@ test("fails closed for incomplete, duplicate, unexpected, or drifted observation
   );
   assert.throws(
     () => planPublicationRecovery(journal(), "installing", [
-      ...previousObservations(),
+      // Keep cardinality valid so this specifically exercises duplicate identity rejection.
+      ...previousObservations().slice(0, 2),
       previousObservations()[0],
     ]),
     /repeats/,
