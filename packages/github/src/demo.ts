@@ -80,7 +80,7 @@ export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
 }
 
 export function demoContributions(login: string, requestedDays = 365, now = new Date()): ContributionSnapshot {
-  const dayCount = Math.min(Math.max(requestedDays, 7), 365);
+  const dayCount = Math.min(Math.max(requestedDays, 7), 730);
   const days = Array.from({ length: dayCount }, (_, offset) => {
     const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     date.setUTCDate(date.getUTCDate() - (dayCount - 1 - offset));

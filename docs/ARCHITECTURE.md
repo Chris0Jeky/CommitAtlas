@@ -22,7 +22,7 @@ GitHub public evidence ──┼─ interactive HTML Studio
 
 | Surface | Purpose | Delivery |
 | --- | --- | --- |
-| Atlas | 365-day density, heatmap, streaks, activity mix, momentum, rhythm, languages, project health | SVG + Studio |
+| Atlas | Up-to-two-year density (7–730 days), heatmap, streaks, activity mix, momentum, rhythm, languages, project health | SVG + Studio |
 | Profile | Public repositories, stars, followers, following, contribution total | SVG + JSON |
 | Streak | Current and longest streak inside the exact displayed UTC window | SVG + JSON |
 | Breakdown | Exact categorized counts when available; otherwise non-window-scoped profile-view percentages | SVG + Studio |

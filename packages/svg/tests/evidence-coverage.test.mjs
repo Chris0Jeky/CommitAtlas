@@ -299,7 +299,7 @@ test('calendar completeness requires bounded valid raw days, not a window claim 
     [...days, days[0]], [...days, { date: '2026-02-30', count: 0 }],
     ...[null, -1, 0.5, 100001, '0'].map(count => [{ ...days[0], count }, ...days.slice(1)]),
     [{ ...days[0], level: 5 }, ...days.slice(1)], [{ count: 0 }, ...days.slice(1)],
-    Array.from({ length: 401 }, () => days[0]),
+    Array.from({ length: 801 }, () => days[0]),
   ];
   for (const calendar of invalid) {
     const inputs = coverageInputs(); inputs.snapshot.contributions.days = calendar;
@@ -325,6 +325,20 @@ test('calendar window dates, span and raw in-window cardinality must agree', () 
   }
 });
 
+test('two-year calendar windows stay observable and bounded', () => {
+  const days = Array.from({ length: 731 }, (_, i) => ({
+    date: new Date(Date.UTC(2024, 0, i + 1)).toISOString().slice(0, 10), count: i % 3,
+  }));
+  const inputs = coverageInputs();
+  inputs.snapshot.contributions.days = days;
+  Object.assign(inputs.snapshot.metrics.window, { from: days[0].date, to: days.at(-1).date, days: 731, observedDays: 731, complete: true });
+  assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 731, total: 731 });
+  const over = coverageInputs();
+  over.snapshot.contributions.days = [...days, { date: '2026-01-02', count: 0 }];
+  Object.assign(over.snapshot.metrics.window, { from: days[0].date, to: '2026-01-02', days: 732, observedDays: 732, complete: true });
+  assert.equal(row('calendar', over).coverage.state, 'unavailable');
+});
+
 test('genuine partial calendars and unordered extra dates retain exact observed coverage', () => {
   const inputs = coverageInputs();
   inputs.snapshot.contributions.freshness.mode = 'partial';
@@ -344,7 +358,7 @@ test('calendar validation preserves leap dates and the core bounded calendar con
   ];
   Object.assign(inputs.snapshot.metrics.window, { from: '2024-02-28', to: '2024-03-01', days: 3, observedDays: 3, complete: true });
   assert.deepEqual(row('calendar', inputs).coverage, { state: 'complete', observed: 3, total: 3 });
-  inputs.snapshot.contributions.days = Array.from({ length: 400 }, (_, i) => ({
+  inputs.snapshot.contributions.days = Array.from({ length: 800 }, (_, i) => ({
     date: new Date(Date.UTC(2023, 1, i + 1)).toISOString().slice(0, 10), count: 0,
   }));
   const end = inputs.snapshot.contributions.days.at(-1).date;

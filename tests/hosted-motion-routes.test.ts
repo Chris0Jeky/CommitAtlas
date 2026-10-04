@@ -31,7 +31,7 @@ const routes: readonly {
   {
     name: "streak",
     get: getStreak,
-    query: (motion) => `user=octocat&demo=true&theme=aurora&motion=${motion}`,
+    query: (motion) => `user=octocat&demo=true&theme=aurora&days=365&motion=${motion}`,
   },
   {
     name: "breakdown",

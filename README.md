@@ -74,7 +74,7 @@ A scene may later use evidence as a deterministic visual seed, but spectacle mus
 | Cadence | Contribution share by UTC weekday, window-scoped | static-only `cadence.svg` |
 | Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
 
-The primary Atlas condenses a 365-day public activity window into one `860 × 380` SVG: contribution heatmap and totals, active-day density, peak day, streaks, public collaboration mix, twelve-bucket momentum, recent change, rhythm, language distribution, and configured project health.
+The primary Atlas condenses a 365-day public activity window (extendable to two years with `days=730`) into one `860 × 380` SVG: contribution heatmap and totals, active-day density, peak day, streaks, public collaboration mix, twelve-bucket momentum, recent change, rhythm, language distribution, and configured project health.
 
 Cards use one hue per quantitative scale. Colour says how much, not what kind. The Studio emits a `<picture>` pair for dark and light readers and keeps independent project actions in accessible HTML because a README-embedded SVG is one linked image, not a reliable mini-application.
 

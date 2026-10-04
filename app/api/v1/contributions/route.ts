@@ -32,8 +32,8 @@ export function OPTIONS(): Response {
 
 function parseDays(value: string | null): number {
   if (value === null) return 365;
-  if (!/^\d{1,3}$/.test(value)) throw new InputError("days must be an integer from 7 to 365");
+  if (!/^\d{1,3}$/.test(value)) throw new InputError("days must be an integer from 7 to 730");
   const days = Number(value);
-  if (days < 7 || days > 365) throw new InputError("days must be an integer from 7 to 365");
+  if (days < 7 || days > 730) throw new InputError("days must be an integer from 7 to 730");
   return days;
 }

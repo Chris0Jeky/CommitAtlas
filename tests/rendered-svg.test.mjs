@@ -25,7 +25,8 @@ async function request(path, extraEnv = {}, init = {}) {
 test("serves all seven synthetic SVG cards with their planned public cache windows", async () => {
   const cases = [
     ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "900"],
-    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "3600"],
+    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=365&motion=subtle", "3600"],
+    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=730&motion=subtle", "3600"],
     ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
     ["/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
     ["/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=56&motion=subtle", "3600"],
@@ -144,12 +145,34 @@ test("renders a complete logged-out public profile streak without a contribution
       assert.equal(new Headers(init?.headers).get("authorization"), null);
       const year = Number(url.searchParams.get("from")?.slice(0, 4));
       return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
-    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora&motion=none"));
+    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora&days=365&motion=none"));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=3600");
     const body = await response.text();
     assert.match(body, />365\+<\/text>/);
     assert.match(body, /Longest in 365-day window/);
+    assert.match(body, /earlier history not observed/);
+  } finally {
+    if (previous === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = previous;
+  }
+});
+
+test("renders a two-year logged-out public profile streak without a contribution token", async () => {
+  const previous = process.env.GITHUB_TOKEN;
+  delete process.env.GITHUB_TOKEN;
+  try {
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      assert.equal(url.origin, "https://github.com");
+      assert.equal(new Headers(init?.headers).get("authorization"), null);
+      const year = Number(url.searchParams.get("from")?.slice(0, 4));
+      return new Response(publicContributionHtml(year), { headers: { "content-type": "text/html; charset=utf-8" } });
+    }, () => request("/api/v1/cards/streak.svg?user=octocat&demo=false&theme=aurora&days=730&motion=none"));
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, />730\+<\/text>/);
+    assert.match(body, /Longest in 730-day window/);
     assert.match(body, /earlier history not observed/);
   } finally {
     if (previous === undefined) delete process.env.GITHUB_TOKEN;

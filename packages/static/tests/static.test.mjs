@@ -88,6 +88,32 @@ test("accepts bounded opposite-scheme theme outputs and rejects ambiguous varian
   }), /too_big|at most/i);
 });
 
+test("accepts two-year contribution windows and rejects wider ones", () => {
+  assert.equal(parseStaticConfig({ ...rawConfig(), days: 366 }).days, 366);
+  assert.equal(parseStaticConfig({ ...rawConfig(), days: 730 }).days, 730);
+  assert.throws(() => parseStaticConfig({ ...rawConfig(), days: 731 }), /too_big|at most/i);
+});
+
+test("two-year compact activity grids fit the 480px viewBox", () => {
+  const rendered = renderStaticArtifacts(snapshot(730), parseStaticConfig({
+    ...rawConfig(),
+    days: 730,
+    layout: "compact",
+    cards: ["activity"],
+  }));
+  const output = rendered["activity.svg"];
+  const width = Number(/width="(\d+)"/.exec(output)?.[1]);
+  assert.equal(width, 480);
+  let right = 0;
+  let cells = 0;
+  for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
+    cells += 1;
+    right = Math.max(right, Number(match[1]) + Number(match[3]));
+  }
+  assert.equal(cells, 730);
+  assert.ok(right < width, `compact grid overflows: ${right} of ${width}`);
+});
+
 test("renders wide and compact Atlas variants from one snapshot", () => {
   const rendered = renderStaticArtifacts(snapshot(), parseStaticConfig({
     ...rawConfig(),
@@ -846,8 +872,8 @@ function config() {
   return parseStaticConfig(rawConfig());
 }
 
-function snapshot() {
-  const days = Array.from({ length: 365 }, (_, index) => {
+function snapshot(dayCount = 365) {
+  const days = Array.from({ length: dayCount }, (_, index) => {
     const date = new Date(Date.UTC(2025, 7, 21 + index)).toISOString().slice(0, 10);
     const count = index % 5;
     return { date, count, level: count };

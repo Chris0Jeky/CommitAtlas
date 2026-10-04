@@ -156,13 +156,13 @@ export type ContributionDay = z.infer<typeof ContributionDaySchema>;
 
 export const ContributionCalendarSchema = z.object({
   version: VersionSchema,
-  days: z.array(ContributionDaySchema).min(1).max(400),
+  days: z.array(ContributionDaySchema).min(1).max(800),
 }).strict();
 export type ContributionCalendar = z.infer<typeof ContributionCalendarSchema>;
 
 function parseDays(input: unknown): ContributionDay[] {
   const days = Array.isArray(input) ? input : ContributionCalendarSchema.parse(input).days;
-  const parsed = z.array(ContributionDaySchema).min(1).max(400).parse(days);
+  const parsed = z.array(ContributionDaySchema).min(1).max(800).parse(days);
   const sorted = [...parsed].sort((a, b) => a.date.localeCompare(b.date));
   for (let index = 1; index < sorted.length; index += 1) {
     if (sorted[index - 1]?.date === sorted[index]?.date) throw new Error(`Duplicate contribution date: ${sorted[index]?.date}`);
@@ -255,7 +255,7 @@ export function calculateStreaks(input: unknown, options: StreakOptions): Streak
 
 export const ActivityOptionsSchema = z.object({
   asOf: UtcDateSchema,
-  days: z.number().int().min(1).max(366).default(30),
+  days: z.number().int().min(1).max(731).default(30),
 }).strict();
 export type ActivityOptions = z.infer<typeof ActivityOptionsSchema>;
 
@@ -300,7 +300,7 @@ export type ContributionBreakdown = z.infer<typeof ContributionBreakdownSchema>;
 export const ContributionMetricsOptionsSchema = ContributionBreakdownSchema.extend({
   asOf: UtcDateSchema,
   currentDay: z.enum(["closed", "open"]).default("closed"),
-  days: z.number().int().min(1).max(366),
+  days: z.number().int().min(1).max(731),
   trendWeeks: z.number().int().min(1).max(16).default(12),
   breakdownBasis: z.enum(["exact-counts", "public-profile-percentages"]).default("exact-counts"),
 }).strict().superRefine((value, context) => {
@@ -577,7 +577,7 @@ export function parseOptions(input: unknown = {}): CoreOptions {
   const days = optionInteger(raw.days, "days") ?? 30;
   const limit = optionInteger(raw.limit, "limit") ?? 6;
   const staleAfterHours = optionInteger(raw.staleAfterHours, "staleAfterHours") ?? 72;
-  if (days < 1 || days > 366) throw new Error("days must be between 1 and 366");
+  if (days < 1 || days > 731) throw new Error("days must be between 1 and 731");
   if (limit < 1 || limit > 6) throw new Error("limit must be between 1 and 6");
   if (staleAfterHours < 1 || staleAfterHours > 8_760) throw new Error("staleAfterHours must be between 1 and 8760");
   return { version: CORE_VERSION, theme, locale, showTitle, days, limit, staleAfterHours };

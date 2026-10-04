@@ -142,7 +142,7 @@ export class GitHubClient {
         503,
       );
     }
-    const requestedDays = Math.min(Math.max(days, 1), 365);
+    const requestedDays = Math.min(Math.max(days, 1), 730);
     const to = this.now();
     const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
     from.setUTCDate(from.getUTCDate() - (requestedDays - 1));
@@ -223,7 +223,7 @@ export class GitHubClient {
    * percentage mix published by that view, not a fabricated exact count.
    */
   async fetchPublicProfileContributions(login: string, days = 365): Promise<ContributionSnapshot> {
-    const requestedDays = Math.min(Math.max(days, 1), 365);
+    const requestedDays = Math.min(Math.max(days, 1), 730);
     const to = this.now();
     const toDate = to.toISOString().slice(0, 10);
     const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
