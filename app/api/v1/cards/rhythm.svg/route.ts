@@ -21,7 +21,7 @@ export async function GET(request: Request): Promise<Response> {
       : token
         ? await client.fetchContributions(query.user, query.days)
         : await client.fetchPublicProfileContributions(query.user, query.days);
-    const body = renderRhythmCard(toContributionMetricsCards(snapshot, query.days).rhythm, {
+    const body = renderRhythmCard(toContributionMetricsCards(snapshot, query.days === "auto" ? snapshot.days.length : query.days).rhythm, {
       theme: query.theme,
       motion: query.motion,
       title: `${snapshot.login} contribution rhythm`,

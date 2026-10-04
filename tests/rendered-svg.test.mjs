@@ -27,6 +27,7 @@ test("serves all seven synthetic SVG cards with their planned public cache windo
     ["/api/v1/cards/profile.svg?user=octocat&demo=true&theme=aurora&motion=subtle", "900"],
     ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=365&motion=subtle", "3600"],
     ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=730&motion=subtle", "3600"],
+    ["/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=auto&motion=subtle", "3600"],
     ["/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
     ["/api/v1/cards/breakdown.svg?user=octocat&demo=true&theme=aurora&days=7&motion=subtle", "3600"],
     ["/api/v1/cards/rhythm.svg?user=octocat&demo=true&theme=aurora&days=56&motion=subtle", "3600"],
@@ -49,6 +50,23 @@ test("serves all seven synthetic SVG cards with their planned public cache windo
     // Camo-proxied README images: the Pulseboard SDK and any script belong to the HTML UI only.
     assert.doesNotMatch(body, /pulseboard|<script/i, path);
   }
+});
+
+test("automatic demo windows resolve to the observed two-year history", async () => {
+  const streak = await request("/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=auto&motion=none");
+  assert.equal(streak.status, 200);
+  assert.match(await streak.text(), /Longest in 730-day window/);
+  const activity = await request("/api/v1/cards/activity.svg?user=octocat&demo=true&theme=aurora&days=auto&motion=none");
+  assert.equal(activity.status, 200);
+  const activityBody = await activity.text();
+  const period = /\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}/.exec(activityBody)?.[0];
+  assert.ok(period, "activity card shows an automatic window period");
+  const [from, to] = period.split(" → ");
+  const span = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+  assert.equal(span, 730);
+  const atlas = await request("/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=auto&motion=none&layout=wide");
+  assert.equal(atlas.status, 200);
+  assert.match(await atlas.text(), /730D/);
 });
 
 test("routes fixed motion probe filenames through the built Worker", async () => {
