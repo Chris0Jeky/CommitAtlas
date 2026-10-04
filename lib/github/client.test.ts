@@ -97,6 +97,117 @@ test("clamps multi-year profile windows to two trailing years", async () => {
   assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
 });
 
+test("automatic token windows span the two-year ceiling back to the earliest active day", async () => {
+  let graphQlBody = "";
+  const from = new Date(Date.UTC(2024, 7, 19));
+  const days = [];
+  for (let index = 0; index < 731; index += 1) {
+    const date = new Date(from);
+    date.setUTCDate(date.getUTCDate() + index);
+    const count = index < 365 ? 0 : 1;
+    days.push({
+      date: date.toISOString().slice(0, 10),
+      contributionCount: count,
+      contributionLevel: count === 0 ? "NONE" : "FIRST_QUARTILE",
+    });
+  }
+  const weeks: { contributionDays: typeof days }[] = [];
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push({ contributionDays: days.slice(index, index + 7) });
+  }
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    graphQlBody = String(init?.body);
+    return json({
+      data: {
+        user: {
+          contributionsCollection: {
+            totalCommitContributions: 200,
+            totalIssueContributions: 100,
+            totalPullRequestContributions: 40,
+            totalPullRequestReviewContributions: 26,
+            hasAnyRestrictedContributions: false,
+            restrictedContributionsCount: 0,
+            contributionCalendar: { weeks },
+          },
+        },
+      },
+    });
+  };
+  const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW })
+    .fetchContributions("octocat", "auto");
+  assert.equal(JSON.parse(graphQlBody).variables.from, "2024-08-19T00:00:00.000Z");
+  assert.equal(contributions.days.length, 366);
+  assert.equal(contributions.days[0]?.date, "2025-08-19");
+  assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
+  assert.equal(contributions.totalContributions, 366);
+  assert.equal(contributions.commits, 200);
+});
+
+test("automatic windows accept short calendars that explicit windows reject", async () => {
+  const days = [];
+  for (let index = 0; index < 10; index += 1) {
+    const date = new Date(Date.UTC(2026, 7, 10 + index));
+    const count = index < 2 ? 0 : 1;
+    days.push({
+      date: date.toISOString().slice(0, 10),
+      contributionCount: count,
+      contributionLevel: count === 0 ? "NONE" : "FIRST_QUARTILE",
+    });
+  }
+  const payload = {
+    data: {
+      user: {
+        contributionsCollection: {
+          totalCommitContributions: 8,
+          totalIssueContributions: 0,
+          totalPullRequestContributions: 0,
+          totalPullRequestReviewContributions: 0,
+          hasAnyRestrictedContributions: false,
+          restrictedContributionsCount: 0,
+          contributionCalendar: { weeks: [{ contributionDays: days }] },
+        },
+      },
+    },
+  };
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    return json(payload);
+  };
+  const client = new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW });
+  const contributions = await client.fetchContributions("octocat", "auto");
+  assert.equal(contributions.days.length, 8);
+  assert.equal(contributions.days[0]?.date, "2026-08-12");
+  await assert.rejects(client.fetchContributions("octocat", 30), isInvalidResponse);
+});
+
+test("automatic public windows trim leading-zero years and keep the activity mix", async () => {
+  const active: Record<string, number> = {};
+  for (const date = new Date(Date.UTC(2026, 5, 1)); date <= NOW; date.setUTCDate(date.getUTCDate() + 1)) {
+    active[date.toISOString().slice(0, 10)] = 1;
+  }
+  const zeroMix = { Commits: 0, "Pull requests": 0, Issues: 0, "Code review": 0 };
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    const year = Number(url.searchParams.get("from")?.slice(0, 4));
+    if (year === 2026) {
+      return html(publicContributionHtml(2026, active, { Commits: 70, "Pull requests": 15, Issues: 10, "Code review": 5 }));
+    }
+    return html(publicContributionHtml(year, {}, zeroMix).replace(/ data-percentages="[^"]+"/, ""));
+  };
+  const contributions = await new GitHubClient({ fetchImpl, now: () => NOW })
+    .fetchPublicProfileContributions("octocat", "auto");
+  assert.equal(contributions.days.length, 80);
+  assert.equal(contributions.days[0]?.date, "2026-06-01");
+  assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
+  assert.deepEqual(
+    { commits: contributions.commits, pullRequests: contributions.pullRequests, issues: contributions.issues, reviews: contributions.reviews },
+    { commits: 70, pullRequests: 15, issues: 10, reviews: 5 },
+  );
+});
+
 test("fails closed when GitHub public contribution markup is incomplete", async () => {
   await assert.rejects(
     new GitHubClient({

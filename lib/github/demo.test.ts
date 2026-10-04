@@ -53,6 +53,16 @@ test("clamps demo windows to the supported one-week to two-year range", () => {
   assert.equal(wide.days.at(-1)?.date, "2026-08-19");
 });
 
+test("automatic demo windows cover the synthetic history back to the first active day", () => {
+  const contributions = demoContributions("octocat", "auto", NOW);
+  assert.equal(contributions.days.length, 730);
+  assert.equal(contributions.days[0]?.date, "2024-08-20");
+  assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
+  assert.equal(contributions.totalContributions, contributions.days.reduce((sum, day) => sum + day.count, 0));
+  assert.equal(sumBreakdown(contributions), contributions.totalContributions);
+  assert.deepEqual(contributions, demoContributions("octocat", "auto", NOW));
+});
+
 function sumBreakdown(breakdown: Record<(typeof KEYS)[number], number>): number {
   return KEYS.reduce((sum, key) => sum + breakdown[key], 0);
 }

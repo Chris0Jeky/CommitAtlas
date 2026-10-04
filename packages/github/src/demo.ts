@@ -1,3 +1,4 @@
+import { AUTO_WINDOW_DAYS, resolveAutoWindow } from "@commit-atlas/core";
 import type {
   ContributionSnapshot,
   ProfileSnapshot,
@@ -79,8 +80,8 @@ export function demoProfile(login: string, now = new Date()): ProfileSnapshot {
   };
 }
 
-export function demoContributions(login: string, requestedDays = 365, now = new Date()): ContributionSnapshot {
-  const dayCount = Math.min(Math.max(requestedDays, 7), 730);
+export function demoContributions(login: string, requestedDays: number | "auto" = 365, now = new Date()): ContributionSnapshot {
+  const dayCount = requestedDays === "auto" ? AUTO_WINDOW_DAYS : Math.min(Math.max(requestedDays, 7), 730);
   const days = Array.from({ length: dayCount }, (_, offset) => {
     const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     date.setUTCDate(date.getUTCDate() - (dayCount - 1 - offset));
@@ -90,7 +91,8 @@ export function demoContributions(login: string, requestedDays = 365, now = new 
       level: Math.min(4, Math.ceil(((offset * 7 + Math.floor(offset / 9)) % 8) / 2)),
     };
   });
-  const totalContributions = days.reduce((sum, day) => sum + day.count, 0);
+  const trimmed = requestedDays === "auto" ? days.slice(-resolveAutoWindow(days)) : days;
+  const totalContributions = trimmed.reduce((sum, day) => sum + day.count, 0);
   const breakdown = demoContributionBreakdown(totalContributions);
   return {
     version: 1,
@@ -98,7 +100,7 @@ export function demoContributions(login: string, requestedDays = 365, now = new 
     totalContributions,
     ...breakdown,
     breakdownBasis: "exact-counts",
-    days,
+    days: trimmed,
     freshness: { generatedAt: now.toISOString(), source: "synthetic-demo", mode: "demo" },
   };
 }
