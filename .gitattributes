@@ -1,2 +1,3 @@
 tests/fixtures/motion-probes/*.svg text eol=lf
 public/pulseboard.js text eol=lf
+action/dist/* text eol=lf

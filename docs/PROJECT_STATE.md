@@ -12,6 +12,23 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 
 ## Public checkpoint
 
+### QA sweep and scene-merge window (2026-10-04)
+
+An independent seven-lane audit (correctness, gates, visual QA, GitHub triage,
+security/privacy, invariants) plus headless-Chrome visual QA (13/13 checks,
+all eight cards and both pages inspected) produced PR #301: health-route param
+rejection and dynamic rendering, unbound image-optimizer passthrough, honest
+Studio notices, non-blocking project URL inputs, corrected Studio social-image
+dimensions, the orphaned board-isolation suite wired into `test:studio`, and an
+`eol=lf` pin for the action bundle. Full `npm run check` is green.
+
+In the same window, #299 (evidence-coverage scene, closes #133) and its stacked
+follow-up #300 (publication/scene capacity reconciliation) were each
+independently reviewed and merged with green Quality gates; #256 stays open for
+durable storage/ownership/fault tests. Draft #186 stays parked with recorded
+next steps (ledger refresh, September-receipt test pin, harness clip fix). New:
+#302 (untested core exports) and #303 (stale decision/scene backlog triage).
+
 ### Source-only scene foundation (2026-10-03)
 
 PRs #295–#298 added geometric/field primitives, static scene delivery and pure recovery

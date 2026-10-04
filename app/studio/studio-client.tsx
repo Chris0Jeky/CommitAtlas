@@ -13,6 +13,7 @@ import { buildStudioMarkdown, STUDIO_CARD_KINDS, STUDIO_CARD_LABELS } from "./st
 import {
   configurationChangedNotice,
   contributionUnavailableNotice,
+  previewLoadedNotice,
   retainedPreviewNotice,
   unconfirmedEvidenceNotice,
 } from "./studio-messages";
@@ -360,7 +361,7 @@ export default function StudioClient() {
           ? contributionUnavailableNotice()
           : boardResult.error
             ? "Available public signals loaded. Project board is unavailable for this preview and was omitted; no value was guessed."
-            : `${demo ? "Synthetic" : "Live public"} preview loaded. Source and generation time are shown below.`,
+            : previewLoadedNotice(demo),
       );
     } catch (error) {
       setPhase("error");
@@ -480,9 +481,9 @@ export default function StudioClient() {
                   <label>Repository<input aria-label={`Project ${index + 1} repository`} value={project.repo} onChange={(event) => updateProject(project.id, { repo: event.target.value })} maxLength={100} placeholder="repository-name" /></label>
                   <label>Lifecycle<select aria-label={`Project ${index + 1} lifecycle`} value={project.lifecycle} onChange={(event) => updateProject(project.id, { lifecycle: event.target.value as Lifecycle })}><option value="planned">Planned</option><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="paused">Paused</option><option value="archived">Archived</option></select></label>
                   <label>Workflow (optional)<input aria-label={`Project ${index + 1} workflow (optional)`} value={project.workflow} onChange={(event) => updateProject(project.id, { workflow: event.target.value })} maxLength={120} placeholder="ci.yml" /></label>
-                  <label>Docs URL (optional)<input aria-label={`Project ${index + 1} docs URL (optional)`} type="url" value={project.docs} onChange={(event) => updateProject(project.id, { docs: event.target.value })} maxLength={500} placeholder="https://…" /></label>
-                  <label>Install URL (optional)<input aria-label={`Project ${index + 1} install URL (optional)`} type="url" value={project.install} onChange={(event) => updateProject(project.id, { install: event.target.value })} maxLength={500} placeholder="https://…" /></label>
-                  <label>Download URL (optional)<input aria-label={`Project ${index + 1} download URL (optional)`} type="url" value={project.download} onChange={(event) => updateProject(project.id, { download: event.target.value })} maxLength={500} placeholder="https://…" /></label>
+                  <label>Docs URL (optional)<input aria-label={`Project ${index + 1} docs URL (optional)`} type="text" value={project.docs} onChange={(event) => updateProject(project.id, { docs: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
+                  <label>Install URL (optional)<input aria-label={`Project ${index + 1} install URL (optional)`} type="text" value={project.install} onChange={(event) => updateProject(project.id, { install: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
+                  <label>Download URL (optional)<input aria-label={`Project ${index + 1} download URL (optional)`} type="text" value={project.download} onChange={(event) => updateProject(project.id, { download: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
                   <button className="remove-project" type="button" aria-label={`Remove project ${index + 1}: ${project.repo || "new project"}`} onClick={() => setProjects((current) => current.filter((item) => item.id !== project.id))}>Remove {project.repo || "project"}</button>
                 </div>
               </details>

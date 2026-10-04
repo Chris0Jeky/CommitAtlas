@@ -37,6 +37,19 @@ test("reports every configured contribution credential as unverified", async () 
   }
 });
 
+test("rejects unknown query parameters instead of minting cache keys", async () => {
+  const response = await withWorkerEnv(
+    { GITHUB_TOKEN: "" },
+    () => GET(new Request("https://example.test/api/v1/health?junk=1")),
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const payload = await response.json() as { error?: { code?: string; message?: string } };
+  assert.equal(payload.error?.code, "invalid_input");
+  assert.match(payload.error?.message ?? "", /unknown query parameter: junk/);
+});
+
 function healthWithToken(token: string): Promise<Response> {
   return withWorkerEnv(
     { GITHUB_TOKEN: token },

@@ -168,6 +168,25 @@ test("the Studio page has its own canonical URL, title, and social identity", as
   assert.doesNotMatch(html, /application\/ld\+json/);
 });
 
+test("declared social-image dimensions match the served og.png file", async () => {
+  // A wrong pair ships a cropped unfurl and rots silently: the Studio page
+  // once declared 1731x909 for a 1200x630 file.
+  const ogBytes = readFileSync(new URL("../public/og.png", import.meta.url));
+  const width = String(ogBytes.readUInt32BE(16));
+  const height = String(ogBytes.readUInt32BE(20));
+  for (const path of ["/", "/studio"]) {
+    const html = await (await request(path)).text();
+    const image = /<meta[^>]+property="og:image"[^>]+content="([^"]*)"/.exec(html);
+    assert.ok(image, `${path} is missing an og:image`);
+    assert.ok(image[1].endsWith("/og.png"), `${path} og:image is not the shared file: ${image[1]}`);
+    const renderedWidth = /<meta[^>]+property="og:image:width"[^>]+content="([^"]*)"/.exec(html);
+    const renderedHeight = /<meta[^>]+property="og:image:height"[^>]+content="([^"]*)"/.exec(html);
+    assert.ok(renderedWidth && renderedHeight, `${path} og:image is missing rendered dimensions`);
+    assert.equal(renderedWidth[1], width, `${path} og:image:width does not match public/og.png`);
+    assert.equal(renderedHeight[1], height, `${path} og:image:height does not match public/og.png`);
+  }
+});
+
 test("the not-found page is told not to index, with nothing contradicting it", async () => {
   const html = await (await request("/this-path-does-not-exist")).text();
   assert.match(html, /<meta[^>]+name="robots"[^>]+content="[^"]*noindex/);

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_GB",
     url: "/studio",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "CommitAtlas Studio" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "CommitAtlas Studio" }],
   },
   twitter: { card: "summary_large_image", title: socialTitle, description, images: ["/og.png"] },
 };
