@@ -10,7 +10,7 @@ interface Env extends CommitAtlasWorkerEnv, CloudflareBindings {
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
-  IMAGES: {
+  IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
         output(options: { format: string; quality: number }): Promise<{ response(): Response }>;
@@ -42,12 +42,18 @@ const worker = {
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
+      // No images binding is configured (wrangler.jsonc declares only LAST_GOOD),
+      // so pass no transform: vinext serves the source with the same
+      // security/cache headers instead of throwing inside the transform.
+      const images = env.IMAGES;
       return handleImageOptimization(request, {
         fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
-        transformImage: async (body, { width, format, quality }) => {
-          const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
-          return result.response();
-        },
+        ...(images ? {
+          transformImage: async (body, { width, format, quality }) => {
+            const result = await images.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
+            return result.response();
+          },
+        } : {}),
       }, allowedWidths);
     }
 
