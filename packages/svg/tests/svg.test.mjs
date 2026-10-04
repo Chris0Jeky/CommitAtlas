@@ -24,7 +24,7 @@ import { deliveryFixture } from "./delivery.fixture.mjs";
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
-function assertSafeSvg(output, { allowStyle = false } = {}) {
+function assertSafeSvg(output, { allowStyle = false, budget = 30_000 } = {}) {
   assert.match(output, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" role="img"/);
   assert.match(output, /aria-label="[^"]+"/);
   assert.match(output, /<title>/);
@@ -39,7 +39,7 @@ function assertSafeSvg(output, { allowStyle = false } = {}) {
   }
   assertXml10(output);
   const bytes = Buffer.byteLength(output, "utf8");
-  assert.ok(bytes < 30_000, `SVG exceeded 30KB budget (${bytes} UTF-8 bytes)`);
+  assert.ok(bytes < budget, `SVG exceeded ${budget / 1000}KB budget (${bytes} UTF-8 bytes)`);
 }
 
 test("primitives are deterministic and safe", () => {
@@ -432,6 +432,62 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
   // Still bounded — the label just follows the section numeral now.
   assert.match(activity364, />01 \/\/ P{31}…<\/text>/);
+});
+
+test("full two-year activity windows render every day inside the card", () => {
+  const days = Array.from({ length: 731 }, (_, index) => ({
+    date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10), count: 100000,
+  }));
+  const output = renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" });
+  // Worst-case two-year activity (maxed counts) holds a measured 56KB budget:
+  // the same adversarial input measures 48,271 bytes (15% headroom).
+  assertSafeSvg(output, { budget: 56_000 });
+  const width = Number(/width="(\d+)"/.exec(output)?.[1]);
+  assert.equal(width, 720);
+  let right = 0;
+  let cells = 0;
+  for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
+    cells += 1;
+    right = Math.max(right, Number(match[1]) + Number(match[3]));
+  }
+  assert.equal(cells, 731);
+  assert.ok(right < width, `grid overflows: ${right} of ${width}`);
+  assert.match(output, /2024-01-01/);
+  assert.match(output, /2025-12-31/);
+});
+
+test("full two-year atlas windows render every day inside the card", () => {
+  const activity = Array.from({ length: 731 }, (_, index) => ({
+    date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
+    count: 100000,
+    level: 4,
+  }));
+  const data = atlasFixture({
+    activity,
+    window: { from: activity[0].date, to: activity.at(-1).date, days: 731 },
+    total: 73100000, activeDays: 731, density: 100, averagePerDay: 100000,
+    currentStreak: 731, longestStreak: 731,
+    peakDay: { date: activity[11].date, count: 100000 },
+  });
+  for (const widthOption of [860, 560]) {
+    const output = renderAtlasCard(data, { width: widthOption });
+    assertSafeSvg(output);
+    const width = Number(/width="(\d+)"/.exec(output)?.[1]);
+    assert.equal(width, widthOption);
+    // Same-fill cells share one batched path: count the subpaths, not the elements.
+    const batched = [...output.matchAll(/<path class="atlas-cell"[^>]*d="([^"]*)"/g)];
+    assert.ok(batched.length >= 1, "atlas heatmap has no batched cell paths");
+    const cells = batched.flatMap((path) => [...path[1].matchAll(/M(-?\d+) (-?\d+)h(\d+)v(\d+)H-?\d+Z/g)]);
+    assert.equal(cells.length, 731);
+    for (const cell of cells) {
+      assert.ok(Number(cell[1]) >= 0, `atlas width-${widthOption} cell has a negative x`);
+      const right = Number(cell[1]) + Number(cell[3]);
+      const bottom = Number(cell[2]) + Number(cell[4]);
+      assert.ok(right <= width + 0.5, `atlas width-${widthOption} cell overflows horizontally`);
+      const height = Number(/height="(\d+)"/.exec(output)?.[1]);
+      assert.ok(bottom <= height + 0.5, `atlas width-${widthOption} cell overflows vertically`);
+    }
+  }
 });
 
 test("activity accessibility summary belongs to the outer SVG description", () => {

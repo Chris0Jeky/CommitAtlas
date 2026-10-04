@@ -455,7 +455,7 @@ const MAX_WIDTH = 1_200;
 const MAX_TITLE_LENGTH = 96;
 const MAX_DESCRIPTION_LENGTH = 180;
 const MAX_ACTIVITY_PERIOD_LENGTH = 32;
-const MAX_ACTIVITY_DAYS = 366;
+const MAX_ACTIVITY_DAYS = 731;
 /**
  * Window boundary labels are ISO calendar dates (`YYYY-MM-DD`, 10 characters). The cap leaves
  * headroom for other bounded date spellings while stopping a direct caller from pushing an
@@ -1881,17 +1881,18 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const heatmapTop = narrow ? 191 : 154;
   const heatmapLeft = 24;
   const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
-  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-366);
+  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-MAX_ACTIVITY_DAYS);
   const grid = calendarGrid(days);
   const columns = grid.columns;
-  const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
-  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
+  const columnGap = columns > 70 ? 1 : 2;
+  const cell = Math.max(2, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * columnGap) / columns)));
+  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
   out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
   out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   grid.cells.forEach(({ day, column, row }) => {
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
-    const x = heatmapLeft + column * (cell + 2);
+    const x = heatmapLeft + column * (cell + columnGap);
     const y = heatmapTop + row * (cell + 2);
     const fill = densityFill(level, t);
     const paths = heatmapPaths.get(fill) ?? [];
