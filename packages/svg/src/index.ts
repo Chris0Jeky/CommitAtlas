@@ -897,7 +897,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += sourceMarker(data.source, data.dataState, width - 34, 29, t);
   out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const grid = calendarGrid(days);
-  const columns = grid.columns; const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
+  const columns = grid.columns; const columnGap = columns > 70 ? 1 : 2; const cell = Math.max(2, Math.min(11, Math.floor((width - 86 - columnGap * (columns - 1)) / columns)));
   const start = 40; const top = 66;
   // Quartiles of the observed peak, so the four steps describe THIS window rather than an
   // absolute scale no reader can see. A zero day is level 0 and takes the neutral socket.
@@ -907,7 +907,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
     const level = Number.isFinite(day.level)
       ? Math.max(0, Math.min(4, Math.round(day.level as number)))
       : count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
-    const x = start + column * (cell + 2); const y = top + row * (cell + 2);
+    const x = start + column * (cell + columnGap); const y = top + row * (cell + 2);
     cells.push(`<path fill="${densityFill(level, t)}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
   });
   out += `<g aria-hidden="true">${cells.join("")}</g>`;

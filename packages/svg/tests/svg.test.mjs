@@ -438,22 +438,26 @@ test("full two-year activity windows render every day inside the card", () => {
   const days = Array.from({ length: 731 }, (_, index) => ({
     date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10), count: 100000,
   }));
-  const output = renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" });
-  // Worst-case two-year activity (maxed counts) holds a measured 56KB budget:
-  // the same adversarial input measures 48,271 bytes (15% headroom).
-  assertSafeSvg(output, { budget: 56_000 });
-  const width = Number(/width="(\d+)"/.exec(output)?.[1]);
-  assert.equal(width, 720);
-  let right = 0;
-  let cells = 0;
-  for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
-    cells += 1;
-    right = Math.max(right, Number(match[1]) + Number(match[3]));
+  // Static compact generation renders activity at 480px, so the grid must fit
+  // every allowed width — not just the 720 default.
+  for (const widthOption of [720, 560, 480, 420]) {
+    const output = renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }, { width: widthOption });
+    // Worst-case two-year activity (maxed counts) holds a measured 56KB budget:
+    // the same adversarial input measures 48,271 bytes (15% headroom).
+    assertSafeSvg(output, { budget: 56_000 });
+    const width = Number(/width="(\d+)"/.exec(output)?.[1]);
+    assert.equal(width, widthOption);
+    let right = 0;
+    let cells = 0;
+    for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
+      cells += 1;
+      right = Math.max(right, Number(match[1]) + Number(match[3]));
+    }
+    assert.equal(cells, 731);
+    assert.ok(right < width, `width-${widthOption} grid overflows: ${right} of ${width}`);
   }
-  assert.equal(cells, 731);
-  assert.ok(right < width, `grid overflows: ${right} of ${width}`);
-  assert.match(output, /2024-01-01/);
-  assert.match(output, /2025-12-31/);
+  assert.match(renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }), /2024-01-01/);
+  assert.match(renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }), /2025-12-31/);
 });
 
 test("full two-year atlas windows render every day inside the card", () => {
