@@ -266,7 +266,7 @@ implied by this producer checkpoint.
 - Eight selectable SVG surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
   and Projects. The landing page and Studio expose the complete suite instead of hiding the richer
   contribution views behind one overview.
-- Atlas combines an up-to-two-year density heatmap (7–730 days, default 365), total and active days, average and peak, current and
+- Atlas combines an up-to-two-year density heatmap (7–730 days or `auto`, default 365), total and active days, average and peak, current and
   window-bounded longest streaks, contribution mix, 28-day momentum, public-repository languages,
   project health, and the transparent Rhythm score.
 - Breakdown distinguishes exact categorized counts from GitHub public-profile percentages. Public
