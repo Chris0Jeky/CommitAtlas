@@ -88,6 +88,12 @@ test("accepts bounded opposite-scheme theme outputs and rejects ambiguous varian
   }), /too_big|at most/i);
 });
 
+test("accepts two-year contribution windows and rejects wider ones", () => {
+  assert.equal(parseStaticConfig({ ...rawConfig(), days: 366 }).days, 366);
+  assert.equal(parseStaticConfig({ ...rawConfig(), days: 730 }).days, 730);
+  assert.throws(() => parseStaticConfig({ ...rawConfig(), days: 731 }), /too_big|at most/i);
+});
+
 test("renders wide and compact Atlas variants from one snapshot", () => {
   const rendered = renderStaticArtifacts(snapshot(), parseStaticConfig({
     ...rawConfig(),

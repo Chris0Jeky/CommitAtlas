@@ -44,6 +44,15 @@ test("is deterministic, keeps the canonical basis, and sums each demo window exa
   }
 });
 
+test("clamps demo windows to the supported one-week to two-year range", () => {
+  assert.equal(demoContributions("octocat", 1, NOW).days.length, 7);
+  assert.equal(demoContributions("octocat", 731, NOW).days.length, 730);
+  assert.equal(demoContributions("octocat", 999, NOW).days.length, 730);
+  const wide = demoContributions("octocat", 730, NOW);
+  assert.equal(wide.days[0]?.date, "2024-08-20");
+  assert.equal(wide.days.at(-1)?.date, "2026-08-19");
+});
+
 function sumBreakdown(breakdown: Record<(typeof KEYS)[number], number>): number {
   return KEYS.reduce((sum, key) => sum + breakdown[key], 0);
 }

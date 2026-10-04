@@ -78,6 +78,25 @@ test("reads the credential-free public profile calendar and labelled activity pe
   assert.equal(contributions.freshness.source, "github-profile-html");
 });
 
+test("clamps multi-year profile windows to two trailing years", async () => {
+  const calls: URL[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    calls.push(url);
+    const year = Number(url.searchParams.get("from")?.slice(0, 4));
+    const body = publicContributionHtml(year, {}, {
+      Commits: 0, "Pull requests": 0, Issues: 0, "Code review": 0,
+    }).replace(/ data-percentages="[^"]+"/, "");
+    return html(body);
+  };
+  const contributions = await new GitHubClient({ fetchImpl, now: () => NOW })
+    .fetchPublicProfileContributions("octocat", 999);
+  assert.deepEqual(calls.map((url) => url.searchParams.get("from")), ["2024-01-01", "2025-01-01", "2026-01-01"]);
+  assert.equal(contributions.days.length, 730);
+  assert.equal(contributions.days[0]?.date, "2024-08-20");
+  assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
+});
+
 test("fails closed when GitHub public contribution markup is incomplete", async () => {
   await assert.rejects(
     new GitHubClient({

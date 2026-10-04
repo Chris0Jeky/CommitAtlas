@@ -168,7 +168,8 @@ describe("core contracts", () => {
     expect(series.from).toBe("2024-02-28");
     expect(series.points.map((point) => point.date)).toEqual(["2024-02-28", "2024-02-29", "2024-03-01", "2024-03-02", "2024-03-03"]);
     expect(series.points[3]?.count).toBe(0);
-    expect(() => calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 367 })).toThrow();
+    expect(() => calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 732 })).toThrow();
+    expect(calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 731 }).points).toHaveLength(731);
   });
 
   it("derives a transparent contribution summary without claiming a global rank", () => {

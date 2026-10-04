@@ -51,7 +51,7 @@ function utcDay(value: unknown): number | null {
 }
 /** Mirror the core calendar's bounded day records without deriving a new metric or filling gaps. */
 function calendarDays(value: unknown): ReadonlyMap<string, number> | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 400) return null;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 800) return null;
   const days = new Map<string, number>();
   for (let i = 0; i < value.length; i++) {
     const day: unknown = value[i];
@@ -122,7 +122,7 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
     (source === 'github-graphql' || source === 'synthetic-demo') && basis === 'exact-counts';
   const window = snapshot.metrics?.window;
   const days = calendarDays(contributions?.days);
-  const windowValid = window && count(window.days, 366) && window.days > 0 && count(window.observedDays, window.days) &&
+  const windowValid = window && count(window.days, 731) && window.days > 0 && count(window.observedDays, window.days) &&
     typeof window.complete === 'boolean' && window.complete === (window.observedDays === window.days) && calendarMatches(window, days);
   const calendarCurrent = current(contributionMode) || contributionMode === 'partial' && windowValid && !window.complete;
   rows[0] = { id: 'calendar', label: source === 'github-profile-html' ? 'PUBLIC PROFILE VIEW' : 'CONTRIBUTION CALENDAR',
