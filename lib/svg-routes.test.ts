@@ -32,11 +32,14 @@ test("accepts the inclusive ASCII activity day boundaries and defaults to 365", 
   assert.equal(parseActivityDays(null), 365);
   assert.equal(parseActivityDays("7"), 7);
   assert.equal(parseActivityDays("365"), 365);
+  assert.equal(parseActivityDays("366"), 366);
+  assert.equal(parseActivityDays("730"), 730);
+  assert.equal(parseActivityDays("auto"), "auto");
 });
 
 test("rejects signs, decimals, non-ASCII digits, and out-of-range activity days", () => {
-  for (const value of ["6", "366", "+7", "-1", "7.0", "０７", "٧", "0070"]) {
-    assert.throws(() => parseActivityDays(value), /days/);
+  for (const value of ["6", "731", "+7", "-1", "7.0", "０７", "٧", "0070", "Auto", "automatic", " auto"]) {
+    assert.throws(() => parseActivityDays(value), /days must be an integer from 7 to 730/);
   }
 });
 
@@ -65,7 +68,13 @@ test("parses profile, streak, activity, and language contracts with canonical or
   const profile = parseSvgProfileQuery(new URLSearchParams("theme=paper&demo=true&user=octocat"));
   assert.deepEqual(profile, { user: "octocat", demo: true, theme: "paper", motion: "none", canonical: "user=octocat&demo=true&theme=paper&motion=none" });
   assert.deepEqual(parseSvgStreakQuery(new URLSearchParams("user=octocat")), {
-    user: "octocat", demo: false, theme: "aurora", motion: "none", canonical: "user=octocat&demo=false&theme=aurora&motion=none",
+    user: "octocat", demo: false, theme: "aurora", days: 365, motion: "none", canonical: "user=octocat&demo=false&theme=aurora&days=365&motion=none",
+  });
+  assert.deepEqual(parseSvgStreakQuery(new URLSearchParams("user=octocat&days=730")), {
+    user: "octocat", demo: false, theme: "aurora", days: 730, motion: "none", canonical: "user=octocat&demo=false&theme=aurora&days=730&motion=none",
+  });
+  assert.deepEqual(parseSvgActivityQuery(new URLSearchParams("user=octocat&days=auto")), {
+    user: "octocat", demo: false, theme: "aurora", days: "auto", motion: "none", canonical: "user=octocat&demo=false&theme=aurora&days=auto&motion=none",
   });
   assert.deepEqual(parseSvgLanguagesQuery(new URLSearchParams("user=octocat&theme=ember")), {
     user: "octocat", demo: false, theme: "ember", motion: "none", canonical: "user=octocat&demo=false&theme=ember&motion=none",

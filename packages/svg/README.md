@@ -146,7 +146,8 @@ throw instead of truncating. Unsupported applications emit no animation and cont
 
 Renderer inputs are bounded for portable README use: dimensions clamp to renderer-safe ranges,
 accessible title and description labels are length-limited, and activity cards accept up to a
-full 366-day window while remaining below the 30KB SVG output budget. Caller-supplied prose on
+full 731-day window. One-year windows remain below the 30KB SVG output budget; the full
+two-year worst case (maxed counts) holds a measured 56KB budget. Caller-supplied prose on
 the insight cards is bounded the same way: breakdown `window.from` and `window.to` truncate to 24
 characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 characters. The
 atlas card bounds `window.from`, `window.to`, and `rhythm.level` to 24 characters too, and keeps

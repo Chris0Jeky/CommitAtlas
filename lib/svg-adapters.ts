@@ -218,7 +218,7 @@ function completeContributionWindow(
   asOf: string,
   expectedDays: number,
 ): ContributionCalendar {
-  if (!Number.isInteger(expectedDays) || expectedDays < 1 || expectedDays > 366) {
+  if (!Number.isInteger(expectedDays) || expectedDays < 1 || expectedDays > 731) {
     throw new GitHubApiError("invalid_response", "CommitAtlas received an invalid contribution window");
   }
   const available = new Set(calendar.days.map((day) => day.date));

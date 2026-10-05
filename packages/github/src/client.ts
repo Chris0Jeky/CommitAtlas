@@ -1,5 +1,7 @@
 import {
+  AUTO_WINDOW_DAYS,
   parseContributionCalendar,
+  resolveAutoWindow,
   type CiObservation,
 } from "@commit-atlas/core";
 import {
@@ -134,7 +136,7 @@ export class GitHubClient {
     };
   }
 
-  async fetchContributions(login: string, days = 365): Promise<ContributionSnapshot> {
+  async fetchContributions(login: string, days: number | "auto" = 365): Promise<ContributionSnapshot> {
     if (!this.token) {
       throw new GitHubApiError(
         "token_required",
@@ -142,7 +144,7 @@ export class GitHubClient {
         503,
       );
     }
-    const requestedDays = Math.min(Math.max(days, 1), 365);
+    const requestedDays = days === "auto" ? AUTO_WINDOW_DAYS : Math.min(Math.max(days, 1), 730);
     const to = this.now();
     const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
     from.setUTCDate(from.getUTCDate() - (requestedDays - 1));
@@ -197,7 +199,11 @@ export class GitHubClient {
       throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
     }
     calendarDays = calendarDays.filter(({ date }) => date >= requestedFrom && date <= requestedTo);
-    assertRequestedContributionWindow(calendarDays, to, requestedDays);
+    if (days === "auto") {
+      calendarDays = trimContributionCalendar(calendarDays);
+    } else {
+      assertRequestedContributionWindow(calendarDays, to, requestedDays);
+    }
     return {
       version: 1,
       login,
@@ -222,8 +228,8 @@ export class GitHubClient {
    * also has one for another operation. The activity breakdown is the
    * percentage mix published by that view, not a fabricated exact count.
    */
-  async fetchPublicProfileContributions(login: string, days = 365): Promise<ContributionSnapshot> {
-    const requestedDays = Math.min(Math.max(days, 1), 365);
+  async fetchPublicProfileContributions(login: string, days: number | "auto" = 365): Promise<ContributionSnapshot> {
+    const requestedDays = days === "auto" ? AUTO_WINDOW_DAYS : Math.min(Math.max(days, 1), 730);
     const to = this.now();
     const toDate = to.toISOString().slice(0, 10);
     const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
@@ -263,8 +269,12 @@ export class GitHubClient {
         byDate.set(day.date, day);
       }
     }
-    const calendarDays = [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date));
-    assertRequestedContributionWindow(calendarDays, to, requestedDays);
+    let calendarDays = [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date));
+    if (days === "auto") {
+      calendarDays = trimContributionCalendar(calendarDays);
+    } else {
+      assertRequestedContributionWindow(calendarDays, to, requestedDays);
+    }
     const totalContributions = calendarDays.reduce((total, day) => total + day.count, 0);
     const weightedMix = weightedPublicActivityMix(pages, fromDate, toDate);
 
@@ -973,6 +983,14 @@ function contributionLevel(value: unknown): number {
     throw new GitHubApiError("invalid_response", "GitHub returned an unknown contribution level");
   }
   return level;
+}
+
+function trimContributionCalendar(calendarDays: ContributionDay[]): ContributionDay[] {
+  try {
+    return calendarDays.slice(-resolveAutoWindow(calendarDays));
+  } catch {
+    throw new GitHubApiError("invalid_response", "GitHub returned an empty contribution calendar");
+  }
 }
 
 function assertRequestedContributionWindow(

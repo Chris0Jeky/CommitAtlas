@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
         ? await client.fetchContributions(query.user, query.days)
         : await client.fetchPublicProfileContributions(query.user, query.days);
     const body = renderContributionBreakdownCard(
-      toContributionMetricsCards(snapshot, query.days).breakdown,
+      toContributionMetricsCards(snapshot, query.days === "auto" ? snapshot.days.length : query.days).breakdown,
       {
         theme: query.theme,
         motion: query.motion,
