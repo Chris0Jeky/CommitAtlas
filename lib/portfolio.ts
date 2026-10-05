@@ -61,7 +61,12 @@ export function assemblePortfolioSnapshot(
   if (profile.login.toLowerCase() !== contributions.login.toLowerCase()) {
     throw new GitHubApiError("invalid_response", "Portfolio sources refer to different GitHub users");
   }
-  const calendar = parseContributionCalendar({ version: 1, days: contributions.days });
+  let calendar: ReturnType<typeof parseContributionCalendar>;
+  try {
+    calendar = parseContributionCalendar({ version: 1, days: contributions.days });
+  } catch {
+    throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
+  }
   const asOf = calendar.days.at(-1)?.date;
   if (!asOf) throw new GitHubApiError("invalid_response", "GitHub returned an empty contribution calendar");
   const metrics = calculateContributionMetrics(calendar, {
