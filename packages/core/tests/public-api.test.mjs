@@ -83,14 +83,14 @@ test("contributionCalendarDays enforces its versioned envelope, not the bare met
   ]) assert.throws(() => contributionCalendarDays(input), { name: "ZodError" });
 });
 
-test("contributionCalendarDays accepts one through 400 records and refuses empty, sparse or oversized calendars", () => {
+test("contributionCalendarDays accepts one through 800 records and refuses empty, sparse or oversized calendars", () => {
   assert.equal(contributionCalendarDays(calendar()).length, 1);
-  const maximum = Array.from({ length: 400 }, (_, i) => ({ date: dateAt(i), count: 0 }));
+  const maximum = Array.from({ length: 800 }, (_, i) => ({ date: dateAt(i), count: 0 }));
   const output = contributionCalendarDays(calendar(maximum));
-  assert.equal(output.length, 400);
+  assert.equal(output.length, 800);
   assert.equal(output[0].date, dateAt(0));
-  assert.equal(output.at(-1).date, dateAt(399));
-  for (const days of [[], new Array(1), [...maximum, { date: dateAt(400), count: 0 }]]) {
+  assert.equal(output.at(-1).date, dateAt(799));
+  for (const days of [[], new Array(1), [...maximum, { date: dateAt(800), count: 0 }]]) {
     assert.throws(() => contributionCalendarDays(calendar(days)), { name: "ZodError" });
   }
 });

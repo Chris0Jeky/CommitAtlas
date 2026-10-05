@@ -23,12 +23,13 @@ export interface SvgProfileQuery {
   readonly canonical: string;
 }
 
-export type SvgStreakQuery = SvgProfileQuery;
 export type SvgLanguagesQuery = SvgProfileQuery;
 
 export interface SvgActivityQuery extends SvgProfileQuery {
-  readonly days: number;
+  readonly days: number | "auto";
 }
+
+export type SvgStreakQuery = SvgActivityQuery;
 
 export interface SvgAtlasQuery extends SvgActivityQuery {
   readonly motion: HostedMotionProfile;
@@ -73,7 +74,7 @@ export function parseSvgProfileQuery(parameters: URLSearchParams): SvgProfileQue
 }
 
 export function parseSvgStreakQuery(parameters: URLSearchParams): SvgStreakQuery {
-  return parseSvgProfileQuery(parameters);
+  return parseSvgActivityQuery(parameters);
 }
 
 export function parseSvgActivityQuery(parameters: URLSearchParams): SvgActivityQuery {
@@ -168,11 +169,12 @@ export function parseTheme(value: string | null): ThemeName {
   throw new InputError("theme must be aurora, midnight, paper, or ember");
 }
 
-export function parseActivityDays(value: string | null): number {
+export function parseActivityDays(value: string | null): number | "auto" {
   if (value === null) return 365;
-  if (!/^[0-9]{1,3}$/.test(value)) throw new InputError("days must be an integer from 7 to 365");
+  if (value === "auto") return "auto";
+  if (!/^[0-9]{1,3}$/.test(value)) throw new InputError('days must be an integer from 7 to 730 or "auto"');
   const days = Number(value);
-  if (days < 7 || days > 365) throw new InputError("days must be an integer from 7 to 365");
+  if (days < 7 || days > 730) throw new InputError('days must be an integer from 7 to 730 or "auto"');
   return days;
 }
 

@@ -16,7 +16,7 @@ import type { AtlasCardData, CardDataState, CardSource } from "@/packages/svg/sr
 
 export interface PortfolioRequest {
   user: string;
-  days: number;
+  days: number | "auto";
   demo: boolean;
   token?: string;
   repositories?: readonly string[];
