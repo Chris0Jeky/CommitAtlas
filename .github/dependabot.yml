@@ -8,6 +8,11 @@ updates:
       time: "07:00"
       timezone: Europe/London
     open-pull-requests-limit: 5
+    # Match the supported Node 22 runtime. Upgrade declarations with the runtime,
+    # not independently; patch/minor updates remain eligible for the group.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       development-dependencies:
         dependency-type: development
