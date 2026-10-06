@@ -455,7 +455,7 @@ const MAX_WIDTH = 1_200;
 const MAX_TITLE_LENGTH = 96;
 const MAX_DESCRIPTION_LENGTH = 180;
 const MAX_ACTIVITY_PERIOD_LENGTH = 32;
-const MAX_ACTIVITY_DAYS = 366;
+const MAX_ACTIVITY_DAYS = 731;
 /**
  * Window boundary labels are ISO calendar dates (`YYYY-MM-DD`, 10 characters). The cap leaves
  * headroom for other bounded date spellings while stopping a direct caller from pushing an
@@ -897,7 +897,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += sourceMarker(data.source, data.dataState, width - 34, 29, t);
   out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
   const grid = calendarGrid(days);
-  const columns = grid.columns; const cell = Math.max(4, Math.min(11, Math.floor((width - 86 - 2 * (columns - 1)) / columns)));
+  const columns = grid.columns; const columnGap = columns > 70 ? 1 : 2; const cell = Math.max(2, Math.min(11, Math.floor((width - 86 - columnGap * (columns - 1)) / columns)));
   const start = 40; const top = 66;
   // Quartiles of the observed peak, so the four steps describe THIS window rather than an
   // absolute scale no reader can see. A zero day is level 0 and takes the neutral socket.
@@ -907,7 +907,7 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
     const level = Number.isFinite(day.level)
       ? Math.max(0, Math.min(4, Math.round(day.level as number)))
       : count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
-    const x = start + column * (cell + 2); const y = top + row * (cell + 2);
+    const x = start + column * (cell + columnGap); const y = top + row * (cell + 2);
     cells.push(`<path fill="${densityFill(level, t)}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
   });
   out += `<g aria-hidden="true">${cells.join("")}</g>`;
@@ -1881,17 +1881,18 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const heatmapTop = narrow ? 191 : 154;
   const heatmapLeft = 24;
   const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
-  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-366);
+  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-MAX_ACTIVITY_DAYS);
   const grid = calendarGrid(days);
   const columns = grid.columns;
-  const cell = Math.max(3, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * 2) / columns)));
-  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * 2;
+  const columnGap = columns > 70 ? 1 : 2;
+  const cell = Math.max(2, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * columnGap) / columns)));
+  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
   out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
   out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   grid.cells.forEach(({ day, column, row }) => {
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
-    const x = heatmapLeft + column * (cell + 2);
+    const x = heatmapLeft + column * (cell + columnGap);
     const y = heatmapTop + row * (cell + 2);
     const fill = densityFill(level, t);
     const paths = heatmapPaths.get(fill) ?? [];

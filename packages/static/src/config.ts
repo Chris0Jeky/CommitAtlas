@@ -45,7 +45,7 @@ const RawStaticConfigSchema = z.object({
     theme: z.enum(STATIC_THEME_NAMES),
     outputDir: RelativePathSchema,
   }).strict()).max(3).default([]),
-  days: z.number().int().min(7).max(365).default(365),
+  days: z.union([z.number().int().min(7).max(730), z.literal("auto")]).default(365),
   motion: z.enum(["none", "subtle", "ambient", "cinematic"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
   responsiveAtlas: z.boolean().default(false),
@@ -62,7 +62,7 @@ export interface StaticConfig {
   readonly user: string;
   readonly theme: StaticThemeName;
   readonly themes: readonly StaticThemeVariant[];
-  readonly days: number;
+  readonly days: number | "auto";
   readonly motion: MotionProfile;
   readonly layout: "wide" | "compact";
   readonly responsiveAtlas: boolean;

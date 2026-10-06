@@ -17,11 +17,11 @@ export async function GET(request: Request): Promise<Response> {
     if (redirect) return redirect;
     const client = new GitHubClient({ token });
     const snapshot = query.demo
-      ? demoContributions(query.user, 365)
+      ? demoContributions(query.user, query.days)
       : token
-        ? await client.fetchContributions(query.user, 365)
-        : await client.fetchPublicProfileContributions(query.user, 365);
-    const body = renderStreakCard(toStreakCard(snapshot, 365), {
+        ? await client.fetchContributions(query.user, query.days)
+        : await client.fetchPublicProfileContributions(query.user, query.days);
+    const body = renderStreakCard(toStreakCard(snapshot, query.days === "auto" ? snapshot.days.length : query.days), {
       theme: query.theme,
       motion: query.motion,
       title: `${snapshot.login} contribution streak`,

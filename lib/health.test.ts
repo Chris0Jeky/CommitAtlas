@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { CiStateSchema } from "@commit-atlas/core";
+import { GET as getHealth } from "@/app/api/v1/health/route";
 import { CI_RACK_ORDER, CI_STATE_PRESENTATION, summariseCiStates } from "./health";
+import { withWorkerEnv } from "./runtime-env";
 
 test("the rack covers the core CI vocabulary exactly, with no state invented or dropped", () => {
   const core = [...CiStateSchema.options].sort();
@@ -142,4 +144,35 @@ test("an unknown CI state has no presentation and never falls back to a healthy 
       `${state.state} carries an out-of-vocabulary tone`,
     );
   }
+});
+
+test("health rejects an unknown user parameter with 400 invalid_input", async () => {
+  const response = await withWorkerEnv({ GITHUB_TOKEN: "" }, () =>
+    getHealth(new Request("https://example.test/api/v1/health?user=octocat")),
+  );
+  assert.equal(response.status, 400);
+  const payload = (await response.json()) as { status?: string; error?: { code?: string; message?: string } };
+  assert.equal(payload.status, "error");
+  assert.equal(payload.error?.code, "invalid_input");
+  assert.match(payload.error?.message ?? "", /unknown query parameter: user/);
+});
+
+test("health rejects a typo parameter with 400 invalid_input", async () => {
+  const response = await withWorkerEnv({ GITHUB_TOKEN: "" }, () =>
+    getHealth(new Request("https://example.test/api/v1/health?users=octocat")),
+  );
+  assert.equal(response.status, 400);
+  const payload = (await response.json()) as { status?: string; error?: { code?: string; message?: string } };
+  assert.equal(payload.status, "error");
+  assert.equal(payload.error?.code, "invalid_input");
+  assert.match(payload.error?.message ?? "", /unknown query parameter: users/);
+});
+
+test("bare health still returns 200 status ok", async () => {
+  const response = await withWorkerEnv({ GITHUB_TOKEN: "" }, () =>
+    getHealth(new Request("https://example.test/api/v1/health")),
+  );
+  assert.equal(response.status, 200);
+  const payload = (await response.json()) as { status?: string };
+  assert.equal(payload.status, "ok");
 });

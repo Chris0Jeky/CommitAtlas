@@ -331,3 +331,53 @@ test("manual file input reads local capsules and refuses remote or oversized fil
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("missing files report filesystem failure, distinct from corrupt JSON", () => {
+  throwsPulseError(() => readPulseCapsuleFile("/definitely/missing-capsule.json", T0), "unreadable");
+  try {
+    readPulseCapsuleFile("/definitely/missing-capsule.json", T0);
+    assert.fail("expected PulseCapsuleError");
+  } catch (error) {
+    assert.ok(error instanceof PulseCapsuleError);
+    assert.equal(error.code, "unreadable");
+    assert.match(error.message, /cannot be read/);
+    assert.match(error.message, /ENOENT/);
+    assert.notEqual(error.code, "malformed");
+  }
+
+  const directory = mkdtempSync(path.join(tmpdir(), "pulse-capsule-"));
+  try {
+    const corrupt = path.join(directory, "corrupt.json");
+    writeFileSync(corrupt, "{oops");
+    try {
+      readPulseCapsuleFile(corrupt, T0);
+      assert.fail("expected PulseCapsuleError");
+    } catch (error) {
+      assert.ok(error instanceof PulseCapsuleError);
+      assert.equal(error.code, "malformed");
+    }
+
+    const unreadable = path.join(directory, "gone.json");
+    let missingCode: PulseCapsuleErrorCode | null = null;
+    try {
+      readPulseCapsuleFile(unreadable, T0);
+    } catch (error) {
+      assert.ok(error instanceof PulseCapsuleError);
+      missingCode = error.code;
+    }
+    let corruptCode: PulseCapsuleErrorCode | null = null;
+    try {
+      readPulseCapsuleFile(corrupt, T0);
+    } catch (error) {
+      assert.ok(error instanceof PulseCapsuleError);
+      corruptCode = error.code;
+    }
+    assert.equal(missingCode, "unreadable");
+    assert.equal(corruptCode, "malformed");
+    assert.notEqual(missingCode, corruptCode);
+
+    throwsPulseError(() => readPulseCapsuleFile(directory, T0), "unreadable");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

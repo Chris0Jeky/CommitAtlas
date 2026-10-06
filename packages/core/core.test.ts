@@ -11,6 +11,7 @@ import {
   parseOptions,
   parseRepo,
   parseRepositorySlug,
+  resolveAutoWindow,
 } from "./src/index.js";
 
 const calendar = {
@@ -168,7 +169,23 @@ describe("core contracts", () => {
     expect(series.from).toBe("2024-02-28");
     expect(series.points.map((point) => point.date)).toEqual(["2024-02-28", "2024-02-29", "2024-03-01", "2024-03-02", "2024-03-03"]);
     expect(series.points[3]?.count).toBe(0);
-    expect(() => calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 367 })).toThrow();
+    expect(() => calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 732 })).toThrow();
+    expect(calculateActivitySeries(calendar, { asOf: "2024-03-03", days: 731 }).points).toHaveLength(731);
+  });
+
+  it("resolves automatic windows from the earliest active day", () => {
+    const history = (length: number, activeFrom: number) => Array.from({ length }, (_, index) => ({
+      date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
+      count: index < activeFrom ? 0 : 1,
+    }));
+    expect(resolveAutoWindow(history(731, 231))).toBe(500);
+    expect(resolveAutoWindow(history(731, 728))).toBe(7);
+    expect(resolveAutoWindow(history(731, 0))).toBe(731);
+    expect(resolveAutoWindow(history(731, 731))).toBe(731);
+    expect(resolveAutoWindow(history(100, 0))).toBe(100);
+    expect(resolveAutoWindow(history(50, 50))).toBe(50);
+    expect(resolveAutoWindow([...history(731, 231)].reverse())).toBe(500);
+    expect(() => resolveAutoWindow([])).toThrow("empty calendar");
   });
 
   it("derives a transparent contribution summary without claiming a global rank", () => {

@@ -53,16 +53,29 @@ export type PulseCapsuleErrorCode =
   | "invalid"
   | "future"
   | "expired"
-  | "unmapped";
+  | "unmapped"
+  | "unreadable";
 
 export class PulseCapsuleError extends Error {
   readonly code: PulseCapsuleErrorCode;
+  override cause: unknown;
 
-  constructor(code: PulseCapsuleErrorCode, message: string) {
+  constructor(code: PulseCapsuleErrorCode, message: string, options?: { cause?: unknown }) {
     super(message);
     this.name = "PulseCapsuleError";
     this.code = code;
+    if (options && "cause" in options) {
+      this.cause = options.cause;
+    }
   }
+}
+
+function toUnreadableError(error: unknown): PulseCapsuleError {
+  const code = typeof (error as NodeJS.ErrnoException | undefined)?.code === "string"
+    ? (error as NodeJS.ErrnoException).code
+    : undefined;
+  const suffix = code ? ` (${code})` : "";
+  return new PulseCapsuleError("unreadable", `capsule file cannot be read${suffix}`, { cause: error });
 }
 
 const TimestampSchema = z.number().int().min(0).max(MAX_TIMESTAMP_MS).refine(
@@ -361,8 +374,8 @@ export function readPulseCapsuleFile(filePath: string, nowMs: number = Date.now(
   let size: number;
   try {
     size = statSync(filePath).size;
-  } catch {
-    throw new PulseCapsuleError("malformed", "capsule file cannot be read");
+  } catch (error) {
+    throw toUnreadableError(error);
   }
   if (size > PULSE_CAPSULE_MAX_BYTES) {
     throw new PulseCapsuleError("oversized", "capsule file exceeds the 256 KiB input bound");
@@ -370,8 +383,8 @@ export function readPulseCapsuleFile(filePath: string, nowMs: number = Date.now(
   let text: string;
   try {
     text = readFileSync(filePath, "utf8");
-  } catch {
-    throw new PulseCapsuleError("malformed", "capsule file cannot be read");
+  } catch (error) {
+    throw toUnreadableError(error);
   }
   return parsePulseCapsule(text, nowMs);
 }
