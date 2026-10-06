@@ -141,5 +141,7 @@ test("optional project URL inputs cannot trap submit behind native validation", 
     assert.match(line, /type="text"/, "optional project URLs stay explicit text inputs");
     assert.match(line, /inputMode="url"/, "optional project URLs keep the URL keyboard hint");
   }
-  assert.match(clientSource, /safeProjectActionUrl\(/, "invalid URLs must still be dropped downstream");
+  assert.match(clientSource, /describeProjectActionUrl\(/, "project rows must validate URLs before creating links");
+  const presentationSource = fs.readFileSync(path.join(root, "app/studio/studio-presentation.ts"), "utf8");
+  assert.match(presentationSource, /const href = safeProjectActionUrl\(raw\)/, "presentation must retain the shared URL boundary");
 });

@@ -1,4 +1,4 @@
-import { ProjectLinksSchema } from "@/packages/core/src/index";
+import { ALLOWED_LINK_HOSTS, ProjectLinksSchema } from "@/packages/core/src/index";
 import { isStudioCardAvailable, type StudioCardAvailability } from "./studio-card-availability";
 import { STUDIO_CARD_KINDS } from "./studio-markdown";
 import type { StudioCardKind } from "./studio-urls";
@@ -151,4 +151,49 @@ export function safeProjectActionUrl(value: string | null | undefined): string |
   const parsed = ProjectLinksSchema.safeParse({ docs: value });
   if (!parsed.success || !parsed.data.docs) return null;
   return new URL(parsed.data.docs).toString();
+}
+
+export interface ProjectActionPresentation {
+  /** Trimmed typed value ("" when the field is empty). Always kept so invalid input stays visible. */
+  raw: string;
+  /** Normalized HTTPS URL when the value passes the shared link boundary, otherwise null. */
+  href: string | null;
+  /** Inline field message when a non-empty value fails validation, otherwise null. */
+  error: string | null;
+}
+
+/**
+ * Validation message for a non-empty project action value that failed
+ * `safeProjectActionUrl`. Empty values have no message; valid values are null.
+ */
+export function projectActionUrlError(value: string): string | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  if (safeProjectActionUrl(raw)) return null;
+  let parsed: URL | null = null;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return "Enter a valid HTTPS URL on an allowed host.";
+  }
+  if (parsed.protocol !== "https:") return "Use an HTTPS URL on an allowed host.";
+  if (parsed.username || parsed.password) return "Use an HTTPS URL on an allowed host.";
+  const host = parsed.hostname.toLowerCase();
+  if (!(ALLOWED_LINK_HOSTS as readonly string[]).includes(host)) {
+    return "Use an HTTPS URL on an allowed host.";
+  }
+  return "Use an HTTPS URL on an allowed host.";
+}
+
+/**
+ * Presentation for one Docs/Install/Download draft value. Valid values
+ * normalize to `href`; non-empty invalid values keep `raw` with an `error`
+ * message instead of being dropped silently; empty values stay empty.
+ */
+export function describeProjectActionUrl(value: string | null | undefined): ProjectActionPresentation {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return { raw: "", href: null, error: null };
+  const href = safeProjectActionUrl(raw);
+  if (href) return { raw, href, error: null };
+  return { raw, href: null, error: projectActionUrlError(raw) };
 }
