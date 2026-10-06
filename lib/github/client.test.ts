@@ -97,8 +97,124 @@ test("clamps multi-year profile windows to two trailing years", async () => {
   assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
 });
 
+interface CalendarRange { from: string; to: string }
+
+function rangeCalendar(range: CalendarRange, count = 1) {
+  const dates = [];
+  for (const date = new Date(range.from); date <= new Date(range.to); date.setUTCDate(date.getUTCDate() + 1)) {
+    dates.push({ date: date.toISOString().slice(0, 10), contributionCount: count, contributionLevel: count ? "FIRST_QUARTILE" : "NONE" });
+  }
+  return dates;
+}
+
+function rangePayload(range: CalendarRange, overrides: Record<string, unknown> = {}) {
+  return { data: { user: { contributionsCollection: {
+    totalCommitContributions: 1,
+    totalIssueContributions: 2,
+    totalPullRequestContributions: 3,
+    totalPullRequestReviewContributions: 4,
+    hasAnyRestrictedContributions: false,
+    restrictedContributionsCount: 0,
+    contributionCalendar: { weeks: [{ contributionDays: rangeCalendar(range) }] },
+    ...overrides,
+  } } } };
+}
+
+for (const window of [365, 366, 730, 999, "auto"] as const) {
+  test(`token window ${window} uses bounded non-overlapping UTC collections`, async () => {
+    const asOf = new Date("2025-03-01T18:27:19.321Z");
+    const requested = window === "auto" ? 731 : Math.min(window, 730);
+    const calls: CalendarRange[] = [];
+    let preflights = 0;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") {
+        preflights += 1;
+        return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      }
+      const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+      calls.push(variables);
+      assert.ok(Date.parse(variables.to) - Date.parse(variables.from) < 365 * 86400000, "GitHub collection must span fewer than 365 elapsed days");
+      return json(rangePayload(variables));
+    };
+    const snapshot = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => asOf }).fetchContributions("octocat", window);
+    assert.equal(calls.length, Math.ceil(requested / 365));
+    assert.equal(preflights, 1, "reuse the same public credential proof");
+    assert.equal(calls[0]?.from, inclusiveWindowStart(asOf, requested) + "T00:00:00.000Z");
+    assert.equal(calls.at(-1)?.to, asOf.toISOString());
+    for (let index = 1; index < calls.length; index += 1) {
+      assert.equal(Date.parse(calls[index]!.from), Date.parse(calls[index - 1]!.to) + 1);
+      assert.ok(calls[index]!.from.endsWith("T00:00:00.000Z"));
+    }
+    assert.equal(snapshot.days.length, requested);
+    assert.equal(new Set(snapshot.days.map(day => day.date)).size, requested);
+    if (requested > 366) assert.ok(snapshot.days.some(day => day.date === "2024-02-29"));
+    assert.equal(snapshot.totalContributions, requested);
+    assert.deepEqual([snapshot.commits, snapshot.issues, snapshot.pullRequests, snapshot.reviews], [1, 2, 3, 4].map(value => value * calls.length));
+    assert.equal(snapshot.freshness.generatedAt, asOf.toISOString());
+  });
+}
+
+for (const problem of ["private", "missing", "duplicate", "future", "upstream"] as const) {
+  test(`multi-year token calendars reject a ${problem} later collection without partial output`, async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+      calls += 1;
+      const payload = rangePayload(variables);
+      if (calls === 2) {
+        if (problem === "upstream") return json({}, 503);
+        const collection = payload.data.user.contributionsCollection;
+        if (problem === "private") collection.hasAnyRestrictedContributions = true;
+        const days = collection.contributionCalendar.weeks[0]!.contributionDays;
+        if (problem === "missing") days.splice(15, 1);
+        if (problem === "duplicate") days.push({ ...days[0]! });
+        if (problem === "future") days.push({ date: "2026-08-20", contributionCount: 1, contributionLevel: "FIRST_QUARTILE" });
+      }
+      return json(payload);
+    };
+    await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 730),
+      (error: unknown) => error instanceof GitHubApiError && error.code === (problem === "private" ? "private_data" : problem === "upstream" ? "github_unavailable" : "invalid_response"));
+    assert.equal(calls, 2);
+  });
+}
+
+for (const key of ["totalCommitContributions", "totalIssueContributions", "totalPullRequestContributions", "totalPullRequestReviewContributions"]) {
+  test(`multi-year token calendars reject overflow in ${key}`, async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+      calls += 1;
+      return json(rangePayload(variables, { [key]: calls === 1 ? Number.MAX_SAFE_INTEGER : 1 }));
+    };
+    await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 730), isInvalidResponse);
+    assert.equal(calls, 2);
+  });
+}
+
+test("multi-year token requests retain the original absolute deadline", async (context) => {
+  let clock = 100000;
+  context.mock.method(Date, "now", () => clock);
+  let calls = 0;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+    calls += 1;
+    clock += 13000;
+    return json(rangePayload(variables));
+  };
+  await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 730),
+    (error: unknown) => error instanceof GitHubApiError && error.code === "github_unavailable");
+  assert.equal(calls, 1, "do not reset the budget for another collection");
+});
+
 test("automatic token windows span the two-year ceiling back to the earliest active day", async () => {
-  let graphQlBody = "";
+  const graphQlBodies: string[] = [];
   const from = new Date(Date.UTC(2024, 7, 19));
   const days = [];
   for (let index = 0; index < 731; index += 1) {
@@ -118,18 +234,21 @@ test("automatic token windows span the two-year ceiling back to the earliest act
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
-    graphQlBody = String(init?.body);
+    graphQlBodies.push(String(init?.body));
+    const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+    const scoped = weeks.flatMap(week => week.contributionDays).filter(day => day.date >= variables.from.slice(0, 10) && day.date <= variables.to.slice(0, 10));
+    const active = scoped.filter(day => day.contributionCount > 0).length;
     return json({
       data: {
         user: {
           contributionsCollection: {
-            totalCommitContributions: 200,
-            totalIssueContributions: 100,
-            totalPullRequestContributions: 40,
-            totalPullRequestReviewContributions: 26,
+            totalCommitContributions: active,
+            totalIssueContributions: 0,
+            totalPullRequestContributions: 0,
+            totalPullRequestReviewContributions: 0,
             hasAnyRestrictedContributions: false,
             restrictedContributionsCount: 0,
-            contributionCalendar: { weeks },
+            contributionCalendar: { weeks: [{ contributionDays: scoped }] },
           },
         },
       },
@@ -137,16 +256,16 @@ test("automatic token windows span the two-year ceiling back to the earliest act
   };
   const contributions = await new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW })
     .fetchContributions("octocat", "auto");
-  assert.equal(JSON.parse(graphQlBody).variables.from, "2024-08-19T00:00:00.000Z");
+  assert.equal(JSON.parse(graphQlBodies[0]!).variables.from, "2024-08-19T00:00:00.000Z");
   assert.equal(contributions.days.length, 366);
   assert.equal(contributions.days[0]?.date, "2025-08-19");
   assert.equal(contributions.days.at(-1)?.date, "2026-08-19");
   assert.equal(contributions.totalContributions, 366);
-  assert.equal(contributions.commits, 200);
+  assert.equal(contributions.commits, 366);
 });
 
 test("automatic windows accept short calendars that explicit windows reject", async () => {
-  const days = [];
+  const days: ReturnType<typeof rangeCalendar> = [];
   for (let index = 0; index < 10; index += 1) {
     const date = new Date(Date.UTC(2026, 7, 10 + index));
     const count = index < 2 ? 0 : 1;
@@ -171,16 +290,60 @@ test("automatic windows accept short calendars that explicit windows reject", as
       },
     },
   };
-  const fetchImpl: typeof fetch = async (input) => {
+  const fetchImpl: typeof fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
-    return json(payload);
+    const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+    const scoped = days.filter(day => day.date >= variables.from.slice(0, 10) && day.date <= variables.to.slice(0, 10));
+    return json({ data: { user: { contributionsCollection: {
+      ...payload.data.user.contributionsCollection,
+      totalCommitContributions: scoped.reduce((sum, day) => sum + day.contributionCount, 0),
+      contributionCalendar: { weeks: [{ contributionDays: scoped }] },
+    } } } });
   };
   const client = new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW });
   const contributions = await client.fetchContributions("octocat", "auto");
   assert.equal(contributions.days.length, 8);
   assert.equal(contributions.days[0]?.date, "2026-08-12");
   await assert.rejects(client.fetchContributions("octocat", 30), isInvalidResponse);
+});
+
+for (const problem of ["gap", "stale", "empty"] as const) {
+  test(`automatic token calendars reject ${problem} history instead of reporting a complete window`, async () => {
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+      const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+      const payload = rangePayload(variables);
+      const collection = payload.data.user.contributionsCollection;
+      collection.contributionCalendar.weeks[0]!.contributionDays = rangeCalendar(variables).filter(day => {
+        if (problem === "empty") return false;
+        return day.date !== (problem === "gap" ? "2026-07-01" : "2026-08-19");
+      });
+      if (problem === "empty") {
+        collection.totalCommitContributions = 0;
+        collection.totalIssueContributions = 0;
+        collection.totalPullRequestContributions = 0;
+        collection.totalPullRequestReviewContributions = 0;
+      }
+      return json(payload);
+    };
+    await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", "auto"), isInvalidResponse);
+  });
+}
+
+test("automatic token trimming cannot hide gaps in the inactive observed prefix", async () => {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    const { variables } = JSON.parse(String(init?.body)) as { variables: CalendarRange };
+    const payload = rangePayload(variables);
+    payload.data.user.contributionsCollection.contributionCalendar.weeks[0]!.contributionDays = rangeCalendar(variables)
+      .filter(day => day.date !== "2025-01-01")
+      .map(day => ({ ...day, contributionCount: day.date < "2026-08-01" ? 0 : 1 }));
+    return json(payload);
+  };
+  await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", "auto"), isInvalidResponse);
 });
 
 test("automatic public windows trim leading-zero years and keep the activity mix", async () => {
