@@ -6,6 +6,7 @@ import {
   buildStudioGalleryCards,
   contributionMetricLabel,
   contributionWindowLabel,
+  describeProjectActionUrl,
   findProjectDraft,
   safeProjectActionUrl,
   starterCiPresentation,
@@ -61,6 +62,41 @@ test("project actions use the shared host and credential boundary", () => {
   assert.equal(safeProjectActionUrl("http://github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("https://token@github.com/acme/atlas"), null);
   assert.equal(safeProjectActionUrl("not a URL"), null);
+});
+
+test("plain-http project actions stay visible with field validation", () => {
+  const presented = describeProjectActionUrl("http://example.com/guide");
+  assert.equal(presented.href, null);
+  assert.equal(presented.raw, "http://example.com/guide");
+  assert.ok(presented.error, "http URL must surface a visible field message");
+  assert.match(presented.error ?? "", /HTTPS/i);
+});
+
+test("non-allowlisted project actions stay visible with field validation", () => {
+  const presented = describeProjectActionUrl("https://example.com/install.sh");
+  assert.equal(presented.href, null);
+  assert.equal(presented.raw, "https://example.com/install.sh");
+  assert.ok(presented.error, "non-allowlisted host must surface a visible field message");
+  assert.match(presented.error ?? "", /allowed host/i);
+});
+
+test("valid project actions still normalize and empty values stay quiet", () => {
+  const valid = describeProjectActionUrl(" https://github.com/acme/atlas/docs ");
+  assert.equal(valid.href, "https://github.com/acme/atlas/docs");
+  assert.equal(valid.raw, "https://github.com/acme/atlas/docs");
+  assert.equal(valid.error, null);
+
+  const empty = describeProjectActionUrl("   ");
+  assert.equal(empty.href, null);
+  assert.equal(empty.raw, "");
+  assert.equal(empty.error, null);
+});
+
+test("project rows keep invalid actions visible instead of dropping them", () => {
+  const source = readFileSync(new URL("./studio-client.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes("describeProjectActionUrl"), "rows must describe draft URLs instead of filtering them silently");
+  assert.ok(source.includes("project-action-invalid"), "rows must keep the typed value visible");
+  assert.ok(source.includes('role="alert"'), "rows must surface an inline field message");
 });
 
 test("gallery exposes only selected, currently available cards", () => {

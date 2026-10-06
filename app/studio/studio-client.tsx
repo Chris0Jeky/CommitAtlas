@@ -19,8 +19,8 @@ import {
 } from "./studio-messages";
 import {
   buildStudioGalleryCards,
+  describeProjectActionUrl,
   findProjectDraft,
-  safeProjectActionUrl,
   starterCiPresentation,
   studioSourceLabel,
   type StudioGalleryCard,
@@ -621,16 +621,26 @@ function StudioCardPreview({
 }
 
 function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: ProjectDraft }) {
+  const docs = describeProjectActionUrl(draft?.docs);
+  const install = describeProjectActionUrl(draft?.install);
+  const download = describeProjectActionUrl(draft?.download);
+  // An invalid typed download stays visible instead of being masked by the release fallback.
+  const downloadHref = download.href ?? (download.raw ? null : project.release?.download?.url ?? null);
   const actions = [
-    ["Source", project.sourceUrl], ["Website", project.websiteUrl], ["Docs", safeProjectActionUrl(draft?.docs)],
-    ["Install", safeProjectActionUrl(draft?.install)], ["Download", safeProjectActionUrl(draft?.download) || project.release?.download?.url],
+    ["Source", project.sourceUrl], ["Website", project.websiteUrl], ["Docs", docs.href],
+    ["Install", install.href], ["Download", downloadHref],
     ["Release", project.release?.url], ["CI", project.ci.url],
   ].filter((item): item is [string, string] => Boolean(item[1]));
+  const invalid = [
+    { label: "Docs", presentation: docs },
+    { label: "Install", presentation: install },
+    { label: "Download", presentation: download },
+  ].filter((item) => item.presentation.error);
   return (
     <article className="dashboard-project">
       <div className="project-title"><span className="signal-mark" data-state={project.ci.state} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
       <dl><div><dt>CI</dt><dd className={ciTone(project.ci.state)}>{project.ci.label}</dd></div><div><dt>Release</dt><dd className={project.releaseState === "unavailable" ? "unknown" : undefined}>{releaseLabel(project)}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
-      {actions.length > 0 && <div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div>}
+      {(actions.length > 0 || invalid.length > 0) && <div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}{invalid.map(({ label, presentation }) => <span key={label} className="project-action-invalid">{label}: {presentation.raw} <small role="alert">{presentation.error}</small></span>)}</div>}
     </article>
   );
 }
@@ -642,8 +652,16 @@ function releaseLabel(project: ProjectSnapshot): string {
 
 function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: string }) {
   const ci = starterCiPresentation(project.workflow);
-  const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", safeProjectActionUrl(project.docs)], ["Install", safeProjectActionUrl(project.install)], ["Download", safeProjectActionUrl(project.download)]].filter((item): item is [string, string] => Boolean(item[1]));
-  return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}</div></article>;
+  const docs = describeProjectActionUrl(project.docs);
+  const install = describeProjectActionUrl(project.install);
+  const download = describeProjectActionUrl(project.download);
+  const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", docs.href], ["Install", install.href], ["Download", download.href]].filter((item): item is [string, string] => Boolean(item[1]));
+  const invalid = [
+    { label: "Docs", presentation: docs },
+    { label: "Install", presentation: install },
+    { label: "Download", presentation: download },
+  ].filter((item) => item.presentation.error);
+  return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}{invalid.map(({ label, presentation }) => <span key={label} className="project-action-invalid">{label}: {presentation.raw} <small role="alert">{presentation.error}</small></span>)}</div></article>;
 }
 
 /**
