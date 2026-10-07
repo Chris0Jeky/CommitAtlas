@@ -1,4 +1,5 @@
 import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
+import { nebulaScene } from "./scenes/nebula.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
 import type { ThemeName } from "./index.js";
 import { createIdentityConfig, isIdentityConfig, type IdentityConfig } from "./identity.js";
@@ -139,8 +140,10 @@ function definitionSnapshot<Model>(input: SceneDefinition<Model>): SceneDefiniti
 let builtinsLoaded = false;
 function loadBuiltins(): void {
   if (builtinsLoaded) return;
-  const builtin = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
-  registry.set(builtin.id, builtin);
+  const coverage = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
+  registry.set(coverage.id, coverage);
+  const nebula = definitionSnapshot(nebulaScene) as SceneDefinition<unknown>;
+  registry.set(nebula.id, nebula);
   builtinsLoaded = true;
 }
 export function registerScene<Model>(definition: SceneDefinition<Model>): void {
