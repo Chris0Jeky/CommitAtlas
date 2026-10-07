@@ -54,9 +54,15 @@ try {
   });
   await page.goto(`${origin}/studio`, { waitUntil: "domcontentloaded", timeout: 45_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("input")].some(element => Object.keys(element).some(key => key.startsWith("__reactProps"))));
+  const runPreview = async () => {
+    await page.locator('button[type="submit"]').click();
+    // Old images remain visible while JSON refresh is pending and must not approve copying.
+    // Wait for the new configuration commit before observing its keyed image resources.
+    await page.waitForFunction(() => !document.querySelector('button[type="submit"]').disabled);
+  };
   await page.getByLabel("Evidence coverage", { exact: true }).check();
   await page.getByLabel("Ambient", { exact: false }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   const scene = page.locator('[data-scene-preview="evidence-coverage"]');
   const allTools = page.locator("fieldset.preview-tools");
   const markdown = page.getByRole("textbox", { name: "Generated README Markdown" });
@@ -71,11 +77,13 @@ try {
       const imageRect = image?.getBoundingClientRect();
       return { id: element.getAttribute("data-scene-preview") ?? element.getAttribute("data-card-preview"), width: rect.width, available,
         imageWidth: imageRect?.width ?? 0, imageHeight: imageRect?.height ?? 0,
+        naturalWidth: image?.naturalWidth ?? 0, naturalHeight: image?.naturalHeight ?? 0,
         overflow: element.scrollWidth > element.clientWidth + 1 };
     }));
     for (const box of boxes) {
       assert.ok(box.width >= box.available - 2, `scene ${box.id} is not full-width: ${JSON.stringify(box)}`);
-      assert.ok(box.imageWidth >= Math.min(160, box.available - 64) && box.imageHeight >= 60, `scene ${box.id} is unreadably small`);
+      assert.ok(box.imageWidth >= Math.min(160, box.available - 64) && box.imageHeight > 0, `scene ${box.id} is unreadably small`);
+      assert.ok(Math.abs(box.imageHeight - box.imageWidth * box.naturalHeight / box.naturalWidth) < 2, `image aspect ratio changed: ${JSON.stringify(box)}`);
       assert.equal(box.overflow, false, `scene ${box.id} contents overflow`);
     }
     layoutMeasurements.push({ viewport: page.viewportSize(), boxes });
@@ -121,14 +129,14 @@ try {
   fault = "none";
   await page.getByLabel("Orbital", { exact: false }).check();
   const beforeUnsupported = requests.length;
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   await scene.getByText("This scene does not support the orbital pack.", { exact: false }).waitFor();
   assert.equal(requests.length, beforeUnsupported); assert.equal(await copiedScene(), false);
   scenarios.push("unsupported packs do not fetch or silently substitute survey");
   await page.getByLabel("Survey", { exact: false }).check();
   await page.getByLabel("Activity terrain", { exact: true }).check();
   await page.getByLabel("Lifecycle map", { exact: true }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   for (const id of ["evidence-coverage", "activity-terrain", "lifecycle-map"]) {
     await page.locator(`[data-scene-preview="${id}"]`).getByText("Image loaded. Compiler counters", { exact: false }).waitFor({ timeout: 30_000 });
     assert.ok((await markdown.inputValue()).includes(`/scenes/${id}.svg`));
@@ -146,7 +154,7 @@ try {
   // Exercise the new card contract independently of the already-shipped scene receipt.
   for (const label of ["Atlas", "Profile", "Streak", "Breakdown", "Rhythm", "Activity", "Languages", "Projects"])
     await page.getByRole("checkbox", { name: label, exact: true }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   const cards = ["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"];
   const cardPanel = id => page.locator(`[data-card-preview="${id}"]`);
   const cardLoaded = id => cardPanel(id).getByText("Image loaded. Renderer counters", { exact: false }).waitFor({ timeout: 30_000 });
@@ -154,7 +162,7 @@ try {
     await cardLoaded(id);
     assert.match(await cardPanel(id).locator("img").getAttribute("src"), /^blob:/);
     assert.doesNotMatch(await cardPanel(id).locator("dl").innerText(), /Unavailable/);
-    assert.ok((await markdown.inputValue()).includes(id === "projects" ? "/api/v1/projects.svg" : `/cards/${id}.svg`));
+    assert.ok((await markdown.inputValue()).includes(id === "projects" ? "/api/v1/projects.svg" : `/cards/${id}.svg`), `loaded ${id} is absent from Markdown: ${await markdown.inputValue()}`);
   }
   scenarios.push("all eight cards require decoded profile images and display exact response counters");
   const profile = cardPanel("profile");
@@ -186,13 +194,13 @@ try {
   await cardLoaded("profile"); assert.equal(await copyProfile(), true);
   scenarios.push("deselection and reselection cannot revive a disposed request's image approval");
   await page.getByRole("radio", { name: /Compact.*Mobile friendly/ }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   for (const id of cards) await cardLoaded(id);
   assert.equal(await cardPanel("atlas").locator("img").evaluate(image => image.naturalWidth), 480);
   assert.match(await cardPanel("atlas").locator("footer a").getAttribute("href"), /layout=compact/);
   assert.match(await markdown.inputValue(), /layout=compact/);
   await page.getByRole("radio", { name: /Wide.*README hero/ }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   for (const id of cards) await cardLoaded(id);
   for (const id of ["evidence-coverage", "activity-terrain", "lifecycle-map"])
     await page.locator(`[data-scene-preview="${id}"]`).getByText("Image loaded. Compiler counters", { exact: false }).waitFor();
@@ -231,6 +239,6 @@ try {
   console.log(JSON.stringify(receipt, null, 2));
 } catch (error) {
   await page.screenshot({ path: path.join(out, "failure.png"), fullPage: true }).catch(() => {});
-  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), errors, scenarios, requests }, null, 2));
+  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), stack: error.stack, errors, scenarios, requests }, null, 2));
   throw error;
 } finally { releaseDelayed?.(); releaseCard?.(); await browser.close(); }
