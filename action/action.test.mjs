@@ -23,6 +23,7 @@ test("checked bundle contains delivery generation but no source map or token sen
   assert.match(bundle, /Variant/);
   assert.match(bundle, /delivery\.json/);
   assert.match(bundle, /github-token/);
+  assert.match(bundle, /activity-terrain/);
   assert.doesNotMatch(bundle, /must-not-leave-process|sourceMappingURL=/);
 });
 
