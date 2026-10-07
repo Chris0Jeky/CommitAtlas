@@ -14,13 +14,28 @@ export type StudioCardKind =
   | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
-import type { HostedMotionProfile } from "@/packages/svg/src/index";
+import type { HostedMotionProfile, ScenePack } from "@/packages/svg/src/index";
 
 export interface StudioProjectInput {
   repo: string;
   lifecycle: string;
   workflow?: string;
 }
+
+/** Closed pack enum the hosted scene route accepts. Survey is the canonical default. */
+export const STUDIO_SCENE_PACKS = ["survey", "orbital", "spectral", "terminal"] as const;
+
+/** Hosted families only. A test pins this list to `listScenes()`. */
+export const STUDIO_SCENE_IDS = ["evidence-coverage"] as const;
+
+export const STUDIO_SCENE_LABELS: Readonly<Record<(typeof STUDIO_SCENE_IDS)[number], string>> = {
+  "evidence-coverage": "Evidence coverage",
+};
+
+/** Packs each hosted scene declares. An unsupported pack is refused, never silently redrawn. */
+export const STUDIO_SCENE_SUPPORTED_PACKS = {
+  "evidence-coverage": ["survey"],
+} as const satisfies Record<(typeof STUDIO_SCENE_IDS)[number], readonly ScenePack[]>;
 
 export interface StudioRouteOptions {
   owner: string;
@@ -30,6 +45,8 @@ export interface StudioRouteOptions {
   motion?: HostedMotionProfile;
   layout?: "wide" | "compact";
   projects?: StudioProjectInput[];
+  pack?: ScenePack;
+  scenes?: readonly string[];
 }
 
 export function buildStudioConfigurationKey(options: StudioRouteOptions): string {
@@ -40,6 +57,8 @@ export function buildStudioConfigurationKey(options: StudioRouteOptions): string
     days: options.days ?? null,
     motion: options.motion ?? "subtle",
     layout: options.layout ?? "wide",
+    pack: options.pack ?? "survey",
+    scenes: [...(options.scenes ?? [])].sort(),
     projects: (options.projects ?? [])
       .filter((project) => project.repo.trim())
       .map((project) => ({
@@ -134,4 +153,56 @@ export function buildStudioRouteUrl(
     ? projectSurface === "json" ? "/api/v1/projects" : "/api/v1/projects.svg"
     : cardPaths[kind];
   return `${path}?${query.toString()}`;
+}
+
+/** Canonical scene URL. Defaults the route omits stay omitted so the preview does not redirect. */
+export function buildStudioSceneUrl(id: string, options: StudioRouteOptions): string {
+  if (!(STUDIO_SCENE_IDS as readonly string[]).includes(id)) throw new Error(`unknown studio scene: ${id}`);
+  const query = new URLSearchParams();
+  const owner = options.owner.trim();
+  const projects = (options.projects ?? [])
+    .map((project) => ({
+      repo: project.repo.trim(),
+      lifecycle: project.lifecycle,
+      workflow: project.workflow?.trim() ?? "",
+    }))
+    .filter((project) => project.repo);
+  query.set("user", owner);
+  if (projects.length > 0) {
+    query.set("repos", projects.map((project) => project.repo).join(","));
+    query.set("states", projects.map((project) => `${project.repo}:${project.lifecycle}`).join(","));
+    const workflows = projects
+      .filter((project) => project.workflow)
+      .map((project) => `${project.repo}:${encodeWorkflowMapComponent(project.workflow)}`);
+    if (workflows.length > 0) query.set("workflows", workflows.join(","));
+  }
+  query.set("demo", String(options.demo));
+  if (options.theme !== "aurora") query.set("theme", options.theme);
+  if (options.days !== undefined && options.days !== 365) query.set("days", String(options.days));
+  if ((options.motion ?? "none") !== "none") query.set("motion", options.motion ?? "none");
+  if ((options.layout ?? "wide") !== "wide") query.set("layout", options.layout ?? "wide");
+  if ((options.pack ?? "survey") !== "survey") query.set("pack", options.pack ?? "survey");
+  return `/api/v1/scenes/${id}.svg?${query.toString()}`;
+}
+
+/**
+ * Counts what the SVG text itself shows.
+ * Animated elements are `<animate*>` tags plus CSS `animation:` declarations.
+ * Looping groups are indefinite SMIL repeats plus CSS `infinite` animations.
+ * A failed fetch stays unavailable in the UI; this function is only for text that arrived.
+ */
+export function readStudioMotionCounters(svg: string): {
+  bytes: number;
+  animatedElements: number;
+  loopingGroups: number;
+} {
+  const animateTags = svg.match(/<animate(?:Transform|Motion)?\b/g)?.length ?? 0;
+  const cssAnimations = svg.match(/animation\s*:/g)?.length ?? 0;
+  const indefinite = svg.match(/repeatCount="indefinite"/g)?.length ?? 0;
+  const infiniteCss = svg.match(/animation:[^;}{]*\binfinite\b/g)?.length ?? 0;
+  return {
+    bytes: new TextEncoder().encode(svg).length,
+    animatedElements: animateTags + cssAnimations,
+    loopingGroups: indefinite + infiniteCss,
+  };
 }

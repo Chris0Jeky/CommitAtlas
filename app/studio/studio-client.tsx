@@ -1,7 +1,7 @@
 "use client";
 
-import type { HostedMotionProfile } from "@/packages/svg/src/index";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import type { HostedMotionProfile, ScenePack } from "@/packages/svg/src/index";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
 import {
@@ -28,7 +28,13 @@ import {
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  buildStudioSceneUrl,
+  readStudioMotionCounters,
   STUDIO_PREVIEW_DAYS,
+  STUDIO_SCENE_IDS,
+  STUDIO_SCENE_LABELS,
+  STUDIO_SCENE_PACKS,
+  STUDIO_SCENE_SUPPORTED_PACKS,
   isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
@@ -112,6 +118,8 @@ interface PreviewConfiguration {
   demo: boolean;
   motion: HostedMotionProfile;
   layout: "wide" | "compact";
+  pack: ScenePack;
+  scenes: readonly string[];
   hasContributions: boolean;
   hasLanguages: boolean;
 }
@@ -158,6 +166,11 @@ export default function StudioClient() {
   const [demo, setDemo] = useState(true);
   const [theme, setTheme] = useState("ember");
   const [motion, setMotion] = useState<HostedMotionProfile>("subtle");
+  const [pack, setPack] = useState<ScenePack>("survey");
+  const [selectedScenes, setSelectedScenes] = useState<Set<string>>(() => new Set());
+  const [sceneView, setSceneView] = useState<"profile" | "still">("profile");
+  const [sceneReplay, setSceneReplay] = useState(0);
+  const [renderedSceneKeys, setRenderedSceneKeys] = useState<ReadonlySet<string>>(() => new Set());
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
   const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(["atlas", "projects"]));
@@ -181,6 +194,8 @@ export default function StudioClient() {
     demo: true,
     motion: "subtle",
     layout: "wide",
+    pack: "survey",
+    scenes: [],
     hasContributions: true,
     hasLanguages: true,
   });
@@ -197,7 +212,9 @@ export default function StudioClient() {
     days: STUDIO_PREVIEW_DAYS,
     motion,
     layout,
-  }), [activeProjects, demo, handle, layout, motion, theme]);
+    pack,
+    scenes: [...selectedScenes].sort(),
+  }), [activeProjects, demo, handle, layout, motion, pack, selectedScenes, theme]);
   const previewConfigurationKey = useMemo(() => buildStudioConfigurationKey({
     owner: previewConfiguration.owner,
     projects: previewConfiguration.projects,
@@ -206,6 +223,8 @@ export default function StudioClient() {
     days: STUDIO_PREVIEW_DAYS,
     motion: previewConfiguration.motion,
     layout: previewConfiguration.layout,
+    pack: previewConfiguration.pack,
+    scenes: previewConfiguration.scenes,
   }), [previewConfiguration]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
   const visibleBoard = configurationIsValidated ? board : null;
@@ -264,8 +283,30 @@ export default function StudioClient() {
       hasCurrentLanguages,
       motion: previewConfiguration.motion,
       layout: previewConfiguration.layout,
+      pack: previewConfiguration.pack,
+      selectedScenes,
+      renderedSceneIds: new Set(STUDIO_SCENE_IDS.filter((id) => renderedSceneKeys.has(`${previewConfigurationKey}:${id}`))),
     });
-  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, selectedCards]);
+  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, previewConfigurationKey, renderedSceneKeys, selectedCards, selectedScenes]);
+  const markSceneRendered = useCallback((id: string, ok: boolean) => {
+    const token = `${previewConfigurationKey}:${id}`;
+    setRenderedSceneKeys((current) => {
+      if (current.has(token) === ok) return current;
+      const next = new Set(current);
+      if (ok) next.add(token);
+      else next.delete(token);
+      return next;
+    });
+  }, [previewConfigurationKey]);
+  const sceneRouteOptions = {
+    owner: previewConfiguration.owner,
+    projects: previewConfiguration.projects,
+    theme: previewConfiguration.theme,
+    demo: previewConfiguration.demo,
+    days: STUDIO_PREVIEW_DAYS,
+    layout: previewConfiguration.layout,
+    pack: previewConfiguration.pack,
+  };
   const previewIsValidated = configurationIsValidated && !refreshUnresolved;
   const markdownReady = previewIsValidated && isCopyableStudioOrigin(baseUrl);
   const visibleMarkdown = markdownReady
@@ -298,6 +339,8 @@ export default function StudioClient() {
       days: STUDIO_PREVIEW_DAYS,
       motion,
       layout,
+      pack,
+      scenes: [...selectedScenes].sort(),
     });
 
     setPhase("loading");
@@ -334,6 +377,8 @@ export default function StudioClient() {
         demo,
         motion,
         layout,
+        pack,
+        scenes: [...selectedScenes].sort(),
         hasContributions: contributionResult.value !== null,
         hasLanguages: !nextProfile.repositoriesTruncated,
       });
@@ -449,6 +494,38 @@ export default function StudioClient() {
             <label><input type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
           </fieldset>
 
+          <fieldset className="segmented-field">
+            <legend>Scene pack</legend>
+            {STUDIO_SCENE_PACKS.map((value) => (
+              <label key={value}>
+                <input type="radio" name="pack" checked={pack === value} onChange={() => setPack(value)} />
+                <span><strong>{value[0].toUpperCase() + value.slice(1)}</strong><small>{value === "survey" ? "Default geometry" : "Alternate geometry"}</small></span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="card-picker">
+            <legend>Scenes to show &amp; copy</legend>
+            {STUDIO_SCENE_IDS.map((id) => (
+              <label key={id}>
+                <input type="checkbox" checked={selectedScenes.has(id)} onChange={() => setSelectedScenes((current) => {
+                  const next = new Set(current);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })} />
+                <span>{STUDIO_SCENE_LABELS[id]}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="preview-tools">
+            <legend>Preview tools</legend>
+            <button type="button" onClick={() => setSceneReplay((current) => current + 1)} disabled={selectedScenes.size === 0}>Replay</button>
+            <button type="button" onClick={() => setSceneView("still")} disabled={selectedScenes.size === 0}>Reduced-motion view</button>
+            <button type="button" onClick={() => setSceneView("still")} disabled={selectedScenes.size === 0}>Frame zero</button>
+          </fieldset>
+
           <fieldset className="card-picker">
             <legend>Cards to show &amp; copy</legend>
             {STUDIO_CARD_KINDS.map((kind) => {
@@ -541,6 +618,19 @@ export default function StudioClient() {
                 <span>Select an available card in Configuration to show it here and include it in Markdown.</span>
               </div>
             )}
+            {STUDIO_SCENE_IDS.filter((id) => selectedScenes.has(id)).map((id) => (
+              <StudioScenePreview
+                key={id}
+                id={id}
+                title={STUDIO_SCENE_LABELS[id]}
+                pack={previewConfiguration.pack}
+                url={buildStudioSceneUrl(id, { ...sceneRouteOptions, motion: previewConfiguration.motion })}
+                stillUrl={buildStudioSceneUrl(id, { ...sceneRouteOptions, motion: "none" })}
+                view={sceneView}
+                replay={sceneReplay}
+                onRendered={markSceneRendered}
+              />
+            ))}
           </div>
 
           <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? visibleProjectDrafts.length} declared projects</h3></div><span>Open links below</span></div>
@@ -573,6 +663,74 @@ export default function StudioClient() {
       </main>
       <ChassisFooter note="Unknown stays unknown · Stale stays stale · Your work stays yours" />
     </>
+  );
+}
+
+function StudioScenePreview({
+  id,
+  title,
+  pack,
+  url,
+  stillUrl,
+  view,
+  replay,
+  onRendered,
+}: {
+  id: string;
+  title: string;
+  pack: ScenePack;
+  url: string;
+  stillUrl: string;
+  view: "profile" | "still";
+  replay: number;
+  onRendered: (id: string, ok: boolean) => void;
+}) {
+  const packOk = (STUDIO_SCENE_SUPPORTED_PACKS[id as (typeof STUDIO_SCENE_IDS)[number]] as readonly string[]).includes(pack);
+  const shown = view === "still" ? stillUrl : url;
+  const [counters, setCounters] = useState<{ bytes: number; animatedElements: number; loopingGroups: number } | null>(null);
+  useEffect(() => {
+    if (!packOk) {
+      setCounters(null);
+      onRendered(id, false);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(shown, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("scene preview unavailable");
+        return response.text();
+      })
+      .then((text) => {
+        setCounters(readStudioMotionCounters(text));
+        onRendered(id, true);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCounters(null);
+        onRendered(id, false);
+      });
+    return () => controller.abort();
+  }, [id, onRendered, packOk, replay, shown]);
+  const reading = (value: number | undefined) => value === undefined ? "Unavailable" : String(value);
+  return (
+    <article className="studio-card-preview span-wide card-scene">
+      <header>
+        <div><h4>{title}</h4><p>{!packOk ? "Unavailable" : view === "still" ? "Frame zero" : "Scene preview"}</p></div>
+      </header>
+      <div className="card-preview-media">
+        {packOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={`${shown}:${replay}`} src={shown} alt={`CommitAtlas ${title} preview`} />
+        ) : (
+          <p>UNAVAILABLE. This scene does not support the {pack} pack.</p>
+        )}
+      </div>
+      <dl className="scene-motion-counters">
+        <div><dt>Bytes</dt><dd>{reading(counters?.bytes)}</dd></div>
+        <div><dt>Animated elements</dt><dd>{reading(counters?.animatedElements)}</dd></div>
+        <div><dt>Looping groups</dt><dd>{reading(counters?.loopingGroups)}</dd></div>
+      </dl>
+    </article>
   );
 }
 

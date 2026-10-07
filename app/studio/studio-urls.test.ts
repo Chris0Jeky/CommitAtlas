@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseLifecycleMap, parseRepositoryNames, parseWorkflowMap } from "@/lib/github/validation";
+import { parseSvgSceneQuery } from "@/lib/svg-routes";
+import { listScenes } from "@/packages/svg/src/index";
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  buildStudioSceneUrl,
   isCopyableStudioOrigin,
   isStudioPreviewCurrent,
+  readStudioMotionCounters,
   resolveStudioBaseUrl,
+  STUDIO_SCENE_IDS,
+  STUDIO_SCENE_PACKS,
+  STUDIO_SCENE_SUPPORTED_PACKS,
   type StudioCardKind,
 } from "./studio-urls";
 
@@ -236,4 +243,73 @@ test("the Studio preview window matches every date-window README embed", async (
   for (const [, url] of embeds) {
     assert.equal(new URL(url!).searchParams.get("days"), String(urls.STUDIO_PREVIEW_DAYS));
   }
+});
+
+test("lists exactly the hosted instrument and map scenes", () => {
+  const hosted = listScenes()
+    .filter((scene) => scene.family === "instrument" || scene.family === "map")
+    .map((scene) => scene.id);
+  assert.deepEqual([...STUDIO_SCENE_IDS], hosted);
+  for (const id of STUDIO_SCENE_IDS) {
+    const scene = listScenes().find((item) => item.id === id);
+    assert.ok(scene);
+    assert.deepEqual([...STUDIO_SCENE_SUPPORTED_PACKS[id]], [...scene.supportedPacks]);
+  }
+});
+
+test("scene preview URLs are the route canonical query", () => {
+  assert.deepEqual([...STUDIO_SCENE_PACKS], ["survey", "orbital", "spectral", "terminal"]);
+  const defaults = buildStudioSceneUrl("evidence-coverage", {
+    owner: "octocat",
+    theme: "aurora",
+    demo: true,
+    days: 365,
+    motion: "none",
+    layout: "wide",
+    pack: "survey",
+  });
+  assert.equal(defaults, "/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=true");
+  const selected = buildStudioSceneUrl("evidence-coverage", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    days: 365,
+    motion: "ambient",
+    layout: "compact",
+    pack: "orbital",
+    projects,
+  });
+  const parsed = new URL(`https://example.test${selected}`);
+  assert.equal(parsed.pathname, "/api/v1/scenes/evidence-coverage.svg");
+  assert.equal(parsed.searchParams.get("pack"), "orbital");
+  assert.equal(parsed.searchParams.get("motion"), "ambient");
+  assert.equal(parsed.searchParams.get("layout"), "compact");
+  assert.equal(parsed.searchParams.has("days"), false);
+  const query = parseSvgSceneQuery(parsed.searchParams);
+  assert.equal(query.canonical, parsed.search.slice(1));
+  assert.equal(query.pack, "orbital");
+  assert.throws(() => buildStudioSceneUrl("not-a-scene", {
+    owner: "octocat", theme: "ember", demo: true,
+  }), /unknown studio scene/);
+});
+
+test("motion counters count bytes, animate tags, and indefinite loops", () => {
+  const svg = `<svg><style>.a{animation:spin 1s infinite}</style><g><animate attributeName="opacity"/></g><animateTransform repeatCount="indefinite"/></svg>`;
+  const counters = readStudioMotionCounters(svg);
+  assert.equal(counters.bytes, new TextEncoder().encode(svg).length);
+  assert.equal(counters.animatedElements, 3);
+  assert.equal(counters.loopingGroups, 2);
+  assert.deepEqual(readStudioMotionCounters("<svg></svg>"), {
+    bytes: new TextEncoder().encode("<svg></svg>").length,
+    animatedElements: 0,
+    loopingGroups: 0,
+  });
+});
+
+test("pack and scene selection change the preview configuration key", () => {
+  const baseline = { owner: "octocat", theme: "ember", demo: true };
+  const key = buildStudioConfigurationKey(baseline);
+  assert.equal(key, buildStudioConfigurationKey({ ...baseline, pack: "survey", scenes: [] }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, pack: "orbital" }));
+  assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, scenes: ["evidence-coverage"] }));
 });
