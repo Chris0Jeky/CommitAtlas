@@ -14,7 +14,7 @@ const out = path.resolve(process.env.STUDIO_QA_OUTPUT ?? ".studio-qa");
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-const errors = [], requests = [], scenarios = [];
+const errors = [], requests = [], scenarios = [], layoutMeasurements = [];
 let fault = "none", releaseDelayed;
 let delayed = Promise.resolve();
 page.on("pageerror", error => errors.push(error.message));
@@ -47,6 +47,25 @@ try {
   const allTools = page.locator("fieldset.preview-tools");
   const markdown = page.getByRole("textbox", { name: "Generated README Markdown" });
   const loaded = () => scene.getByText("Image loaded. Compiler counters", { exact: false }).waitFor({ timeout: 30_000 });
+  const assertLayout = async () => {
+    const boxes = await page.locator("[data-scene-preview]").evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      const gallery = element.parentElement;
+      const style = getComputedStyle(gallery);
+      const available = gallery.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const image = element.querySelector("img");
+      const imageRect = image?.getBoundingClientRect();
+      return { id: element.getAttribute("data-scene-preview"), width: rect.width, available,
+        imageWidth: imageRect?.width ?? 0, imageHeight: imageRect?.height ?? 0,
+        overflow: element.scrollWidth > element.clientWidth + 1 };
+    }));
+    for (const box of boxes) {
+      assert.ok(box.width >= box.available - 2, `scene ${box.id} is not full-width: ${JSON.stringify(box)}`);
+      assert.ok(box.imageWidth >= Math.min(160, box.available - 64) && box.imageHeight >= 60, `scene ${box.id} is unreadably small`);
+      assert.equal(box.overflow, false, `scene ${box.id} contents overflow`);
+    }
+    layoutMeasurements.push({ viewport: page.viewportSize(), boxes });
+  };
   const copiedScene = async () => (await markdown.inputValue()).includes("/scenes/evidence-coverage.svg");
   await loaded(); assert.equal(await copiedScene(), true);
   assert.match(await scene.locator("img").getAttribute("src"), /^blob:/);
@@ -123,17 +142,19 @@ try {
   }
   assert.equal(visited.size, expectedControls);
   scenarios.push(`all ${expectedControls} enabled scene tool buttons reached by Tab (${tabPresses} presses from handle)`);
+  await assertLayout();
   await scene.screenshot({ path: path.join(out, "scene-loaded.png") });
   await page.screenshot({ path: path.join(out, "studio-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  await assertLayout();
   await page.screenshot({ path: path.join(out, "studio-mobile.png"), fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   assert.equal(overflow, false, "mobile Studio has horizontal overflow");
   assert.deepEqual(errors, []);
   const receipt = { source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     browser: browser.version(), driver: require("playwright/package.json").version,
-    origin, mode: production ? "production-synthetic" : "local-dev-synthetic-https-proxy",
-    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors,
+    origin, mode: production ? "production-synthetic" : "built-worker-synthetic-https-proxy",
+    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements,
     keyboard: { expectedControls, reachedControls: visited.size, tabPresses },
     timedMotionOrCamoQualification: false };
   await writeFile(path.join(out, "receipt.json"), `${JSON.stringify(receipt, null, 2)}\n`);
