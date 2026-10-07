@@ -1,0 +1,98 @@
+name: Isolated terrain final integration
+on:
+  push:
+    branches: [fix/terrain-135-final-integration]
+    paths: [.github/workflows/terrain-final-build.yml]
+permissions:
+  contents: write
+jobs:
+  validate:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/terrain-135-final-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+      - name: Apply the reviewed stationary ridge to the exact source snapshot
+        run: |
+          set -euo pipefail
+          test "$(git hash-object packages/svg/src/scenes/activity-terrain.ts)" = 14fc4ecf191b6c31740074d7274764e2f05bbd3b
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const path='packages/svg/src/scenes/activity-terrain.ts';
+          let source=fs.readFileSync(path,'utf8');
+          const before="  output += text(24, 493, 'SUNDAY COLUMNS / BOUNDARY WEEKS MAY BE PARTIAL', theme.muted, 10);";
+          assert.equal(source.split(before).length,2);
+          const addition=[
+            "  output += text(24, 477, 'RIDGE = STREAK / WINDOW DAYS', theme.muted, 10);",
+            "  const windowDays = (utcDay(model.to)! - utcDay(model.from)!) / DAY + 1;",
+            "  const ridgeStart = width / 2, ridgeSpan = width / 2 - 24;",
+            '  output += `<line x1="${ridgeStart}" y1="474" x2="${width - 24}" y2="474" stroke="${theme.muted}"/>`;',
+            '  output += `<line id="${sceneElementId(context, \'streak-ridge\')}" x1="${ridgeStart}" y1="474" x2="${ridgeStart + ridgeSpan * model.streak / windowDays}" y2="474" stroke="${model.streak === 0 ? theme.muted : theme.chrome}" stroke-width="2"><title>Current streak divided by declared window days</title></line>`;'
+          ].join('\n')+'\n';
+          source=source.replace(before,addition+before).replace('Weekly elevation follows Sunday-column sums. Boundary weeks may be partial.','Weekly elevation follows Sunday-column sums. Boundary weeks may be partial. The stationary streak ridge spans current streak divided by declared window days; printed days remain exact.');
+          fs.writeFileSync(path,source);
+          JS
+          cat >> packages/svg/tests/activity-terrain-boundaries.test.mjs <<'JS'
+
+          test('the stationary streak ridge uses the declared window without an arbitrary cap', () => {
+            for (const layout of ['wide', 'compact']) for (const activeDays of [0, 7, 14]) {
+              const value = inputs();
+              value.snapshot.contributions.days.forEach((day, index) => { day.count = index >= 14 - activeDays ? 1 : 0; });
+              value.snapshot.metrics = calculateContributionMetrics(value.snapshot.contributions.days, {
+                days: 14, asOf: '2026-01-17', commits: activeDays, issues: 0, pullRequests: 0, reviews: 0,
+              });
+              const result = render(value, {layout, motion: 'ambient'});
+              const doc = parseSceneXml(result.svg);
+              const visit = node => [node, ...node.children.flatMap(visit)];
+              const ridge = visit(doc.root).find(node => node.attrs.id?.endsWith('-element-streak-ridge'));
+              assert.ok(ridge, 'current streak has a ridge line');
+              const width = layout === 'compact' ? 480 : 720;
+              assert.equal(Number(ridge.attrs.x1), width / 2);
+              assert.equal(Number(ridge.attrs.x2), width / 2 + (width / 2 - 24) * activeDays / 14);
+              assert.equal(ridge.attrs.stroke, activeDays === 0 ? svg.themes.aurora.muted : svg.themes.aurora.chrome);
+              assert.equal(ridge.children.filter(node => node.name.startsWith('animate')).length, 0);
+              assert.match(painted(result), /RIDGE = STREAK \/ WINDOW DAYS/);
+            }
+          });
+          JS
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:action
+      - name: Commit the source and its reproducible bundle together
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- packages/svg/src/scenes/activity-terrain.ts packages/svg/tests/activity-terrain-boundaries.test.mjs action/dist
+          git commit -m 'feat(svg): finish terrain streak ridge with matching Action bundle'
+          mkdir final-evidence
+          git rev-parse HEAD > final-evidence/tested-head.txt
+      - name: Prove the full repository gate
+        run: |
+          set -euo pipefail
+          npm run check 2>&1 | tee final-evidence/full-check.log
+      - name: Retain exact source, generated bundle and logs
+        if: always()
+        run: |
+          mkdir -p final-evidence
+          tar -czf final-evidence/source-and-build.tgz packages scripts action/dist package.json tsconfig.json node_modules/zod
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: terrain-isolated-final
+          path: final-evidence/
+          retention-days: 14
+      - name: Publish only to the isolated integration branch
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain --untracked-files=no)"
+          remote_head=$(git ls-remote origin refs/heads/fix/terrain-135-final-integration | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/fix/terrain-135-final-integration
