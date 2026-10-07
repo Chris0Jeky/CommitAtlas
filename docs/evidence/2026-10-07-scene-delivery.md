@@ -71,18 +71,38 @@ a tiny scene panel on visual inspection. The undefined `span-wide` was replaced 
 existing `span-full`; an SSR regression and actual rendered-width browser assertions
 cover the correction. Those earlier attempts are not counted as final visual acceptance.
 
-## Deployment qualification
+## Production browser and deployment qualification
 
-Initial deployment [37623082908](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/37623082908)
-uploaded Worker `9f847ccc-2b5c-4262-99a6-52f6d35acef8` at `bb3c1d6`, then passed 19/21
-HTTP checks. The two new map checks received SVGs without the matching renderer metadata.
-That is not a successful deployment-verification result.
+The curated [production receipt](2026-10-07-studio-production.json) preserves the following
+separate observations; it does not pretend to be the byte-identical raw browser receipt.
 
-The first production browser attempt, run
-[37622867294](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/37622867294), ended its
-bounded readiness check at 12:44:09 UTC, before deployment completed at 12:44:12 UTC.
-It reached no browser scenarios. A later successful receipt must be recorded separately;
-neither rollout/caching nor a product defect is inferred solely from that timing.
+Production browser run [37622867294](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/37622867294),
+attempt 2, job `112798946988`, passed all seven scenarios against the actual production
+origin at `2026-10-07T12:46:39.103Z`. Its checked-out QA source was `bb3c1d6`, Chrome
+154.0.8037.57, Playwright driver 1.57.0. All production API requests used synthetic
+`demo=true` evidence. Error injection was confined to the browser's own responses.
+The same 16/16 keyboard traversal and desktop/mobile widths passed with zero page errors.
+The production scene screenshot was inspected.
+
+Production browser artifact `11482733171`, 1,287,276 bytes, ZIP SHA-256
+`c300f17ff4c29b41e9fa0021d53dc8a30e6bc60199bd96357d59dc77f5bce3ab`;
+raw receipt SHA-256 `2b1fc33a5c88c2dbbce1b8e43ae0170eb31f503a79fd7d0027dc33dce34fe2aa`.
+Downloaded-byte hashes match GitHub's native artifact metadata.
+
+Deployment [37623082908](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/37623082908),
+attempt 2, job `112800099561`, checked out exact main `bb3c1d6`, deployed Worker
+`e083d230-3e27-4d37-ad64-24e65bc0c79b`, and passed **21/21 production HTTP checks** at
+`2026-10-07T12:49:27.785Z`, including both new map metadata/body checks. The production
+browser observation preceded this redeployment of the same git source; it does not
+claim to identify that later Worker version from the UI.
+
+Initial deployment attempt 1 uploaded Worker `9f847ccc-2b5c-4262-99a6-52f6d35acef8`,
+then passed only 19/21 checks. The two new map responses lacked matching renderer
+metadata. The first browser readiness attempt ended at 12:44:09 UTC, before that
+deployment completed at 12:44:12 UTC, and reached no browser scenarios. Both unchanged
+retries passed. These prior failures are retained, not relabelled as successes. The
+observations are consistent with rollout timing but do not independently prove its cause.
+No source changes, test weakening or cache nonce was used to turn the retries green.
 
 ## Remaining #141 acceptance
 
