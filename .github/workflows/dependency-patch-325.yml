@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 22.13.0
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Update only the two compatible vulnerable leaf packages
+      - name: Resolve two compatible patches and preserve every unrelated lock entry
         run: |
           cp package-lock.json /tmp/audit-325-before.json
           npm update fast-uri source-map-js --ignore-scripts --no-audit --no-fund
@@ -29,14 +29,21 @@ jobs:
           import fs from 'node:fs';
           import assert from 'node:assert/strict';
           const before=JSON.parse(fs.readFileSync('/tmp/audit-325-before.json','utf8'));
-          const after=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
-          const allowed=new Map([['node_modules/fast-uri','3.1.8'],['node_modules/source-map-js','1.2.2']]);
-          for(const key of new Set([...Object.keys(before.packages),...Object.keys(after.packages)])) {
-            if(allowed.has(key)) { assert.equal(after.packages[key].version,allowed.get(key)); continue; }
-            assert.deepEqual(after.packages[key],before.packages[key],`Unexpected dependency change: ${key}`);
+          const candidate=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const repaired=structuredClone(before);
+          const allowed=new Map([['fast-uri','3.1.8'],['source-map-js','1.2.2']]);
+          for(const [name,version] of allowed) {
+            const key=`node_modules/${name}`, entry=candidate.packages[key], old=before.packages[key];
+            assert.equal(entry.version,version);
+            assert.equal(entry.resolved,`https://registry.npmjs.org/${name}/-/${name}-${version}.tgz`);
+            assert.match(entry.integrity,/^sha512-[A-Za-z0-9+/]+={0,2}$/);
+            for(const field of ['dependencies','optionalDependencies','peerDependencies','engines','bin','hasInstallScript']) assert.deepEqual(entry[field],old[field],`Changed dependency contract: ${name}/${field}`);
+            repaired.packages[key]={...old,version:entry.version,resolved:entry.resolved,integrity:entry.integrity};
           }
-          assert.deepEqual({...after,packages:null},{...before,packages:null});
-          console.log(JSON.stringify({updated:[...allowed].map(([path,version])=>({path,before:before.packages[path].version,after:version}))}));
+          // npm 10 removed unrelated optional-package libc metadata during resolution. Do not publish that churn.
+          fs.writeFileSync('package-lock.json',JSON.stringify(repaired,null,2)+'\n');
+          for(const key of Object.keys(before.packages)) if(![...allowed.keys()].some(name=>key===`node_modules/${name}`)) assert.deepEqual(repaired.packages[key],before.packages[key]);
+          console.log(JSON.stringify({updated:[...allowed].map(([name,version])=>({name,before:before.packages[`node_modules/${name}`].version,after:version}))}));
           JS
           git diff --exit-code -- package.json
       - run: npm ci --no-audit --no-fund
