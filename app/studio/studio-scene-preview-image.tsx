@@ -72,7 +72,7 @@ function SceneImage({ id, title, pack, url, stillUrl, view, token, onRendered, t
             : view === "profile" ? "Image loaded. Compiler counters are not browser playback measurements."
               : "Still twin loaded. Return to Profile view to validate and copy the selected motion profile.";
   return (
-    <article className="studio-card-preview span-wide card-scene" data-scene-preview={id}>
+    <article className="studio-card-preview span-full card-scene" data-scene-preview={id}>
       <header><div><h4>{title}</h4><p>{view === "profile" ? "Profile view" : view === "reduced" ? "Reduced-motion still twin" : "Frame-zero still twin"}</p></div></header>
       {tools}
       <div className="card-preview-media">
