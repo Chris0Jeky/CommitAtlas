@@ -67,7 +67,8 @@
     "lint": "eslint . --ignore-pattern \"**/dist/**\" --ignore-pattern .next --ignore-pattern worker-configuration.d.ts --ignore-pattern .swarm --ignore-pattern \"**/.claude/**\"",
     "deploy": "node scripts/deploy.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
-    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:static-src && npm run test:action && npm run test:packaging && npm test"
+    "check": "npm run typecheck:worker && npm run typecheck && npm run lint && npm run test:observatory && npm run test:deploy-tooling && npm run test:motion-probes && npm run test:core && npm run test:chassis && npm run test:github && npm run test:studio && npm run test:svg && npm run test:static && npm run test:static-src && npm run test:action && npm run test:dependency-codecs && npm run test:packaging && npm test",
+    "test:dependency-codecs": "node --test tests/dependency-codecs.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -103,5 +104,9 @@
     "vitest": "^5.0.3",
     "wrangler": "4.147.0"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "fflate": "0.7.5",
+    "sharp": "0.35.5"
+  }
 }

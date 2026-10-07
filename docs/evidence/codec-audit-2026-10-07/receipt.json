@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "fee65c41d2013edc1767b8ca950ff5e8f5fb4681",
+  "transportSource": "8328b986683e97121dd48ad9513c755e42d0fe02",
+  "observedAt": "2026-10-07T22:00:30.153Z",
+  "node": "v22.13.0",
+  "lockSha256": "11e0f861c8dc5047f41040c71eb155a9b04266735baa63b6b42d575607a612e4",
+  "fullSha256": "c58f01951dd0e699e1f74d9faae793e48289a99ab35cebbb1359ec9147e8420f",
+  "exits": {
+    "full": 1,
+    "production": 0,
+    "paths": 0
+  },
+  "regressions": {
+    "before": {
+      "failed": 3,
+      "passed": 1
+    },
+    "after": {
+      "failed": 0,
+      "passed": 4
+    }
+  },
+  "fullAuditClean": false
+}
