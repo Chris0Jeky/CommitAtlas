@@ -168,3 +168,24 @@ test('right-edge release numbers leave room before their diamond marker', () => 
     visit(doc.root);
   }
 });
+
+test('the stationary streak ridge uses the declared window without an arbitrary cap', () => {
+  for (const layout of ['wide', 'compact']) for (const activeDays of [0, 7, 14]) {
+    const value = inputs();
+    value.snapshot.contributions.days.forEach((day, index) => { day.count = index >= 14 - activeDays ? 1 : 0; });
+    value.snapshot.metrics = calculateContributionMetrics(value.snapshot.contributions.days, {
+      days: 14, asOf: '2026-01-17', commits: activeDays, issues: 0, pullRequests: 0, reviews: 0,
+    });
+    const result = render(value, {layout, motion: 'ambient'});
+    const doc = parseSceneXml(result.svg);
+    const visit = node => [node, ...node.children.flatMap(visit)];
+    const ridge = visit(doc.root).find(node => node.attrs.id?.endsWith('-element-streak-ridge'));
+    assert.ok(ridge, 'current streak has a ridge line');
+    const width = layout === 'compact' ? 480 : 720;
+    assert.equal(Number(ridge.attrs.x1), width / 2);
+    assert.equal(Number(ridge.attrs.x2), width / 2 + (width / 2 - 24) * activeDays / 14);
+    assert.equal(ridge.attrs.stroke, activeDays === 0 ? svg.themes.aurora.muted : svg.themes.aurora.chrome);
+    assert.equal(ridge.children.filter(node => node.name.startsWith('animate')).length, 0);
+    assert.match(painted(result), /RIDGE = STREAK \/ WINDOW DAYS/);
+  }
+});

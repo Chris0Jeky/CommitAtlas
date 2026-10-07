@@ -154,7 +154,7 @@ function accessibility(model: TerrainModel): { title: string; description: strin
       `UTC window ${model.from} to ${model.to}. Source ${model.source}; captured ${model.generatedAt}. ` +
       `${model.zero ? 'NO OBSERVED ACTIVITY IN WINDOW. ' : ''}${model.releaseScope}. RELEASE SIGNAL BLOCKED ${model.blocked}. ` +
       `${model.peaks.map(peak => `Release ${peak.label}, week column ${peak.index + 1}.`).join(' ')} ` +
-      'Weekly elevation follows Sunday-column sums. Boundary weeks may be partial. Release peaks are independent published-release markers, retained on a flat basin. Only the latest release per configured project is observed; this is not complete release history. The survey line is decorative.',
+      'Weekly elevation follows Sunday-column sums. Boundary weeks may be partial. The stationary streak ridge spans current streak divided by declared window days; printed days remain exact. Release peaks are independent published-release markers, retained on a flat basin. Only the latest release per configured project is observed; this is not complete release history. The survey line is decorative.',
   };
 }
 function text(x: number, y: number, value: string, ink: string, size = 12): string {
@@ -196,6 +196,11 @@ function renderTerrain(model: TerrainModel, context: RenderContext, a: { title: 
     const y = 384 + Math.floor(index / 2) * 52;
     output += text(x, y, label!, theme.muted, 11) + text(x, y + 23, value!, theme.text, 14);
   });
+  output += text(24, 477, 'RIDGE = STREAK / WINDOW DAYS', theme.muted, 10);
+  const windowDays = (utcDay(model.to)! - utcDay(model.from)!) / DAY + 1;
+  const ridgeStart = width / 2, ridgeSpan = width / 2 - 24;
+  output += `<line x1="${ridgeStart}" y1="474" x2="${width - 24}" y2="474" stroke="${theme.muted}"/>`;
+  output += `<line id="${sceneElementId(context, 'streak-ridge')}" x1="${ridgeStart}" y1="474" x2="${ridgeStart + ridgeSpan * model.streak / windowDays}" y2="474" stroke="${model.streak === 0 ? theme.muted : theme.chrome}" stroke-width="2"><title>Current streak divided by declared window days</title></line>`;
   output += text(24, 493, 'SUNDAY COLUMNS / BOUNDARY WEEKS MAY BE PARTIAL', theme.muted, 10);
   output += text(24, 518, model.releaseScope, theme.muted, 10);
   if (!model.peaks.length) output += text(24, 540, 'NO VERIFIED RELEASE MARKERS IN WINDOW', theme.muted, 11);
