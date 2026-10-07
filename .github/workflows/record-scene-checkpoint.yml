@@ -49,7 +49,7 @@ jobs:
 
           ## Public checkpoint
           '''
-          replace('docs/PROJECT_STATE.md', '8a4ea6a5427d1f508f402416073f2fd9a9972364', '\n## Public checkpoint\n', checkpoint)
+          replace('docs/PROJECT_STATE.md', '7eb8fd5492a1aef395483d962f32cfc81f3add9b', '\n## Public checkpoint\n', checkpoint)
           replace('docs/STUDIO_SCENE_PREVIEWS.md', '374d9efe1ba59fd6320f269b99e66156a01861de',
               'the repository gate. It can run against the local development server or the fixed\nproduction origin, always with `demo=true`. The local mode proxies a synthetic HTTPS\n',
               'the repository gate. It runs against the loopback built-Worker adapter or the fixed\nproduction origin, always with `demo=true`. The built-Worker mode proxies a synthetic HTTPS\n')
