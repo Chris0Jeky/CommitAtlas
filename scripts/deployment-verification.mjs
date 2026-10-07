@@ -246,6 +246,21 @@ export function createDeploymentChecks() {
         assertSafeSvgMarkup(await response.text());
       },
     },
+    ...["activity-terrain", "lifecycle-map"].map((id) => ({
+      name: `synthetic /api/v1/scenes/${id}.svg carries its current renderer receipt`,
+      async run(get) {
+        const response = await get(`/api/v1/scenes/${id}.svg?user=octocat&repos=atlas&states=atlas%3Aactive&demo=true&theme=ember`, { retryNotFound: true });
+        assert(response.status === 200, `expected 200, got ${response.status}`);
+        assert(response.headers.get("content-type") === "image/svg+xml; charset=utf-8", "expected scene SVG content type");
+        const body = await response.text();
+        assertSafeSvgMarkup(body);
+        const metadata = JSON.parse(response.headers.get("x-commitatlas-scene-metadata") ?? "null");
+        assert(metadata?.version === 1 && metadata.scene === id, "expected the matching scene receipt");
+        assert(metadata.bytes === new TextEncoder().encode(body).length, "scene byte receipt does not match its body");
+        assert(metadata.unavailable === false, "synthetic scene unexpectedly unavailable");
+        assert(metadata.animatedElements === 0 && metadata.loopingGroups === 0, "default scene must remain still");
+      },
+    })),
     {
       name: "the fixed synthetic motion probe uses the production SVG response contract",
       async run(get) {
