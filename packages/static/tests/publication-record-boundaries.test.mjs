@@ -81,3 +81,99 @@ test("record byte limits use the actual typed-array span without invoking length
   Object.defineProperty(bytes, "byteLength", { value: 1 });
   assert.throws(() => codec.decodePublicationJournal(bytes), /byte limit/);
 });
+
+const recordLayers = [
+  ["journal", input => input, ["version", "generator", "transactionId", "createdAt", "targets"]],
+  ["target", input => input.targets[0], ["outputDir", "operations"]],
+  ["operation", input => input.targets[0].operations[0], ["name", "action", "next"]],
+  ["version", input => input.targets[0].operations[0].next, ["sha256", "bytes"]],
+];
+
+for (const [label, select, keys] of recordLayers) {
+  for (const key of keys) {
+    test(`${label}.${key} rejects accessors without invoking them`, () => {
+      const input = structuredClone(journal());
+      const record = select(input);
+      const original = record[key];
+      let calls = 0;
+      Object.defineProperty(record, key, { enumerable: true, get() { calls += 1; return original; } });
+      assert.throws(() => validatePublicationJournal(input), /publication/);
+      assert.throws(() => codec.encodePublicationJournal(input), /publication/);
+      assert.equal(calls, 0);
+    });
+    test(`${label}.${key} cannot be supplied by an inherited field`, () => {
+      for (const accessor of [false, true]) {
+        const input = structuredClone(journal());
+        const record = select(input);
+        const original = record[key];
+        let calls = 0;
+        delete record[key];
+        Object.setPrototypeOf(record, Object.defineProperty({}, key, accessor
+          ? { get() { calls += 1; return original; } } : { value: original }));
+        assert.throws(() => validatePublicationJournal(input), /publication|create operations require/);
+        assert.equal(calls, 0);
+      }
+    });
+  }
+  test(`${label} rejects hidden and symbol unknown fields`, () => {
+    for (const key of ["hiddenExtra", Symbol("extra")]) {
+      const input = structuredClone(journal());
+      Object.defineProperty(select(input), key, { value: true });
+      assert.throws(() => validatePublicationJournal(input), /publication/);
+    }
+  });
+}
+
+for (const key of ["version", "generator", "transactionId", "phase"]) {
+  test(`status.${key} rejects accessors and inherited fields`, () => {
+    for (const mode of ["get", "inherited", "inherited-get", "set"]) {
+      const input = status("committed");
+      const original = input[key];
+      let calls = 0;
+      const descriptor = mode === "inherited" ? { value: original }
+        : mode === "set" ? { set() { calls += 1; } }
+          : { get() { calls += 1; return original; } };
+      if (mode.startsWith("inherited")) {
+        delete input[key];
+        Object.setPrototypeOf(input, Object.defineProperty({}, key, descriptor));
+      } else Object.defineProperty(input, key, descriptor);
+      assert.throws(() => codec.encodePublicationStatus(input), /publication/);
+      assert.throws(() => planPublicationRecoveryFromStatus(journal(), input, [{ target: 0, name: "atlas.svg", kind: "missing" }]), /publication/);
+      assert.equal(calls, 0);
+    }
+  });
+}
+
+test("status rejects hidden and symbol unknown fields", () => {
+  for (const key of ["hiddenExtra", Symbol("extra")]) {
+    const input = status("committed");
+    Object.defineProperty(input, key, { value: true });
+    assert.throws(() => codec.encodePublicationStatus(input), /publication/);
+  }
+});
+
+test("optional operation fields cannot execute getters", () => {
+  const input = structuredClone(journal());
+  let calls = 0;
+  Object.defineProperty(input.targets[0].operations[0], "previous", { get() { calls += 1; return undefined; } });
+  assert.throws(() => validatePublicationJournal(input), /publication/);
+  assert.equal(calls, 0);
+});
+
+test("owned nonenumerable and null-prototype data preserve canonical bytes and detached recovery", () => {
+  const expected = structuredClone(journal());
+  const input = structuredClone(expected);
+  for (const [, select, keys] of recordLayers) {
+    const record = select(input);
+    Object.setPrototypeOf(record, null);
+    for (const key of keys) Object.defineProperty(record, key, { enumerable: false });
+    Object.freeze(record);
+  }
+  const parsed = validatePublicationJournal(input);
+  assert.deepEqual(parsed, expected);
+  assert.deepEqual(codec.encodePublicationJournal(input), codec.encodePublicationJournal(expected));
+  assert.notEqual(parsed.targets, input.targets);
+  assert.notEqual(parsed.targets[0].operations[0].next, input.targets[0].operations[0].next);
+  assert.deepEqual(planPublicationRecoveryFromStatus(input, status("committed"), [{ target: 0, name: "atlas.svg", kind: "missing" }]).steps,
+    [{ target: 0, name: "atlas.svg", action: "install-next" }]);
+});

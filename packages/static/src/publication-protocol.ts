@@ -107,9 +107,8 @@ export function recoveryDirection(phase: PublicationPhase): RecoveryDirection {
   return PHASE_INDEX.get(assertPublicationPhase(phase))! >= COMMITTED_INDEX ? "roll-forward" : "rollback";
 }
 
-export function validatePublicationJournal(value: unknown): PublicationJournal {
-  if (!isRecord(value)) throw new Error("publication journal must be an object");
-  assertKnownKeys(value, ["version", "generator", "transactionId", "createdAt", "targets"], "publication journal");
+export function validatePublicationJournal(input: unknown): PublicationJournal {
+  const value = recordFields(input, ["version", "generator", "transactionId", "createdAt", "targets"], "publication journal");
   if (value.version !== 1 || value.generator !== "CommitAtlas") {
     throw new Error("publication journal identity is invalid");
   }
@@ -125,9 +124,8 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
 
   const targetEntries = denseEntries(value.targets, "publication journal targets");
   const outputDirs = new Set<string>();
-  const targets = targetEntries.map((target, targetIndex) => {
-    if (!isRecord(target)) throw new Error(`publication target ${targetIndex} must be an object`);
-    assertKnownKeys(target, ["outputDir", "operations"], `publication target ${targetIndex}`);
+  const targets = targetEntries.map((entry, targetIndex) => {
+    const target = recordFields(entry, ["outputDir", "operations"], `publication target ${targetIndex}`);
     if (typeof target.outputDir !== "string" || !isSafeRelativePath(target.outputDir)) {
       throw new Error(`publication target ${targetIndex} has an unsafe outputDir`);
     }
@@ -158,9 +156,8 @@ export function validatePublicationJournal(value: unknown): PublicationJournal {
 }
 
 /** Parse the bounded durable phase record without retaining caller-owned objects. */
-export function validatePublicationStatus(value: unknown): PublicationStatus {
-  if (!isRecord(value)) throw new Error("publication status must be an object");
-  assertKnownKeys(value, ["version", "generator", "transactionId", "phase"], "publication status");
+export function validatePublicationStatus(input: unknown): PublicationStatus {
+  const value = recordFields(input, ["version", "generator", "transactionId", "phase"], "publication status");
   if (value.version !== 1 || value.generator !== "CommitAtlas") {
     throw new Error("publication status identity is invalid");
   }
@@ -275,19 +272,7 @@ export function planPublicationRecovery(
 
 /** Snapshot closed observation records without executing caller-owned field accessors. */
 function validateObservation(value: unknown): PublicationObservation {
-  if (!isRecord(value)) throw new Error("publication observation must be an object");
-  const fields: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  const allowed = ["target", "name", "kind", "sha256", "bytes"];
-  for (const key of Reflect.ownKeys(value)) {
-    if (typeof key !== "string" || !allowed.includes(key)) {
-      throw new Error("publication observation contains an unknown field");
-    }
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor || !("value" in descriptor)) {
-      throw new Error("publication observation must contain data fields, not accessors");
-    }
-    fields[key] = descriptor.value;
-  }
+  const fields = recordFields(value, ["target", "name", "kind", "sha256", "bytes"], "publication observation");
   const { target, name, kind, sha256, bytes } = fields;
   if (typeof target !== "number" || !Number.isSafeInteger(target) || target < 0) {
     throw new Error("publication observation target is invalid");
@@ -311,9 +296,8 @@ function validateObservation(value: unknown): PublicationObservation {
   return { target, name, kind };
 }
 
-function validateOperation(value: unknown, target: number, index: number): PublicationOperation {
-  if (!isRecord(value)) throw new Error(`publication operation ${target}:${index} must be an object`);
-  assertKnownKeys(value, ["name", "action", "previous", "next"], `publication operation ${target}:${index}`);
+function validateOperation(input: unknown, target: number, index: number): PublicationOperation {
+  const value = recordFields(input, ["name", "action", "previous", "next"], `publication operation ${target}:${index}`);
   if (typeof value.name !== "string" || value.name.length > MAX_ARTIFACT_NAME_LENGTH || !ARTIFACT_NAME.test(value.name)) {
     throw new Error(`publication operation ${target}:${index} has an unsafe artifact name`);
   }
@@ -341,9 +325,8 @@ function validateOperation(value: unknown, target: number, index: number): Publi
   };
 }
 
-function validateVersion(value: unknown, label: string, byteLimit: number): PublicationFileVersion {
-  if (!isRecord(value)) throw new Error(`publication ${label} version must be an object`);
-  assertKnownKeys(value, ["sha256", "bytes"], `publication ${label} version`);
+function validateVersion(input: unknown, label: string, byteLimit: number): PublicationFileVersion {
+  const value = recordFields(input, ["sha256", "bytes"], `publication ${label} version`);
   if (typeof value.sha256 !== "string" || !SHA256.test(value.sha256)) {
     throw new Error(`publication ${label} digest is invalid`);
   }
@@ -377,15 +360,25 @@ function sameVersion(
     observation.sha256 === expected.sha256 && observation.bytes === expected.bytes;
 }
 
-function assertKnownKeys(
-  value: Record<string, unknown>,
+/** Own data fields only: never evaluate getters or inherit contract values from a prototype. */
+function recordFields(
+  value: unknown,
   allowed: readonly string[],
   label: string,
-): void {
-  const known = new Set(allowed);
-  for (const key of Object.keys(value)) {
-    if (!known.has(key)) throw new Error(`${label} contains unknown field ${key}`);
+): Record<string, unknown> {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`);
+  const fields: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string" || !allowed.includes(key)) {
+      throw new Error(`${label} contains an unknown field`);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !("value" in descriptor)) {
+      throw new Error(`${label} must contain data fields, not accessors`);
+    }
+    fields[key] = descriptor.value;
   }
+  return fields;
 }
 
 /** Copy data descriptors into a plain array without invoking caller methods or Array species. */
