@@ -14,13 +14,21 @@ export type StudioCardKind =
   | "projects";
 export type StudioProjectSurface = "json" | "svg";
 
-import type { HostedMotionProfile } from "@/packages/svg/src/index";
+import type { HostedMotionProfile, ScenePack } from "@/packages/svg/src/index";
 
 export interface StudioProjectInput {
   repo: string;
   lifecycle: string;
   workflow?: string;
 }
+
+/** Closed pack enum the hosted scene route accepts. Survey is the canonical default. */
+export const STUDIO_SCENE_PACKS = ["survey", "orbital", "spectral", "terminal"] as const;
+
+/** The public allowlist is shared without importing renderers into the browser. */
+export { HOSTED_SCENE_IDS as STUDIO_SCENE_IDS, HOSTED_SCENE_LABELS as STUDIO_SCENE_LABELS,
+  HOSTED_SCENE_PACKS as STUDIO_SCENE_SUPPORTED_PACKS } from "@/lib/hosted-scene-catalog";
+import { HOSTED_SCENE_IDS as STUDIO_SCENE_IDS } from "@/lib/hosted-scene-catalog";
 
 export interface StudioRouteOptions {
   owner: string;
@@ -30,6 +38,8 @@ export interface StudioRouteOptions {
   motion?: HostedMotionProfile;
   layout?: "wide" | "compact";
   projects?: StudioProjectInput[];
+  pack?: ScenePack;
+  scenes?: readonly string[];
 }
 
 export function buildStudioConfigurationKey(options: StudioRouteOptions): string {
@@ -40,6 +50,8 @@ export function buildStudioConfigurationKey(options: StudioRouteOptions): string
     days: options.days ?? null,
     motion: options.motion ?? "subtle",
     layout: options.layout ?? "wide",
+    pack: options.pack ?? "survey",
+    scenes: [...(options.scenes ?? [])].sort(),
     projects: (options.projects ?? [])
       .filter((project) => project.repo.trim())
       .map((project) => ({
@@ -134,4 +146,34 @@ export function buildStudioRouteUrl(
     ? projectSurface === "json" ? "/api/v1/projects" : "/api/v1/projects.svg"
     : cardPaths[kind];
   return `${path}?${query.toString()}`;
+}
+
+/** Canonical scene URL. Defaults the route omits stay omitted so the preview does not redirect. */
+export function buildStudioSceneUrl(id: string, options: StudioRouteOptions): string {
+  if (!(STUDIO_SCENE_IDS as readonly string[]).includes(id)) throw new Error(`unknown studio scene: ${id}`);
+  const query = new URLSearchParams();
+  const owner = options.owner.trim();
+  const projects = (options.projects ?? [])
+    .map((project) => ({
+      repo: project.repo.trim(),
+      lifecycle: project.lifecycle,
+      workflow: project.workflow?.trim() ?? "",
+    }))
+    .filter((project) => project.repo);
+  query.set("user", owner);
+  if (projects.length > 0) {
+    query.set("repos", projects.map((project) => project.repo).join(","));
+    query.set("states", projects.map((project) => `${project.repo}:${project.lifecycle}`).join(","));
+    const workflows = projects
+      .filter((project) => project.workflow)
+      .map((project) => `${project.repo}:${encodeWorkflowMapComponent(project.workflow)}`);
+    if (workflows.length > 0) query.set("workflows", workflows.join(","));
+  }
+  query.set("demo", String(options.demo));
+  if (options.theme !== "aurora") query.set("theme", options.theme);
+  if (options.days !== undefined && options.days !== 365) query.set("days", String(options.days));
+  if ((options.motion ?? "none") !== "none") query.set("motion", options.motion ?? "none");
+  if ((options.layout ?? "wide") !== "wide") query.set("layout", options.layout ?? "wide");
+  if ((options.pack ?? "survey") !== "survey") query.set("pack", options.pack ?? "survey");
+  return `/api/v1/scenes/${id}.svg?${query.toString()}`;
 }

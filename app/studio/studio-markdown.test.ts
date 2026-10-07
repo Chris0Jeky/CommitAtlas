@@ -155,6 +155,37 @@ test("README Markdown carries the selected ambient profile through every emitted
   const urls = markdown.match(/https:\/\/atlas\.example[^" >]+/g) ?? [];
   assert.ok(urls.length > 0);
   for (const url of urls) assert.match(url, /(?:\?|&)motion=ambient(?:&|$)/);
+  assert.match(markdown, /Reduced-motion source omitted/);
+  assert.doesNotMatch(markdown, /prefers-reduced-motion/);
+});
+
+test("scene Markdown is emitted only after that scene has rendered", () => {
+  const base = {
+    baseUrl: "https://atlas.example",
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects,
+    selectedCards: new Set<never>(),
+    hasCurrentContributions: true,
+    hasCurrentLanguages: true,
+    motion: "none" as const,
+    pack: "survey" as const,
+    selectedScenes: new Set(["evidence-coverage"]),
+  };
+  assert.equal(buildStudioMarkdown(base), "");
+  const rendered = buildStudioMarkdown({ ...base, renderedSceneIds: new Set(["evidence-coverage"]) });
+  assert.match(rendered, /<picture>/);
+  assert.match(rendered, /\/api\/v1\/scenes\/evidence-coverage\.svg/);
+  assert.match(rendered, /alt="CommitAtlas Evidence coverage"/);
+  assert.doesNotMatch(rendered, /Reduced-motion source omitted/);
+  assert.doesNotMatch(rendered, /pack=/);
+  const withheld = buildStudioMarkdown({
+    ...base,
+    selectedScenes: new Set(["evidence-coverage", "not-a-scene"]),
+    renderedSceneIds: new Set(["not-a-scene"]),
+  });
+  assert.equal(withheld, "");
 });
 test("the pairing table agrees with the renderer it mirrors", () => {
   // `THEME_PAIRS` is restated here rather than imported so the client bundle does not pull in

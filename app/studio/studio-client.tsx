@@ -1,7 +1,7 @@
 "use client";
 
-import type { HostedMotionProfile } from "@/packages/svg/src/index";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import type { HostedMotionProfile, ScenePack } from "@/packages/svg/src/index";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
 import {
@@ -28,7 +28,11 @@ import {
 import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
+  buildStudioSceneUrl,
   STUDIO_PREVIEW_DAYS,
+  STUDIO_SCENE_IDS,
+  STUDIO_SCENE_LABELS,
+  STUDIO_SCENE_PACKS,
   isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
@@ -42,6 +46,8 @@ import {
   whenPulseboardReady,
 } from "@/lib/pulseboard";
 import { fetchJson } from "./studio-fetch";
+import { StudioScenePreview } from "./studio-scene-preview-image";
+import { scenePreviewToken, sceneReceiptMatches, type SceneImageReceipt, type ScenePreviewView } from "./studio-scene-preview";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
 type CardKind = StudioCardKind;
@@ -112,6 +118,8 @@ interface PreviewConfiguration {
   demo: boolean;
   motion: HostedMotionProfile;
   layout: "wide" | "compact";
+  pack: ScenePack;
+  scenes: readonly string[];
   hasContributions: boolean;
   hasLanguages: boolean;
 }
@@ -158,6 +166,11 @@ export default function StudioClient() {
   const [demo, setDemo] = useState(true);
   const [theme, setTheme] = useState("ember");
   const [motion, setMotion] = useState<HostedMotionProfile>("subtle");
+  const [pack, setPack] = useState<ScenePack>("survey");
+  const [selectedScenes, setSelectedScenes] = useState<Set<string>>(() => new Set());
+  const [sceneView, setSceneView] = useState<ScenePreviewView>("profile");
+  const [sceneReplay, setSceneReplay] = useState(0);
+  const [renderedScenes, setRenderedScenes] = useState<ReadonlyMap<string, SceneImageReceipt>>(() => new Map());
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
   const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(["atlas", "projects"]));
@@ -181,6 +194,8 @@ export default function StudioClient() {
     demo: true,
     motion: "subtle",
     layout: "wide",
+    pack: "survey",
+    scenes: [],
     hasContributions: true,
     hasLanguages: true,
   });
@@ -197,7 +212,9 @@ export default function StudioClient() {
     days: STUDIO_PREVIEW_DAYS,
     motion,
     layout,
-  }), [activeProjects, demo, handle, layout, motion, theme]);
+    pack,
+    scenes: [...selectedScenes].sort(),
+  }), [activeProjects, demo, handle, layout, motion, pack, selectedScenes, theme]);
   const previewConfigurationKey = useMemo(() => buildStudioConfigurationKey({
     owner: previewConfiguration.owner,
     projects: previewConfiguration.projects,
@@ -206,6 +223,8 @@ export default function StudioClient() {
     days: STUDIO_PREVIEW_DAYS,
     motion: previewConfiguration.motion,
     layout: previewConfiguration.layout,
+    pack: previewConfiguration.pack,
+    scenes: previewConfiguration.scenes,
   }), [previewConfiguration]);
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
   const visibleBoard = configurationIsValidated ? board : null;
@@ -264,8 +283,36 @@ export default function StudioClient() {
       hasCurrentLanguages,
       motion: previewConfiguration.motion,
       layout: previewConfiguration.layout,
+      pack: previewConfiguration.pack,
+      selectedScenes,
+      renderedSceneIds: new Set(STUDIO_SCENE_IDS.filter((id) => sceneReceiptMatches(
+        renderedScenes.get(id), scenePreviewToken(previewConfigurationKey, id, sceneView, sceneReplay),
+        buildStudioSceneUrl(id, { owner: previewConfiguration.owner, projects: previewConfiguration.projects,
+          theme: previewConfiguration.theme, demo: previewConfiguration.demo, days: STUDIO_PREVIEW_DAYS,
+          motion: previewConfiguration.motion, layout: previewConfiguration.layout, pack: previewConfiguration.pack }), renderedScenes.get(id)?.view ?? sceneView))),
     });
-  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, selectedCards]);
+  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, previewConfigurationKey, renderedScenes, sceneView, sceneReplay, selectedCards, selectedScenes]);
+  const markSceneRendered = useCallback((id: string, token: string, receipt: SceneImageReceipt | null) => {
+    setRenderedScenes((current) => {
+      if (receipt === null && current.get(id)?.token !== token) return current;
+      const next = new Map(current);
+      if (receipt) next.set(id, receipt); else next.delete(id);
+      return next;
+    });
+  }, []);
+  function changeSceneView(view: ScenePreviewView) {
+    setSceneView(view);
+    setSceneReplay(current => current + 1);
+  }
+  const sceneRouteOptions = {
+    owner: previewConfiguration.owner,
+    projects: previewConfiguration.projects,
+    theme: previewConfiguration.theme,
+    demo: previewConfiguration.demo,
+    days: STUDIO_PREVIEW_DAYS,
+    layout: previewConfiguration.layout,
+    pack: previewConfiguration.pack,
+  };
   const previewIsValidated = configurationIsValidated && !refreshUnresolved;
   const markdownReady = previewIsValidated && isCopyableStudioOrigin(baseUrl);
   const visibleMarkdown = markdownReady
@@ -298,6 +345,8 @@ export default function StudioClient() {
       days: STUDIO_PREVIEW_DAYS,
       motion,
       layout,
+      pack,
+      scenes: [...selectedScenes].sort(),
     });
 
     setPhase("loading");
@@ -327,6 +376,7 @@ export default function StudioClient() {
       setProfile(nextProfile);
       setContributions(contributionResult.value);
       setBoard(boardResult.value);
+      setSceneReplay(current => current + 1);
       setPreviewConfiguration({
         owner: login,
         projects: projectsForValidatedPreview(activeProjects, !boardResult.error),
@@ -334,6 +384,8 @@ export default function StudioClient() {
         demo,
         motion,
         layout,
+        pack,
+        scenes: [...selectedScenes].sort(),
         hasContributions: contributionResult.value !== null,
         hasLanguages: !nextProfile.repositoriesTruncated,
       });
@@ -449,6 +501,40 @@ export default function StudioClient() {
             <label><input type="radio" name="motion" checked={motion === "none"} onChange={() => setMotion("none")} /><span><strong>Still</strong><small>Static export</small></span></label>
           </fieldset>
 
+          <fieldset className="segmented-field">
+            <legend>Scene pack</legend>
+            {STUDIO_SCENE_PACKS.map((value) => (
+              <label key={value}>
+                <input type="radio" name="pack" checked={pack === value} onChange={() => setPack(value)} />
+                <span><strong>{value[0].toUpperCase() + value.slice(1)}</strong><small>{value === "survey" ? "Default geometry" : "Alternate geometry"}</small></span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="card-picker">
+            <legend>Scenes to show &amp; copy</legend>
+            {STUDIO_SCENE_IDS.map((id) => (
+              <label key={id}>
+                <input type="checkbox" checked={selectedScenes.has(id)} onChange={() => setSelectedScenes((current) => {
+                  const next = new Set(current);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })} />
+                <span>{STUDIO_SCENE_LABELS[id]}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="preview-tools">
+            <legend>Preview tools</legend>
+            <p>Apply to all scene previews. Each scene also has its own controls.</p>
+            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "profile"}>Profile view</button>
+            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0}>Replay</button>
+            <button type="button" onClick={() => changeSceneView("reduced")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "reduced"}>Reduced-motion view</button>
+            <button type="button" onClick={() => changeSceneView("frame-zero")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "frame-zero"}>Frame zero</button>
+          </fieldset>
+
           <fieldset className="card-picker">
             <legend>Cards to show &amp; copy</legend>
             {STUDIO_CARD_KINDS.map((kind) => {
@@ -541,6 +627,19 @@ export default function StudioClient() {
                 <span>Select an available card in Configuration to show it here and include it in Markdown.</span>
               </div>
             )}
+            {STUDIO_SCENE_IDS.filter((id) => previewConfiguration.scenes.includes(id)).map((id) => (
+              <StudioScenePreview
+                key={scenePreviewToken(previewConfigurationKey, id, sceneView, sceneReplay)}
+                id={id}
+                title={STUDIO_SCENE_LABELS[id]}
+                pack={previewConfiguration.pack}
+                url={buildStudioSceneUrl(id, { ...sceneRouteOptions, motion: previewConfiguration.motion })}
+                stillUrl={buildStudioSceneUrl(id, { ...sceneRouteOptions, motion: "none" })}
+                view={sceneView}
+                token={scenePreviewToken(previewConfigurationKey, id, sceneView, sceneReplay)}
+                onRendered={markSceneRendered}
+              />
+            ))}
           </div>
 
           <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? visibleProjectDrafts.length} declared projects</h3></div><span>Open links below</span></div>

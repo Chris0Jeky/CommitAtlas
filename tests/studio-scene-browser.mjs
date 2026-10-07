@@ -1,5 +1,4 @@
-edit('tests/studio-scene-browser.mjs', None, [
-    (0, 0, r'''/** Optional synthetic browser QA. A pinned Playwright driver is supplied outside npm run check. */
+/** Optional synthetic browser QA. A pinned Playwright driver is supplied outside npm run check. */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -144,5 +143,3 @@ try {
   await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), errors, scenarios, requests }, null, 2));
   throw error;
 } finally { releaseDelayed?.(); await browser.close(); }
-'''),
-])
