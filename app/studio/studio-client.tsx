@@ -23,7 +23,6 @@ import {
   findProjectDraft,
   starterCiPresentation,
   studioSourceLabel,
-  type StudioGalleryCard,
 } from "./studio-presentation";
 import {
   buildStudioConfigurationKey,
@@ -46,6 +45,7 @@ import {
   whenPulseboardReady,
 } from "@/lib/pulseboard";
 import { fetchJson } from "./studio-fetch";
+import { StudioCardPreview } from "./studio-card-preview-image";
 import { StudioScenePreview } from "./studio-scene-preview-image";
 import { scenePreviewToken, sceneReceiptMatches, type SceneImageReceipt, type ScenePreviewView } from "./studio-scene-preview";
 
@@ -170,6 +170,7 @@ export default function StudioClient() {
   const [selectedScenes, setSelectedScenes] = useState<Set<string>>(() => new Set());
   const [sceneView, setSceneView] = useState<ScenePreviewView>("profile");
   const [sceneReplay, setSceneReplay] = useState(0);
+  const [renderedCards, setRenderedCards] = useState<ReadonlyMap<string, SceneImageReceipt>>(() => new Map());
   const [renderedScenes, setRenderedScenes] = useState<ReadonlyMap<string, SceneImageReceipt>>(() => new Map());
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
@@ -264,13 +265,6 @@ export default function StudioClient() {
     motion: previewConfiguration.motion,
     layout: previewConfiguration.layout,
   })])) as Record<CardKind, string>, [previewConfiguration]);
-  const atlasPreviewUrl = previewUrls.atlas;
-  const compactAtlasPreviewUrl = atlasPreviewUrl.includes("layout=wide")
-    ? atlasPreviewUrl.replace("layout=wide", "layout=compact")
-    : atlasPreviewUrl;
-  const wideAtlasPreviewUrl = atlasPreviewUrl.includes("layout=compact")
-    ? atlasPreviewUrl.replace("layout=compact", "layout=wide")
-    : atlasPreviewUrl;
   const markdown = useMemo(() => {
     return buildStudioMarkdown({
       baseUrl,
@@ -279,6 +273,9 @@ export default function StudioClient() {
       theme: previewConfiguration.theme,
       demo: previewConfiguration.demo,
       selectedCards,
+      renderedCardIds: new Set(STUDIO_CARD_KINDS.filter(id => sceneReceiptMatches(
+        renderedCards.get(id), scenePreviewToken(previewConfigurationKey, id, sceneView, sceneReplay),
+        previewUrls[id], renderedCards.get(id)?.view ?? sceneView))),
       hasCurrentContributions,
       hasCurrentLanguages,
       motion: previewConfiguration.motion,
@@ -291,9 +288,17 @@ export default function StudioClient() {
           theme: previewConfiguration.theme, demo: previewConfiguration.demo, days: STUDIO_PREVIEW_DAYS,
           motion: previewConfiguration.motion, layout: previewConfiguration.layout, pack: previewConfiguration.pack }), renderedScenes.get(id)?.view ?? sceneView))),
     });
-  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, previewConfigurationKey, renderedScenes, sceneView, sceneReplay, selectedCards, selectedScenes]);
+  }, [baseUrl, hasCurrentContributions, hasCurrentLanguages, previewConfiguration, previewConfigurationKey, previewUrls, renderedCards, renderedScenes, sceneView, sceneReplay, selectedCards, selectedScenes]);
   const markSceneRendered = useCallback((id: string, token: string, receipt: SceneImageReceipt | null) => {
     setRenderedScenes((current) => {
+      if (receipt === null && current.get(id)?.token !== token) return current;
+      const next = new Map(current);
+      if (receipt) next.set(id, receipt); else next.delete(id);
+      return next;
+    });
+  }, []);
+  const markCardRendered = useCallback((id: string, token: string, receipt: SceneImageReceipt | null) => {
+    setRenderedCards((current) => {
       if (receipt === null && current.get(id)?.token !== token) return current;
       const next = new Map(current);
       if (receipt) next.set(id, receipt); else next.delete(id);
@@ -316,7 +321,7 @@ export default function StudioClient() {
   const previewIsValidated = configurationIsValidated && !refreshUnresolved;
   const markdownReady = previewIsValidated && isCopyableStudioOrigin(baseUrl);
   const visibleMarkdown = markdownReady
-    ? markdown || "Select one or more cards to generate Markdown."
+    ? markdown || "Select an image and wait for its profile preview to load before copying Markdown."
     : previewIsValidated
       ? "Preview validated. README copying is available from a deployed HTTPS Studio; local previews remain local."
       : "Run Preview to validate this configuration and bind its card URLs before copying Markdown.";
@@ -427,6 +432,7 @@ export default function StudioClient() {
   }
 
   function toggleCard(kind: CardKind) {
+    setRenderedCards(current => { const next = new Map(current); next.delete(kind); return next; });
     setSelectedCards((current) => {
       const next = new Set(current);
       if (next.has(kind)) next.delete(kind);
@@ -528,11 +534,11 @@ export default function StudioClient() {
 
           <fieldset className="preview-tools">
             <legend>Preview tools</legend>
-            <p>Apply to all scene previews. Each scene also has its own controls.</p>
-            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "profile"}>Profile view</button>
-            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0}>Replay</button>
-            <button type="button" onClick={() => changeSceneView("reduced")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "reduced"}>Reduced-motion view</button>
-            <button type="button" onClick={() => changeSceneView("frame-zero")} disabled={selectedScenes.size === 0} aria-pressed={sceneView === "frame-zero"}>Frame zero</button>
+            <p>Apply to all card and scene previews. Each image also has its own controls.</p>
+            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "profile"}>Profile view</button>
+            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0 && selectedCards.size === 0}>Replay</button>
+            <button type="button" onClick={() => changeSceneView("reduced")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "reduced"}>Reduced-motion view</button>
+            <button type="button" onClick={() => changeSceneView("frame-zero")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "frame-zero"}>Frame zero</button>
           </fieldset>
 
           <fieldset className="card-picker">
@@ -607,11 +613,13 @@ export default function StudioClient() {
           <div className={`studio-card-gallery canvas-${previewCanvas}`}>
             {galleryCards.map((card) => (
               <StudioCardPreview
-                key={card.kind}
+                key={scenePreviewToken(previewConfigurationKey, card.kind, sceneView, sceneReplay)}
                 card={card}
-                url={card.kind === "atlas" ? atlasPreviewUrl : previewUrls[card.kind]}
-                imageUrl={card.kind === "atlas" ? wideAtlasPreviewUrl : previewUrls[card.kind]}
-                compactUrl={card.kind === "atlas" ? compactAtlasPreviewUrl : null}
+                url={previewUrls[card.kind]}
+                stillUrl={buildStudioRouteUrl(card.kind, { ...sceneRouteOptions, motion: "none" })}
+                view={sceneView}
+                token={scenePreviewToken(previewConfigurationKey, card.kind, sceneView, sceneReplay)}
+                onRendered={markCardRendered}
                 login={profile.login}
                 source={studioSourceLabel(card.kind === "profile" || card.kind === "languages"
                   ? profile.freshness.source
@@ -672,50 +680,6 @@ export default function StudioClient() {
       </main>
       <ChassisFooter note="Unknown stays unknown · Stale stays stale · Your work stays yours" />
     </>
-  );
-}
-
-function StudioCardPreview({
-  card,
-  url,
-  imageUrl,
-  compactUrl,
-  login,
-  source,
-  retained,
-}: {
-  card: StudioGalleryCard;
-  url: string;
-  imageUrl: string;
-  compactUrl: string | null;
-  login: string;
-  source: string;
-  retained: boolean;
-}) {
-  const image = (
-    // Dynamic SVG endpoints already return the exact bounded vector asset; image optimisation would proxy it unnecessarily.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      key={imageUrl}
-      src={imageUrl}
-      alt={`CommitAtlas ${card.title.toLowerCase()} preview for @${login}`}
-      loading={card.kind === "atlas" ? "eager" : "lazy"}
-    />
-  );
-  return (
-    <article className={`studio-card-preview span-${card.span} card-${card.kind}${card.compact ? " compact-card" : ""}`}>
-      <header>
-        <div><h4>{card.title}</h4><p>{card.purpose}</p></div>
-        <span className="card-source-badge">{source}</span>
-      </header>
-      <div className="card-preview-media">
-        {compactUrl ? <picture><source media="(max-width: 560px)" srcSet={compactUrl} />{image}</picture> : image}
-      </div>
-      <footer>
-        <span>{card.dimensions}{retained ? " · retained preview" : ""}</span>
-        <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${card.title} card in a new tab`}>Open card <span aria-hidden="true">↗</span></a>
-      </footer>
-    </article>
   );
 }
 

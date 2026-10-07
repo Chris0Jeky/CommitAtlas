@@ -131,6 +131,7 @@ function view(state: StudioState, currentConfigurationKey = LIVE_KEY) {
     galleryKinds: galleryCards.map((card) => card.kind),
     enabledCards: [...SELECTED].filter((kind) => isStudioCardAvailable(kind, availability)),
     markdown: buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
       baseUrl,
       owner: liveConfiguration.owner,
       projects: liveConfiguration.projects,

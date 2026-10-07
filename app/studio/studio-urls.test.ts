@@ -233,6 +233,7 @@ test("the Studio preview window matches every date-window README embed", async (
   const { buildStudioMarkdown } = await import("./studio-markdown");
   assert.equal(urls.STUDIO_PREVIEW_DAYS, 365);
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://studio.example", owner: "octocat", theme: "ember", demo: true,
     projects: [], selectedCards: new Set(["atlas", "activity", "breakdown", "rhythm"]),
     hasCurrentContributions: true, hasCurrentLanguages: true,

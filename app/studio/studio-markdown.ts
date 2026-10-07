@@ -40,6 +40,7 @@ export interface StudioMarkdownOptions {
   demo: boolean;
   projects: StudioProjectInput[];
   selectedCards: ReadonlySet<StudioCardKind>;
+  renderedCardIds?: ReadonlySet<StudioCardKind>;
   hasCurrentContributions: boolean;
   hasCurrentLanguages: boolean;
   motion?: HostedMotionProfile;
@@ -77,7 +78,7 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
   const scenes = STUDIO_SCENE_IDS.filter((id) => options.selectedScenes?.has(id) && renderedScenes.has(id));
   const blocks = [
     ...STUDIO_CARD_KINDS
-    .filter((kind) => options.selectedCards.has(kind))
+    .filter((kind) => options.selectedCards.has(kind) && options.renderedCardIds?.has(kind))
     .filter((kind) => kind !== "projects" || options.projects.length > 0)
     .filter((kind) => isStudioCardAvailable(kind, options))
     .map((kind) => {

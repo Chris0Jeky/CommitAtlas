@@ -69,6 +69,13 @@ try {
           : json({ totalContributions: 1, commits: 1, issues: 0, pullRequests: 0, reviews: 0, days: [{ date: "2026-09-25", count: 1 }], freshness });
       }
       if (url.pathname === "/api/v1/projects") return json({ projects: [], freshness });
+      if (url.pathname.endsWith(".svg")) {
+        const card = url.pathname.split("/").at(-1).replace(".svg", "");
+        const body = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200"><text x="10" y="20">Synthetic image</text></svg>';
+        return new Response(body, { headers: { "content-type": "image/svg+xml", "x-commitatlas-card-metadata": JSON.stringify({
+          version: 1, card, bytes: new TextEncoder().encode(body).length, animatedElements: 0, loopingGroups: 0, state: "ready",
+        }) } });
+      }
       throw new Error(`Unexpected fixture request ${url.pathname}`);
     };
   });
@@ -76,12 +83,14 @@ try {
   const submit = page.getByRole("button", { name: /Preview atlas/ });
   await submit.click();
   await page.waitForFunction(() => document.querySelector('[role="status"]').textContent.includes("preview loaded"));
+  await page.locator(".card-atlas img").waitFor();
+  const firstLink = await page.locator(".card-atlas footer a").getAttribute("href");
   const firstImage = await page.locator(".card-atlas img").getAttribute("src");
 
   const contributionRequests = await page.evaluate(() => window.__studioFixture.contributions);
   check("collection and preview share the 365-day window", () => {
     assert.equal(new URL(contributionRequests.at(-1)).searchParams.get("days"), "365");
-    assert.equal(new URL(firstImage, "https://studio.example").searchParams.get("days"), "365");
+    assert.equal(new URL(firstLink, "https://studio.example").searchParams.get("days"), "365");
   });
 
   await page.evaluate(() => { window.__studioFixture.failContributions = true; });
@@ -89,11 +98,12 @@ try {
   await page.getByLabel("Card theme", { exact: true }).selectOption("paper");
   await submit.click();
   await page.waitForFunction(() => document.querySelector('[role="status"]').textContent.includes("unavailable for this preview"));
+  await page.locator(".card-atlas img").waitFor();
   const image = await page.locator(".card-atlas img").getAttribute("src");
-  const compact = await page.locator(".card-atlas source").getAttribute("srcset");
+  assert.equal(await page.locator(".card-atlas source").count(), 0);
   const link = await page.locator(".card-atlas footer a").getAttribute("href");
   check("partial synthetic preview cannot retain an older configuration's Atlas URL", () => {
-    for (const value of [image, compact, link]) {
+    for (const value of [link]) {
       const query = new URL(value, "https://studio.example").searchParams;
       assert.equal(query.get("user"), "octo-alt");
       assert.equal(query.get("theme"), "paper");
@@ -106,6 +116,7 @@ try {
   await page.getByRole("radio", { name: /Live public/ }).check();
   await submit.click();
   await page.waitForFunction(() => document.querySelector('[role="status"]').textContent.includes("Live public preview loaded"));
+  await page.locator(".card-atlas img").waitFor();
   const liveImage = await page.locator(".card-atlas img").getAttribute("src");
   await page.evaluate(() => { window.__studioFixture.failProfile = true; });
   await submit.click();

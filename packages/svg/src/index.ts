@@ -25,6 +25,7 @@ export {
 } from "./motion/profile.js";
 export type { MotionProfile, MotionBackend, MotionTarget, MotionFamily, MotionBudgetClass } from "./motion/profile.js";
 import type { MotionProfile } from "./motion/profile.js";
+import { parseSceneXml } from "./scene-svg.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
 export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
@@ -1992,3 +1993,29 @@ export const renderDelivery = renderDeliveryCard;
 export const renderContributionBreakdown = renderContributionBreakdownCard;
 export const renderRhythm = renderRhythmCard;
 export const renderAtlas = renderAtlasCard;
+
+
+/** Inspect only this renderer's legacy motion grammar, not arbitrary CSS or browser playback.
+ * Unknown motion fails closed so a future renderer change must update its receipt contract too.
+ * No SVG bytes are changed, and multiple matching classes on one node count as one target.
+ */
+export function measureCardMotion(output: string, kind: string): {
+  readonly bytes: number; readonly animatedElements: number; readonly loopingGroups: number;
+} {
+  if (!["atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects"].includes(kind)) {
+    throw new Error("Unknown card motion contract");
+  }
+  const document = parseSceneXml(output);
+  if (document.root.name !== "svg") throw new Error("Card motion contract requires SVG");
+  const styles = document.nodes.filter(node => node.name === "style");
+  const expectedStyle = kind === "atlas" ? atlasMotionStyle("subtle") : cardMotionStyle("subtle");
+  if (styles.length > 1 || styles.some(node => node.raw !== expectedStyle) ||
+      document.nodes.some(node => /^(?:animate|set)/u.test(node.name) ||
+        /(?:animation|transition)/iu.test(node.attrs.style ?? ""))) {
+    throw new Error("Unsupported card motion contract or stylesheet");
+  }
+  const targets = new Set(kind === "atlas" ? ["atlas-enter", "atlas-bar", "atlas-cell"] : ["card-enter"]);
+  const animatedElements = styles.length === 0 ? 0 : document.nodes.filter(node =>
+    (node.attrs.class ?? "").split(/\s+/u).some(name => targets.has(name))).length;
+  return { bytes: new TextEncoder().encode(output).length, animatedElements, loopingGroups: 0 };
+}
