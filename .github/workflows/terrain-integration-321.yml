@@ -21,80 +21,150 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22.13.0
-      - name: Reconcile main and correct the test fixture options
+      - name: Apply locally verified layout regressions on reviewed main
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git merge --no-edit cea038bd45c0c1204874ca177e184aae22f1c0b4
+          git merge --no-edit fcae01cdbbe0765e1750dcf9bc89277be4c99a1a
+          test "$(git hash-object packages/svg/src/scenes/activity-terrain.ts)" = f98c269af1f647d7dce3878331a6685d056d46b8
+          git apply <<'PATCH'
+          diff --git a/packages/svg/src/scenes/activity-terrain.ts b/packages/svg/src/scenes/activity-terrain.ts
+          --- a/packages/svg/src/scenes/activity-terrain.ts
+          +++ b/packages/svg/src/scenes/activity-terrain.ts
+          @@ -185,7 +185,7 @@
+               slots.set(peak.index, slot + 1);
+               const y = plotY + plotHeight - 42 - slot * 18;
+               output += `<path d="M${x} ${y - 5}l5 5 -5 5 -5 -5Z" fill="${theme.background}" stroke="${theme.chrome}"><title>${escapeXml(peak.label)}</title></path>`;
+          -    output += text(Math.min(x + 8, width - 40), y + 4, String(index + 1), theme.text, 10);
+          +    output += text(x > width - 56 ? x - 18 : x + 8, y + 4, String(index + 1), theme.text, 10);
+             });
+             const readings = [
+               ['TOTAL', `${model.total} CONTRIBUTIONS`], ['PEAK WEEK', `${model.peak} CONTRIBUTIONS`],
+          @@ -212,11 +212,38 @@
+             return output;
+           }
+           
+          +/** Preserve the engine-owned unavailable reason without overflowing a compact embed. */
+          +function renderUnavailable(state: SceneUnavailable, context: RenderContext, labels: Readonly<{ title: string; description: string }>): string {
+          +  const theme = themes[context.theme];
+          +  const width = context.layout === 'compact' ? 480 : 720;
+          +  const limit = context.layout === 'compact' ? 44 : 72;
+          +  const lines: string[] = [];
+          +  let line = '';
+          +  for (const word of state.reason.split(/\s+/u)) {
+          +    const chunks = [...word];
+          +    while (chunks.length > limit) {
+          +      if (line) { lines.push(line); line = ''; }
+          +      lines.push(chunks.splice(0, limit).join(''));
+          +    }
+          +    const rest = chunks.join('');
+          +    if (line && line.length + rest.length + 1 > limit) { lines.push(line); line = ''; }
+          +    if (rest) line += `${line ? ' ' : ''}${rest}`;
+          +  }
+          +  if (line) lines.push(line);
+          +  const height = Math.max(240, 190 + lines.length * 22);
+          +  return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(labels.title)}" viewBox="0 0 ${width} ${height}"><title>${escapeXml(labels.title)}</title><desc>${escapeXml(labels.description)}</desc>` +
+          +    frame(context, { title: 'Activity terrain', ref: 'TERRAIN / 01', family: 'map', width, height }) +
+          +    text(24, 112, 'UNAVAILABLE', theme.text, 18) +
+          +    lines.map((value, index) => text(24, 144 + index * 22, value, theme.muted, 12)).join('') +
+          +    text(24, height - 24, 'NO CURRENT ACTIVITY READING', theme.muted, 11) + '</svg>';
+          +}
+          +
+           /** Complete public calendar, separate latest-release evidence, and explicit observation provenance. */
+           export const activityTerrainScene: SceneDefinition<TerrainModel> = {
+             id: 'activity-terrain', family: 'map', budget: 'map',
+             supportedPacks: ['survey'], supportedMotion: ['none', 'subtle', 'ambient'],
+             buildModel: ({ snapshot }: SceneInputs) => buildTerrain(snapshot),
+             accessibility,
+          +  renderUnavailable,
+             render: (model, context) => renderTerrain(model, context, accessibility(model)),
+           };
+          PATCH
+          cat >> packages/svg/tests/activity-terrain-boundaries.test.mjs <<'JS'
+
+          test('unavailable terrain fits the requested layout and preserves the full reason visibly', () => {
+            for (const theme of Object.keys(svg.themes)) for (const layout of ['wide', 'compact']) {
+              const value = inputs();
+              value.snapshot.contributions.freshness.mode = 'stale';
+              const result = render(value, {theme, layout, motion: 'ambient'});
+              const doc = parseSceneXml(result.svg);
+              const width = layout === 'compact' ? 480 : 720;
+              assert.equal(Number(doc.root.attrs.viewBox.split(' ')[2]), width);
+              assert.ok(painted(result).includes(scene().buildModel(value).reason));
+              const visit = node => {
+                if (node.name === 'text') {
+                  const words = sceneVisibleText(node), x = Number(node.attrs.x), size = Number(node.attrs['font-size'] ?? 16);
+                  const extent = words.length * size * 0.7, anchor = node.attrs['text-anchor'];
+                  const right = anchor === 'end' ? x : anchor === 'middle' ? x + extent / 2 : x + extent;
+                  const left = anchor === 'end' ? x - extent : anchor === 'middle' ? x - extent / 2 : x;
+                  assert.ok(left >= 18 && right <= width - 18, `Unbounded unavailable line: ${words}`);
+                }
+                for (const child of node.children) visit(child);
+              };
+              visit(doc.root);
+              assert.equal(result.counters.animatedElements, 0);
+              assert.ok(result.svg.includes(svg.themes[theme].background));
+            }
+          });
+          test('right-edge release numbers leave room before their diamond marker', () => {
+            for (const layout of ['wide', 'compact']) {
+              const value = inputs();
+              value.snapshot.projects.projects = [release('v-last', '2026-01-17T12:00:00Z')];
+              const doc = parseSceneXml(render(value, {layout}).svg), width = layout === 'compact' ? 480 : 720;
+              const visit = node => {
+                if (node.name === 'text' && /^\d$/.test(sceneVisibleText(node))) assert.ok(Number(node.attrs.x) <= width - 48);
+                for (const child of node.children) visit(child);
+              };
+              visit(doc.root);
+            }
+          });
+          JS
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import assert from 'node:assert/strict';
-          const boundary='packages/svg/tests/activity-terrain-boundaries.test.mjs';
-          let b=fs.readFileSync(boundary,'utf8');
-          const before='{days: length, asOf: to}';
-          assert.equal(b.split(before).length,2);
-          b=b.replace(before,'{days: length, asOf: to, commits: length * count, issues: 0, pullRequests: 0, reviews: 0}');
-          fs.writeFileSync(boundary,b);
-          const positive='packages/svg/tests/activity-terrain.test.mjs';
-          let p=fs.readFileSync(positive,'utf8'), changes=0;
-          p=p.replace(/calculateContributionMetrics\(([^,]+), \{ days: 14, asOf: TO \}\)/g,(_,input)=>{
-            changes++; return `calculateContributionMetrics(${input}, { days: 14, asOf: TO, commits: ${input}.reduce((sum, day) => sum + day.count, 0), issues: 0, pullRequests: 0, reviews: 0 })`;
-          });
-          assert.equal(changes,2);
-          fs.writeFileSync(positive,p);
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          assert.ok(!p.scripts['test:github'].includes('tests/terrain-route.test.ts'));
+          p.scripts['test:github']=p.scripts['test:github'].replace('tests/scene-route.test.ts','tests/scene-route.test.ts tests/terrain-route.test.ts');
+          fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
+          for(const path of ['app/page.tsx','docs/PRODUCT_DIRECTION.md']) {
+            let s=fs.readFileSync(path,'utf8'); assert.equal(s.split('nine hosted SVG routes').length,2);
+            fs.writeFileSync(path,s.replace('nine hosted SVG routes','ten hosted SVG routes'));
+          }
           JS
-          git add -- packages/svg/tests/activity-terrain.test.mjs packages/svg/tests/activity-terrain-boundaries.test.mjs
-          git commit -m 'test(svg): construct terrain metrics with complete breakdown options'
+          git add -- packages/svg/src/scenes/activity-terrain.ts packages/svg/tests/activity-terrain-boundaries.test.mjs package.json app/page.tsx docs/PRODUCT_DIRECTION.md
+          git commit -m 'fix(svg): bound unavailable terrain and verify hosted two-year output'
           mkdir -p terrain-preview
           git rev-parse HEAD > terrain-preview/checkout.txt
       - run: npm ci --no-audit --no-fund
-      - name: Validate types, lint and every SVG suite
+      - run: npm run build:action
+      - name: Record regenerated Action before its reproducibility gate
+        run: |
+          git add -- action/dist
+          if ! git diff --cached --quiet; then git commit -m 'build(action): retain bounded terrain unavailable rendering'; fi
+      - name: Run the complete repository gate
         run: |
           set -euo pipefail
-          npm run typecheck 2>&1 | tee terrain-preview/typecheck.log
-          npm run lint 2>&1 | tee terrain-preview/lint.log
-          npm run test:svg 2>&1 | tee terrain-preview/tests.log
-      - run: npm run build:action
-      - run: node --test action/action.test.mjs action/evidence-output.test.mjs
-      - name: Retain generated terrain examples for review
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import {calculateContributionMetrics} from './packages/core/dist/index.js';
-          import {getScene,renderSceneDefinition,themes} from './packages/svg/dist/index.js';
-          const dir='terrain-preview',from=Date.parse('2026-01-04T00:00:00Z');
-          for(const variant of ['active','zero','stale','maximum']) for(const layout of ['wide','compact']) for(const theme of Object.keys(themes)) {
-            const days=Array.from({length:variant==='maximum'?731:14},(_,i)=>({date:new Date(from+i*86400000).toISOString().slice(0,10),count:variant==='zero'?0:variant==='maximum'?100000:i%5===0?3:0}));
-            const to=days.at(-1).date;
-            const freshness={generatedAt:`${to}T23:59:59.999Z`,source:'synthetic-demo',mode:'demo'};
-            const metrics=calculateContributionMetrics(days,{days:days.length,asOf:to,commits:days.reduce((sum,day)=>sum+day.count,0),issues:0,pullRequests:0,reviews:0});
-            const snapshot={version:1,freshness,contributions:{days,freshness:variant==='stale'?{...freshness,mode:'stale'}:freshness},metrics,projects:{freshness,projects:Array.from({length:variant==='maximum'?6:1},(_,i)=>({releaseState:'published',release:{tag:variant==='maximum'?'界'.repeat(40):`v${i+1}.0`,publishedAt:`${to}T12:00:00Z`}}))}};
-            const result=renderSceneDefinition(getScene('activity-terrain'),{snapshot},{theme,layout,pack:'survey',motion:'none',backend:'smil',instanceNamespace:'preview',seed:''});
-            fs.writeFileSync(`${dir}/${variant}-${layout}-${theme}.svg`,result.svg);
-          }
-          JS
-      - name: Retain exact source, built modules and test evidence
+          npm run check 2>&1 | tee terrain-preview/full-check.log
+      - name: Retain exact source and built modules
         if: always()
         run: |
           mkdir -p terrain-preview
           tar -czf terrain-preview/packages.tgz packages scripts package.json tsconfig.json node_modules/zod
-      - name: Upload review examples and evidence
+      - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: terrain-preview-321
+          name: terrain-final-321
           path: terrain-preview/
           retention-days: 14
-      - name: Publish the reconciled source and generated bundle
+      - name: Publish only after the complete gate succeeds
         env:
           EXPECTED_HEAD: ${{ github.sha }}
         run: |
           set -euo pipefail
-          test -z "$(git diff --name-only -- . ':!action/dist')"
           git diff --check
-          git add -- action/dist
-          if ! git diff --cached --quiet; then git commit -m 'build(action): include validated activity terrain'; fi
+          test -z "$(git status --porcelain --untracked-files=no)"
           remote_head=$(git ls-remote origin refs/heads/grok/activity-terrain-135 | cut -f1)
           test "$remote_head" = "$EXPECTED_HEAD"
           git push origin HEAD:refs/heads/grok/activity-terrain-135
