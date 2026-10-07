@@ -1,0 +1,72 @@
+name: Temporary lifecycle integration 137
+on:
+  push:
+    branches: [fix/lifecycle-evidence-137]
+    paths: [.github/workflows/integrate-lifecycle-137.yml]
+permissions:
+  contents: write
+concurrency:
+  group: lifecycle-integration-137
+  cancel-in-progress: false
+jobs:
+  integrate:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/lifecycle-evidence-137'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Wire the reviewed registry and explicit test lists
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          const edit = (path, expected, transforms) => {
+            const bytes = fs.readFileSync(path);
+            const actual = crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+            assert.equal(actual, expected, `Concurrent or unreconciled file: ${path}`);
+            let text = bytes.toString('utf8');
+            for (const [from, to] of transforms) {
+              assert.equal(text.split(from).length, 2, `Expected exactly one anchor in ${path}`);
+              text = text.replace(from, to);
+            }
+            fs.writeFileSync(path, text);
+          };
+          edit('packages/svg/src/scene.ts','0ef4e8e8597e2078dc1c4752ccb29f18e7635d7f',[
+            ['import { activityTerrainScene }','import { lifecycleMapScene } from "./scenes/lifecycle-map.js";\nimport { activityTerrainScene }'],
+            ['  registry.set(terrain.id, terrain);','  registry.set(terrain.id, terrain);\n  const lifecycle = definitionSnapshot(lifecycleMapScene) as SceneDefinition<unknown>;\n  registry.set(lifecycle.id, lifecycle);']
+          ]);
+          edit('packages/svg/package.json','0493309c09fc6d994e5efb0da4c1183db257321b',[
+            ['tests/scene-visible-readings.test.mjs','tests/scene-visible-readings.test.mjs tests/lifecycle-map.test.mjs']
+          ]);
+          edit('package.json','186cf16d68cfd647211a4323bdaf0fd51752f8b1',[
+            ['tests/terrain-route.test.ts','tests/terrain-route.test.ts tests/lifecycle-route.test.ts'],
+            ['action/action.test.mjs action/evidence-output.test.mjs','action/action.test.mjs action/evidence-output.test.mjs action/lifecycle-output.test.mjs']
+          ]);
+          NODE
+      - run: npm ci
+      - run: npm run typecheck && npm run lint
+      - run: npm run test:svg && npm run test:github
+      - run: npm run build:action
+      - run: node --test action/action.test.mjs action/evidence-output.test.mjs action/lifecycle-output.test.mjs
+      - name: Publish only reviewed integration files and generated distribution
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only -- . ':!packages/svg/src/scene.ts' ':!packages/svg/package.json' ':!package.json' ':!action/dist')"
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- packages/svg/src/scene.ts packages/svg/package.json package.json action/dist
+          git commit -m 'feat(svg): register the repaired lifecycle scene and regenerate the Action'
+          remote_head=$(git ls-remote origin refs/heads/fix/lifecycle-evidence-137 | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/fix/lifecycle-evidence-137
+          printf 'Reviewed main 4b8acb2e83aad82d56e3c05050bf48f8f5dd67f6; source %s; integrated head %s\n' "$EXPECTED_HEAD" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
