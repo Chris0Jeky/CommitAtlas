@@ -1,0 +1,70 @@
+name: Temporary scene checkpoint reconciliation
+on:
+  push:
+    branches: [docs/scene-delivery-verification-20261007]
+    paths: [.github/workflows/record-scene-checkpoint.yml]
+permissions:
+  contents: write
+jobs:
+  record:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/docs/scene-delivery-verification-20261007'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - name: Insert the bounded checkpoint into verified documentation
+        run: |
+          python3 <<'PY'
+          import hashlib, pathlib
+          def replace(filename, expected, old, new):
+              target = pathlib.Path(filename)
+              original = target.read_bytes()
+              assert hashlib.sha1(f'blob {len(original)}\0'.encode() + original).hexdigest() == expected, filename
+              text = original.decode('utf-8')
+              assert text.count(old) == 1, filename
+              target.write_bytes(text.replace(old, new, 1).encode('utf-8'))
+          checkpoint = '''
+          ## Scene delivery checkpoint, 2026-10-07
+
+          #333 completes the lifecycle map (#137): bounded declared rows, distinct CI words and
+          geometry, independent partial signals, provenance/freshness and paired static/Action
+          output. #334 adds the Studio scene-preview slice: all three accepted scenes,
+          reversible global/per-image views, actual decoded-image approval and renderer-owned
+          counters. Existing card previews and private-data collection are unchanged.
+
+          Both exact-head gates and combined main `bb3c1d659ab703c83b7a15fbd731e1c3140aeb39`
+          pass. A real built-Worker Chrome keyboard traversal reached 16/16 tool buttons in
+          46 Tab presses; synthetic error, stale-attempt, unsupported-pack and desktop/mobile
+          layout cases also passed. The corrected scene panels were visually inspected.
+
+          [Retained verification and remaining acceptance](evidence/2026-10-07-scene-delivery.md)
+          records exact source, CI, artifact hashes, deployment attempts and browser scope.
+          Consult that dated receipt for production qualification; source/browser checks are
+          not a blanket deployment or README/Camo verdict. #141 remains open for card-tool
+          parity and actual README round-trip qualification. #113 and owner gates are unchanged.
+
+          The checkpoints below remain historical, not claims about this newer source.
+
+          ## Public checkpoint
+          '''
+          replace('docs/PROJECT_STATE.md', '8a4ea6a5427d1f508f402416073f2fd9a9972364', '\n## Public checkpoint\n', checkpoint)
+          replace('docs/STUDIO_SCENE_PREVIEWS.md', '374d9efe1ba59fd6320f269b99e66156a01861de',
+              'the repository gate. It can run against the local development server or the fixed\nproduction origin, always with `demo=true`. The local mode proxies a synthetic HTTPS\n',
+              'the repository gate. It runs against the loopback built-Worker adapter or the fixed\nproduction origin, always with `demo=true`. The built-Worker mode proxies a synthetic HTTPS\n')
+          PY
+          git add -- docs/PROJECT_STATE.md docs/STUDIO_SCENE_PREVIEWS.md
+          git rm -- .github/workflows/record-scene-checkpoint.yml
+          git diff --cached --check
+      - name: Publish only the documentation reconciliation
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: record scene verification and preserve historical checkpoints'
+          remote_head=$(git ls-remote origin refs/heads/docs/scene-delivery-verification-20261007 | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/docs/scene-delivery-verification-20261007
