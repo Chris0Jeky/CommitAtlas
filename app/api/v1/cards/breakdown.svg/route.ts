@@ -1,8 +1,9 @@
+import { cardSvgResponse } from "@/lib/card-response";
 import { demoContributions } from "@/lib/github/demo";
 import { GitHubClient } from "@/lib/github/client";
 import { parseSvgActivityQuery } from "@/lib/svg-routes";
 import { toContributionMetricsCards } from "@/lib/svg-adapters";
-import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
+import { apiErrorResponse, canonicalSvgRedirect, optionsResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { motionRenderMetadata, renderContributionBreakdownCard } from "@/packages/svg/src/index";
 
@@ -30,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
         description: `Public contribution activity mix for ${snapshot.login}.`,
       },
     );
-    return svgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
+    return await cardSvgResponse(request, body, { edgeSeconds: 3600, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles }, "breakdown", snapshot.freshness.mode);
   } catch (error) {
     return apiErrorResponse(error);
   }

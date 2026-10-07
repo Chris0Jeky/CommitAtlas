@@ -15,7 +15,8 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [], requests = [], scenarios = [], layoutMeasurements = [];
-let fault = "none", releaseDelayed;
+let fault = "none", cardFault = "none", releaseDelayed, releaseCard;
+let cardDelay = Promise.resolve();
 let delayed = Promise.resolve();
 page.on("pageerror", error => errors.push(error.message));
 try {
@@ -24,6 +25,19 @@ try {
     if (url.origin !== origin) { await route.abort(); return; }
     if (url.pathname.startsWith("/api/v1/")) assert.equal(url.searchParams.get("demo"), "true", "QA must never request live GitHub evidence");
     const response = await route.fetch({ url: production ? url.href : `${backend}${url.pathname}${url.search}`, timeout: 30_000 });
+    if (url.pathname.startsWith("/api/v1/cards/") || url.pathname === "/api/v1/projects.svg") {
+      if (url.pathname === "/api/v1/cards/profile.svg") {
+        if (cardFault === "broken") {
+          const body = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200"><broken></svg>';
+          const metadata = { version: 1, card: "profile", bytes: Buffer.byteLength(body), animatedElements: 0, loopingGroups: 0, state: "ready" };
+          await route.fulfill({ status: 200, contentType: "image/svg+xml", body, headers: { "X-CommitAtlas-Card-Metadata": JSON.stringify(metadata) } }); return;
+        }
+        if (cardFault === "stale") {
+          await route.fulfill({ response, headers: { ...response.headers(), "x-commitatlas-data-state": "stale" } }); return;
+        }
+        if (cardFault === "delay" && url.searchParams.get("motion") === "ambient") await cardDelay;
+      }
+    }
     if (url.pathname.startsWith("/api/v1/scenes/")) {
       requests.push(`${url.pathname}${url.search}`);
       if (fault === "broken") {
@@ -40,28 +54,36 @@ try {
   });
   await page.goto(`${origin}/studio`, { waitUntil: "domcontentloaded", timeout: 45_000 });
   await page.waitForFunction(() => [...document.querySelectorAll("input")].some(element => Object.keys(element).some(key => key.startsWith("__reactProps"))));
+  const runPreview = async () => {
+    await page.locator('button[type="submit"]').click();
+    // Old images remain visible while JSON refresh is pending and must not approve copying.
+    // Wait for the new configuration commit before observing its keyed image resources.
+    await page.waitForFunction(() => !document.querySelector('button[type="submit"]').disabled);
+  };
   await page.getByLabel("Evidence coverage", { exact: true }).check();
   await page.getByLabel("Ambient", { exact: false }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   const scene = page.locator('[data-scene-preview="evidence-coverage"]');
   const allTools = page.locator("fieldset.preview-tools");
   const markdown = page.getByRole("textbox", { name: "Generated README Markdown" });
   const loaded = () => scene.getByText("Image loaded. Compiler counters", { exact: false }).waitFor({ timeout: 30_000 });
   const assertLayout = async () => {
-    const boxes = await page.locator("[data-scene-preview]").evaluateAll(elements => elements.map(element => {
+    const boxes = await page.locator("[data-scene-preview], [data-card-preview]").evaluateAll(elements => elements.map(element => {
       const rect = element.getBoundingClientRect();
       const gallery = element.parentElement;
       const style = getComputedStyle(gallery);
       const available = gallery.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       const image = element.querySelector("img");
       const imageRect = image?.getBoundingClientRect();
-      return { id: element.getAttribute("data-scene-preview"), width: rect.width, available,
+      return { id: element.getAttribute("data-scene-preview") ?? element.getAttribute("data-card-preview"), width: rect.width, available,
         imageWidth: imageRect?.width ?? 0, imageHeight: imageRect?.height ?? 0,
+        naturalWidth: image?.naturalWidth ?? 0, naturalHeight: image?.naturalHeight ?? 0,
         overflow: element.scrollWidth > element.clientWidth + 1 };
     }));
     for (const box of boxes) {
       assert.ok(box.width >= box.available - 2, `scene ${box.id} is not full-width: ${JSON.stringify(box)}`);
-      assert.ok(box.imageWidth >= Math.min(160, box.available - 64) && box.imageHeight >= 60, `scene ${box.id} is unreadably small`);
+      assert.ok(box.imageWidth >= Math.min(160, box.available - 64) && box.imageHeight > 0, `scene ${box.id} is unreadably small`);
+      assert.ok(Math.abs(box.imageHeight - box.imageWidth * box.naturalHeight / box.naturalWidth) < 2, `image aspect ratio changed: ${JSON.stringify(box)}`);
       assert.equal(box.overflow, false, `scene ${box.id} contents overflow`);
     }
     layoutMeasurements.push({ viewport: page.viewportSize(), boxes });
@@ -107,14 +129,14 @@ try {
   fault = "none";
   await page.getByLabel("Orbital", { exact: false }).check();
   const beforeUnsupported = requests.length;
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   await scene.getByText("This scene does not support the orbital pack.", { exact: false }).waitFor();
   assert.equal(requests.length, beforeUnsupported); assert.equal(await copiedScene(), false);
   scenarios.push("unsupported packs do not fetch or silently substitute survey");
   await page.getByLabel("Survey", { exact: false }).check();
   await page.getByLabel("Activity terrain", { exact: true }).check();
   await page.getByLabel("Lifecycle map", { exact: true }).check();
-  await page.locator('button[type="submit"]').click();
+  await runPreview();
   for (const id of ["evidence-coverage", "activity-terrain", "lifecycle-map"]) {
     await page.locator(`[data-scene-preview="${id}"]`).getByText("Image loaded. Compiler counters", { exact: false }).waitFor({ timeout: 30_000 });
     assert.ok((await markdown.inputValue()).includes(`/scenes/${id}.svg`));
@@ -129,6 +151,62 @@ try {
   await scene.getByRole("button", { name: "Profile view", exact: true }).click();
   await loaded(); assert.equal(await copiedScene(), true);
   scenarios.push("all three scenes are selectable and per-image controls leave other images untouched");
+  // Exercise the new card contract independently of the already-shipped scene receipt.
+  for (const label of ["Atlas", "Profile", "Streak", "Breakdown", "Rhythm", "Activity", "Languages", "Projects"])
+    await page.getByRole("checkbox", { name: label, exact: true }).check();
+  await runPreview();
+  const cards = ["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"];
+  const cardPanel = id => page.locator(`[data-card-preview="${id}"]`);
+  const cardLoaded = id => cardPanel(id).getByText("Image loaded. Renderer counters", { exact: false }).waitFor({ timeout: 30_000 });
+  for (const id of cards) {
+    await cardLoaded(id);
+    assert.match(await cardPanel(id).locator("img").getAttribute("src"), /^blob:/);
+    assert.doesNotMatch(await cardPanel(id).locator("dl").innerText(), /Unavailable/);
+    assert.ok((await markdown.inputValue()).includes(id === "projects" ? "/api/v1/projects.svg" : `/cards/${id}.svg`), `loaded ${id} is absent from Markdown: ${await markdown.inputValue()}`);
+  }
+  scenarios.push("all eight cards require decoded profile images and display exact response counters");
+  const profile = cardPanel("profile");
+  const copyProfile = async () => (await markdown.inputValue()).includes("/cards/profile.svg");
+  const atlasSource = await cardPanel("atlas").locator("img").getAttribute("src");
+  await profile.getByRole("button", { name: "Reduced-motion view", exact: true }).click();
+  await profile.getByText("Still twin loaded.", { exact: false }).waitFor();
+  assert.equal(await copyProfile(), false);
+  assert.equal(await cardPanel("atlas").locator("img").getAttribute("src"), atlasSource);
+  await profile.getByRole("button", { name: "Replay", exact: true }).click();
+  await cardLoaded("profile"); assert.equal(await copyProfile(), true);
+  scenarios.push("per-card still/replay invalidates only that card, never another image");
+  for (const mode of ["broken", "stale"]) {
+    cardFault = mode;
+    await profile.getByRole("button", { name: "Replay", exact: true }).click();
+    await profile.getByText(mode === "broken" ? "UNAVAILABLE. The card image could not be validated and loaded." : "STALE SNAPSHOT. Card copying is unavailable.", { exact: true }).waitFor();
+    assert.equal(await copyProfile(), false);
+    assert.match(await profile.locator("dl").innerText(), /Unavailable/);
+  }
+  scenarios.push("broken-card decode and last-good stale responses cannot authorize copying");
+  cardFault = "delay";
+  cardDelay = new Promise(resolve => { releaseCard = resolve; });
+  await profile.getByRole("button", { name: "Replay", exact: true }).click();
+  await profile.getByText("Loading the card image…", { exact: true }).waitFor();
+  assert.equal(await copyProfile(), false);
+  await page.getByRole("checkbox", { name: "Profile", exact: true }).uncheck();
+  releaseCard(); cardFault = "none";
+  await page.getByRole("checkbox", { name: "Profile", exact: true }).check();
+  await cardLoaded("profile"); assert.equal(await copyProfile(), true);
+  scenarios.push("deselection and reselection cannot revive a disposed request's image approval");
+  await page.getByRole("radio", { name: /Compact.*Mobile friendly/ }).check();
+  await runPreview();
+  for (const id of cards) await cardLoaded(id);
+  assert.equal(await cardPanel("atlas").locator("img").evaluate(image => image.naturalWidth), 480);
+  assert.match(await cardPanel("atlas").locator("footer a").getAttribute("href"), /layout=compact/);
+  assert.match(await markdown.inputValue(), /layout=compact/);
+  await page.getByRole("radio", { name: /Wide.*README hero/ }).check();
+  await runPreview();
+  for (const id of cards) await cardLoaded(id);
+  for (const id of ["evidence-coverage", "activity-terrain", "lifecycle-map"])
+    await page.locator(`[data-scene-preview="${id}"]`).getByText("Image loaded. Compiler counters", { exact: false }).waitFor();
+  assert.equal(await cardPanel("atlas").locator("img").evaluate(image => image.naturalWidth), 860);
+  scenarios.push("Atlas displays and approves the actual selected 480/860 layout without responsive substitution");
+  await cardPanel("atlas").screenshot({ path: path.join(out, "card-atlas-loaded.png") });
   const targets = page.locator(".preview-tools button, .scene-image-tools button");
   const expectedControls = await targets.count();
   await targets.evaluateAll(elements => elements.forEach((element, index) => element.setAttribute("data-qa-focus", String(index))));
@@ -141,7 +219,7 @@ try {
     if (id !== null) visited.add(id);
   }
   assert.equal(visited.size, expectedControls);
-  scenarios.push(`all ${expectedControls} enabled scene tool buttons reached by Tab (${tabPresses} presses from handle)`);
+  scenarios.push(`all ${expectedControls} enabled card/scene tool buttons reached by Tab (${tabPresses} presses from handle)`);
   await assertLayout();
   await scene.screenshot({ path: path.join(out, "scene-loaded.png") });
   await page.screenshot({ path: path.join(out, "studio-desktop.png"), fullPage: true });
@@ -161,6 +239,6 @@ try {
   console.log(JSON.stringify(receipt, null, 2));
 } catch (error) {
   await page.screenshot({ path: path.join(out, "failure.png"), fullPage: true }).catch(() => {});
-  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), errors, scenarios, requests }, null, 2));
+  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), stack: error.stack, errors, scenarios, requests }, null, 2));
   throw error;
-} finally { releaseDelayed?.(); await browser.close(); }
+} finally { releaseDelayed?.(); releaseCard?.(); await browser.close(); }

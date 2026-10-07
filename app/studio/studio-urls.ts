@@ -135,7 +135,7 @@ export function buildStudioRouteUrl(
     query.set("motion", options.motion ?? "subtle");
     query.set("layout", options.layout ?? "wide");
   }
-  if ((kind === "activity" || kind === "breakdown" || kind === "rhythm") && options.days !== undefined) {
+  if ((kind === "streak" || kind === "activity" || kind === "breakdown" || kind === "rhythm") && options.days !== undefined) {
     query.set("days", String(options.days));
   }
   if (kind !== "atlas" && (kind !== "projects" || projectSurface === "svg")) {

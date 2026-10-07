@@ -1,3 +1,4 @@
+import { CARD_METADATA_HEADER, parseCardResponseMetadata, type CardResponseMetadata } from "@/lib/card-metadata";
 import { MAX_SCENE_PREVIEW_BYTES, SCENE_METADATA_HEADER, parseSceneResponseMetadata, type SceneResponseMetadata } from "@/lib/scene-metadata";
 
 export type ScenePreviewView = "profile" | "reduced" | "frame-zero";
@@ -13,13 +14,24 @@ export function scenePreviewToken(configuration: string, id: string, view: Scene
   return JSON.stringify([configuration, id, view, revision]);
 }
 export function sceneReceiptMatches(receipt: SceneImageReceipt | undefined, token: string, sourceUrl: string, view: ScenePreviewView): boolean {
-  return view === "profile" && receipt?.decoded === true && receipt.state === "ready" && receipt.token === token && receipt.sourceUrl === sourceUrl;
+  return view === "profile" && receipt?.view === "profile" && receipt.decoded === true && receipt.state === "ready" && receipt.token === token && receipt.sourceUrl === sourceUrl;
 }
 
-/** One bounded response becomes the exact Blob loaded by the image. Fetch completion is not decode proof. */
-export async function readStudioScenePreview(response: Response, scene: string, signal?: AbortSignal): Promise<{
-  readonly blob: Blob; readonly metadata: SceneResponseMetadata | null; readonly state: ScenePreviewState;
-}> {
+/** Cards and scenes use separate closed receipts over the same bounded transport. */
+export function readStudioScenePreview(response: Response, scene: string, signal?: AbortSignal) {
+  return readStudioSvgPreview<SceneResponseMetadata>(response, scene, signal, SCENE_METADATA_HEADER,
+    parseSceneResponseMetadata, metadata => metadata.unavailable ? "unavailable" : "ready");
+}
+export function readStudioCardPreview(response: Response, card: string, signal?: AbortSignal) {
+  return readStudioSvgPreview<CardResponseMetadata>(response, card, signal, CARD_METADATA_HEADER,
+    parseCardResponseMetadata, metadata => metadata.state === "partial" ? "ready" : metadata.state);
+}
+
+/** One bounded response becomes the exact Blob loaded by the image. Fetch is not decode proof. */
+async function readStudioSvgPreview<T>(response: Response, id: string, signal: AbortSignal | undefined,
+  metadataHeader: string, parse: (header: string, id: string, bytes: number) => T,
+  stateOf: (metadata: T) => ScenePreviewState,
+): Promise<{ readonly blob: Blob; readonly metadata: T | null; readonly state: ScenePreviewState }> {
   signal?.throwIfAborted();
   if (response.status !== 200 || !/^image\/svg\+xml(?:\s*;|$)/i.test(response.headers.get("content-type") ?? "") || !response.body) {
     await response.body?.cancel(); throw new Error("Scene preview did not return an SVG image");
@@ -49,8 +61,8 @@ export async function readStudioScenePreview(response: Response, scene: string, 
   const blob = new Blob([bytes], { type: "image/svg+xml" });
   const stale = response.headers.get("x-commitatlas-data-state") === "stale" || /^<svg\b[^>]*\bdata-commitatlas-state="stale"/i.test(text);
   if (stale) return { blob, metadata: null, state: "stale" };
-  const header = response.headers.get(SCENE_METADATA_HEADER);
+  const header = response.headers.get(metadataHeader);
   if (!header) return { blob, metadata: null, state: "unverified" };
-  const metadata = parseSceneResponseMetadata(header, scene, bytes.length);
-  return { blob, metadata, state: metadata.unavailable ? "unavailable" : "ready" };
+  const metadata = parse(header, id, bytes.length);
+  return { blob, metadata, state: stateOf(metadata) };
 }
