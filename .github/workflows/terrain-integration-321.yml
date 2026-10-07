@@ -1,0 +1,79 @@
+name: Terrain integration 321
+on:
+  push:
+    branches: [grok/activity-terrain-135]
+    paths: [.github/workflows/terrain-integration-321.yml]
+permissions:
+  contents: write
+concurrency:
+  group: terrain-integration-321
+  cancel-in-progress: false
+jobs:
+  integrate:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/grok/activity-terrain-135'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+      - name: Reconcile current main and the canonical coverage discriminant
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-edit cea038bd45c0c1204874ca177e184aae22f1c0b4
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const path='packages/svg/src/scenes/activity-terrain.ts';
+          let source=fs.readFileSync(path,'utf8');
+          assert.equal(source.split('window.complete !== true').length,2);
+          source=source.replace('window.complete !== true',"window.complete !== 'complete'");
+          fs.writeFileSync(path,source);
+          JS
+          git add -- packages/svg/src/scenes/activity-terrain.ts
+          git commit -m 'fix(svg): use the canonical calendar coverage discriminant'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck && npm run lint && npm run test:svg
+      - run: npm run build:action
+      - run: node --test action/action.test.mjs action/evidence-output.test.mjs
+      - name: Retain generated terrain examples for review
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {calculateContributionMetrics} from './packages/core/dist/index.js';
+          import {getScene,renderSceneDefinition,themes} from './packages/svg/dist/index.js';
+          const dir='terrain-preview'; fs.mkdirSync(dir);
+          const from=Date.parse('2026-01-04T00:00:00Z');
+          for(const variant of ['active','zero','stale','maximum']) for(const layout of ['wide','compact']) for(const theme of Object.keys(themes)) {
+            const days=Array.from({length:variant==='maximum'?731:14},(_,i)=>({date:new Date(from+i*86400000).toISOString().slice(0,10),count:variant==='zero'?0:variant==='maximum'?100000:i%5===0?3:0}));
+            const to=days.at(-1).date;
+            const freshness={generatedAt:`${to}T23:59:59.999Z`,source:'synthetic-demo',mode:'demo'};
+            const snapshot={version:1,freshness,contributions:{days,freshness:variant==='stale'?{...freshness,mode:'stale'}:freshness},metrics:calculateContributionMetrics(days,{days:days.length,asOf:to}),projects:{freshness,projects:Array.from({length:variant==='maximum'?6:1},(_,i)=>({releaseState:'published',release:{tag:variant==='maximum'?'界'.repeat(40):`v${i+1}.0`,publishedAt:`${to}T12:00:00Z`}}))}};
+            const result=renderSceneDefinition(getScene('activity-terrain'),{snapshot},{theme,layout,pack:'survey',motion:'none',backend:'smil',instanceNamespace:'preview',seed:''});
+            fs.writeFileSync(`${dir}/${variant}-${layout}-${theme}.svg`,result.svg);
+          }
+          JS
+      - name: Upload review examples
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: terrain-preview-321
+          path: terrain-preview/
+          retention-days: 14
+      - name: Publish the reconciled source and generated bundle
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only -- . ':!action/dist')"
+          git diff --check
+          git add -- action/dist
+          if ! git diff --cached --quiet; then git commit -m 'build(action): include validated activity terrain'; fi
+          remote_head=$(git ls-remote origin refs/heads/grok/activity-terrain-135 | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/grok/activity-terrain-135
