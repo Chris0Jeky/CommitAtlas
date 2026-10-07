@@ -21,25 +21,21 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22.13.0
-      - name: Reconcile current main and the canonical coverage discriminant
+      - name: Reconcile the reviewed main snapshot without changing source
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git merge --no-edit cea038bd45c0c1204874ca177e184aae22f1c0b4
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import assert from 'node:assert/strict';
-          const path='packages/svg/src/scenes/activity-terrain.ts';
-          let source=fs.readFileSync(path,'utf8');
-          assert.equal(source.split('window.complete !== true').length,2);
-          source=source.replace('window.complete !== true',"window.complete !== 'complete'");
-          fs.writeFileSync(path,source);
-          JS
-          git add -- packages/svg/src/scenes/activity-terrain.ts
-          git commit -m 'fix(svg): use the canonical calendar coverage discriminant'
+          mkdir -p terrain-preview
+          git rev-parse HEAD > terrain-preview/checkout.txt
       - run: npm ci --no-audit --no-fund
-      - run: npm run typecheck && npm run lint && npm run test:svg
+      - name: Validate types, lint and every SVG suite
+        run: |
+          set -euo pipefail
+          npm run typecheck 2>&1 | tee terrain-preview/typecheck.log
+          npm run lint 2>&1 | tee terrain-preview/lint.log
+          npm run test:svg 2>&1 | tee terrain-preview/tests.log
       - run: npm run build:action
       - run: node --test action/action.test.mjs action/evidence-output.test.mjs
       - name: Retain generated terrain examples for review
@@ -48,7 +44,7 @@ jobs:
           import fs from 'node:fs';
           import {calculateContributionMetrics} from './packages/core/dist/index.js';
           import {getScene,renderSceneDefinition,themes} from './packages/svg/dist/index.js';
-          const dir='terrain-preview'; fs.mkdirSync(dir);
+          const dir='terrain-preview';
           const from=Date.parse('2026-01-04T00:00:00Z');
           for(const variant of ['active','zero','stale','maximum']) for(const layout of ['wide','compact']) for(const theme of Object.keys(themes)) {
             const days=Array.from({length:variant==='maximum'?731:14},(_,i)=>({date:new Date(from+i*86400000).toISOString().slice(0,10),count:variant==='zero'?0:variant==='maximum'?100000:i%5===0?3:0}));
@@ -59,7 +55,13 @@ jobs:
             fs.writeFileSync(`${dir}/${variant}-${layout}-${theme}.svg`,result.svg);
           }
           JS
-      - name: Upload review examples
+      - name: Retain exact source and test evidence
+        if: always()
+        run: |
+          mkdir -p terrain-preview
+          tar --exclude='*/node_modules' -czf terrain-preview/packages.tgz packages scripts/build-package.mjs scripts/clean-package-dist.mjs package.json tsconfig.json
+      - name: Upload review examples and evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: terrain-preview-321
