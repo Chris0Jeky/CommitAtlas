@@ -1,0 +1,53 @@
+name: Temporary Action bundle repair 317
+on:
+  push:
+    branches: [dependabot/npm_and_yarn/undici-6.29.0]
+    paths: [.github/workflows/repair-action-317.yml]
+permissions:
+  contents: write
+concurrency:
+  group: action-bundle-repair-317
+  cancel-in-progress: false
+jobs:
+  rebuild:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/dependabot/npm_and_yarn/undici-6.29.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Reconcile the reviewed main snapshot
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --no-tags origin 94e972b7b9a4cf5df79a4a8e7292052a9a68142
+          git merge --no-edit 94e972b7b9a4cf5df79a4a8e7292052a9a68142
+          node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const p=JSON.parse(fs.readFileSync("package-lock.json","utf8")); assert.equal(p.packages["node_modules/@actions/http-client/node_modules/undici"].version,"6.29.0");'
+      - run: npm ci
+      - run: npm run build:action
+      - run: node --test action/action.test.mjs action/evidence-output.test.mjs
+      - name: Publish only the rebuilt bundle to the same PR branch
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only -- . ':!action/dist')"
+          git diff --check
+          git add -- action/dist
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(action): regenerate bundle for Undici 6.29.0'
+          fi
+          remote_head=$(git ls-remote origin refs/heads/dependabot/npm_and_yarn/undici-6.29.0 | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/dependabot/npm_and_yarn/undici-6.29.0
+          printf 'Rebuilt from workflow source %s and reviewed main 94e972b7b9a4cf5df79a4a8e7292052a9a68142. Published head: %s\n' "$EXPECTED_HEAD" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
