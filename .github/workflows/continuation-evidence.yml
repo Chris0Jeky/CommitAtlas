@@ -1,0 +1,58 @@
+name: Temporary continuation evidence
+on:
+  push:
+    branches: [diagnostic/continuation-20261007b]
+    paths: [.github/workflows/continuation-evidence.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/diagnostic/continuation-20261007b'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fee65c41d2013edc1767b8ca950ff5e8f5fb4681
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Export public source history and reports, never credentials or configuration
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/commitatlas-continuation
+          git bundle create /tmp/commitatlas-continuation/source.bundle HEAD
+          git bundle verify /tmp/commitatlas-continuation/source.bundle
+          node --input-type=module <<'JS'
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import { writeFileSync, readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const out = '/tmp/commitatlas-continuation/';
+          const receipt = { source: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), node:process.version, npm:execFileSync('npm',['--version'],{encoding:'utf8'}).trim(), lockSha256:createHash('sha256').update(readFileSync('package-lock.json')).digest('hex'), capturedAt:new Date().toISOString(), exits:{} };
+          for (const [name,args] of [
+            ['full',['audit','--json']], ['production',['audit','--omit=dev','--json']],
+            ['paths',['ls','--all','--json']],
+            ['braces',['view','braces@latest','version','dist.integrity','dependencies','--json']],
+            ['micromatch',['view','micromatch@latest','version','dist.integrity','dependencies','--json']],
+            ['fflate',['view','fflate@latest','version','dist.integrity','dependencies','--json']],
+            ['sharp',['view','sharp@latest','version','dist.integrity','dependencies','--json']]
+          ]) {
+            const result = spawnSync('npm',args,{encoding:'utf8',timeout:60000,maxBuffer:16*1024*1024});
+            if (result.error || result.signal || ![0,1].includes(result.status)) throw new Error(`${name} command did not complete`);
+            JSON.parse(result.stdout);
+            writeFileSync(out+name+'.json',result.stdout);
+            receipt.exits[name] = result.status;
+          }
+          writeFileSync(out+'receipt.json',JSON.stringify(receipt,null,2)+'\n');
+          JS
+          sha256sum /tmp/commitatlas-continuation/* > /tmp/commitatlas-continuation/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: commitatlas-continuation-source-audit
+          path: /tmp/commitatlas-continuation/
+          if-no-files-found: error
+          retention-days: 3
