@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "kind": "curated-verification-summary",
+  "source": "bb3c1d659ab703c83b7a15fbd731e1c3140aeb39",
+  "origin": "https://commit-atlas.commit-atlas.workers.dev",
+  "browser": {
+    "runId": 37622867294,
+    "attempt": 2,
+    "jobId": 112798946988,
+    "observedAt": "2026-10-07T12:46:39.103Z",
+    "mode": "production-synthetic",
+    "chrome": "154.0.8037.57",
+    "playwrightDriver": "1.57.0",
+    "node": "22.13.0",
+    "scenariosPassed": [
+      "decoded image uses the same bounded response as its compiler counters",
+      "profile, reduced-motion, frame-zero and replay are reversible",
+      "late profile response cannot authorize the current still preview",
+      "broken SVG image decode and HTML-200 responses cannot authorize copying",
+      "unsupported packs neither fetch nor substitute another pack",
+      "all three accepted scenes load and per-image controls remain independent",
+      "all 16 scene-tool controls are reached through keyboard Tab traversal"
+    ],
+    "keyboard": { "expectedControls": 16, "reachedControls": 16, "tabPresses": 46 },
+    "pageErrors": [],
+    "layouts": [
+      { "viewport": [1440, 1000], "scenePanelWidth": 884, "imageWidth": 828, "horizontalOverflow": false },
+      { "viewport": [390, 844], "scenePanelWidth": 278, "imageWidth": 222, "horizontalOverflow": false }
+    ],
+    "artifactId": 11482733171,
+    "artifactBytes": 1287276,
+    "artifactSha256": "c300f17ff4c29b41e9fa0021d53dc8a30e6bc60199bd96357d59dc77f5bce3ab",
+    "rawReceiptSha256": "2b1fc33a5c88c2dbbce1b8e43ae0170eb31f503a79fd7d0027dc33dce34fe2aa",
+    "artifactHashesVerifiedAgainstDownloadedBytes": true,
+    "timedMotionOrCamoQualification": false
+  },
+  "deployment": {
+    "runId": 37623082908,
+    "attempt": 2,
+    "jobId": 112800099561,
+    "workerVersion": "e083d230-3e27-4d37-ad64-24e65bc0c79b",
+    "verifiedAt": "2026-10-07T12:49:27.785Z",
+    "httpChecksPassed": 21,
+    "httpChecksTotal": 21,
+    "includesTerrainAndLifecycleMetadataBodyChecks": true
+  },
+  "qualifications": [
+    "This curated summary is not the byte-identical raw browser receipt.",
+    "The first browser attempt completed readiness polling before the first deployment finished; it reached no scenarios.",
+    "The first deployment passed 19 of 21 probes. Its two new map responses lacked matching renderer metadata. An unchanged retry passed all 21.",
+    "The browser and later redeployment used the same git source but were separate observations; the browser does not prove the later Worker version identifier.",
+    "Fault injection modified only the QA browser responses. Production API requests used demo=true.",
+    "No independent review, real README round-trip, operating-system preference emulation, or three-engine raw/Camo playback is claimed."
+  ]
+}
