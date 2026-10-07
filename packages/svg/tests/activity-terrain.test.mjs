@@ -86,6 +86,7 @@ test("activity-terrain passes the shared scene contract", () => {
       inputs: ready,
       textFields: ["snapshot.projects.projects.0.release.tag"],
       readings: ["TOTAL 4", "PEAK WEEK 4", "QUIET RUN 1", "CURRENT STREAK 0", "RELEASE SIGNAL BLOCKED 1"],
+      visibleReadings: ["TOTAL 4", "PEAK WEEK 4", "QUIET RUN 1", "CURRENT STREAK 0", "RELEASE SIGNAL BLOCKED 1"],
       encodings: ["Weekly elevation", "Release peaks", "flat basin", "survey line"],
     },
     changed: { inputs: changed },
