@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-06T23:22:12.622Z",
+  "authentication": "read-only repository GITHUB_TOKEN; API-range diagnostic, not classic-token client qualification",
+  "results": [
+    {
+      "kind": "single-730-day",
+      "from": "2024-10-07T00:00:00.000Z",
+      "to": "2026-10-06T23:22:05.125Z",
+      "status": 200,
+      "error": "range-exceeds-one-year",
+      "returnedDays": null,
+      "complete": false
+    },
+    {
+      "kind": "bounded-first",
+      "from": "2024-10-07T00:00:00.000Z",
+      "to": "2025-10-06T23:59:59.999Z",
+      "status": 200,
+      "error": null,
+      "returnedDays": 365,
+      "complete": true
+    },
+    {
+      "kind": "bounded-second",
+      "from": "2025-10-07T00:00:00.000Z",
+      "to": "2026-10-06T23:22:05.125Z",
+      "status": 200,
+      "error": null,
+      "returnedDays": 365,
+      "complete": true
+    }
+  ],
+  "workflowMergeSha": "8f120968fccb04e0cf034b150581ec83211ad7fa",
+  "checkedOutHead": "dddbc1df10e0a88894a8393bdaba21ce0e9be68f",
+  "provenance": {
+    "workflowRun": 37546115565,
+    "job": 112550422529,
+    "artifactId": 11449898914,
+    "artifactSha256": "112924bfb3e543d7af62094aff0f043414ae59b41275d6d02e33317d0ff38f88",
+    "note": "Original receipt sourceHead was GITHUB_SHA (the workflow merge SHA). checkedOutHead is independently confirmed by the checkout ref and git log in the job log. No activity counts were requested or retained."
+  }
+}
