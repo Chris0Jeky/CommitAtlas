@@ -1,0 +1,57 @@
+name: Temporary built Studio browser QA
+on:
+  push:
+    branches: [diagnostic/studio-browser-141]
+    paths: [.github/workflows/studio-browser-141.yml]
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/diagnostic/studio-browser-141'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 350267b17626f40cc640779b21527ce9ced87207
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Use the installed runner Chrome with a pinned isolated driver
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          google-chrome --version
+          npm install --prefix "$RUNNER_TEMP/studio-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.57.0
+      - name: Exercise the production build with synthetic evidence only
+        env:
+          GITHUB_TOKEN: ''
+        run: |
+          set -euo pipefail
+          mkdir -p .studio-qa
+          export PLAYWRIGHT_PREFIX="$RUNNER_TEMP/studio-browser"
+          export CHROME_BIN="$(command -v google-chrome)"
+          node --import ./tests/register-cloudflare-workers-loader.mjs tests/studio-browser-server.mjs > .studio-qa/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node --input-type=module <<'JS'
+          let ready = false;
+          for (let attempt = 0; attempt < 30; attempt++) {
+            try { const response = await fetch('http://127.0.0.1:3471/studio'); if (response.ok) { ready = true; break; } } catch {}
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          if (!ready) throw new Error('Built Worker adapter did not become ready');
+          JS
+          node tests/studio-scene-browser.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: studio-built-browser
+          path: .studio-qa/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 3
