@@ -63,7 +63,7 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
   assert.match(html, /From evidence to embed/);
-  assert.match(html, /eight-route SVG URL/);
+  assert.match(html, /hosted SVG URL/);
   assert.match(html, /static CLI or pinned Action/);
   assert.match(html, /byte\/SHA-256 manifest/);
   assert.match(html, /Cadence<\/em> and <em>Releases<\/em>, which are static-only/);

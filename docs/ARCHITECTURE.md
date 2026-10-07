@@ -158,9 +158,9 @@ source: `@commit-atlas/svg` and static configuration accept
 whether SVG CSP permits inline presentation styles. The three non-still profiles intentionally
 render byte-identically until a measured CSS/SMIL compiler differentiates them.
 
-The remaining accepted programme is additive: that compiler; a scene engine in
-`@commit-atlas/svg` (primitives, seeded determinism, budgets, a per-scene contract test harness)
-feeding new `/api/v1/scenes/<id>.svg` routes and `scene-<id>.svg` static artifacts; and two
+The remaining accepted programme is additive: that compiler; further scenes beyond the hosted
+GitHub-snapshot route `/api/v1/scenes/<id>.svg` (evidence-coverage is served) and their
+`scene-<id>.svg` static artifacts; and two
 validated, fail-closed projections — `PublicLensProjection.v1` from Developer Lens and
 `ResearchFindingProjection.v1` exported by Developer Lens Lab into a Developer Lens-owned schema —
 specified in [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md). Until another slice ships,

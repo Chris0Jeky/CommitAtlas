@@ -1,4 +1,4 @@
-import type { HostedMotionProfile, ThemeName } from "@/packages/svg/src/index";
+import type { HostedMotionProfile, ScenePack, ThemeName } from "@/packages/svg/src/index";
 import type { ProjectLifecycle, ProjectWorkflow } from "./github/types";
 import { encodeWorkflowMapComponent } from "./github/workflow-map";
 import {
@@ -131,6 +131,58 @@ export function parseSvgAtlasQuery(parameters: URLSearchParams): SvgAtlasQuery {
   }
   canonicalEntries.push(["demo", String(demo)], ["theme", theme], ["days", String(days)], ["motion", motion], ["layout", layout]);
   return { user, demo, theme, days, motion, layout, repos, states, workflows, projects, canonical: canonicalQuery(canonicalEntries) };
+}
+
+export interface SvgSceneQuery extends SvgAtlasQuery {
+  readonly pack: ScenePack;
+}
+
+/** Hosted scenes share the Atlas project query and add a closed pack. Defaults stay out of the canonical key. */
+export function parseSvgSceneQuery(parameters: URLSearchParams): SvgSceneQuery {
+  const allowed = ["user", "repos", "states", "workflows", "demo", "theme", "days", "motion", "layout", "pack"] as const;
+  rejectUnknownParameters(parameters, allowed);
+  const user = parseGitHubHandle(parameters.get("user"));
+  const demo = parseDemo(parameters.get("demo"));
+  const theme = parseTheme(parameters.get("theme"));
+  const days = parseActivityDays(parameters.get("days"));
+  const motion = parseStandaloneMotion(parameters.get("motion"));
+  const layout = parseAtlasLayout(parameters.get("layout"));
+  const pack = parseScenePack(parameters.get("pack"));
+  const rawRepos = parameters.get("repos");
+  if (rawRepos === null && (parameters.has("states") || parameters.has("workflows"))) {
+    throw new InputError("states and workflows require repos");
+  }
+  const repos = rawRepos === null ? [] : parseRepositoryNames(rawRepos);
+  const states = repos.length > 0 ? parseLifecycleMap(parameters.get("states"), repos) : new Map<string, ProjectLifecycle>();
+  const workflows = repos.length > 0 ? parseWorkflowMap(parameters.get("workflows"), repos) : new Map<string, ProjectWorkflow>();
+  const projects = repos.map((repository) => ({
+    repository,
+    lifecycle: states.get(repository.toLowerCase())!,
+    workflow: workflows.get(repository.toLowerCase()) ?? null,
+  }));
+  const canonicalEntries: [string, string][] = [["user", user]];
+  if (projects.length > 0) {
+    canonicalEntries.push(["repos", repos.join(",")]);
+    canonicalEntries.push(["states", projects.map(({ repository, lifecycle }) => `${repository}:${lifecycle}`).join(",")]);
+    const workflowValue = projects
+      .filter(({ workflow }) => workflow !== null)
+      .map(({ repository, workflow }) => `${repository}:${encodeWorkflowMapComponent(workflow!)}`)
+      .join(",");
+    if (workflowValue) canonicalEntries.push(["workflows", workflowValue]);
+  }
+  canonicalEntries.push(["demo", String(demo)]);
+  if (theme !== "aurora") canonicalEntries.push(["theme", theme]);
+  if (days !== 365) canonicalEntries.push(["days", String(days)]);
+  if (motion !== "none") canonicalEntries.push(["motion", motion]);
+  if (layout !== "wide") canonicalEntries.push(["layout", layout]);
+  if (pack !== "survey") canonicalEntries.push(["pack", pack]);
+  return { user, demo, theme, days, motion, layout, repos, states, workflows, projects, pack, canonical: canonicalQuery(canonicalEntries) };
+}
+
+export function parseScenePack(value: string | null): ScenePack {
+  if (value === null || value === "survey") return "survey";
+  if (value === "orbital" || value === "spectral" || value === "terminal") return value;
+  throw new InputError("pack must be orbital, survey, spectral, or terminal");
 }
 
 export function parseSvgProjectsQuery(parameters: URLSearchParams): SvgProjectsQuery {

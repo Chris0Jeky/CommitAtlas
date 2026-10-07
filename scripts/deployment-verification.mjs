@@ -237,6 +237,16 @@ export function createDeploymentChecks() {
       },
     },
     {
+      name: "synthetic /api/v1/scenes/evidence-coverage.svg renders a safe SVG",
+      async run(get) {
+        const response = await get("/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=true&theme=ember&motion=subtle");
+        assert(response.status === 200, `expected 200, got ${response.status}`);
+        const contentType = response.headers.get("content-type") ?? "";
+        assert(/image\/svg\+xml/.test(contentType), `expected an SVG content type, got "${contentType}"`);
+        assertSafeSvgMarkup(await response.text());
+      },
+    },
+    {
       name: "the fixed synthetic motion probe uses the production SVG response contract",
       async run(get) {
         const path = "/api/v1/probes/motion/css-enter.svg";

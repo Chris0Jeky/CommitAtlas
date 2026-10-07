@@ -7,6 +7,7 @@ import {
   parseMotion,
   parseStandaloneMotion,
   parseSvgAtlasQuery,
+  parseSvgSceneQuery,
   parseSvgActivityQuery,
   parseSvgLanguagesQuery,
   parseSvgProfileQuery,
@@ -97,6 +98,7 @@ test("accepts ambient and rejects cinematic across every hosted SVG query", () =
     { parse: parseSvgActivityQuery, base: "user=octocat&demo=true&theme=aurora&days=365" },
     { parse: parseSvgAtlasQuery, base: "user=octocat&demo=true&theme=aurora&days=365&layout=wide" },
     { parse: parseSvgProjectsQuery, base: "owner=octocat&repos=atlas&states=atlas:active&demo=true&theme=aurora" },
+    { parse: parseSvgSceneQuery, base: "user=octocat&demo=true" },
   ];
 
   for (const { parse, base } of routes) {

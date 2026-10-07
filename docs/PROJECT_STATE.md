@@ -34,6 +34,9 @@ next steps (ledger refresh, September-receipt test pin, harness clip fix). New:
 PRs #295–#298 added geometric/field primitives, static scene delivery and pure recovery
 record hardening. The #133 implementation adds opt-in `evidence-coverage`, including
 paired static/Action output, explicit provenance/coverage and neutral unavailable rows.
+The hosted route `/api/v1/scenes/<id>.svg` serves GitHub-snapshot families only
+(`instrument` and `map`); evidence-coverage is the first. Production deployment of
+that route is not part of this checkpoint.
 See [EVIDENCE_COVERAGE_SCENE.md](EVIDENCE_COVERAGE_SCENE.md) for its contract. The
 release/deployment checkpoint below is historical and is not updated by these source
 changes. #186 remains browser-evidence gated; #256 still requires production recovery
