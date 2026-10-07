@@ -69,6 +69,8 @@ test("sitemap.xml lists every indexable page and claims nothing it cannot observ
   assert.doesNotMatch(body, /<lastmod>|<changefreq>|<priority>/);
   // The dynamic render endpoints are not documents and must never be advertised as such.
   assert.doesNotMatch(body, /\/api\//);
+  // Scene URLs are parameterised renders, same as the card routes. They stay out of the sitemap.
+  assert.doesNotMatch(body, /\/api\/v1\/scenes\//);
 });
 
 test("no unescaped XML metacharacter can reach a sitemap location", async () => {

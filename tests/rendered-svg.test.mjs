@@ -414,6 +414,26 @@ test("renders empty languages and partial projects without inventing actions or 
   assert.doesNotMatch(projectsBody, /<a\b|Install|Download|Docs/);
 });
 
+test("serves the evidence-coverage scene through the built worker", async () => {
+  const response = await request("/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=true");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/svg+xml; charset=utf-8");
+  assert.match(response.headers.get("etag") ?? "", /^W\/"[a-f\d]{64}"$/);
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  assert.match(response.headers.get("content-security-policy") ?? "", /style-src 'none'/);
+  const body = await response.text();
+  assert.match(body, /<title>Evidence coverage<\/title>/);
+  assert.doesNotMatch(body, /<script|foreignObject/i);
+
+  const missing = await request("/api/v1/scenes/not-a-scene.svg?user=octocat&demo=true");
+  assert.equal(missing.status, 404);
+  assert.equal((await missing.json()).error.code, "github_not_found");
+
+  const cinematic = await request("/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=true&motion=cinematic");
+  assert.equal(cinematic.status, 400);
+  assert.equal((await cinematic.json()).error.code, "invalid_input");
+});
+
 async function withMockedFetch(fetchImpl, operation) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
