@@ -61,8 +61,8 @@ routes and their body-matching metadata.
 `tests/studio-scene-browser.mjs` is optional synthetic browser QA, outside `npm run check`.
 It consumes an exact-version Playwright driver from `PLAYWRIGHT_PREFIX` and an already
 installed Chrome at `CHROME_BIN`; it does not add a dependency or install browsers into
-the repository gate. It can run against the local development server or the fixed
-production origin, always with `demo=true`. The local mode proxies a synthetic HTTPS
+the repository gate. It runs against the loopback built-Worker adapter or the fixed
+production origin, always with `demo=true`. The built-Worker mode proxies a synthetic HTTPS
 origin so the real copy restriction is exercised, rather than disabled. Fault injection
 is confined to that browser's responses. The retained receipt names source commit,
 driver, observed browser version, image/view/error cases and actual keyboard traversal.

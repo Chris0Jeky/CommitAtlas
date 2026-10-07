@@ -10,6 +10,27 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [DEMO_GUIDE.md](./DEMO_GUIDE.md), and the complete evidence matrix is in
 [RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md).
 
+## Scene delivery checkpoint, 2026-10-07
+
+#333 completes the lifecycle map (#137): bounded declared rows, distinct CI words and
+geometry, independent partial signals, provenance/freshness and paired static/Action
+output. #334 adds the Studio scene-preview slice: all three accepted scenes,
+reversible global/per-image views, actual decoded-image approval and renderer-owned
+counters. Existing card previews and private-data collection are unchanged.
+
+Both exact-head gates and combined main `bb3c1d659ab703c83b7a15fbd731e1c3140aeb39`
+pass. A real built-Worker Chrome keyboard traversal reached 16/16 tool buttons in
+46 Tab presses; synthetic error, stale-attempt, unsupported-pack and desktop/mobile
+layout cases also passed. The corrected scene panels were visually inspected.
+
+[Retained verification and remaining acceptance](evidence/2026-10-07-scene-delivery.md)
+records exact source, CI, artifact hashes, deployment attempts and browser scope.
+Consult that dated receipt for production qualification; source/browser checks are
+not a blanket deployment or README/Camo verdict. #141 remains open for card-tool
+parity and actual README round-trip qualification. #113 and owner gates are unchanged.
+
+The checkpoints below remain historical, not claims about this newer source.
+
 ## Public checkpoint
 
 ### QA sweep and scene-merge window (2026-10-04)
