@@ -148,6 +148,21 @@ test("canonicalizes escaped workflow delimiters without semantic collisions", ()
   assert.equal(query.canonical, "owner=acme&repos=alpha&states=alpha%3Aactive&workflows=alpha%3Aci%252Crelease%253Anightly.yml&demo=true&theme=paper&motion=none");
 });
 
+test("omitted and survey packs share a canonical key and other packs stay distinct", () => {
+  const base = "user=octocat&demo=false";
+  const omitted = parseSvgSceneQuery(new URLSearchParams(base));
+  const survey = parseSvgSceneQuery(new URLSearchParams(`${base}&pack=survey`));
+  const orbital = parseSvgSceneQuery(new URLSearchParams(`${base}&pack=orbital`));
+  assert.equal(omitted.pack, "survey");
+  assert.equal(survey.pack, "survey");
+  assert.equal(orbital.pack, "orbital");
+  assert.equal(omitted.canonical, survey.canonical);
+  assert.equal(omitted.canonical.includes("pack="), false);
+  assert.equal(orbital.canonical.includes("pack=orbital"), true);
+  assert.notEqual(omitted.canonical, orbital.canonical);
+  assert.throws(() => parseSvgSceneQuery(new URLSearchParams(`${base}&pack=nope`)), /pack must be orbital, survey, spectral, or terminal/);
+});
+
 test("requires exact project inputs and rejects invalid workflow identities", () => {
   assert.throws(() => parseSvgProjectsQuery(new URLSearchParams("owner=acme&repos=alpha&states=alpha:active&workflows=other:ci.yml")), /requested repositories/);
   assert.throws(() => parseSvgProjectsQuery(new URLSearchParams("owner=acme&repos=alpha&states=alpha:active&workflows=alpha:ci.yml&workflows=alpha:docs.yml")), /duplicate/);

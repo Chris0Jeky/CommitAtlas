@@ -1,7 +1,8 @@
-/** Static survey-pack fragments. The scene owns its SVG root, description, and motion plan. */
+/** Static plate fragments. The scene owns its SVG root, description, and motion plan. */
 import { escapeXml, themes, truncateText } from "../index.js";
 import type { SvgTheme } from "../index.js";
-import type { RenderContext, SceneDefinition } from "../scene.js";
+import { scenePackGeometry } from "../packs.js";
+import type { RenderContext, SceneDefinition, ScenePack } from "../scene.js";
 
 export type PrimitiveContext = Pick<RenderContext, "theme"> & Partial<Pick<RenderContext, "pack" | "layout">>;
 export type EvidenceRung = "observed" | "derived" | "hypothesis";
@@ -33,6 +34,24 @@ function palette(context: PrimitiveContext): SvgTheme {
   if (context.layout !== undefined && context.layout !== "wide" && context.layout !== "compact") throw new Error("invalid primitive layout");
   return themes[context.theme];
 }
+function frameTheme(context: PrimitiveContext): SvgTheme {
+  if (!context || typeof context.theme !== "string" || !Object.hasOwn(themes, context.theme)) throw new Error("invalid primitive theme");
+  if (context.pack !== "orbital" && context.pack !== "survey" && context.pack !== "spectral" && context.pack !== "terminal") throw new Error("invalid primitive pack");
+  if (context.layout !== undefined && context.layout !== "wide" && context.layout !== "compact") throw new Error("invalid primitive layout");
+  return themes[context.theme];
+}
+function packMarks(pack: ScenePack, width: number, height: number, ink: string): string {
+  const geometry = scenePackGeometry(pack);
+  if (geometry.marker === "plate") return "";
+  const pitch = geometry.gridPitch;
+  let marks = "";
+  for (let x = pitch; x < width; x += pitch) marks += `<path d="M${x} 0V${height}" fill="none" stroke="${ink}"/>`;
+  for (let y = pitch; y < height; y += pitch) marks += `<path d="M0 ${y}H${width}" fill="none" stroke="${ink}"/>`;
+  if (geometry.marker === "ring") marks += `<circle cx="${pitch}" cy="${pitch}" r="14" fill="none" stroke="${ink}"/>`;
+  if (geometry.marker === "band") marks += `<rect x="${pitch}" y="${pitch * 2}" width="${pitch * 3}" height="4" fill="none" stroke="${ink}"/>`;
+  if (geometry.marker === "cell") marks += `<rect x="${pitch}" y="${pitch}" width="${pitch}" height="${pitch}" fill="none" stroke="${ink}"/>`;
+  return marks;
+}
 function boundedText(value: unknown): string {
   if (typeof value !== "string" || value.trim() === "" || value.length > 160) throw new Error("primitive text must contain 1 to 160 characters");
   return value;
@@ -56,15 +75,16 @@ function clipped(value: string, width: number, size: number): string {
 
 /** An opaque corner-cut plate, family stamp, reference, and optional frozen stale strip. */
 export function frame(context: PrimitiveContext, options: FrameOptions): string {
-  const theme = palette(context);
+  const theme = context.pack === undefined || context.pack === "survey" ? palette(context) : frameTheme(context);
   const title = boundedText(options.title), ref = boundedText(options.ref);
   if (typeof options.family !== "string" || !Object.hasOwn(FAMILY_LABELS, options.family)) throw new Error("invalid primitive family");
   if (options.stale !== undefined && typeof options.stale !== "boolean") throw new Error("invalid primitive stale state");
   const width = number(options.width ?? (context.layout === "compact" ? 480 : 720), 320, 1_600, "dimension");
   const height = number(options.height ?? 320, 140, 1_000, "dimension");
-  const path = `M0 0H${width - 18}L${width} 18V${height}H0Z`;
+  const corner = scenePackGeometry(context.pack ?? "survey").corner;
+  const path = `M0 0H${width - corner}L${width} ${corner}V${height}H0Z`;
   let output = `<g><title>${escapeXml(`${title} (${ref})`)}</title><path d="${path}" fill="${theme.background}"/>`;
-  output += `<path d="M1 1H${width - 19}L${width - 1} 19V${height - 1}H1Z" fill="none" stroke="${theme.border}"/>`;
+  output += `<path d="M1 1H${width - (corner + 1)}L${width - 1} ${corner + 1}V${height - 1}H1Z" fill="none" stroke="${theme.border}"/>`;
   output += text(20, 25, FAMILY_LABELS[options.family], theme.chrome);
   output += text(width - 20, 25, clipped(ref, width / 3, 10), theme.muted, 10, true, "end");
   output += text(20, 57, clipped(title, width - 40, 22), theme.text, 22, false);
@@ -74,6 +94,7 @@ export function frame(context: PrimitiveContext, options: FrameOptions): string 
     output += text(20, height - 16, "STALE", theme.muted, 10);
   }
   if (options.family === "signature") output += text(width - 20, height - 16, "not a productivity score", theme.muted, 10, true, "end");
+  output += packMarks(context.pack ?? "survey", width, height, theme.chrome);
   return `${output}</g>`;
 }
 

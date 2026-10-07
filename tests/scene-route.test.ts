@@ -47,5 +47,9 @@ test("rejects an unknown scene, cinematic motion, and an unknown pack", async ()
     const pack = await call("evidence-coverage", "user=octocat&demo=true&pack=nebula");
     assert.equal(pack.status, 400);
     assert.equal((await pack.json()).error.code, "invalid_input");
+
+    const nope = await call("evidence-coverage", "user=octocat&demo=true&pack=nope");
+    assert.equal(nope.status, 400);
+    assert.equal((await nope.json()).error.code, "invalid_input");
   });
 });

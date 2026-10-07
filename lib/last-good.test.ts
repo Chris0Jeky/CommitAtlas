@@ -345,6 +345,32 @@ test("synthetic, token-backed, method-mismatched, and cross-key requests never r
   assert.equal(store.values.size, writes);
 });
 
+test("survey and orbital scene packs do not share a last-good key", async () => {
+  const survey = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false&pack=survey");
+  const orbital = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false&pack=orbital");
+  assert.notEqual(await publicLastGoodKey(survey), await publicLastGoodKey(orbital));
+});
+
+test("an invalid scene pack stays a client error instead of a last-good image", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const nope = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false&pack=nope");
+  await withPublicLastGood(nope, async () => svgResponse(svgBody()), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  const rejected = await withPublicLastGood(
+    nope,
+    async () => new Response(JSON.stringify({ error: { code: "invalid_input" } }), {
+      status: 400,
+      headers: { "cache-control": "no-store", "content-type": "application/json; charset=utf-8" },
+    }),
+    runtime(store, [], LIVE_AT),
+  );
+  assert.equal(rejected.status, 400);
+  const body = await rejected.text();
+  assert.match(body, /invalid_input/);
+  assert.doesNotMatch(body, /<svg/u);
+});
+
 function runtime(
   store: LastGoodStore,
   pending: Promise<unknown>[],

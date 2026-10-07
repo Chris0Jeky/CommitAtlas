@@ -332,6 +332,10 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 A pack never introduces a colour that fails the chassis contrast floors for the active theme; the
 pack supplies geometry and motion defaults, the theme supplies ink. In particular, `spectral`
 gradient roles resolve through the active theme tokens; a pack cannot embed a literal palette.
+Shipped geometry is `packages/svg/src/packs.ts`: corner, grid pitch, and marker. The survey plate
+stays the existing corner-18 frame and does not paint its grid, so survey SVG stays byte-stable.
+Orbital, spectral, and terminal change that corner and paint a grid plus marker in the theme's
+chrome ink.
 
 ## 8. Cross-project projections
 
