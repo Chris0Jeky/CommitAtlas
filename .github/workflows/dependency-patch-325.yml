@@ -1,0 +1,82 @@
+name: Bounded dependency repair 325
+on:
+  push:
+    branches: [audit/dependency-paths-325-20261007]
+    paths: [.github/workflows/dependency-patch-325.yml]
+permissions:
+  contents: write
+concurrency:
+  group: dependency-repair-325
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/audit/dependency-paths-325-20261007'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Update only the two compatible vulnerable leaf packages
+        run: |
+          cp package-lock.json /tmp/audit-325-before.json
+          npm update fast-uri source-map-js --ignore-scripts --no-audit --no-fund
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const before=JSON.parse(fs.readFileSync('/tmp/audit-325-before.json','utf8'));
+          const after=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const allowed=new Map([['node_modules/fast-uri','3.1.8'],['node_modules/source-map-js','1.2.2']]);
+          for(const key of new Set([...Object.keys(before.packages),...Object.keys(after.packages)])) {
+            if(allowed.has(key)) { assert.equal(after.packages[key].version,allowed.get(key)); continue; }
+            assert.deepEqual(after.packages[key],before.packages[key],`Unexpected dependency change: ${key}`);
+          }
+          assert.deepEqual({...after,packages:null},{...before,packages:null});
+          console.log(JSON.stringify({updated:[...allowed].map(([path,version])=>({path,before:before.packages[path].version,after:version}))}));
+          JS
+          git diff --exit-code -- package.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:action
+      - run: node --test action/action.test.mjs action/evidence-output.test.mjs
+      - name: Retain post-repair audit reports
+        env:
+          SOURCE_HEAD: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {spawnSync} from 'node:child_process';
+          const directory='docs/evidence/dependency-audit-2026-10-07';
+          fs.mkdirSync(directory,{recursive:true});
+          const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+          const receipt={baselineCommit:'cea038bd45c0c1204874ca177e184aae22f1c0b4',repairSourceHead:process.env.SOURCE_HEAD,capturedAt:new Date().toISOString(),node:process.version,npm:spawnSync('npm',['--version'],{encoding:'utf8'}).stdout.trim(),beforeLockSha256:hash(fs.readFileSync('/tmp/audit-325-before.json')),afterLockSha256:hash(fs.readFileSync('package-lock.json')),scopes:{}};
+          for(const [scope,args] of [['full',[]],['production',['--omit=dev']]]) {
+            const result=spawnSync('npm',['audit','--json',...args],{encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});
+            if(result.error || result.signal || ![0,1].includes(result.status)) throw new Error(`Audit failed: ${scope}`);
+            const value=JSON.parse(result.stdout);
+            if(value.error || value.auditReportVersion!==2 || !value.metadata || !value.vulnerabilities) throw new Error(`Invalid audit result: ${scope}`);
+            fs.writeFileSync(`${directory}/${scope}.json`,result.stdout);
+            receipt.scopes[scope]={exitCode:result.status,sha256:hash(result.stdout),counts:value.metadata.vulnerabilities};
+          }
+          fs.writeFileSync(`${directory}/receipt.json`,JSON.stringify(receipt,null,2)+'\n');
+          console.log(JSON.stringify(receipt));
+          JS
+      - name: Publish only the allowed changes to this branch
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only -- . ':!package-lock.json' ':!action/dist')"
+          git diff --check
+          git add -- package-lock.json action/dist docs/evidence/dependency-audit-2026-10-07
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(deps): patch fast-uri and source-map-js with audit receipts'
+          remote_head=$(git ls-remote origin refs/heads/audit/dependency-paths-325-20261007 | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/audit/dependency-paths-325-20261007
+          git rev-parse HEAD
