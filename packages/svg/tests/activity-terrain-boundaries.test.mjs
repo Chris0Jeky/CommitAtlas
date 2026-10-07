@@ -12,7 +12,7 @@ function inputs(from = '2026-01-04', length = 14, count = 0) {
   const to = days.at(-1).date;
   const stamp = {...freshness, generatedAt: `${to}T23:59:59.999Z`};
   return {snapshot: {version: 1, freshness: {...stamp}, contributions: {days, freshness: {...stamp}, breakdownBasis: 'exact-counts'},
-    metrics: calculateContributionMetrics(days, {days: length, asOf: to}),
+    metrics: calculateContributionMetrics(days, {days: length, asOf: to, commits: length * count, issues: 0, pullRequests: 0, reviews: 0}),
     projects: {projects: [], freshness: {...stamp}}}};
 }
 function release(tag, publishedAt) {

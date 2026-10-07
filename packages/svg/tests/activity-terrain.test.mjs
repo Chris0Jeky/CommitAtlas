@@ -35,7 +35,7 @@ function inputs(overrides = {}) {
       freshness: { ...FRESHNESS },
       profile: { login: "scene-demo" },
       contributions: { days, freshness: { ...FRESHNESS } },
-      metrics: calculateContributionMetrics(days, { days: 14, asOf: TO }),
+      metrics: calculateContributionMetrics(days, { days: 14, asOf: TO, commits: days.reduce((sum, day) => sum + day.count, 0), issues: 0, pullRequests: 0, reviews: 0 }),
       projects: {
         freshness: { ...FRESHNESS },
         projects: [
@@ -80,7 +80,7 @@ test("activity-terrain passes the shared scene contract", () => {
   const ready = inputs();
   const changed = inputs();
   changed.snapshot.contributions.days[0].count = 8;
-  changed.snapshot.metrics = calculateContributionMetrics(changed.snapshot.contributions.days, { days: 14, asOf: TO });
+  changed.snapshot.metrics = calculateContributionMetrics(changed.snapshot.contributions.days, { days: 14, asOf: TO, commits: changed.snapshot.contributions.days.reduce((sum, day) => sum + day.count, 0), issues: 0, pullRequests: 0, reviews: 0 });
   assertSceneContract(scene(), {
     ready: {
       inputs: ready,
