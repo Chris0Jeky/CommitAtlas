@@ -131,3 +131,40 @@ test('inconsistent release absence never appears as confirmed none', () => {
   value.snapshot.projects.projects = [{...release('v-one', '2026-01-10T12:00:00Z'), releaseState: 'none'}];
   assert.equal(scene().buildModel(value).blocked, 1);
 });
+
+test('unavailable terrain fits the requested layout and preserves the full reason visibly', () => {
+  for (const theme of Object.keys(svg.themes)) for (const layout of ['wide', 'compact']) {
+    const value = inputs();
+    value.snapshot.contributions.freshness.mode = 'stale';
+    const result = render(value, {theme, layout, motion: 'ambient'});
+    const doc = parseSceneXml(result.svg);
+    const width = layout === 'compact' ? 480 : 720;
+    assert.equal(Number(doc.root.attrs.viewBox.split(' ')[2]), width);
+    assert.ok(painted(result).includes(scene().buildModel(value).reason));
+    const visit = node => {
+      if (node.name === 'text') {
+        const words = sceneVisibleText(node), x = Number(node.attrs.x), size = Number(node.attrs['font-size'] ?? 16);
+        const extent = words.length * size * 0.7, anchor = node.attrs['text-anchor'];
+        const right = anchor === 'end' ? x : anchor === 'middle' ? x + extent / 2 : x + extent;
+        const left = anchor === 'end' ? x - extent : anchor === 'middle' ? x - extent / 2 : x;
+        assert.ok(left >= 18 && right <= width - 18, `Unbounded unavailable line: ${words}`);
+      }
+      for (const child of node.children) visit(child);
+    };
+    visit(doc.root);
+    assert.equal(result.counters.animatedElements, 0);
+    assert.ok(result.svg.includes(svg.themes[theme].background));
+  }
+});
+test('right-edge release numbers leave room before their diamond marker', () => {
+  for (const layout of ['wide', 'compact']) {
+    const value = inputs();
+    value.snapshot.projects.projects = [release('v-last', '2026-01-17T12:00:00Z')];
+    const doc = parseSceneXml(render(value, {layout}).svg), width = layout === 'compact' ? 480 : 720;
+    const visit = node => {
+      if (node.name === 'text' && /^\d$/.test(sceneVisibleText(node))) assert.ok(Number(node.attrs.x) <= width - 48);
+      for (const child of node.children) visit(child);
+    };
+    visit(doc.root);
+  }
+});

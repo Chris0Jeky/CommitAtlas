@@ -185,7 +185,7 @@ function renderTerrain(model: TerrainModel, context: RenderContext, a: { title: 
     slots.set(peak.index, slot + 1);
     const y = plotY + plotHeight - 42 - slot * 18;
     output += `<path d="M${x} ${y - 5}l5 5 -5 5 -5 -5Z" fill="${theme.background}" stroke="${theme.chrome}"><title>${escapeXml(peak.label)}</title></path>`;
-    output += text(Math.min(x + 8, width - 40), y + 4, String(index + 1), theme.text, 10);
+    output += text(x > width - 56 ? x - 18 : x + 8, y + 4, String(index + 1), theme.text, 10);
   });
   const readings = [
     ['TOTAL', `${model.total} CONTRIBUTIONS`], ['PEAK WEEK', `${model.peak} CONTRIBUTIONS`],
@@ -212,11 +212,38 @@ function renderTerrain(model: TerrainModel, context: RenderContext, a: { title: 
   return output;
 }
 
+/** Preserve the engine-owned unavailable reason without overflowing a compact embed. */
+function renderUnavailable(state: SceneUnavailable, context: RenderContext, labels: Readonly<{ title: string; description: string }>): string {
+  const theme = themes[context.theme];
+  const width = context.layout === 'compact' ? 480 : 720;
+  const limit = context.layout === 'compact' ? 44 : 72;
+  const lines: string[] = [];
+  let line = '';
+  for (const word of state.reason.split(/\s+/u)) {
+    const chunks = [...word];
+    while (chunks.length > limit) {
+      if (line) { lines.push(line); line = ''; }
+      lines.push(chunks.splice(0, limit).join(''));
+    }
+    const rest = chunks.join('');
+    if (line && line.length + rest.length + 1 > limit) { lines.push(line); line = ''; }
+    if (rest) line += `${line ? ' ' : ''}${rest}`;
+  }
+  if (line) lines.push(line);
+  const height = Math.max(240, 190 + lines.length * 22);
+  return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(labels.title)}" viewBox="0 0 ${width} ${height}"><title>${escapeXml(labels.title)}</title><desc>${escapeXml(labels.description)}</desc>` +
+    frame(context, { title: 'Activity terrain', ref: 'TERRAIN / 01', family: 'map', width, height }) +
+    text(24, 112, 'UNAVAILABLE', theme.text, 18) +
+    lines.map((value, index) => text(24, 144 + index * 22, value, theme.muted, 12)).join('') +
+    text(24, height - 24, 'NO CURRENT ACTIVITY READING', theme.muted, 11) + '</svg>';
+}
+
 /** Complete public calendar, separate latest-release evidence, and explicit observation provenance. */
 export const activityTerrainScene: SceneDefinition<TerrainModel> = {
   id: 'activity-terrain', family: 'map', budget: 'map',
   supportedPacks: ['survey'], supportedMotion: ['none', 'subtle', 'ambient'],
   buildModel: ({ snapshot }: SceneInputs) => buildTerrain(snapshot),
   accessibility,
+  renderUnavailable,
   render: (model, context) => renderTerrain(model, context, accessibility(model)),
 };
