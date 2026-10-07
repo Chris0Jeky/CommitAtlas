@@ -71,6 +71,7 @@ A scene may later use evidence as a deterministic visual seed, but spectacle mus
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
 | Projects | Up to six curated projects with lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg`, `projects.json`, `projects.md` |
+| Evidence coverage | Calendar, activity-mix, CI, release, and collection-scope coverage for one public snapshot | `/api/v1/scenes/evidence-coverage.svg` |
 | Cadence | Contribution share by UTC weekday, window-scoped | static-only `cadence.svg` |
 | Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
 

@@ -8,6 +8,33 @@ import {
 
 const LIVE_AT = new Date("2026-08-27T20:00:00.000Z");
 
+test("two hosted scene ids never share a last-good key", async () => {
+  const coverage = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false&motion=none");
+  const terrain = new Request("https://example.test/api/v1/scenes/activity-terrain.svg?user=octocat&demo=false&motion=none");
+  assert.notEqual(await publicLastGoodKey(coverage), await publicLastGoodKey(terrain));
+});
+
+test("a public scene snapshot can be served stale with the same strip as a card", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const request = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false&motion=none");
+  const liveBody = svgBody("2026-08-27T19:58:00.000Z");
+  await withPublicLastGood(request, async () => svgResponse(liveBody), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  assert.equal(store.values.size, 1);
+
+  const stale = await withPublicLastGood(
+    request,
+    async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-08-27T21:00:00.000Z")),
+  );
+  assert.equal(stale.status, 200);
+  assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale");
+  const body = await stale.text();
+  assert.match(body, /STALE SNAPSHOT/);
+  assert.match(body, /<desc>[^<]*STALE SNAPSHOT/);
+});
+
 test("canonical keys ignore query order while isolating user, theme, and route", async () => {
   const first = new Request("https://example.test/api/v1/cards/profile.svg?theme=paper&user=octocat&demo=false&motion=none");
   const reordered = new Request("https://another-host.test/api/v1/cards/profile.svg?motion=none&demo=false&user=octocat&theme=paper");

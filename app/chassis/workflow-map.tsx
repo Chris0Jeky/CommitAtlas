@@ -31,7 +31,7 @@ export function WorkflowMap({ compact = false }: { compact?: boolean }) {
           <span className="workflow-step-number">02</span>
           <div>
             <h3>Take the hosted exit</h3>
-            <p>Use an eight-route SVG URL or copy the Studio&apos;s HTTPS Markdown after a validated preview.</p>
+            <p>Use a hosted SVG URL or copy the Studio&apos;s HTTPS Markdown after a validated preview.</p>
             <a href="/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=none">Open Atlas SVG example <span aria-hidden="true">↗</span></a>
           </div>
         </li>

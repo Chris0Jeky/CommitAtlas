@@ -35,6 +35,8 @@ const OPTIONAL_LOOKUP_UNAVAILABLE = Symbol("optional-lookup-unavailable");
 const MAX_RESPONSE_BYTES = 1_500_000;
 const REQUEST_DEADLINE_MS = 12_000;
 const PROJECT_CONCURRENCY = 2;
+const UTC_DAY_MS = 86_400_000;
+const CONTRIBUTION_QUERY_DAYS = 365;
 const GITHUB_TEXT_LIMITS = {
   profileLogin: 39,
   profileName: 200,
@@ -149,76 +151,105 @@ export class GitHubClient {
     const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
     from.setUTCDate(from.getUTCDate() - (requestedDays - 1));
 
-    const payload = await this.graphql(CONTRIBUTIONS_QUERY, {
-      login,
-      from: from.toISOString(),
-      to: to.toISOString(),
-    });
-    const user = nestedRecord(payload, "data", "user");
-    const collection = user && isRecord(user.contributionsCollection)
-      ? user.contributionsCollection
-      : null;
-    const calendar = collection && isRecord(collection.contributionCalendar)
-      ? collection.contributionCalendar
-      : null;
-    if (!collection || !calendar) {
-      throw new GitHubApiError("invalid_response", "GitHub returned no contribution calendar");
-    }
-    assertPublicContributionCollection(collection);
+    const allDays: ContributionDay[] = [];
+    const totals = {
+      totalCommitContributions: 0,
+      totalIssueContributions: 0,
+      totalPullRequestContributions: 0,
+      totalPullRequestReviewContributions: 0,
+    };
+    // GitHub rejects collections spanning more than one year. Bound each
+    // slice below 365 elapsed days, including leap years, with no overlapping
+    // instants or UTC dates. The same client retains its original deadline
+    // and cached public-only credential proof across at most three requests.
+    for (let start = from.getTime(); start <= to.getTime(); start += CONTRIBUTION_QUERY_DAYS * UTC_DAY_MS) {
+      const sliceFrom = new Date(start);
+      const sliceTo = new Date(Math.min(start + CONTRIBUTION_QUERY_DAYS * UTC_DAY_MS - 1, to.getTime()));
+      const payload = await this.graphql(CONTRIBUTIONS_QUERY, {
+        login,
+        from: sliceFrom.toISOString(),
+        to: sliceTo.toISOString(),
+      });
+      const user = nestedRecord(payload, "data", "user");
+      const collection = user && isRecord(user.contributionsCollection)
+        ? user.contributionsCollection
+        : null;
+      const calendar = collection && isRecord(collection.contributionCalendar)
+        ? collection.contributionCalendar
+        : null;
+      if (!collection || !calendar) {
+        throw new GitHubApiError("invalid_response", "GitHub returned no contribution calendar");
+      }
+      assertPublicContributionCollection(collection);
 
-    if (!Array.isArray(calendar.weeks) || calendar.weeks.some((week) => !isRecord(week))) {
-      throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
-    }
-    const weeks = calendar.weeks as Record<string, unknown>[];
-    const contributionDays: ContributionDay[] = [];
-    for (const week of weeks) {
-      if (!Array.isArray(week.contributionDays) || week.contributionDays.some((day) => !isRecord(day))) {
-        throw new GitHubApiError("invalid_response", "GitHub returned invalid contribution days");
+      if (!Array.isArray(calendar.weeks) || calendar.weeks.some((week) => !isRecord(week))) {
+        throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
       }
-      const weekDays = week.contributionDays as Record<string, unknown>[];
-      for (const day of weekDays) {
-        const date = textField(day, "date", GITHUB_TEXT_LIMITS.contributionDate);
-        if (!date) throw new GitHubApiError("invalid_response", "GitHub returned a contribution day without a date");
-        contributionDays.push({
-          date,
-          count: requiredMetric(day, "contributionCount"),
-          level: contributionLevel(day.contributionLevel),
-        });
+      const contributionDays: ContributionDay[] = [];
+      for (const week of calendar.weeks as Record<string, unknown>[]) {
+        if (!Array.isArray(week.contributionDays) || week.contributionDays.some((day) => !isRecord(day))) {
+          throw new GitHubApiError("invalid_response", "GitHub returned invalid contribution days");
+        }
+        for (const day of week.contributionDays as Record<string, unknown>[]) {
+          const date = textField(day, "date", GITHUB_TEXT_LIMITS.contributionDate);
+          if (!date) throw new GitHubApiError("invalid_response", "GitHub returned a contribution day without a date");
+          contributionDays.push({ date, count: requiredMetric(day, "contributionCount"), level: contributionLevel(day.contributionLevel) });
+        }
       }
+
+      let sliceDays: ContributionDay[] = [];
+      if (contributionDays.length > 0) {
+        try {
+          sliceDays = parseContributionCalendar({ version: 1, days: contributionDays }).days;
+        } catch {
+          throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
+        }
+      }
+      const first = sliceFrom.toISOString().slice(0, 10);
+      const last = sliceTo.toISOString().slice(0, 10);
+      if (sliceDays.some(({ date }) => date > last)) {
+        throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
+      }
+      sliceDays = sliceDays.filter(({ date }) => date >= first);
+      if (days !== "auto") {
+        const sliceLength = Math.floor((sliceTo.getTime() - start) / UTC_DAY_MS) + 1;
+        assertRequestedContributionWindow(sliceDays, sliceTo, sliceLength);
+      }
+      for (const key of Object.keys(totals) as (keyof typeof totals)[]) {
+        const value = requiredMetric(collection, key);
+        if (sliceDays.length === 0 && value !== 0) {
+          throw new GitHubApiError("invalid_response", "GitHub returned contribution counts without observed days");
+        }
+        const total = totals[key] + value;
+        if (!Number.isSafeInteger(total)) {
+          throw new GitHubApiError("invalid_response", `GitHub returned an unsafe combined ${key} metric`);
+        }
+        totals[key] = total;
+      }
+      allDays.push(...sliceDays);
     }
 
     let calendarDays: ContributionDay[];
     try {
-      calendarDays = parseContributionCalendar({ version: 1, days: contributionDays }).days;
+      calendarDays = parseContributionCalendar({ version: 1, days: allDays }).days;
     } catch {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid contribution calendar");
     }
-    const requestedFrom = from.toISOString().slice(0, 10);
-    const requestedTo = to.toISOString().slice(0, 10);
-    if (calendarDays.some(({ date }) => date > requestedTo)) {
-      throw new GitHubApiError("invalid_response", "GitHub returned a contribution day after the requested end date");
-    }
-    calendarDays = calendarDays.filter(({ date }) => date >= requestedFrom && date <= requestedTo);
-    if (days === "auto") {
-      calendarDays = trimContributionCalendar(calendarDays);
-    } else {
-      assertRequestedContributionWindow(calendarDays, to, requestedDays);
-    }
+    // Validate before trimming so inactive prefixes cannot hide missing days.
+    // Auto may have a shorter observed history, but not holes or a stale end.
+    assertRequestedContributionWindow(calendarDays, to, days === "auto" ? calendarDays.length : requestedDays);
+    if (days === "auto") calendarDays = trimContributionCalendar(calendarDays);
     return {
       version: 1,
       login,
       totalContributions: calendarDays.reduce((total, day) => total + day.count, 0),
-      commits: requiredMetric(collection, "totalCommitContributions"),
-      issues: requiredMetric(collection, "totalIssueContributions"),
-      pullRequests: requiredMetric(collection, "totalPullRequestContributions"),
-      reviews: requiredMetric(collection, "totalPullRequestReviewContributions"),
+      commits: totals.totalCommitContributions,
+      issues: totals.totalIssueContributions,
+      pullRequests: totals.totalPullRequestContributions,
+      reviews: totals.totalPullRequestReviewContributions,
       breakdownBasis: "exact-counts",
       days: calendarDays.map(({ date, count, level }) => ({ date, count, level })),
-      freshness: {
-        generatedAt: to.toISOString(),
-        source: "github-graphql",
-        mode: "live",
-      },
+      freshness: { generatedAt: to.toISOString(), source: "github-graphql", mode: "live" },
     };
   }
 

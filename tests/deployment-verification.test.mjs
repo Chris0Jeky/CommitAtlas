@@ -53,8 +53,8 @@ async function runMotion(sequence) {
   return { calls, delays, reports };
 }
 
-test("the ordered verifier surface has eighteen checks", () => {
-  assert.equal(createDeploymentChecks().length, 18);
+test("the ordered verifier surface has nineteen checks", () => {
+  assert.equal(createDeploymentChecks().length, 19);
 });
 
 test("retries an eligible 404 once, with the shared delay and report", async () => {
