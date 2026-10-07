@@ -25,13 +25,15 @@ jobs:
       - name: Reconcile the reviewed main snapshot
         env:
           EXPECTED_HEAD: ${{ github.sha }}
+          REVIEWED_MAIN: 8647e64ae8b9a514563ee31f45d67d1241bb95d3
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "${#REVIEWED_MAIN}" = 40
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch --no-tags origin 94e972b7b9a4cf5df79a4a8e7292052a9a68142
-          git merge --no-edit 94e972b7b9a4cf5df79a4a8e7292052a9a68142
+          git cat-file -e "$REVIEWED_MAIN^{commit}"
+          git merge --no-edit "$REVIEWED_MAIN"
           node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const p=JSON.parse(fs.readFileSync("package-lock.json","utf8")); assert.equal(p.packages["node_modules/@actions/http-client/node_modules/undici"].version,"6.29.0");'
       - run: npm ci
       - run: npm run build:action
@@ -50,4 +52,4 @@ jobs:
           remote_head=$(git ls-remote origin refs/heads/dependabot/npm_and_yarn/undici-6.29.0 | cut -f1)
           test "$remote_head" = "$EXPECTED_HEAD"
           git push origin HEAD:refs/heads/dependabot/npm_and_yarn/undici-6.29.0
-          printf 'Rebuilt from workflow source %s and reviewed main 94e972b7b9a4cf5df79a4a8e7292052a9a68142. Published head: %s\n' "$EXPECTED_HEAD" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Rebuilt from workflow source %s and reviewed main 8647e64ae8b9a514563ee31f45d67d1241bb95d3. Published head: %s\n' "$EXPECTED_HEAD" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
