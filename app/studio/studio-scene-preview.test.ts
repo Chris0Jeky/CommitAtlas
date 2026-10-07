@@ -59,3 +59,13 @@ test("only a loaded image for the current profile attempt can authorize copying"
   assert.equal(sceneReceiptMatches({ ...receipt, state: "unavailable" }, current, "/profile", "profile"), false);
   assert.equal(sceneReceiptMatches(undefined, current, "/profile", "profile"), false);
 });
+
+test("scene previews use the gallery's full-width class, not an undefined span", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { StudioScenePreview } = await import("./studio-scene-preview-image");
+  const html = renderToStaticMarkup(createElement(StudioScenePreview, {
+    id, title: "Evidence coverage", pack: "survey", url: "/profile", stillUrl: "/still", view: "profile", token: "attempt", onRendered() {},
+  }));
+  assert.match(html, /class="studio-card-preview span-full card-scene"/);
+});
