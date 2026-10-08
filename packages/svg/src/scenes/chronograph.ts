@@ -37,6 +37,10 @@ interface ChronographModel {
   readonly stale: boolean;
   readonly synthetic: boolean;
   readonly observed: boolean;
+  readonly source: string;
+  readonly observedAt: string;
+  readonly windowFrom: string;
+  readonly windowTo: string;
 }
 
 function num(value: number): string {
@@ -60,9 +64,12 @@ function utcDay(value: unknown): number | null {
   return timestamp;
 }
 function utcStamp(value: unknown): number | null {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u.test(value)) return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(value)) return null;
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : null;
+  const normalized = value.includes('.')
+    ? value.replace(/\.(\d+)Z$/u, (_, digits: string) => `.${digits.padEnd(3, '0')}Z`)
+    : value.replace(/Z$/u, '.000Z');
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === normalized ? timestamp : null;
 }
 function unavailable(): SceneUnavailable {
   return sceneUnavailable('Contribution calendar or streak is unavailable.');
@@ -79,29 +86,38 @@ function needleDegrees(current: number): number {
   return -90 + Math.min(current, NEEDLE_CAP) / NEEDLE_CAP * 180;
 }
 
-function disclosure(snapshot: PortfolioSnapshot): { readonly stale: boolean; readonly synthetic: boolean; readonly observed: boolean } {
-  const layers = [snapshot?.freshness, snapshot?.contributions?.freshness, snapshot?.projects?.freshness];
-  const rootMode = snapshot?.freshness?.mode;
-  const dayMode = snapshot?.contributions?.freshness?.mode;
-  const accepted = (mode: unknown) => mode === 'live' || mode === 'demo';
-  const stale = rootMode === 'stale' || dayMode === 'stale';
+interface FreshnessEvidence { readonly time: number; readonly source: string; readonly mode: string }
+function freshness(value: unknown): FreshnessEvidence | null {
+  if (!value || typeof value !== 'object') return null;
+  const fields = value as Record<string, unknown>;
+  const time = utcStamp(fields.generatedAt);
+  const sources: readonly unknown[] = ['github-rest', 'github-graphql', 'github-profile-html', 'synthetic-demo'];
+  const modes: readonly unknown[] = ['live', 'demo', 'partial', 'stale', 'unavailable'];
+  if (time === null || !sources.includes(fields.source) || !modes.includes(fields.mode)) return null;
+  if (fields.mode === 'demo' && fields.source !== 'synthetic-demo') return null;
+  return { time, source: fields.source as string, mode: fields.mode as string };
+}
+function disclosure(snapshot: PortfolioSnapshot) {
+  const root = freshness(snapshot?.freshness);
+  const days = freshness(snapshot?.contributions?.freshness);
+  if (!root || !days || root.mode === 'unavailable' || days.mode === 'unavailable' || days.mode === 'partial' ||
+    (root.source === 'synthetic-demo') !== (days.source === 'synthetic-demo')) return null;
+  const stale = root.mode === 'stale' || days.mode === 'stale';
   return {
-    stale,
-    synthetic: layers.some(value => value?.mode === 'demo' || value?.source === 'synthetic-demo'),
-    // Demo stays on the observed rung and is disclosed as synthetic. Any other mode is not observed.
-    observed: !stale && accepted(rootMode) && accepted(dayMode),
+    stale, synthetic: days.source === 'synthetic-demo', observed: !stale,
+    source: days.source, observedAt: new Date(days.time).toISOString(),
   };
 }
 
 function buildChronograph(snapshot: PortfolioSnapshot): ChronographModel | SceneUnavailable {
-  if (snapshot?.freshness?.mode === 'unavailable' || snapshot?.contributions?.freshness?.mode === 'unavailable') return unavailable();
-  if (snapshot?.contributions?.freshness?.mode === 'partial') return unavailable();
+  const evidence = disclosure(snapshot);
+  if (!evidence) return unavailable();
   const metrics = snapshot?.metrics;
   const from = utcDay(metrics?.window?.from);
   const to = utcDay(metrics?.window?.to);
   const span = metrics?.window?.days;
   if (from === null || to === null || typeof span !== 'number' || !Number.isInteger(span) || span < 1 || span > MAX_WINDOW_DAYS) return unavailable();
-  if ((to - from) / DAY + 1 !== span) return unavailable();
+  if ((to - from) / DAY + 1 !== span || to > Math.floor(Date.parse(evidence.observedAt) / DAY) * DAY) return unavailable();
   const streak = metrics?.streak;
   const current = streak?.current;
   const longest = streak?.longest;
@@ -148,28 +164,33 @@ function buildChronograph(snapshot: PortfolioSnapshot): ChronographModel | Scene
     current, longest, activeWeeks: [...weeks.values()].filter(sum => sum > 0).length, totalWeeks: maxWeek + 1,
     activeDays, observedDays: days.length, activeMonths: [...months.values()].filter(sum => sum > 0).length,
     observedMonths: months.size, needle: needleDegrees(current), open: boundary === 'open', ticks: FACE_TICKS,
-    releases: releases.marks, releasesBlocked: releases.blocked, ...disclosure(snapshot),
+    releases: releases.marks, releasesBlocked: releases.blocked, ...evidence,
+    windowFrom: metrics.window.from, windowTo: metrics.window.to,
   };
 }
 
 function readReleases(snapshot: PortfolioSnapshot, from: number, to: number): { readonly marks: ReleaseMark[]; readonly blocked: boolean } | null {
   const projects = snapshot?.projects;
   if (projects === null || projects === undefined) return { marks: [], blocked: false };
-  const boardBlocked = projects.freshness?.mode === 'unavailable';
+  const board = freshness(projects.freshness);
+  const root = freshness(snapshot.freshness);
+  if (!board || !root || board.mode === 'unavailable' || board.mode === 'stale' ||
+    (board.source === 'synthetic-demo') !== (root.source === 'synthetic-demo')) return { marks: [], blocked: true };
   const list = projects.projects;
-  if (!Array.isArray(list) || list.length > 6) return boardBlocked ? { marks: [], blocked: true } : null;
+  if (!Array.isArray(list) || list.length > 6) return { marks: [], blocked: true };
   const windowMs = to + DAY - from;
   const marks: ReleaseMark[] = [];
-  let blocked = boardBlocked;
+  let blocked = false;
   for (const project of list) {
     const state = project?.releaseState;
-    if (state !== 'published' && state !== 'none' && state !== 'unavailable') return null;
-    if (state === 'unavailable') blocked = true;
-    if (state !== 'published' || marks.length >= 12) continue;
+    if (state === 'none' && project.release === null) continue;
+    if (state !== 'published') { blocked = true; continue; }
     const published = utcStamp(project.release?.publishedAt);
-    if (published === null || published < from || published >= to + DAY) continue;
-    const tag = truncateText(xmlChars(typeof project.release?.tag === 'string' ? project.release.tag : ''), 40) || 'release';
-    marks.push({ tag, angle: (published - from) / windowMs * 360 - 90 });
+    const rawTag = project.release?.tag;
+    if (published === null || published > board.time || typeof rawTag !== 'string' ||
+      rawTag.length > 160 || !xmlChars(rawTag).trim()) { blocked = true; continue; }
+    if (published < from || published >= to + DAY) continue;
+    marks.push({ tag: truncateText(xmlChars(rawTag), 40), angle: (published - from) / windowMs * 360 - 90 });
   }
   return { marks, blocked };
 }
@@ -181,7 +202,7 @@ function accessibility(model: ChronographModel): { title: string; description: s
   const open = model.open ? ' Open boundary.' : '';
   return {
     title: 'Chronograph',
-    description: `${model.synthetic ? 'Synthetic preview. ' : ''}${streak}. LONGEST STREAK ${model.longest}. ACTIVE WEEKS ${model.activeWeeks}.${tags ? ` ${tags}.` : ''} Illuminated arcs show observed active-day, active-week, and active-month coverage. Release ticks mark published releases. The streak needle rests at -90 degrees when there is no current streak. Ring rotation is decorative.${open}${blocked}`,
+    description: `${model.synthetic ? 'Synthetic preview. ' : ''}${model.stale ? 'STALE SNAPSHOT. ' : ''}Source ${model.source}, observed ${model.observedAt}. Window ${model.windowFrom} to ${model.windowTo}. ${streak}. LONGEST STREAK ${model.longest}. ACTIVE WEEKS ${model.activeWeeks}.${tags ? ` ${tags}.` : ''} Illuminated arcs show observed active-day, active-week, and active-month coverage. Release ticks mark published releases, latest per configured project rather than full history. The streak needle rests at -90 degrees when there is no current streak. Ring rotation is decorative.${open}${blocked}`,
   };
 }
 
@@ -201,19 +222,19 @@ function arc(cx: number, cy: number, radius: number, coverage: number, ink: stri
 function renderChronograph(model: ChronographModel, context: RenderContext, text: { title: string; description: string }): string {
   const theme = themes[context.theme];
   const width = context.layout === 'compact' ? 480 : 720;
-  const height = 440;
+  const height = 480;
   const plotWidth = width - 48;
   const plotHeight = 250;
   const cx = plotWidth / 2;
   const cy = (plotHeight - 28) / 2 + 4;
   const radius = Math.min(plotWidth / 2, (plotHeight - 28) / 2) - 16;
   const applications: MotionApplication[] = [];
-  if (context.motion === 'ambient') {
+  if (context.motion === 'ambient' && !model.stale) {
     RING_TARGETS.forEach((target, index) => {
       applications.push({ primitive: 'rotate', target, decorative: true, loopGroup: RING_GROUPS[index], params: { cx, cy, durationMs: RING_PERIODS[index] } });
     });
   }
-  if (context.motion === 'subtle') {
+  if (context.motion === 'subtle' && !model.stale) {
     model.ticks.forEach((_, index) => {
       applications.push({ primitive: 'stagger', target: `tick${index}`, decorative: true, params: { index, staggerMs: 14 } });
     });
@@ -223,9 +244,11 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   const wrap = (target: string, body: string) => `<g id="${sceneElementId(context, target)}" class="${sceneClassName(context, target)}">${body}${binding(target)?.children ?? ''}</g>`;
   let output = `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(text.title)}" viewBox="0 0 ${width} ${height}"><title>${escapeXml(text.title)}</title><desc>${escapeXml(text.description)}</desc>${motion.style}`;
   output += frame(context, { title: 'Chronograph', ref: 'CHRONO / 03', family: 'map', width, height, stale: model.stale });
-  if (model.synthetic) output += plateText(24, 88, 'SYNTHETIC PREVIEW', theme.muted, 11);
-  if (model.stale) output += plateText(model.synthetic ? width - 24 : 24, 88, 'STALE SNAPSHOT', theme.muted, 11, model.synthetic ? 'end' : 'start');
-  output += `<g transform="translate(24 96)">`;
+  output += plateText(24, 88, `${model.synthetic ? 'SYNTHETIC PREVIEW' : 'PUBLIC GITHUB'} · ${model.source}`, theme.muted, 10);
+  output += plateText(24, 104, `Observed ${model.observedAt.replace('.000Z', 'Z')}`, theme.muted, 10);
+  output += plateText(24, 120, `Window ${model.windowFrom} to ${model.windowTo}`, theme.muted, 10);
+  if (model.stale) output += plateText(width - 24, 104, 'STALE SNAPSHOT', theme.muted, 10, 'end');
+  output += `<g transform="translate(24 134)">`;
   output += orbit(context, { width: plotWidth, height: plotHeight, rings: RING_FRACTIONS, bodies: [] });
   const coverages = [
     fraction(model.activeDays, model.observedDays),
@@ -245,29 +268,23 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   for (const mark of model.releases) {
     const [x, y] = polar(cx, cy, RING_FRACTIONS[2] * radius, mark.angle);
     output += `<circle cx="${num(x)}" cy="${num(y)}" r="4" fill="none" stroke="${theme.chrome}"/>`;
-    output += `<text x="${num(x + 8)}" y="${num(y - 6)}" fill="${theme.text}" font-family="${MONO}" font-size="9">${escapeXml(mark.tag)}</text>`;
+    output += `<text x="${num(x + 8)}" y="${num(y - 6)}" fill="${theme.text}" font-family="${MONO}" font-size="9">${escapeXml(truncateText(mark.tag, Math.max(1, Math.floor((width - x - 56) / 9))))}</text>`;
   }
   const needleLength = radius * 0.36;
-  output += `<g id="${sceneElementId(context, 'needle')}" transform="rotate(${num(model.needle)} ${num(cx)} ${num(cy)})"><line x1="${num(cx)}" y1="${num(cy)}" x2="${num(cx + needleLength)}" y2="${num(cy)}" stroke="${theme.text}" stroke-width="2"/></g>`;
+  output += `<g id="${sceneElementId(context, 'needle')}" transform="rotate(${num(model.needle)} ${num(cx)} ${num(cy)})"><line x1="${num(cx)}" y1="${num(cy)}" x2="${num(cx + needleLength)}" y2="${num(cy)}" stroke="${model.current === 0 ? theme.muted : theme.text}" stroke-width="2"/></g>`;
   output += `</g>`;
   const streak = model.current === 0 ? 'NO CURRENT STREAK' : `CURRENT STREAK ${model.current}`;
-  output += `<text x="24" y="${height - 52}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(streak)}</text>`;
-  output += `<text x="24" y="${height - 36}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(`LONGEST STREAK ${model.longest}`)}</text>`;
-  output += `<text x="24" y="${height - 20}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(`ACTIVE WEEKS ${model.activeWeeks}`)}</text>`;
+  output += `<text x="24" y="${height - 84}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(streak)}</text>`;
+  output += `<text x="24" y="${height - 68}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(`LONGEST STREAK ${model.longest}`)}</text>`;
+  output += `<text x="24" y="${height - 52}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(`ACTIVE WEEKS ${model.activeWeeks}`)}</text>`;
   if (model.releasesBlocked) {
     const label = 'RELEASE SIGNAL BLOCKED';
     const badgeWidth = Math.min(320, Math.max(64, [...label].length * 11 + 24));
-    const evidenceLeft = width - 160;
-    const footerClear = 220;
-    let badgeX = evidenceLeft - 12 - badgeWidth;
-    let badgeY = height - 58;
-    if (badgeX < footerClear) {
-      badgeX = width - 24 - badgeWidth;
-      badgeY = 352;
-    }
+    const badgeX = width - 24 - badgeWidth;
+    const badgeY = height - 110;
     output += badge(context, { label, x: badgeX, y: badgeY });
   }
-  if (model.observed) output += evidenceLabel(context, 'observed', { x: width - 160, y: height - 48 });
+  if (model.observed) output += evidenceLabel(context, 'observed', { x: width - 160, y: height - 80 });
   return `${output}</svg>`;
 }
 

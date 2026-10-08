@@ -201,6 +201,7 @@ test('an unavailable project release blocks the signal while published marks rem
 
 test('a release on the final day plots before the seam and the next midnight draws no tick', () => {
   const value = inputs();
+  value.snapshot.projects.freshness.generatedAt = '2026-01-14T23:59:59.999Z';
   value.snapshot.projects.projects = [release('v-noon', '2026-01-14T12:00:00Z'), release('v-after', '2026-01-15T00:00:00Z')];
   const model = definition().buildModel(value);
   const mark = model.releases.find(item => item.tag === 'v-noon');
@@ -258,7 +259,7 @@ test('an unknown freshness mode is not labelled observed', () => {
   value.snapshot.contributions.freshness.source = 'github-graphql';
   value.snapshot.projects.freshness.source = 'github-rest';
   const result = render(value);
-  assert.equal(result.unavailable, false);
+  assert.equal(result.unavailable, true);
   assert.doesNotMatch(result.svg, />OBSERVED</u);
   assert.doesNotMatch(result.svg, /SYNTHETIC PREVIEW/u);
 });
@@ -273,4 +274,87 @@ test('compact blocked badge stays inside the viewBox on both layouts', () => {
     assert.equal(Number(result.svg.match(/viewBox="0 0 (\d+) /u)[1]), width);
     assertInside(result.svg, width);
   }
+});
+
+for (const layer of ['root', 'contributions']) {
+  for (const [label, field, value] of [
+    ['unknown source', 'source', 'unverified'], ['missing source', 'source', undefined],
+    ['unknown mode', 'mode', 'cached'], ['missing mode', 'mode', undefined],
+    ['invalid timestamp', 'generatedAt', '2026-02-30T00:00:00Z'],
+    ['missing timestamp', 'generatedAt', undefined],
+  ]) test(`chronograph rejects ${layer} ${label}`, () => {
+    const valueIn = inputs();
+    const freshness = layer === 'root' ? valueIn.snapshot.freshness : valueIn.snapshot.contributions.freshness;
+    if (value === undefined) delete freshness[field];
+    else freshness[field] = value;
+    assert.equal(render(valueIn).unavailable, true);
+  });
+}
+
+for (const mode of ['stale', 'unavailable']) test(`${mode} project board cannot authorize release ticks`, () => {
+  const value = inputs(); value.snapshot.projects.freshness.mode = mode;
+  const result = definition().buildModel(value);
+  assert.deepEqual(result.releases, []);
+  assert.equal(result.releasesBlocked, true);
+});
+
+for (const [label, change] of [
+  ['impossible date', p => { p.release.publishedAt = '2026-02-30T00:00:00Z'; }],
+  ['future publication', p => { p.release.publishedAt = '2026-01-14T00:00:00.001Z'; }],
+  ['empty tag', p => { p.release.tag = ''; }],
+  ['contradictory none', p => { p.releaseState = 'none'; }],
+]) test(`invalid release ${label} stays blocked rather than absent or published`, () => {
+  const value = inputs(); change(value.snapshot.projects.projects[0]);
+  const result = definition().buildModel(value);
+  assert.deepEqual(result.releases, []); assert.equal(result.releasesBlocked, true);
+});
+
+test('chronograph does not animate stale observations in either backend', () => {
+  for (const backend of ['css', 'smil']) {
+    const value = inputs(); value.snapshot.contributions.freshness.mode = 'stale';
+    const result = render(value, { motion: 'ambient', backend });
+    assert.equal(result.unavailable, false);
+    assert.equal(result.counters.animatedElements, 0);
+    assert.equal(result.counters.loopingGroups, 0);
+    assert.match(parseSceneXml(result.svg).nodes.find(n => n.name === 'desc').raw, /STALE/i);
+  }
+});
+
+test('zero-streak needle uses neutral ink instead of the lit reading ink', () => {
+  const value = inputs(); value.snapshot.metrics.streak.current = 0;
+  for (const theme of Object.keys(svg.themes)) {
+    const document = parseSceneXml(render(value, { theme }).svg);
+    const needle = document.nodes.find(node => node.name === 'g' && node.attrs.id?.endsWith('-needle'));
+    assert.ok(needle);
+    assert.equal(needle.children.find(node => node.name === 'line').attrs.stroke, svg.themes[theme].muted);
+  }
+});
+
+test('source timestamp and declared calendar bounds are painted beside the chronograph', () => {
+  for (const layout of ['wide', 'compact']) {
+    const output = render(inputs(), { layout }).svg;
+    const text = parseSceneXml(output).nodes.filter(node => node.name === 'text').map(sceneXmlText).join('\n');
+    for (const reading of ['synthetic-demo', '2026-01-14T00:00:00Z', FROM, TO]) assert.ok(text.includes(reading), reading);
+    assertInside(output, layout === 'compact' ? 480 : 720);
+  }
+});
+
+test('long release tags stay within the compact frame at every rim position', () => {
+  for (const date of ['2026-01-01', '2026-01-04', '2026-01-08', '2026-01-11', '2026-01-14']) {
+    const value = inputs(); value.snapshot.projects.projects = [release('W'.repeat(40), `${date}T00:00:00Z`)];
+    assertInside(render(value, { layout: 'compact' }).svg, 480);
+  }
+});
+
+test('a claimed window after the contribution observation date stays unavailable', () => {
+  const value = inputs();
+  value.snapshot.contributions.freshness.generatedAt = '2026-01-13T23:59:59.999Z';
+  assert.equal(render(value).unavailable, true);
+});
+
+test('mixed public and synthetic provenance cannot authorize a chronograph', () => {
+  const value = inputs();
+  value.snapshot.contributions.freshness.source = 'github-graphql';
+  value.snapshot.contributions.freshness.mode = 'live';
+  assert.equal(render(value).unavailable, true);
 });
