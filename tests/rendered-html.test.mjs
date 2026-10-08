@@ -63,7 +63,7 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
   assert.match(html, /From evidence to embed/);
-  assert.match(html, /eight-route SVG URL/);
+  assert.match(html, /hosted SVG URL/);
   assert.match(html, /static CLI or pinned Action/);
   assert.match(html, /byte\/SHA-256 manifest/);
   assert.match(html, /Cadence<\/em> and <em>Releases<\/em>, which are static-only/);
@@ -300,6 +300,16 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /2<!-- --> preview<!-- -->s/);
   assert.match(html, /Copy stays disabled until Preview validates this exact configuration/);
   assert.match(html, /<button type="button" disabled="">Copy Markdown<\/button>/);
+  assert.match(html, /<legend>Scene pack<\/legend>/);
+  assert.match(html, /<button type="button"[^>]*>Profile view<\/button>/);
+  for (const scene of ["Activity terrain", "Evidence coverage", "Lifecycle map"]) assert.ok(html.includes(scene));
+  for (const pack of ["Survey", "Orbital", "Spectral", "Terminal"]) assert.match(html, new RegExp(`<strong>${pack}</strong>`));
+  assert.match(html, /Scenes to show &amp; copy/);
+  assert.match(html, /<span>Evidence coverage<\/span>/);
+  assert.match(html, /<legend>Preview tools<\/legend>/);
+  assert.match(html, /<button type="button"[^>]*>Replay<\/button>/);
+  assert.match(html, /<button type="button"[^>]*>Reduced-motion view<\/button>/);
+  assert.match(html, /<button type="button"[^>]*>Frame zero<\/button>/);
   assert.doesNotMatch(html, /your-commitatlas-host\.example/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%|Building in public, one useful commit/);
 });

@@ -1,4 +1,5 @@
-import { svgResponse, apiErrorResponse, canonicalSvgRedirect, optionsResponse } from "@/lib/http";
+import { cardSvgResponse } from "@/lib/card-response";
+import { apiErrorResponse, canonicalSvgRedirect, optionsResponse } from "@/lib/http";
 import { fetchPortfolioSnapshot, toAtlasCard } from "@/lib/portfolio";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { parseSvgAtlasQuery } from "@/lib/svg-routes";
@@ -29,11 +30,11 @@ export async function GET(request: Request): Promise<Response> {
       title: `${query.user} · CommitAtlas developer atlas`,
       description: "Public GitHub contribution rhythm, density, collaboration mix, languages, and configured project health.",
     });
-    return svgResponse(request, body, {
+    return await cardSvgResponse(request, body, {
       edgeSeconds: 300,
       publicData,
       inlineStyles: motionRenderMetadata(query.motion).inlineStyles,
-    });
+    }, "atlas", snapshot.freshness.mode);
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -1,0 +1,35 @@
+{
+  "baselineCommit": "cea038bd45c0c1204874ca177e184aae22f1c0b4",
+  "repairSourceHead": "3221d0493949222f078958361f78ca530213c87e",
+  "capturedAt": "2026-10-07T02:35:14.363Z",
+  "node": "v22.13.0",
+  "npm": "10.9.2",
+  "beforeLockSha256": "d771736df10cb8893f7752632e8e6be3ad973100a7e01d77ff889e0715d4c86c",
+  "afterLockSha256": "e5599cfa952643d8c073ba35d7585a517fc64267bfe4785d904ce54d3cf2074e",
+  "scopes": {
+    "full": {
+      "exitCode": 1,
+      "sha256": "b1eb01d484440d687d37ee87e2be2fa3d723698ebb9316bd9f30f056c089c990",
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 3,
+        "high": 11,
+        "critical": 0,
+        "total": 14
+      }
+    },
+    "production": {
+      "exitCode": 0,
+      "sha256": "111cee326baead8e46cb059f092225c54df057609624dd1cd5f68f34b3e0c2f7",
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  }
+}

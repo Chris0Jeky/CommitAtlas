@@ -1,3 +1,5 @@
+import { lifecycleMapScene } from "./scenes/lifecycle-map.js";
+import { activityTerrainScene } from "./scenes/activity-terrain.js";
 import { chronographScene } from "./scenes/chronograph.js";
 import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
@@ -142,6 +144,10 @@ function loadBuiltins(): void {
   if (builtinsLoaded) return;
   const coverage = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
   registry.set(coverage.id, coverage);
+  const terrain = definitionSnapshot(activityTerrainScene) as SceneDefinition<unknown>;
+  registry.set(terrain.id, terrain);
+  const lifecycle = definitionSnapshot(lifecycleMapScene) as SceneDefinition<unknown>;
+  registry.set(lifecycle.id, lifecycle);
   const chronograph = definitionSnapshot(chronographScene) as SceneDefinition<unknown>;
   registry.set(chronograph.id, chronograph);
   builtinsLoaded = true;

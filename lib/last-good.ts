@@ -133,10 +133,13 @@ export async function publicLastGoodKey(request: Request): Promise<string> {
   return `public-last-good:v1:${hash}`;
 }
 
+const SCENE_PATH = /^\/api\/v1\/scenes\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.svg$/u;
+
 function isEligiblePublicRequest(request: Request): boolean {
   if (request.method !== "GET") return false;
   const url = new URL(request.url);
-  return ELIGIBLE_PATHS.has(url.pathname) && url.searchParams.get("demo") !== "true";
+  const hostedScene = SCENE_PATH.test(url.pathname);
+  return (ELIGIBLE_PATHS.has(url.pathname) || hostedScene) && url.searchParams.get("demo") !== "true";
 }
 
 function isValidatedSuccess(response: Response, request: Request): boolean {

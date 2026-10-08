@@ -15,6 +15,7 @@ import type {
   ProjectBoardData,
   ProjectSignal,
   RhythmCardData,
+  SceneInputs,
   StreakCardData,
 } from "@/packages/svg/src/index";
 import { toSvgCiState, toSvgLifecycle } from "./github/adapters";
@@ -23,6 +24,7 @@ import type {
   ContributionSnapshot,
   Freshness,
   ProfileSnapshot,
+  PortfolioSnapshot,
   ProjectBoardSnapshot,
   ProjectSnapshot,
 } from "./github/types";
@@ -186,6 +188,11 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
       percentage: language.share,
     })),
   };
+}
+
+/** Hosted scenes receive the public snapshot only. Identity and lens stay off this path. */
+export function toSceneInputs(snapshot: PortfolioSnapshot): SceneInputs {
+  return { snapshot };
 }
 
 export function toProjectBoard(snapshot: ProjectBoardSnapshot): ProjectBoardData {

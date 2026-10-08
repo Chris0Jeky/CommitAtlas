@@ -24,7 +24,7 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
 
   return (
     <section className="section shell" id="cards" aria-labelledby="cards-title">
-      <p className="numeral">02 // Specimen tray · 8 live SVG routes</p>
+      <p className="numeral">02 // Specimen tray · 8 card routes</p>
       <div className="section-head">
         <h2 id="cards-title">See the whole toolkit.</h2>
         <p className="section-aside">
