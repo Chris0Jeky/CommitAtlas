@@ -161,6 +161,7 @@ all animation and the result is a complete page, not a degraded one.
 | M7 | Acquisition failure | needle hunts, stutters, falls back to −90°; the lamp never lights and the plate reads NO SIGNAL from frame zero |
 | M8 | Evidence drawer | up 12px and settle, 260ms, `cubic-bezier(.2,.9,.3,1)`; ESC or click outside closes |
 | M9 | Survey parallax | the grid drifts at 0.85× scroll via a scroll-driven CSS timeline, off below 768px. Browsers without `scroll()` timelines get a static grid, which is the reduced-motion state anyway. (`globals.css` heads its motion block "M1…M9"; this is the ninth) |
+| M10 | Star twinkle | decorative opacity 1 → 0.35 → 1 over 7s, scene family only. The animated wrapper holds marks and never a text node. Nebula uses one group so a year of stars stays inside the 96-element scene budget |
 
 The card renderer now shares the four-profile vocabulary `none | subtle | ambient | cinematic`.
 Hosted URLs and the Studio expose `none | subtle | ambient`; static/package callers may also select
