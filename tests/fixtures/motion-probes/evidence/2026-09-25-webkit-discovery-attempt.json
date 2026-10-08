@@ -1,0 +1,36 @@
+{
+  "kind": "bounded-webkit-diagnostic-attempt",
+  "date": "2026-09-25",
+  "status": "blocked-before-capture",
+  "sourceCommit": "132c1b6628a01feddfee399bd660501652050ae1",
+  "executionCommit": "43d74a70d66818ddf83dbee9ae9b8b7095251fdc",
+  "sourceChange": "The execution commit added only a temporary read-only diagnostic workflow; capture source was unchanged.",
+  "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/36166164666",
+  "artifactId": 10877172503,
+  "artifactSha256": "10cdc68e60cd1970b74b39727f8cff5288f51dd0d9e617130d5386d33ad3c502",
+  "reportSha256": "d6d076e56e537110da666e17ab805a78e290e095832e33f80cedf3f4d012278f",
+  "captureLogSha256": "29ccee09f8d43ed7b1423137cbff554e5ba5483757f529b854d38117eb31e03f",
+  "artifactExpiresAt": "2026-10-09T17:18:04Z",
+  "environment": {
+    "runnerLabel": "ubuntu-latest",
+    "node": "v22.13.0",
+    "playwrightPinnedVersion": "1.57.0",
+    "engine": "webkit",
+    "observedBrowserVersion": null,
+    "limitation": "The harness failed during discovery before it persisted any browser-version-bearing discovery row."
+  },
+  "scratchCommit": "039a0370b1a52fb6135e4414e04a11bff7ba21d0",
+  "plannedRows": 7,
+  "acceptedDiscoveries": 0,
+  "completedRows": 0,
+  "failure": "img[alt=\"css-enter\"] rendered width must be positive and bounded (observed 0, limit 720)",
+  "phase": "discoverTargets/readRowMetadata/validateTargetMetadata",
+  "attemptsInThisLoop": 1,
+  "retryPerformed": false,
+  "claimsNotEstablished": [
+    "No load-anchored screenshot sequence or WebM was completed.",
+    "No raw or Camo motion verdict was accepted.",
+    "The viewport clipping and timed-node guard remain unexercised by this attempt."
+  ],
+  "nextAction": "Reconcile the parked branch with current main, then inspect the selected image and ancestor visibility/layout during discovery. Preserve the positive bounded-dimension and identity guards. A new capture attempt requires a diagnosed, regression-tested cause; do not substitute retries or the broad matrix."
+}
