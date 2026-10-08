@@ -36,6 +36,9 @@ export function staticSceneOptions(config: Pick<StaticConfig, "scenes" | "sceneP
     seen.add(id);
     const definition = getScene(id);
     if (!definition) throw new Error(`unknown static scene: ${id}`);
+    if (id === "identity-beacon" && config.identity === undefined) {
+      throw new Error("identity-beacon requires a static identity; a beacon without an identity is not rendered");
+    }
     if (!definition.supportedPacks.includes(pack)) throw new Error(`unsupported static scene pack: ${id}`);
     if (!definition.supportedMotion.includes(config.motion)) throw new Error(`unsupported static scene motion: ${id}`);
     definitions.push(definition);
