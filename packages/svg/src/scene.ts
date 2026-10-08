@@ -1,5 +1,6 @@
 import { lifecycleMapScene } from "./scenes/lifecycle-map.js";
 import { activityTerrainScene } from "./scenes/activity-terrain.js";
+import { chronographScene } from "./scenes/chronograph.js";
 import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import { identityBeaconScene } from "./scenes/identity-beacon.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
@@ -150,6 +151,8 @@ function loadBuiltins(): void {
   registry.set(lifecycle.id, lifecycle);
   const beacon = definitionSnapshot(identityBeaconScene) as SceneDefinition<unknown>;
   registry.set(beacon.id, beacon);
+  const chronograph = definitionSnapshot(chronographScene) as SceneDefinition<unknown>;
+  registry.set(chronograph.id, chronograph);
   builtinsLoaded = true;
 }
 export function registerScene<Model>(definition: SceneDefinition<Model>): void {
