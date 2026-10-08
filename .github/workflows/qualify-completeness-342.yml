@@ -1,0 +1,88 @@
+name: Temporary completeness qualification
+on:
+  push:
+    branches: [fix/chronograph-completeness-342]
+    paths: [.github/workflows/qualify-completeness-342.yml]
+permissions:
+  contents: write
+jobs:
+  qualify:
+    if: github.repository == 'Chris0Jeky/CommitAtlas' && github.ref == 'refs/heads/fix/chronograph-completeness-342'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Install the exact regression text before modifying the renderer
+        run: |
+          mkdir -p /tmp/completeness-342
+          python3 <<'PY'
+          import pathlib,hashlib
+          def blob(b): return hashlib.sha1(f'blob {len(b)}\0'.encode()+b).hexdigest()
+          p=pathlib.Path('packages/svg/tests/chronograph.test.mjs')
+          before=p.read_bytes()
+          assert blob(before)=='1f6e1a07b26a5f0bd8d69ac95ff78a312de03a98'
+          after=before+pathlib.Path('.chronograph-completeness-tests.txt').read_bytes()
+          assert blob(after)=='a6c4199f877ceec53dfbcfc7dcafee98ec36e1b7'
+          p.write_bytes(after)
+          PY
+      - run: npm ci
+      - run: npm run build --prefix packages/svg
+      - name: Require the observed seven failures against the prior source
+        run: |
+          set +e
+          node --test --test-concurrency=2 packages/svg/tests/chronograph.test.mjs > /tmp/completeness-342/red.log 2>&1
+          status=$?
+          set -e
+          test "$status" = 1
+          grep -q '# fail 7' /tmp/completeness-342/red.log
+          grep -q '# pass 37' /tmp/completeness-342/red.log
+      - name: Apply the single evidence-boundary guard
+        run: |
+          python3 <<'PY'
+          import pathlib,hashlib
+          def blob(b): return hashlib.sha1(f'blob {len(b)}\0'.encode()+b).hexdigest()
+          p=pathlib.Path('packages/svg/src/scenes/chronograph.ts')
+          original=p.read_bytes()
+          assert blob(original)=='286638a49dec8ccf6a9bc7336c041f3239878a20'
+          anchor='  if ((to - from) / DAY + 1 !== span || to > Math.floor(Date.parse(evidence.observedAt) / DAY) * DAY) return unavailable();'
+          text=original.decode('utf-8')
+          assert text.count(anchor)==1
+          result=text.replace(anchor,anchor+'\n  if (metrics.window.complete !== true || metrics.window.observedDays !== span) return unavailable();').encode('utf-8')
+          assert blob(result)=='17d1cacaa4141e0c833901356aab1be56770060a'
+          p.write_bytes(result)
+          PY
+      - run: npm run build:action
+      - name: Require green focused tests and remove temporary qualification source
+        run: |
+          node --test --test-concurrency=2 packages/svg/tests/chronograph.test.mjs > /tmp/completeness-342/green.log 2>&1
+          grep -q '# fail 0' /tmp/completeness-342/green.log
+          grep -q '# pass 44' /tmp/completeness-342/green.log
+          git add -- packages/svg/src/scenes/chronograph.ts packages/svg/tests/chronograph.test.mjs action/dist
+          git rm -- .chronograph-completeness-tests.txt .github/workflows/qualify-completeness-342.yml
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(svg): honor explicit chronograph window completeness'
+      - run: npm run check > /tmp/completeness-342/check.log 2>&1
+      - name: Publish only the qualified clean source with a head lease
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          test "$(git ls-remote origin refs/heads/fix/chronograph-completeness-342 | cut -f1)" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/fix/chronograph-completeness-342
+          git rev-parse HEAD > /tmp/completeness-342/source.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: chronograph-completeness-342
+          path: /tmp/completeness-342/
+          if-no-files-found: warn
+          retention-days: 3
