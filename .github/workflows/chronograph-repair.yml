@@ -25,6 +25,19 @@ jobs:
           python3 <<'PY'
           import base64,gzip,hashlib,pathlib,subprocess
           encoded=pathlib.Path('.chronograph-repair.b64').read_text()
+          # Downloaded failed transport was compared with the locally tested patch.
+          # The original exact compressed digest remains the acceptance gate.
+          for old,new in [
+            ('2c2205ntl7MYUCB4c','2c2205nt7MYUCB4c'),
+            ('IriopEt6IUW6TCEllB','IriopEt6gW6TCEllB'),
+            ('bcYXdRaVIEd2BmHmF','bcYXdRaVEd2BmHmF'),
+            ('Ch7bZY1cCalFHQaD','Ch7bZY1cVCalFHQaD'),
+            ('7JjfuncYcKWgAVdEw','7JjfuncYKWgAVdEw'),
+            ('nyi67ijYF14qGfWl','nyi67ijYjF14qGfWl'),
+            ('GOTb6K6zDTRM18M1kx','GOTb6K6zXRM18M1kx')
+          ]:
+            assert encoded.count(old)==1
+            encoded=encoded.replace(old,new,1)
           packed=base64.b64decode(encoded,validate=True)
           assert hashlib.sha256(packed).hexdigest()=='5acc0a862dafc736d01abdd141d08d5ce863df29eed51b376cedf88f00ee3921'
           patch=gzip.decompress(packed)
