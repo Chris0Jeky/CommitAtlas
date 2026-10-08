@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as svg from '../dist/index.js';
+import { parseSceneXml, sceneXmlText } from '../dist/scene-svg.js';
 import { assertSceneContract, stripSceneMotion } from './scene-harness.mjs';
 import { sceneContext } from './scene.fixture.mjs';
 
@@ -121,5 +122,155 @@ test('four themes and both layouts keep the readings', () => {
     assert.match(result.svg, /ACTIVE WEEKS 2/u);
     assert.ok(result.svg.includes(svg.themes[theme].chrome));
     assert.match(result.svg, />OBSERVED</u);
+  }
+});
+
+function assertInside(markup, width) {
+  const visit = (node, originX) => {
+    let x = originX;
+    const translated = /translate\(([-\d.]+) [-\d.]+\)/u.exec(node.attrs.transform ?? '');
+    if (translated) x += Number(translated[1]);
+    if (node.name === 'rect') {
+      const left = x + Number(node.attrs.x ?? 0);
+      const right = left + Number(node.attrs.width ?? 0);
+      assert.ok(left >= -0.5 && right <= width + 0.5, `rect ${left}..${right}`);
+    }
+    if (node.name === 'circle') {
+      const cx = x + Number(node.attrs.cx);
+      const radius = Number(node.attrs.r ?? 0);
+      assert.ok(cx - radius >= -0.5 && cx + radius <= width + 0.5, `circle ${cx} r ${radius}`);
+    }
+    if (node.name === 'line') {
+      for (const attr of ['x1', 'x2']) {
+        const value = x + Number(node.attrs[attr] ?? 0);
+        assert.ok(value >= -0.5 && value <= width + 0.5, `line ${attr} ${value}`);
+      }
+    }
+    if (node.name === 'text') {
+      const words = sceneXmlText(node);
+      const size = Number(node.attrs['font-size'] ?? 16);
+      const extent = [...words].length * size * 0.62;
+      const anchor = node.attrs['text-anchor'];
+      const tx = x + Number(node.attrs.x ?? 0);
+      const left = anchor === 'end' ? tx - extent : anchor === 'middle' ? tx - extent / 2 : tx;
+      const right = anchor === 'end' ? tx : anchor === 'middle' ? tx + extent / 2 : tx + extent;
+      assert.ok(left >= -0.5 && right <= width + 0.5, `text ${words} ${left}..${right}`);
+    }
+    for (const child of node.children) visit(child, x);
+  };
+  visit(parseSceneXml(markup).root, 0);
+}
+
+test('a one-day fragment of a 14-day window is unavailable and draws no full ring', () => {
+  const value = inputs();
+  value.snapshot.contributions.days = [value.snapshot.contributions.days[0]];
+  const result = render(value);
+  assert.equal(result.unavailable, true);
+  assert.doesNotMatch(result.svg, /<circle\b/u);
+  const partial = inputs();
+  partial.snapshot.contributions.freshness.mode = 'partial';
+  assert.equal(render(partial).unavailable, true);
+});
+
+test('a complete 730-day calendar renders available', () => {
+  const length = 730;
+  const start = Date.parse('2024-01-01T00:00:00.000Z');
+  const days = Array.from({ length }, (_, index) => day(new Date(start + index * 86_400_000).toISOString().slice(0, 10), 1));
+  const value = inputs();
+  value.snapshot.contributions.days = days;
+  value.snapshot.metrics.window = { from: days[0].date, to: days.at(-1).date, days: length, observedDays: length, complete: true };
+  value.snapshot.projects = null;
+  const result = render(value, { layout: 'compact' });
+  assert.equal(result.unavailable, false);
+  assert.equal(definition().buildModel(value).observedDays, 730);
+  assert.match(result.svg, /ACTIVE WEEKS \d+/u);
+  assertInside(result.svg, 480);
+  assert.equal(render(value, { layout: 'wide' }).unavailable, false);
+});
+
+test('an unavailable project release blocks the signal while published marks remain', () => {
+  const value = inputs();
+  const published = release('v-in', '2026-01-08T00:00:00Z');
+  const missing = { ...release('v-gap', '2026-01-09T00:00:00Z'), repo: 'scene-demo/gap', releaseState: 'unavailable', release: null };
+  value.snapshot.projects.projects = [published, missing];
+  const model = definition().buildModel(value);
+  assert.equal(model.releasesBlocked, true);
+  assert.ok(model.releases.some(item => item.tag === 'v-in'));
+  assert.match(render(value).svg, /RELEASE SIGNAL BLOCKED/u);
+});
+
+test('a release on the final day plots before the seam and the next midnight draws no tick', () => {
+  const value = inputs();
+  value.snapshot.projects.projects = [release('v-noon', '2026-01-14T12:00:00Z'), release('v-after', '2026-01-15T00:00:00Z')];
+  const model = definition().buildModel(value);
+  const mark = model.releases.find(item => item.tag === 'v-noon');
+  assert.ok(mark, 'final-day release is kept');
+  assert.ok(mark.angle > -90 && mark.angle < 270, String(mark.angle));
+  assert.equal(model.releases.some(item => item.tag === 'v-after'), false);
+  const painted = render(value).svg;
+  assert.match(painted, /v-noon/u);
+  assert.doesNotMatch(painted, /v-after/u);
+
+  const one = inputs();
+  one.snapshot.contributions.days = [day(FROM, 1)];
+  one.snapshot.metrics.window = { from: FROM, to: FROM, days: 1, observedDays: 1, complete: true };
+  one.snapshot.projects.projects = [release('v-only', '2026-01-01T12:00:00Z')];
+  const single = definition().buildModel(one);
+  assert.equal(single.releases.length, 1);
+  assert.ok(Number.isFinite(single.releases[0].angle));
+  assert.ok(single.releases[0].angle > -90 && single.releases[0].angle < 270, String(single.releases[0].angle));
+  assert.equal(render(one).unavailable, false);
+});
+
+test('stale freshness shows the stale strip and does not claim observation', () => {
+  for (const layer of ['root', 'contributions']) {
+    const value = inputs();
+    if (layer === 'root') value.snapshot.freshness.mode = 'stale';
+    else value.snapshot.contributions.freshness.mode = 'stale';
+    const result = render(value);
+    assert.equal(result.unavailable, false, layer);
+    assert.match(result.svg, />STALE</u, layer);
+    assert.match(result.svg, /STALE SNAPSHOT/u, layer);
+    assert.doesNotMatch(result.svg, />OBSERVED</u, layer);
+  }
+});
+
+test('demo and synthetic sources show a synthetic preview', () => {
+  const result = render();
+  assert.match(result.svg, /SYNTHETIC PREVIEW/u);
+  assert.match(result.svg, /Synthetic preview\. /u);
+  const sourced = inputs();
+  sourced.snapshot.freshness.mode = 'live';
+  sourced.snapshot.contributions.freshness.mode = 'live';
+  sourced.snapshot.projects.freshness.mode = 'live';
+  sourced.snapshot.freshness.source = 'synthetic-demo';
+  const marked = render(sourced);
+  assert.match(marked.svg, /SYNTHETIC PREVIEW/u);
+  assert.match(marked.svg, /Synthetic preview\. /u);
+});
+
+test('an unknown freshness mode is not labelled observed', () => {
+  const value = inputs();
+  value.snapshot.freshness.mode = 'archival';
+  value.snapshot.contributions.freshness.mode = 'live';
+  value.snapshot.projects.freshness.mode = 'live';
+  value.snapshot.freshness.source = 'github-rest';
+  value.snapshot.contributions.freshness.source = 'github-graphql';
+  value.snapshot.projects.freshness.source = 'github-rest';
+  const result = render(value);
+  assert.equal(result.unavailable, false);
+  assert.doesNotMatch(result.svg, />OBSERVED</u);
+  assert.doesNotMatch(result.svg, /SYNTHETIC PREVIEW/u);
+});
+
+test('compact blocked badge stays inside the viewBox on both layouts', () => {
+  const value = inputs();
+  value.snapshot.projects.projects = [{ ...release('v-gap', '2026-01-08T00:00:00Z'), releaseState: 'unavailable', release: null }];
+  for (const layout of ['compact', 'wide']) {
+    const result = render(value, { layout });
+    const width = layout === 'compact' ? 480 : 720;
+    assert.match(result.svg, /RELEASE SIGNAL BLOCKED/u);
+    assert.equal(Number(result.svg.match(/viewBox="0 0 (\d+) /u)[1]), width);
+    assertInside(result.svg, width);
   }
 });
