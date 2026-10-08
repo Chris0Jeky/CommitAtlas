@@ -15,6 +15,7 @@ export const SCENE_PACKS: Readonly<Record<ScenePack, ScenePackGeometry>> = Objec
 });
 
 export function scenePackGeometry(pack: ScenePack): ScenePackGeometry {
+  if (typeof pack !== "string" || !Object.hasOwn(SCENE_PACKS, pack)) throw new Error("unknown scene pack");
   const geometry = SCENE_PACKS[pack];
   if (!geometry) throw new Error("unknown scene pack");
   return geometry;

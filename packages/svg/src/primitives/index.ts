@@ -44,13 +44,23 @@ function packMarks(pack: ScenePack, width: number, height: number, ink: string):
   const geometry = scenePackGeometry(pack);
   if (geometry.marker === "plate") return "";
   const pitch = geometry.gridPitch;
+  // Header and footer own their space regardless of the caller's data composition.
+  // Paint decoration behind readings; never overlay the title or a stale/privacy strip.
+  const left = 20, right = width - 20, top = 84, bottom = height - 44;
+  const contentHeight = bottom - top;
   let marks = "";
-  for (let x = pitch; x < width; x += pitch) marks += `<path d="M${x} 0V${height}" fill="none" stroke="${ink}"/>`;
-  for (let y = pitch; y < height; y += pitch) marks += `<path d="M0 ${y}H${width}" fill="none" stroke="${ink}"/>`;
-  if (geometry.marker === "ring") marks += `<circle cx="${pitch}" cy="${pitch}" r="14" fill="none" stroke="${ink}"/>`;
-  if (geometry.marker === "band") marks += `<rect x="${pitch}" y="${pitch * 2}" width="${pitch * 3}" height="4" fill="none" stroke="${ink}"/>`;
-  if (geometry.marker === "cell") marks += `<rect x="${pitch}" y="${pitch}" width="${pitch}" height="${pitch}" fill="none" stroke="${ink}"/>`;
-  return marks;
+  for (let x = left + pitch; x < right; x += pitch) marks += `<path d="M${x} ${top}V${bottom}" fill="none" stroke="${ink}"/>`;
+  for (let y = top + pitch; y < bottom; y += pitch) marks += `<path d="M${left} ${y}H${right}" fill="none" stroke="${ink}"/>`;
+  if (geometry.marker === "ring") {
+    const radius = Math.min(14, contentHeight / 2);
+    marks += `<circle cx="${left + pitch}" cy="${top + Math.min(pitch, contentHeight / 2)}" r="${radius}" fill="none" stroke="${ink}"/>`;
+  }
+  if (geometry.marker === "band") marks += `<rect x="${left + pitch}" y="${top + Math.min(pitch * 2, contentHeight - 4)}" width="${pitch * 3}" height="4" fill="none" stroke="${ink}"/>`;
+  if (geometry.marker === "cell") {
+    const size = Math.min(pitch, contentHeight);
+    marks += `<rect x="${left + pitch}" y="${top + Math.min(pitch, contentHeight - size)}" width="${size}" height="${size}" fill="none" stroke="${ink}"/>`;
+  }
+  return `<g aria-hidden="true">${marks}</g>`;
 }
 function boundedText(value: unknown): string {
   if (typeof value !== "string" || value.trim() === "" || value.length > 160) throw new Error("primitive text must contain 1 to 160 characters");
@@ -84,9 +94,10 @@ export function frame(context: PrimitiveContext, options: FrameOptions): string 
   const corner = scenePackGeometry(context.pack ?? "survey").corner;
   const path = `M0 0H${width - corner}L${width} ${corner}V${height}H0Z`;
   let output = `<g><title>${escapeXml(`${title} (${ref})`)}</title><path d="${path}" fill="${theme.background}"/>`;
+  output += packMarks(context.pack ?? "survey", width, height, theme.chrome);
   output += `<path d="M1 1H${width - (corner + 1)}L${width - 1} ${corner + 1}V${height - 1}H1Z" fill="none" stroke="${theme.border}"/>`;
   output += text(20, 25, FAMILY_LABELS[options.family], theme.chrome);
-  output += text(width - 20, 25, clipped(ref, width / 3, 10), theme.muted, 10, true, "end");
+  output += text(width - Math.max(20, corner), 25, clipped(ref, width / 3, 10), theme.muted, 10, true, "end");
   output += text(20, 57, clipped(title, width - 40, 22), theme.text, 22, false);
   output += `<path d="M20 74H${width - 20}" fill="none" stroke="${theme.border}"/>`;
   if (options.stale) {
@@ -94,7 +105,6 @@ export function frame(context: PrimitiveContext, options: FrameOptions): string 
     output += text(20, height - 16, "STALE", theme.muted, 10);
   }
   if (options.family === "signature") output += text(width - 20, height - 16, "not a productivity score", theme.muted, 10, true, "end");
-  output += packMarks(context.pack ?? "survey", width, height, theme.chrome);
   return `${output}</g>`;
 }
 
