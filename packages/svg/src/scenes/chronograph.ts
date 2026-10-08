@@ -118,6 +118,7 @@ function buildChronograph(snapshot: PortfolioSnapshot): ChronographModel | Scene
   const span = metrics?.window?.days;
   if (from === null || to === null || typeof span !== 'number' || !Number.isInteger(span) || span < 1 || span > MAX_WINDOW_DAYS) return unavailable();
   if ((to - from) / DAY + 1 !== span || to > Math.floor(Date.parse(evidence.observedAt) / DAY) * DAY) return unavailable();
+  if (metrics.window.complete !== true || metrics.window.observedDays !== span) return unavailable();
   const streak = metrics?.streak;
   const current = streak?.current;
   const longest = streak?.longest;
