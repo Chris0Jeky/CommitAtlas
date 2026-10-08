@@ -1,0 +1,114 @@
+{
+  "version": "0.4.0",
+  "name": "commit-atlas",
+  "dependencies": {
+    "@cloudflare/vite-plugin": {
+      "version": "1.62.5",
+      "resolved": "https://registry.npmjs.org/@cloudflare/vite-plugin/-/vite-plugin-1.62.5.tgz",
+      "overridden": false,
+      "dependencies": {
+        "miniflare": {
+          "version": "5.20261001.0-alpha",
+          "resolved": "https://registry.npmjs.org/miniflare/-/miniflare-5.20261001.0-alpha.tgz",
+          "overridden": false,
+          "dependencies": {
+            "sharp": {
+              "version": "0.35.5",
+              "resolved": "https://registry.npmjs.org/sharp/-/sharp-0.35.5.tgz",
+              "overridden": true
+            }
+          }
+        }
+      }
+    },
+    "@next/eslint-plugin-next": {
+      "version": "16.3.8",
+      "resolved": "https://registry.npmjs.org/@next/eslint-plugin-next/-/eslint-plugin-next-16.3.8.tgz",
+      "overridden": false,
+      "dependencies": {
+        "fast-glob": {
+          "version": "3.3.1",
+          "resolved": "https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.1.tgz",
+          "overridden": false,
+          "dependencies": {
+            "micromatch": {
+              "version": "4.0.8",
+              "resolved": "https://registry.npmjs.org/micromatch/-/micromatch-4.0.8.tgz",
+              "overridden": false,
+              "dependencies": {
+                "braces": {
+                  "version": "3.0.3",
+                  "resolved": "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz",
+                  "overridden": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "vinext": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/vinext/-/vinext-1.0.1.tgz",
+      "overridden": false,
+      "dependencies": {
+        "@vercel/og": {
+          "version": "1.0.3",
+          "resolved": "https://registry.npmjs.org/@vercel/og/-/og-1.0.3.tgz",
+          "overridden": false,
+          "dependencies": {
+            "satori": {
+              "version": "0.33.5",
+              "resolved": "https://registry.npmjs.org/satori/-/satori-0.33.5.tgz",
+              "overridden": false,
+              "dependencies": {
+                "@shuding/opentype.js": {
+                  "version": "1.4.0-beta.0",
+                  "resolved": "https://registry.npmjs.org/@shuding/opentype.js/-/opentype.js-1.4.0-beta.0.tgz",
+                  "overridden": false,
+                  "dependencies": {
+                    "fflate": {
+                      "version": "0.7.5"
+                    }
+                  }
+                },
+                "fflate": {
+                  "version": "0.7.5",
+                  "resolved": "https://registry.npmjs.org/fflate/-/fflate-0.7.5.tgz",
+                  "overridden": true
+                }
+              }
+            },
+            "sharp": {
+              "version": "0.35.5"
+            }
+          }
+        },
+        "vite-plugin-commonjs": {
+          "version": "0.10.4",
+          "resolved": "https://registry.npmjs.org/vite-plugin-commonjs/-/vite-plugin-commonjs-0.10.4.tgz",
+          "overridden": false,
+          "dependencies": {
+            "vite-plugin-dynamic-import": {
+              "version": "1.6.0",
+              "resolved": "https://registry.npmjs.org/vite-plugin-dynamic-import/-/vite-plugin-dynamic-import-1.6.0.tgz",
+              "overridden": false,
+              "dependencies": {
+                "fast-glob": {
+                  "version": "3.3.3",
+                  "resolved": "https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.3.tgz",
+                  "overridden": false,
+                  "dependencies": {
+                    "micromatch": {
+                      "version": "4.0.8"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
