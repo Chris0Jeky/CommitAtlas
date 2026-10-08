@@ -161,3 +161,67 @@ test("pack source has no colour literal and theme source has no geometry numbers
   const themesBlock = themeSource.slice(themeSource.indexOf("export const themes"), themeSource.indexOf("export interface RenderOptions"));
   assert.doesNotMatch(themesBlock.replace(/#[0-9a-fA-F]{3,8}/gu, ""), /\d/u);
 });
+
+for (const pack of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+  test(`pack geometry rejects inherited key ${pack}`, () => {
+    assert.throws(() => scenePackGeometry(pack), /unknown scene pack/);
+  });
+}
+
+test('pack selection never coerces a caller object into a property key', () => {
+  let calls = 0;
+  const input = { toString() { calls++; return 'survey'; } };
+  assert.throws(() => scenePackGeometry(input), /unknown scene pack/);
+  assert.equal(calls, 0);
+});
+
+for (const pack of ['orbital', 'spectral', 'terminal']) {
+  test(`${pack} decoration reserves header/footer and precedes all painted readings`, () => {
+    for (const width of [320, 480, 720, 1600]) for (const height of [140, 320, 1000]) {
+      const markup = primitives.frame({ theme: 'aurora', pack }, { title: 'Visible title', ref: '01', family: 'signature', width, height, stale: true });
+      const root = parseSceneXml(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`).root.children[0];
+      const decoration = root.children.find(node => node.name === 'g' && node.attrs['aria-hidden'] === 'true');
+      assert.ok(decoration, 'separate background decoration group is missing');
+      assert.ok(root.children.indexOf(decoration) < root.children.findIndex(node => node.name === 'text'), 'decoration painted after readings');
+      assert.ok(root.children.indexOf(decoration) > root.children.findIndex(node => node.attrs.fill === svg.themes.aurora.background), 'background hides decoration');
+      for (const node of decoration.children) {
+        if (node.name === 'path') {
+          const vertical = /^M([\d.]+) ([\d.]+)V([\d.]+)$/.exec(node.attrs.d);
+          const horizontal = /^M([\d.]+) ([\d.]+)H([\d.]+)$/.exec(node.attrs.d);
+          assert.ok(vertical || horizontal, node.raw);
+          const [, x, y, end] = (vertical || horizontal).map(Number);
+          assert.ok(x >= 20 && x <= width - 20 && y >= 84 && y <= height - 44, node.raw);
+          assert.ok(vertical ? end <= height - 44 && end >= y : end <= width - 20 && end >= x, node.raw);
+        } else if (node.name === 'circle') {
+          const {cx,cy,r} = node.attrs;
+          assert.ok(Number(cx)-Number(r) >= 20 && Number(cx)+Number(r) <= width-20, node.raw);
+          assert.ok(Number(cy)-Number(r) >= 84 && Number(cy)+Number(r) <= height-44, node.raw);
+        } else if (node.name === 'rect') {
+          const x=Number(node.attrs.x),y=Number(node.attrs.y),w=Number(node.attrs.width),h=Number(node.attrs.height);
+          assert.ok(x >= 20 && x+w <= width-20 && y >= 84 && y+h <= height-44, node.raw);
+        } else assert.fail(`unexpected decoration element: ${node.name}`);
+      }
+    }
+  });
+}
+
+test('Survey frame bytes remain identical across all supported theme/size/status combinations', async () => {
+  const { createHash } = await import('node:crypto');
+  const rows=[];
+  for (const theme of THEMES) for (const width of [320,480,720,1600]) for (const stale of [false,true]) for (const family of ['scene','signature']) {
+    const markup=primitives.frame({theme,pack:'survey'},{title:'Fixture',ref:'01',family,width,height:320,stale});
+    rows.push([theme,width,stale,family,createHash('sha256').update(markup).digest('hex')]);
+  }
+  assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'), '115e389f4ccfb0c0004df0aee15a79dee594fc6137352cc0197eb52c11c1b179');
+});
+
+test('reference labels clear the corner cut as well as the rectangular viewBox', () => {
+  for (const pack of PACKS) for (const width of [320,480,720]) {
+    const body=primitives.frame({theme:'paper',pack},{title:'Frame',ref:'LAYOUT / 01',family:'signature',width,height:320});
+    const nodes=parseSceneXml(`<svg xmlns="http://www.w3.org/2000/svg">${body}</svg>`).nodes;
+    const reference=nodes.find(node=>node.name==='text' && node.attrs.y==='25' && node.attrs['text-anchor']==='end');
+    const corner=scenePackGeometry(pack).corner;
+    const rightEdge=width-corner+Math.min(Number(reference.attrs.y)-Number(reference.attrs['font-size']),corner);
+    assert.ok(Number(reference.attrs.x) <= rightEdge-8, `${pack} reference enters its clipped corner`);
+  }
+});
