@@ -52,3 +52,6 @@ yarn-error.log*
 # injected. The .dc.html files beside it are the actual source and re-seed it on demand.
 /design_cards/*.html
 !/design_cards/*.dc.html
+
+# Optional synthetic Studio browser QA artifacts.
+.studio-qa/

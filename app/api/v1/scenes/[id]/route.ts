@@ -1,3 +1,5 @@
+import { isHostedSceneId } from "@/lib/hosted-scene-catalog";
+import { SCENE_METADATA_HEADER, sceneResponseMetadata } from "@/lib/scene-metadata";
 import { GitHubApiError, InputError } from "@/lib/github/client";
 import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
 import { fetchPortfolioSnapshot } from "@/lib/portfolio";
@@ -26,7 +28,7 @@ export async function GET(
     if (redirect) return redirect;
 
     const scene = getScene(id);
-    if (!scene) throw new GitHubApiError("github_not_found", NOT_FOUND, 404);
+    if (!scene || !isHostedSceneId(id)) throw new GitHubApiError("github_not_found", NOT_FOUND, 404);
     if (!HOSTED_FAMILIES.has(scene.family)) throw new GitHubApiError("github_not_found", "Scene is not hosted", 404);
     if (!scene.supportedPacks.includes(query.pack)) throw new InputError("pack is not supported for this scene");
     if (!scene.supportedMotion.includes(query.motion)) throw new InputError("motion is not supported for this scene");
@@ -49,11 +51,14 @@ export async function GET(
       instanceNamespace: "hosted",
       seed: "",
     });
-    return svgResponse(request, rendered.svg, {
+    const response = await svgResponse(request, rendered.svg, {
       edgeSeconds: 300,
       publicData,
       inlineStyles: rendered.inlineStyles,
     });
+    response.headers.set(SCENE_METADATA_HEADER, JSON.stringify(sceneResponseMetadata(id, rendered)));
+    response.headers.set("Access-Control-Expose-Headers", `ETag, ${SCENE_METADATA_HEADER}`);
+    return response;
   } catch (error) {
     return apiErrorResponse(error);
   }

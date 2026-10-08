@@ -300,6 +300,16 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /2<!-- --> preview<!-- -->s/);
   assert.match(html, /Copy stays disabled until Preview validates this exact configuration/);
   assert.match(html, /<button type="button" disabled="">Copy Markdown<\/button>/);
+  assert.match(html, /<legend>Scene pack<\/legend>/);
+  assert.match(html, /<button type="button"[^>]*>Profile view<\/button>/);
+  for (const scene of ["Activity terrain", "Evidence coverage", "Lifecycle map"]) assert.ok(html.includes(scene));
+  for (const pack of ["Survey", "Orbital", "Spectral", "Terminal"]) assert.match(html, new RegExp(`<strong>${pack}</strong>`));
+  assert.match(html, /Scenes to show &amp; copy/);
+  assert.match(html, /<span>Evidence coverage<\/span>/);
+  assert.match(html, /<legend>Preview tools<\/legend>/);
+  assert.match(html, /<button type="button"[^>]*>Replay<\/button>/);
+  assert.match(html, /<button type="button"[^>]*>Reduced-motion view<\/button>/);
+  assert.match(html, /<button type="button"[^>]*>Frame zero<\/button>/);
   assert.doesNotMatch(html, /your-commitatlas-host\.example/);
   assert.doesNotMatch(html, /Updated 8m ago|\+18%|Building in public, one useful commit/);
 });
