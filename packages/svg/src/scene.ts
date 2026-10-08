@@ -1,3 +1,5 @@
+import { lifecycleMapScene } from "./scenes/lifecycle-map.js";
+import { activityTerrainScene } from "./scenes/activity-terrain.js";
 import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
 import type { ThemeName } from "./index.js";
@@ -139,8 +141,12 @@ function definitionSnapshot<Model>(input: SceneDefinition<Model>): SceneDefiniti
 let builtinsLoaded = false;
 function loadBuiltins(): void {
   if (builtinsLoaded) return;
-  const builtin = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
-  registry.set(builtin.id, builtin);
+  const coverage = definitionSnapshot(evidenceCoverageScene) as SceneDefinition<unknown>;
+  registry.set(coverage.id, coverage);
+  const terrain = definitionSnapshot(activityTerrainScene) as SceneDefinition<unknown>;
+  registry.set(terrain.id, terrain);
+  const lifecycle = definitionSnapshot(lifecycleMapScene) as SceneDefinition<unknown>;
+  registry.set(lifecycle.id, lifecycle);
   builtinsLoaded = true;
 }
 export function registerScene<Model>(definition: SceneDefinition<Model>): void {

@@ -18,6 +18,7 @@ const cardNames = (markdown: string): (string | undefined)[] =>
 
 test("live Markdown omits unavailable contribution cards exactly", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "ember",
@@ -38,6 +39,7 @@ test("live Markdown omits unavailable contribution cards exactly", () => {
 
 test("synthetic Markdown restores all eight retained selections", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "paper",
@@ -58,6 +60,7 @@ test("synthetic Markdown restores all eight retained selections", () => {
 
 test("project Markdown remains absent without a declared repository", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "ember",
@@ -74,6 +77,7 @@ test("project Markdown remains absent without a declared repository", () => {
 
 test("live Markdown omits a Languages URL backed by truncated repositories", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "ember",
@@ -101,6 +105,7 @@ test("each card ships as a dark/light pair, so no reader gets the wrong one", ()
   // reader's colour scheme matches the single theme it names — and it loses that bet for
   // everyone on the other scheme. GitHub honours <picture> with prefers-color-scheme.
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "ember",
@@ -121,6 +126,7 @@ test("each card ships as a dark/light pair, so no reader gets the wrong one", ()
 
 test("choosing the light theme inverts the pair rather than dropping it", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "paper",
@@ -141,6 +147,7 @@ test("choosing the light theme inverts the pair rather than dropping it", () => 
 
 test("README Markdown carries the selected ambient profile through every emitted source", () => {
   const markdown = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
     baseUrl: "https://atlas.example",
     owner: "octocat",
     theme: "ember",
@@ -155,6 +162,39 @@ test("README Markdown carries the selected ambient profile through every emitted
   const urls = markdown.match(/https:\/\/atlas\.example[^" >]+/g) ?? [];
   assert.ok(urls.length > 0);
   for (const url of urls) assert.match(url, /(?:\?|&)motion=ambient(?:&|$)/);
+  assert.match(markdown, /Reduced-motion source omitted/);
+  assert.doesNotMatch(markdown, /prefers-reduced-motion/);
+});
+
+test("scene Markdown is emitted only after that scene has rendered", () => {
+  const base = {
+    baseUrl: "https://atlas.example",
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects,
+    selectedCards: new Set<never>(),
+    hasCurrentContributions: true,
+    hasCurrentLanguages: true,
+    motion: "none" as const,
+    pack: "survey" as const,
+    selectedScenes: new Set(["evidence-coverage"]),
+  };
+  assert.equal(buildStudioMarkdown(base), "");
+  const rendered = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]), ...base, renderedSceneIds: new Set(["evidence-coverage"]) });
+  assert.match(rendered, /<picture>/);
+  assert.match(rendered, /\/api\/v1\/scenes\/evidence-coverage\.svg/);
+  assert.match(rendered, /alt="CommitAtlas Evidence coverage"/);
+  assert.doesNotMatch(rendered, /Reduced-motion source omitted/);
+  assert.doesNotMatch(rendered, /pack=/);
+  const withheld = buildStudioMarkdown({
+    renderedCardIds: new Set(["atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects"]),
+    ...base,
+    selectedScenes: new Set(["evidence-coverage", "not-a-scene"]),
+    renderedSceneIds: new Set(["not-a-scene"]),
+  });
+  assert.equal(withheld, "");
 });
 test("the pairing table agrees with the renderer it mirrors", () => {
   // `THEME_PAIRS` is restated here rather than imported so the client bundle does not pull in
@@ -164,4 +204,14 @@ test("the pairing table agrees with the renderer it mirrors", () => {
     assert.equal(isLightCardTheme(name), theme.scheme === "light", `${name} disagrees on its scheme`);
   }
   assert.deepEqual(Object.keys(THEME_PAIRS).sort(), Object.keys(themes).sort());
+});
+
+
+test("validated JSON alone never authorizes a card URL before an image is decoded", () => {
+  const options = { baseUrl: "https://atlas.example", owner: "octocat", theme: "ember", demo: true,
+    projects, selectedCards, hasCurrentContributions: true, hasCurrentLanguages: true };
+  assert.equal(buildStudioMarkdown(options), "");
+  const one = buildStudioMarkdown({ ...options, renderedCardIds: new Set(["profile" as const]) });
+  assert.match(one, /cards\/profile\.svg/);
+  assert.doesNotMatch(one, /atlas\.svg|projects\.svg/);
 });

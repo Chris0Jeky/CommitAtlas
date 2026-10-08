@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import * as svg from "../dist/index.js";
-import { parseSceneXml, sceneXmlText } from "../dist/scene-svg.js";
+import { parseSceneXml, sceneXmlText, sceneVisibleText } from "../dist/scene-svg.js";
 
 export const SCENE_INJECTION = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
@@ -42,6 +42,15 @@ function checkAccessibility(result, fixture) {
   const description = sceneXmlText(desc);
   for (const reading of fixture.readings ?? []) assert.ok(description.includes(reading), `description omits reading ${reading}`);
   for (const encoding of fixture.encodings ?? []) assert.ok(description.includes(encoding), `description omits encoding ${encoding}`);
+  // Accessibility prose cannot stand in for a reading that must be painted beside the geometry.
+  if (fixture.visibleReadings !== undefined) {
+    assert.ok(Array.isArray(fixture.visibleReadings), "visibleReadings must be an array");
+    const visible = sceneVisibleText(document.root);
+    for (const reading of fixture.visibleReadings) {
+      assert.ok(typeof reading === "string" && reading.trim().length > 0, "visibleReadings must contain nonempty strings");
+      assert.ok(visible.includes(reading), `visible text omits reading ${reading}`);
+    }
+  }
   if (fixture.unavailable) {
     assert.equal(result.unavailable, true, "unavailable fixture produced a healthy model");
     assert.match(description, /unavailable/iu);
@@ -51,7 +60,10 @@ function checkAccessibility(result, fixture) {
   return document;
 }
 
-/** Fixtures declare every scene-consumed text path and the meaning of every visual encoding. */
+/**
+ * Fixtures declare consumed text paths and accessible readings/encoding explanations.
+ * visibleReadings additionally requires painted text; it does not prove layout bounds or contrast.
+ */
 export function assertSceneContract(definition, fixtures) {
   assert.ok(fixtures.ready && fixtures.changed && fixtures.unavailable, "ready, one-field changed and unavailable fixtures required");
   assert.ok(Array.isArray(fixtures.ready.textFields), "declare consumed text fields, including an empty list for text-free input");

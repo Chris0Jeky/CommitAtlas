@@ -34,7 +34,7 @@
     "clean": "node ../../scripts/clean-package-dist.mjs",
     "prebuild": "npm --prefix ../github run build",
     "build": "node ../../scripts/build-package.mjs",
-    "test": "npm run build && node --test --test-concurrency=2 tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs tests/field.test.mjs tests/evidence-coverage.test.mjs tests/evidence-percentage.test.mjs tests/packs.test.mjs",
+    "test": "npm run build && node --test --test-concurrency=2 tests/svg.test.mjs tests/seed.test.mjs tests/boundaries.test.mjs tests/rhythm-boundaries.test.mjs tests/delivery.test.mjs tests/motion.test.mjs tests/scene.test.mjs tests/scene-lint.test.mjs tests/primitives.test.mjs tests/geometric.test.mjs tests/field.test.mjs tests/evidence-coverage.test.mjs tests/evidence-percentage.test.mjs tests/activity-terrain.test.mjs tests/activity-terrain-boundaries.test.mjs tests/scene-visible-readings.test.mjs tests/lifecycle-map.test.mjs tests/packs.test.mjs",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },

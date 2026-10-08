@@ -452,3 +452,41 @@ function notModified(etag: string) {
     },
   });
 }
+
+test("a changed last-good scene body cannot inherit a fresh compiler receipt", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const request = new Request("https://example.test/api/v1/scenes/evidence-coverage.svg?user=octocat&demo=false");
+  const body = svgBody();
+  const fresh = svgResponse(body);
+  fresh.headers.set("x-commitatlas-scene-metadata", JSON.stringify({ version: 1, scene: "evidence-coverage",
+    bytes: new TextEncoder().encode(body).length, animatedElements: 0, loopingGroups: 0, unavailable: false }));
+  const live = await withPublicLastGood(request, async () => fresh, runtime(store, pending, LIVE_AT));
+  assert.ok(live.headers.has("x-commitatlas-scene-metadata"));
+  await Promise.all(pending);
+  const stale = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-08-27T21:00:00Z")));
+  assert.equal(stale.status, 200);
+  assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale");
+  assert.equal(stale.headers.has("x-commitatlas-scene-metadata"), false);
+  assert.notEqual(await stale.text(), body);
+});
+
+test("a changed last-good card body cannot inherit a fresh compiler receipt", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const request = new Request("https://example.test/api/v1/cards/profile.svg?user=octocat&demo=false");
+  const body = svgBody();
+  const fresh = svgResponse(body);
+  fresh.headers.set("x-commitatlas-card-metadata", JSON.stringify({ version: 1, card: "profile",
+    bytes: new TextEncoder().encode(body).length, animatedElements: 0, loopingGroups: 0, state: "ready" }));
+  const live = await withPublicLastGood(request, async () => fresh, runtime(store, pending, LIVE_AT));
+  assert.ok(live.headers.has("x-commitatlas-card-metadata"));
+  await Promise.all(pending);
+  const stale = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-08-27T21:00:00Z")));
+  assert.equal(stale.status, 200);
+  assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale");
+  assert.equal(stale.headers.has("x-commitatlas-card-metadata"), false);
+  assert.notEqual(await stale.text(), body);
+});

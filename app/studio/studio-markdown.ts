@@ -2,10 +2,14 @@ import type { HostedMotionProfile } from "@/packages/svg/src/index";
 import { isStudioCardAvailable } from "./studio-card-availability";
 import {
   buildStudioRouteUrl,
+  buildStudioSceneUrl,
   STUDIO_PREVIEW_DAYS,
+  STUDIO_SCENE_IDS,
+  STUDIO_SCENE_LABELS,
   type StudioCardKind,
   type StudioProjectInput,
 } from "./studio-urls";
+import type { ScenePack } from "@/packages/svg/src/index";
 
 export const STUDIO_CARD_KINDS: readonly StudioCardKind[] = [
   "atlas",
@@ -36,10 +40,14 @@ export interface StudioMarkdownOptions {
   demo: boolean;
   projects: StudioProjectInput[];
   selectedCards: ReadonlySet<StudioCardKind>;
+  renderedCardIds?: ReadonlySet<StudioCardKind>;
   hasCurrentContributions: boolean;
   hasCurrentLanguages: boolean;
   motion?: HostedMotionProfile;
   layout?: "wide" | "compact";
+  pack?: ScenePack;
+  selectedScenes?: ReadonlySet<string>;
+  renderedSceneIds?: ReadonlySet<string>;
 }
 
 /**
@@ -66,8 +74,11 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
   const partner = THEME_PAIRS[chosen];
   const chosenIsLight = isLightCardTheme(chosen);
 
-  return STUDIO_CARD_KINDS
-    .filter((kind) => options.selectedCards.has(kind))
+  const renderedScenes = options.renderedSceneIds ?? new Set<string>();
+  const scenes = STUDIO_SCENE_IDS.filter((id) => options.selectedScenes?.has(id) && renderedScenes.has(id));
+  const blocks = [
+    ...STUDIO_CARD_KINDS
+    .filter((kind) => options.selectedCards.has(kind) && options.renderedCardIds?.has(kind))
     .filter((kind) => kind !== "projects" || options.projects.length > 0)
     .filter((kind) => isStudioCardAvailable(kind, options))
     .map((kind) => {
@@ -99,6 +110,32 @@ export function buildStudioMarkdown(options: StudioMarkdownOptions): string {
         `  <img alt="${label}" src="${urlFor(chosen)}">`,
         "</picture>",
       ].join("\n");
-    })
-    .join("\n\n");
+    }),
+    ...scenes.map((id) => {
+      const label = `CommitAtlas ${STUDIO_SCENE_LABELS[id]}`;
+      const urlFor = (theme: string) => `${options.baseUrl}${buildStudioSceneUrl(id, {
+        owner: options.owner,
+        projects: options.projects,
+        theme,
+        demo: options.demo,
+        days: STUDIO_PREVIEW_DAYS,
+        motion: options.motion ?? "none",
+        layout: options.layout,
+        pack: options.pack,
+      })}`;
+      if (!partner) return `![${label}](${urlFor(chosen)})`;
+      const darkUrl = chosenIsLight ? urlFor(partner) : urlFor(chosen);
+      const lightUrl = chosenIsLight ? urlFor(chosen) : urlFor(partner);
+      return [
+        "<picture>",
+        `  <source media="(prefers-color-scheme: dark)" srcset="${darkUrl}">`,
+        `  <source media="(prefers-color-scheme: light)" srcset="${lightUrl}">`,
+        `  <img alt="${label}" src="${urlFor(chosen)}">`,
+        "</picture>",
+      ].join("\n");
+    }),
+  ];
+  const markdown = blocks.join("\n\n");
+  if (!markdown || (options.motion !== "subtle" && options.motion !== "ambient")) return markdown;
+  return `${markdown}\n\n<!-- Reduced-motion source omitted: GitHub sanitizer survival is unmeasured. The still twin is the motion=none URL. -->`;
 }

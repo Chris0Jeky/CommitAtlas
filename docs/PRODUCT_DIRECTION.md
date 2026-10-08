@@ -28,7 +28,7 @@ CommitAtlas must not become a private-data ingestion service, a runtime bridge i
 
 The v0.4.0 product provides:
 
-- a live Studio and nine hosted SVG routes;
+- a live Studio with hosted SVG cards and scenes;
 - ten source/static card types through the CLI and pinned Node 24 Action;
 - public GitHub profile, contribution, language, repository, named-workflow, lifecycle, and release evidence within declared limits;
 - deterministic demo fixtures;
