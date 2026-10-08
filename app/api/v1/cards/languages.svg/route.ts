@@ -1,8 +1,9 @@
+import { cardSvgResponse } from "@/lib/card-response";
 import { demoProfile } from "@/lib/github/demo";
 import { GitHubClient } from "@/lib/github/client";
 import { parseSvgLanguagesQuery } from "@/lib/svg-routes";
 import { toLanguagesCard } from "@/lib/svg-adapters";
-import { apiErrorResponse, canonicalSvgRedirect, optionsResponse, svgResponse } from "@/lib/http";
+import { apiErrorResponse, canonicalSvgRedirect, optionsResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
 import { motionRenderMetadata, renderLanguagesCard } from "@/packages/svg/src/index";
 
@@ -24,7 +25,7 @@ export async function GET(request: Request): Promise<Response> {
       title: `${snapshot.login} languages`,
       description: "Public repository-language distribution by repository count; this is not a measure of proficiency.",
     });
-    return svgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles });
+    return await cardSvgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles }, "languages", snapshot.freshness.mode);
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -57,7 +57,7 @@ export default async function Home() {
               </h1>
               <p className="lede">
                 Explore a clearly labelled synthetic example, then generate your own portfolio from
-                public GitHub evidence. CommitAtlas ships nine hosted SVG routes, ten static card
+                public GitHub evidence. CommitAtlas ships hosted SVG cards and scenes, ten static card
                 types, an HTML project dashboard, and a credential-free GitHub Action.
               </p>
               <p className="hero-disclosure">
