@@ -1,0 +1,50 @@
+name: Qualify beacon evidence repair
+on:
+  push:
+    branches: [fix/identity-beacon-evidence-346-20261012]
+permissions:
+  contents: write
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Rebuild and verify the exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'SOURCE_HEAD=%s\n' "$GITHUB_SHA"
+          node --version
+          npm --version
+          sha256sum package-lock.json packages/svg/src/scenes/identity-beacon.ts packages/svg/tests/identity-beacon.test.mjs
+          npm run build:action
+          git config user.name 'CommitAtlas qualification'
+          git config user.email 'qualification@users.noreply.github.com'
+          git add action/dist
+          if ! git diff --cached --quiet; then git commit -m 'Local-only generated bundle verification'; fi
+          npm run check
+          npm audit --omit=dev --audit-level=high
+      - name: Preserve generated Git blobs without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$GITHUB_SHA" HEAD -- action/dist | while IFS= read -r file; do
+            test -f "$file"
+            python3 - "$file" <<'PY'
+          import base64, json, pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          pathlib.Path('/tmp/commitatlas-blob.json').write_text(json.dumps({'encoding':'base64','content':base64.b64encode(p.read_bytes()).decode()}))
+          PY
+            sha=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input /tmp/commitatlas-blob.json --jq '.sha')
+            test "$sha" = "$(git hash-object "$file")"
+            printf 'VERIFIED_BLOB %s %s\n' "$file" "$sha"
+          done
+          printf 'QUALIFIED_SOURCE_HEAD=%s\n' "$GITHUB_SHA"
