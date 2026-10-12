@@ -18,7 +18,7 @@ function inputs() {
   base.snapshot.projects = {
     version: 1, owner: 'scene-demo',
     projects: [project('Alpha', 4), project('Beta', 2), project('Gamma', 9)],
-    freshness: { generatedAt: '2026-01-14T00:00:00.000Z', source: 'synthetic-demo', mode: 'demo' },
+    freshness: { generatedAt: base.snapshot.freshness.generatedAt, source: 'synthetic-demo', mode: 'demo' },
   };
   return { snapshot: base.snapshot, identity };
 }
@@ -89,4 +89,127 @@ test('the name line fits the 860 and 480 plates without a webfont', () => {
     assert.doesNotMatch(result.svg, /@font-face|fonts\.google/u);
     assert.ok(result.svg.includes(svg.themes.paper.text));
   }
+});
+
+const invalidEvidence = [
+  ['missing root freshness', value => { delete value.snapshot.freshness; }],
+  ['unknown root mode', value => { value.snapshot.freshness.mode = 'fresh'; }],
+  ['stale root', value => { value.snapshot.freshness.mode = 'stale'; }],
+  ['partial root', value => { value.snapshot.freshness.mode = 'partial'; }],
+  ['missing root date', value => { delete value.snapshot.freshness.generatedAt; }],
+  ['invalid root date', value => { value.snapshot.freshness.generatedAt = 'not-a-date'; }],
+  ['impossible root date', value => { value.snapshot.freshness.generatedAt = '2026-02-30T00:00:00Z'; }],
+  ['non-UTC root date', value => { value.snapshot.freshness.generatedAt = '2026-01-07T00:00:00+00:00'; }],
+  ['unknown root source', value => { value.snapshot.freshness.source = 'invented'; }],
+  ['demo mode with public root source', value => { value.snapshot.freshness.source = 'github-rest'; }],
+  ['live mode with synthetic root source', value => { value.snapshot.freshness.mode = 'live'; }],
+  ['missing project board', value => { delete value.snapshot.projects; }],
+  ['null project board', value => { value.snapshot.projects = null; }],
+  ['missing project freshness', value => { delete value.snapshot.projects.freshness; }],
+  ['unavailable project board with residual rows', value => { value.snapshot.projects.freshness.mode = 'unavailable'; }],
+  ['stale project board with residual rows', value => { value.snapshot.projects.freshness.mode = 'stale'; }],
+  ['partial project board', value => { value.snapshot.projects.freshness.mode = 'partial'; }],
+  ['unknown project mode', value => { value.snapshot.projects.freshness.mode = 'ready'; }],
+  ['invalid project date', value => { value.snapshot.projects.freshness.generatedAt = '2026-01-14Tnot-a-time'; }],
+  ['impossible project date', value => { value.snapshot.projects.freshness.generatedAt = '2026-02-30T00:00:00.000Z'; }],
+  ['unknown project source', value => { value.snapshot.projects.freshness.source = 'invented'; }],
+  ['demo mode with public board source', value => { value.snapshot.projects.freshness.source = 'github-rest'; }],
+  ['live mode with synthetic board source', value => { value.snapshot.projects.freshness.mode = 'live'; }],
+  ['mixed synthetic and public observations', value => { value.snapshot.projects.freshness = { ...value.snapshot.projects.freshness, source: 'github-rest', mode: 'live' }; }],
+  ['old project observation still labelled live', value => {
+    value.snapshot.freshness = { generatedAt: '2026-01-18T00:00:00Z', source: 'github-graphql', mode: 'live' };
+    value.snapshot.projects.freshness = { generatedAt: '2026-01-14T00:00:00Z', source: 'github-rest', mode: 'live' };
+  }],
+  ['missing issue reading', value => { delete value.snapshot.projects.projects[0].openIssuesAndPullRequests; }],
+  ['negative issue reading', value => { value.snapshot.projects.projects[0].openIssuesAndPullRequests = -1; }],
+  ['fractional issue reading', value => { value.snapshot.projects.projects[0].openIssuesAndPullRequests = 1.5; }],
+  ['null project row', value => { value.snapshot.projects.projects[0] = null; }],
+];
+for (const [name, change] of invalidEvidence) {
+  test(`beacon refuses ${name} without observed readings or animation`, () => {
+    const value = inputs();
+    change(value);
+    for (const motion of ['none', 'ambient', 'cinematic']) {
+      for (const backend of ['css', 'smil']) {
+        const result = render(value, { motion, backend });
+        assert.equal(result.unavailable, true);
+        assert.equal(result.counters.animatedElements, 0);
+        assert.doesNotMatch(result.svg, />OBSERVED<|<animate|<style/u);
+      }
+    }
+  });
+}
+
+test('beacon accepts an explicitly observed empty board but not an absent board', () => {
+  const value = inputs();
+  value.snapshot.projects.projects = [];
+  const result = render(value);
+  assert.equal(result.unavailable, false);
+  assert.deepEqual(definition().buildModel(value).bodies, []);
+  assert.deepEqual(definition().buildModel(value).unmatched, ['Alpha', 'Missing', 'Beta']);
+});
+
+test('beacon validates component clocks independently and attributes counts to the board', () => {
+  const value = inputs();
+  value.snapshot.freshness = { generatedAt: '2026-01-14T00:00:00Z', source: 'github-graphql', mode: 'live' };
+  value.snapshot.projects.freshness = { generatedAt: '2026-01-14T00:00:01.5Z', source: 'github-rest', mode: 'live' };
+  const model = definition().buildModel(value);
+  assert.equal(model.source, 'github-rest');
+  assert.equal(model.generatedAt, '2026-01-14T00:00:01.500Z');
+  assert.equal(model.disclosure, 'public');
+  assert.equal(render(value).unavailable, false);
+});
+
+test('beacon keeps genuinely observed zero issue counts available', () => {
+  const value = inputs();
+  for (const project of value.snapshot.projects.projects) project.openIssuesAndPullRequests = 0;
+  const model = definition().buildModel(value);
+  assert.deepEqual(model.bodies.map(body => body.size), [0, 0]);
+  assert.equal(render(value).unavailable, false);
+});
+
+// Nonfinite inputs are also rejected by the shared canonical-JSON boundary.
+test('beacon rejects nonfinite readings at the model and serialization boundaries', () => {
+  const value = inputs();
+  value.snapshot.projects.projects[0].openIssuesAndPullRequests = Infinity;
+  assert.equal(definition().buildModel(value).state, 'unavailable');
+  assert.throws(() => render(value), /canonical JSON requires finite numbers/u);
+});
+
+// The snapshot is the reference clock. Historical static renders must remain reproducible.
+for (const synthetic of [true, false]) {
+  for (const [offset, unavailable] of [[-259_200_001, true], [-259_200_000, false], [-1, false], [0, false], [1_500, false], [60_000, false], [60_001, true], [86_400_000, true], [366 * 86_400_000, true]]) {
+    test(`beacon bounds board offset ${offset}ms against its root, synthetic=${synthetic}`, () => {
+      const value = inputs();
+      const root = Date.parse(value.snapshot.freshness.generatedAt);
+      if (!synthetic) {
+        Object.assign(value.snapshot.freshness, { mode: 'live', source: 'github-graphql' });
+        Object.assign(value.snapshot.projects.freshness, { mode: 'live', source: 'github-rest' });
+      }
+      value.snapshot.projects.freshness.generatedAt = new Date(root + offset).toISOString();
+      for (const backend of ['css', 'smil']) {
+        for (const motion of ['none', 'ambient', 'cinematic']) {
+          const result = render(value, { backend, motion });
+          assert.equal(result.unavailable, unavailable);
+          if (unavailable) {
+            assert.equal(result.counters.animatedElements, 0);
+            assert.doesNotMatch(result.svg, />OBSERVED<|<style|<animate/u);
+          } else {
+            assert.match(result.svg, />OBSERVED</u);
+            assert.ok(result.svg.includes(value.snapshot.projects.freshness.generatedAt));
+          }
+        }
+      }
+    });
+  }
+}
+
+test('historical public observations remain dated deterministic as-of evidence, not a current-time assertion', () => {
+  const value = inputs();
+  value.snapshot.freshness = { mode: 'live', source: 'github-graphql', generatedAt: '2001-01-01T00:00:00Z' };
+  value.snapshot.projects.freshness = { mode: 'live', source: 'github-rest', generatedAt: '2001-01-01T00:00:01Z' };
+  const first = render(value);
+  assert.equal(first.unavailable, false);
+  assert.match(first.svg, /2001-01-01T00:00:01\.000Z/u);
+  assert.equal(render(value).svg, first.svg);
 });

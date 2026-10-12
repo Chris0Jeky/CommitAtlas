@@ -1,0 +1,97 @@
+name: Qualify integrated chronograph completeness
+on:
+  push:
+    branches: [fix/chronograph-completeness-342]
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Record exact inputs and install locked dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/chronograph-proof"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^2)" = 09d2a47368df5d4ce764c17a0d0700fb84d14f22
+          {
+            printf 'SOURCE_HEAD=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^{tree})"
+            node --version
+            npm --version
+            git ls-tree HEAD packages/svg/src/scenes/chronograph.ts packages/svg/tests/chronograph.test.mjs package-lock.json
+            sha256sum package-lock.json packages/svg/src/scenes/chronograph.ts packages/svg/tests/chronograph.test.mjs
+          } | tee "$RUNNER_TEMP/chronograph-proof/source.txt"
+          npm ci 2>&1 | tee "$RUNNER_TEMP/chronograph-proof/install.log"
+      - name: Reproduce the defect on current main's renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=packages/svg/src/scenes/chronograph.ts
+          cp "$file" "$RUNNER_TEMP/candidate-chronograph.ts"
+          git show HEAD^2:"$file" > "$file"
+          test "$(git hash-object "$file")" = 286638a49dec8ccf6a9bc7336c041f3239878a20
+          npm --prefix packages/svg run build > "$RUNNER_TEMP/chronograph-proof/red-build.log" 2>&1
+          set +e
+          node --test --test-concurrency=2 packages/svg/tests/chronograph.test.mjs > "$RUNNER_TEMP/chronograph-proof/red.log" 2>&1
+          status=$?
+          set -e
+          test "$status" = 1
+          grep -E '^# fail 7$' "$RUNNER_TEMP/chronograph-proof/red.log"
+          grep -E 'not ok .*declared incomplete' "$RUNNER_TEMP/chronograph-proof/red.log"
+          cp "$RUNNER_TEMP/candidate-chronograph.ts" "$file"
+          git diff --exit-code
+      - name: Verify the repair and rebuild the combined Action
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix packages/svg run build > "$RUNNER_TEMP/chronograph-proof/green-build.log" 2>&1
+          node --test --test-concurrency=2 packages/svg/tests/chronograph.test.mjs packages/svg/tests/chronograph-footer.test.mjs 2>&1 | tee "$RUNNER_TEMP/chronograph-proof/green.log"
+          exec > >(tee "$RUNNER_TEMP/chronograph-proof/check.log") 2>&1
+          npm run build:action
+          git config user.name 'CommitAtlas qualification'
+          git config user.email 'qualification@users.noreply.github.com'
+          git add action/dist
+          if ! git diff --cached --quiet; then git commit -m 'Local-only integrated Action verification'; fi
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          test -z "$(git status --porcelain)"
+      - name: Preserve verified blobs only, never a branch update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$GITHUB_SHA" HEAD -- action/dist | while IFS= read -r file; do
+            test -f "$file"
+            mkdir -p "$RUNNER_TEMP/chronograph-proof/generated/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/chronograph-proof/generated/$file"
+            python3 - "$file" "$RUNNER_TEMP/blob.json" <<'PY'
+          import base64, json, pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({'encoding': 'base64', 'content': base64.b64encode(path.read_bytes()).decode()}))
+          PY
+            sha=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input "$RUNNER_TEMP/blob.json" --jq '.sha')
+            test "$sha" = "$(git hash-object "$file")"
+            printf 'VERIFIED_BLOB %s %s\n' "$file" "$sha" | tee -a "$RUNNER_TEMP/chronograph-proof/bundle.txt"
+          done
+          printf 'QUALIFIED_SOURCE_HEAD=%s\n' "$GITHUB_SHA" | tee -a "$RUNNER_TEMP/chronograph-proof/bundle.txt"
+      - name: Retain evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: chronograph-343-${{ github.sha }}
+          path: ${{ runner.temp }}/chronograph-proof
+          retention-days: 14
+          if-no-files-found: error

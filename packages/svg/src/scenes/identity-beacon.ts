@@ -9,6 +9,8 @@ import { projectNode } from '../primitives/geometric.js';
 
 const SOURCES = ['github-rest', 'github-graphql', 'github-profile-html', 'synthetic-demo'] as const;
 const SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+const STALE_MS = 72 * 3_600_000;
+const MAX_FORWARD_SKEW_MS = 60_000;
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 120;
 
@@ -33,16 +35,30 @@ function issuesOf(project: ProjectSnapshot): number | null {
   const value = project?.openIssuesAndPullRequests;
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1_000_000 ? value : null;
 }
+/** Validate the UTC wire value rather than accepting Date.parse's rolled dates. */
+function observation(value: unknown): { time: number; source: string } | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const stamp = record.generatedAt;
+  if (typeof stamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(stamp)) return null;
+  const normalized = stamp.includes('.') ? stamp.replace(/\.(\d+)Z$/u, (_, digits: string) => `.${digits.padEnd(3, '0')}Z`) : stamp.replace(/Z$/u, '.000Z');
+  const time = Date.parse(stamp);
+  if (!Number.isFinite(time) || new Date(time).toISOString() !== normalized) return null;
+  if (!(SOURCES as readonly unknown[]).includes(record.source) || (record.mode !== 'live' && record.mode !== 'demo')) return null;
+  if ((record.mode === 'demo') !== (record.source === 'synthetic-demo')) return null;
+  return { time, source: record.source as string };
+}
 function buildBeacon({ snapshot, identity }: SceneInputs): BeaconModel | SceneUnavailable {
   if (!identity || !isIdentityConfig(identity)) return unavailable('A beacon without an identity is not rendered.');
   return buildIdentified(snapshot, identity);
 }
 function buildIdentified(snapshot: PortfolioSnapshot, identity: IdentityConfig): BeaconModel | SceneUnavailable {
-  if (snapshot?.freshness?.mode === 'unavailable') return unavailable('Snapshot freshness is unavailable.');
-  const generatedAt = snapshot?.freshness?.generatedAt;
-  const source = snapshot?.freshness?.source;
-  if (typeof generatedAt !== 'string' || generatedAt.trim() === '' || generatedAt.length > 40) return unavailable('Snapshot date is unavailable.');
-  if (typeof source !== 'string' || !SOURCES.includes(source as typeof SOURCES[number])) return unavailable('Snapshot source is unavailable.');
+  const root = observation(snapshot?.freshness);
+  const board = observation(snapshot?.projects?.freshness);
+  if (!root || !board || (root.source === 'synthetic-demo') !== (board.source === 'synthetic-demo')) return unavailable('Snapshot or project observations are unavailable.');
+  // The root is the deterministic as-of clock, not the current wall clock.
+  // Allow bounded independent fetch completion, never arbitrary future evidence.
+  if (root.time - board.time > STALE_MS || board.time - root.time > MAX_FORWARD_SKEW_MS) return unavailable('Project observations fall outside the snapshot window.');
   const projects = readProjects(snapshot);
   if (projects === null) return unavailable('Configured projects are unavailable.');
   const used = new Set<number>();
@@ -58,14 +74,14 @@ function buildIdentified(snapshot: PortfolioSnapshot, identity: IdentityConfig):
   return {
     name: identity.name, tagline: identity.tagline ?? '', unmatched,
     bodies: matched.map(body => ({ ...body, size: peak === 0 ? 0 : body.issues / peak })),
-    generatedAt, source, disclosure: source === 'synthetic-demo' ? 'synthetic' : 'public',
+    generatedAt: new Date(board.time).toISOString(), source: board.source,
+    disclosure: board.source === 'synthetic-demo' ? 'synthetic' : 'public',
   };
 }
 function readProjects(snapshot: PortfolioSnapshot): readonly ProjectSnapshot[] | null {
   const board = snapshot?.projects;
-  if (board === null || board === undefined) return [];
-  if (board.freshness?.mode === 'unavailable') return [];
-  if (!Array.isArray(board.projects) || board.projects.length > 6) return null;
+  if (!board || !Array.isArray(board.projects) || board.projects.length > 6) return null;
+  if (board.projects.some(project => !project || typeof project.name !== 'string' || project.name.length === 0 || project.name.length > 100 || issuesOf(project) === null)) return null;
   return board.projects;
 }
 function accessibility(model: BeaconModel): { title: string; description: string } {

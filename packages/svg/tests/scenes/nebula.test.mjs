@@ -13,8 +13,8 @@ function nebulaInputs() {
     version: 1,
     owner: "scene-demo",
     projects: [
-      { primaryLanguage: "TypeScript", releaseState: "published", release: { tag: "v0.1.0", publishedAt: "2026-01-07T00:00:00.000Z" } },
-      { primaryLanguage: "Python", releaseState: "none", release: null },
+      { repo: "scene-demo/alpha", primaryLanguage: "TypeScript", releaseState: "published", release: { tag: "v0.1.0", publishedAt: "2026-01-07T00:00:00.000Z" } },
+      { repo: "scene-demo/beta", primaryLanguage: "Python", releaseState: "none", release: null },
     ],
     freshness: { generatedAt: "2026-01-07T00:00:00.000Z", source: "synthetic-demo", mode: "demo" },
   };
@@ -183,3 +183,93 @@ test("stale or missing contribution history is unavailable rather than a dark he
     assert.doesNotMatch(result.svg, /<circle\b/u);
   }
 });
+
+const invalidProjectEvidence = [
+  ["missing board", value => { delete value.snapshot.projects; }],
+  ["missing board freshness", value => { delete value.snapshot.projects.freshness; }],
+  ["unavailable board", value => { value.snapshot.projects.freshness.mode = "unavailable"; }],
+  ["stale board", value => { value.snapshot.projects.freshness.mode = "stale"; }],
+  ["partial board", value => { value.snapshot.projects.freshness.mode = "partial"; }],
+  ["unknown board mode", value => { value.snapshot.projects.freshness.mode = "ready"; }],
+  ["unknown board source", value => { value.snapshot.projects.freshness.source = "invented"; }],
+  ["mixed public and synthetic observations", value => { value.snapshot.projects.freshness = { generatedAt: "2026-01-07T00:00:00Z", source: "github-rest", mode: "live" }; }],
+  ["live board with synthetic provenance", value => { value.snapshot.projects.freshness.mode = "live"; }],
+  ["invalid board instant", value => { value.snapshot.projects.freshness.generatedAt = "2026-01-07Tnot-a-time"; }],
+  ["impossible board date", value => { value.snapshot.projects.freshness.generatedAt = "2026-02-30T00:00:00Z"; }],
+  ["old board still labelled live", value => { value.snapshot.projects.freshness.generatedAt = "2026-01-01T00:00:00Z"; }],
+  ["over-cap board", value => { value.snapshot.projects.projects = Array.from({ length: 7 }, (_, i) => ({ ...value.snapshot.projects.projects[0], repo: `scene-demo/repo${i}` })); }],
+  ["duplicate repository", value => { value.snapshot.projects.projects.push({ ...value.snapshot.projects.projects[0], repo: "SCENE-DEMO/ALPHA" }); }],
+];
+for (const [name, change] of invalidProjectEvidence) {
+  test(`nebula keeps the contribution field neutral for ${name}`, () => {
+    const value = nebulaInputs();
+    change(value);
+    for (const backend of ["css", "smil"]) {
+      const result = render(value, { backend, motion: "ambient" });
+      const stars = circles(result.svg);
+      assert.equal(result.unavailable, false);
+      assert.equal(stars.length, value.snapshot.contributions.days.length);
+      assert.ok(stars.every(star => star.r === "1.6" && star.fill === svg.themes.aurora.chrome));
+    }
+  });
+}
+
+const invalidReleases = [
+  ["empty release", project => { project.release = {}; }],
+  ["null release", project => { project.release = null; }],
+  ["array release", project => { project.release = []; }],
+  ["missing tag", project => { delete project.release.tag; }],
+  ["empty tag", project => { project.release.tag = ""; }],
+  ["control-bearing tag", project => { project.release.tag = "bad\u0000tag"; }],
+  ["overlong tag", project => { project.release.tag = "a".repeat(201); }],
+  ["missing instant", project => { delete project.release.publishedAt; }],
+  ["date-only instant", project => { project.release.publishedAt = "2026-01-07"; }],
+  ["invalid time suffix", project => { project.release.publishedAt = "2026-01-07Tnot-a-time"; }],
+  ["impossible date", project => { project.release.publishedAt = "2026-02-30T00:00:00Z"; }],
+  ["non-UTC instant", project => { project.release.publishedAt = "2026-01-07T00:00:00+00:00"; }],
+  ["future instant", project => { project.release.publishedAt = "2026-01-07T00:00:00.001Z"; }],
+  ["missing repository", project => { delete project.repo; }],
+  ["invalid repository", project => { project.repo = "scene-demo/../alpha"; }],
+  ["unavailable release with residual object", project => { project.releaseState = "unavailable"; }],
+  ["unknown release state", project => { project.releaseState = "ready"; }],
+];
+for (const [name, change] of invalidReleases) {
+  test(`nebula never draws a release mark for ${name}`, () => {
+    const value = nebulaInputs();
+    change(value.snapshot.projects.projects[0]);
+    for (const backend of ["css", "smil"]) {
+      const result = render(value, { backend, motion: "ambient" });
+      assert.equal(result.unavailable, false);
+      assert.equal(circles(result.svg).length, value.snapshot.contributions.days.length);
+      assert.ok(circles(result.svg).every(star => star.r === "1.6"));
+    }
+  });
+}
+
+test("nebula keeps valid no-release project languages without inventing a release", () => {
+  const value = nebulaInputs();
+  value.snapshot.projects.projects[0].releaseState = "none";
+  value.snapshot.projects.projects[0].release = null;
+  assert.equal(circles(render(value).svg).length, value.snapshot.contributions.days.length);
+  assert.equal(definition().buildModel(value).clusters[0].language, "TypeScript");
+});
+
+test("nebula accepts independently completed public board observations", () => {
+  const value = nebulaInputs();
+  value.snapshot.freshness = { generatedAt: "2026-01-07T00:00:00Z", source: "github-graphql", mode: "live" };
+  value.snapshot.contributions.freshness = { ...value.snapshot.freshness };
+  value.snapshot.projects.freshness = { generatedAt: "2026-01-07T00:00:01.5Z", source: "github-rest", mode: "live" };
+  value.snapshot.projects.projects[0].release.publishedAt = "2026-01-07T00:00:01.50Z";
+  assert.equal(circles(render(value).svg).filter(star => star.r === "5.5").length, 1);
+});
+
+for (const part of ["freshness", "contributions"]) {
+  for (const stamp of ["2026-01-07Tnot-a-time", "2026-02-30T00:00:00Z"]) {
+    test(`nebula refuses malformed ${part} date ${stamp}`, () => {
+      const value = nebulaInputs();
+      const freshness = part === "freshness" ? value.snapshot.freshness : value.snapshot.contributions.freshness;
+      freshness.generatedAt = stamp;
+      assert.equal(render(value).unavailable, true);
+    });
+  }
+}
