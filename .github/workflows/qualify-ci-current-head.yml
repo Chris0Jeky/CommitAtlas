@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/ci-head-proof"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = 998f118b14e6d0605bd38641490500523d2a4673
+          test "$(git rev-parse HEAD^)" = a76f0e7ee40af75f084cb6c8c810f0df7f9a5798
           {
             printf 'SOURCE_HEAD=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^{tree})"
             node --version
@@ -51,11 +51,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/scripts/qualify-ci-head.py | tee "$RUNNER_TEMP/ci-head-proof/prepared.txt"
-          test "$(git hash-object packages/github/src/client.ts)" = 4297f825d87f2d0abab254d9fc4eeae690878f7c
-          test "$(git hash-object lib/github/client.test.ts)" = 55840d00c57b443f6e13e79ca6050513869b2c61
-          test "$(git hash-object lib/github/terminal-conclusions.test.ts)" = f02fc487fe3d0a4633e40797830bdd5b869f98f4
-          test "$(git hash-object tests/rendered-html.test.mjs)" = 8a3fb83a1f74d46f3deab5043bc0a15e4ca478a
-          test "$(git hash-object package.json)" = 39a8b6d642b17c1c033223942c195a69b6d0a70
+          test "$(git hash-object packages/github/src/client.ts)" = 429ee93ddf4b5fcec209a07a264475b27022da38
+          test "$(git hash-object lib/github/client.test.ts)" = 282cfbf12ac5dc6aa47227c14d4ff1a5ce66e878
+          test "$(git hash-object lib/github/terminal-conclusions.test.ts)" = 8fd180333bce9a9766170020e9c81b502b955522
+          test "$(git hash-object tests/rendered-html.test.mjs)" = 35e64d2f58ce9231d40011a067a9dacc85530e56
+          test "$(git hash-object package.json)" = 31485acd5452e675f5c8db273b99f09f67043fe2
           npm run build:github > "$RUNNER_TEMP/ci-head-proof/green-build.log" 2>&1
           node --test --test-concurrency=2 packages/github/tests/ci-current-head.test.mjs 2>&1 | tee "$RUNNER_TEMP/ci-head-proof/green.log"
       - name: Rebuild the Action and run complete locked validation
