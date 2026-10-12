@@ -2,7 +2,7 @@
 
 # CommitAtlas
 
-<p align="center"><img src="docs/assets/hero.svg" alt="CommitAtlas" width="100%"></p>
+<p align="center"><img src="docs/assets/CommitAtlas-loop.svg" alt="CommitAtlas workflow, animated" width="100%"></p>
 
 ### Your GitHub work, mapped clearly.
 
