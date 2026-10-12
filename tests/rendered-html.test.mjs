@@ -475,13 +475,14 @@ test("uses only aligned configured workflows in the built Worker project route",
     const url = new URL(input instanceof Request ? input.url : input.toString());
     configuredCalls.push(url.pathname);
     if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/branches/main")) return githubJson({ name: "main", commit: { sha: CI_HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
     if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return githubJson(workflowRuns("success"));
     assert.fail(`unexpected GitHub route: ${url.pathname}`);
   }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml"));
   assert.equal(configured.status, 200);
   assert.deepEqual((await configured.json()).projects[0].ci, {
-    state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: RECENT_RUN_UPDATED_AT, headSha: null,
+    state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: RECENT_RUN_UPDATED_AT, headSha: CI_HEAD_SHA,
   });
   assert.equal(configuredCalls.some((path) => path.endsWith("/actions/runs")), false);
 
@@ -500,6 +501,7 @@ test("uses only aligned configured workflows in the built Worker project route",
   const wrongWorkflow = await withMockedFetch(async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/branches/main")) return githubJson({ name: "main", commit: { sha: CI_HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
     if (url.pathname.endsWith("/actions/workflows/docs.yml/runs")) return githubJson(workflowRuns("failure"));
     assert.fail(`unexpected GitHub route: ${url.pathname}`);
@@ -622,6 +624,7 @@ test("treats only 404 as an absent optional lookup in the built Worker project r
   const projectFetch = (optional) => async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+    if (url.pathname.endsWith("/branches/main")) return githubJson({ name: "main", commit: { sha: CI_HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest") || url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return optional();
     assert.fail(`unexpected GitHub route: ${url.pathname}`);
   };
@@ -662,6 +665,7 @@ test("never reports a malformed workflow_runs payload as configured or clean in 
     const response = await withMockedFetch(async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+      if (url.pathname.endsWith("/branches/main")) return githubJson({ name: "main", commit: { sha: CI_HEAD_SHA } });
       if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
       if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return githubJson(body);
       assert.fail(`unexpected GitHub route: ${url.pathname}`);
@@ -853,10 +857,31 @@ function publicProjectPayload() {
 
 // CI freshness is a 72-hour window, so a pinned observation silently decays into
 // `stale` once the fixture ages past it. Observe one hour ago instead.
+const CI_HEAD_SHA = "a".repeat(40);
 const RECENT_RUN_UPDATED_AT = new Date(Date.now() - 3_600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
 function workflowRuns(conclusion) {
   return {
-    workflow_runs: [{ status: "completed", conclusion, updated_at: RECENT_RUN_UPDATED_AT }],
+    workflow_runs: [{ head_sha: CI_HEAD_SHA, status: "completed", conclusion, updated_at: RECENT_RUN_UPDATED_AT }],
   };
 }
+
+
+test("the built Worker attributes workflow status only to the captured default-branch tip", async () => {
+  for (const matches of [false, true]) {
+    const response = await withMockedFetch(async input => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/repos/acme/atlas") return githubJson(publicProjectPayload());
+      if (url.pathname.endsWith("/releases/latest")) return githubJson({}, 404);
+      if (url.pathname.endsWith("/branches/main")) return githubJson({ name: "main", commit: { sha: matches ? CI_HEAD_SHA : "b".repeat(40) } });
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return githubJson(workflowRuns("success"));
+      assert.fail(`unexpected fixture request: ${url.pathname}`);
+    }, () => request("/api/v1/projects?owner=acme&repos=atlas&states=atlas:active&workflows=atlas:ci.yml"));
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.projects[0].ci.state, matches ? "passing" : "unavailable");
+    assert.equal(payload.projects[0].ci.headSha, matches ? CI_HEAD_SHA : null);
+    assert.equal(payload.projects[0].ci.checkedAt, matches ? RECENT_RUN_UPDATED_AT : null);
+    assert.equal(payload.freshness.mode, matches ? "live" : "partial");
+  }
+});

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GitHubClient } from "./client";
 
+const HEAD_SHA = "a".repeat(40);
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 const OBSERVED_AT = "2026-08-18T23:00:00Z";
 
@@ -13,9 +14,11 @@ for (const expected of [
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/repos/acme/atlas") return json(projectRepository());
+      if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
       if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
       if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) {
         return json({ workflow_runs: [{
+          head_sha: HEAD_SHA,
           status: "completed",
           conclusion: expected.conclusion,
           updated_at: OBSERVED_AT,
