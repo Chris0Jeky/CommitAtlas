@@ -101,6 +101,8 @@ function buildNebula(snapshot: PortfolioSnapshot): NebulaModel | SceneUnavailabl
   const root = observation(snapshot?.freshness);
   const contribution = observation(snapshot?.contributions?.freshness);
   if (!root || !contribution || (root.source === "synthetic-demo") !== (contribution.source === "synthetic-demo")) return sceneUnavailable(REASON);
+  // The root is the deterministic as-of clock for the contribution field too.
+  if (root.time - contribution.time > STALE_MS || contribution.time - root.time > MAX_FORWARD_SKEW_MS) return sceneUnavailable(REASON);
   const days = readDays(snapshot.contributions.days);
   if (days === null) return sceneUnavailable(REASON);
   return { generatedAtDate: new Date(root.time).toISOString().slice(0, 10), clusters: readClusters(snapshot.projects, root, contribution.time), days };

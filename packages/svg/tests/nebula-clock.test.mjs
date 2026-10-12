@@ -18,13 +18,14 @@ function inputs(offset, synthetic = true) {
   };
   return value;
 }
-function check(value, expectedMarks) {
+function check(value, expectedMarks, unavailable = false) {
   for (const backend of ["css", "smil"]) {
     for (const motion of ["none", "ambient"]) {
       const output = svg.renderSceneDefinition(svg.getScene("nebula"), value, { ...sceneContext, backend, motion });
-      assert.equal(output.unavailable, false, "usable contributions remain available");
+      assert.equal(output.unavailable, unavailable, "only coherent contributions remain available");
       assert.equal((output.svg.match(/r="5\.5"/gu) ?? []).length, expectedMarks);
-      assert.equal((output.svg.match(/r="1\.6"/gu) ?? []).length, value.snapshot.contributions.days.length);
+      assert.equal((output.svg.match(/r="1\.6"/gu) ?? []).length, unavailable ? 0 : value.snapshot.contributions.days.length);
+      if (unavailable) assert.equal(output.counters.animatedElements, 0);
     }
   }
 }
@@ -41,7 +42,7 @@ for (const olderPart of ["root", "contribution"]) {
     const value = inputs(60_001);
     if (olderPart === "root") value.snapshot.contributions.freshness.generatedAt = stamp(60_001);
     else value.snapshot.freshness.generatedAt = stamp(60_001);
-    check(value, 0);
+    check(value, 0, olderPart === "root");
   });
 }
 for (const offset of [-72 * 3_600_000, -72 * 3_600_000 - 1]) {

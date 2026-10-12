@@ -1,0 +1,80 @@
+name: Qualify nebula evidence repair
+on:
+  push:
+    branches: [fix/nebula-release-evidence-347-20261012]
+permissions:
+  contents: write
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pin the input and preserve its identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nebula-proof"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          {
+            printf 'SOURCE_HEAD=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^{tree})"
+            sha256sum package-lock.json packages/svg/src/scenes/nebula.ts packages/svg/tests/scenes/nebula.test.mjs packages/svg/tests/nebula-clock.test.mjs packages/svg/tests/nebula-source-clock.test.mjs packages/svg/package.json
+          } | tee "$RUNNER_TEMP/nebula-proof/source.txt"
+          sha256sum --check <<'HASHES'
+          11e0f861c8dc5047f41040c71eb155a9b04266735baa63b6b42d575607a612e4  package-lock.json
+          0d30aaa5025d78e66354ae0d9e026a9cfa896c4cb7ee49537226e51568676ea5  packages/svg/src/scenes/nebula.ts
+          849477c6b3d7c029756e3d5578c55788d935af64371bbb0f616f7330bacc6bb8  packages/svg/tests/scenes/nebula.test.mjs
+          e6d28419703550b50da9027e71a83d47c43f984c1ed39ca9d61491d1562f6761  packages/svg/tests/nebula-clock.test.mjs
+          ec4fb47936807057c7ae88638a9d1b517994524373b0761074556e2fa1fa5a9c  packages/svg/tests/nebula-source-clock.test.mjs
+          b6e5c227717f68e8422e4053864df72e384bb19e37495379c605a34358654095  packages/svg/package.json
+          HASHES
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Install exact locked dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version | tee "$RUNNER_TEMP/nebula-proof/versions.txt"
+          npm --version | tee -a "$RUNNER_TEMP/nebula-proof/versions.txt"
+          npm ci 2>&1 | tee "$RUNNER_TEMP/nebula-proof/install.log"
+      - name: Rebuild bundle and run the complete gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec > >(tee "$RUNNER_TEMP/nebula-proof/check.log") 2>&1
+          npm run build:action
+          git config user.name 'CommitAtlas qualification'
+          git config user.email 'qualification@users.noreply.github.com'
+          git add action/dist
+          if ! git diff --cached --quiet; then git commit -m 'Local-only verified Action bundle'; fi
+          npm run check
+          npm audit --omit=dev --audit-level=high
+          test -z "$(git status --porcelain)"
+      - name: Preserve verified bundle blobs without moving a branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$GITHUB_SHA" HEAD -- action/dist | while IFS= read -r file; do
+            test -f "$file"
+            python3 - "$file" "$RUNNER_TEMP/nebula-blob.json" <<'PY'
+          import base64, json, pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({'encoding':'base64','content':base64.b64encode(p.read_bytes()).decode()}))
+          PY
+            sha=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input "$RUNNER_TEMP/nebula-blob.json" --jq '.sha')
+            test "$sha" = "$(git hash-object "$file")"
+            printf 'VERIFIED_BLOB %s %s\n' "$file" "$sha" | tee -a "$RUNNER_TEMP/nebula-proof/bundle.txt"
+          done
+          printf 'QUALIFIED_SOURCE_HEAD=%s\n' "$GITHUB_SHA" | tee -a "$RUNNER_TEMP/nebula-proof/bundle.txt"
+      - name: Retain evidence even for a failed attempt
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: nebula-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/nebula-proof
+          retention-days: 14
+          if-no-files-found: error
