@@ -23,6 +23,10 @@ interface NebulaModel {
 interface Placed { readonly x: number; readonly y: number; readonly release: boolean; readonly cluster: number }
 
 const USABLE = new Set(["live", "demo", "partial"]);
+const SOURCES = new Set(["github-rest", "github-graphql", "github-profile-html", "synthetic-demo"]);
+const STALE_MS = 72 * 3_600_000;
+const REPOSITORY = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?\/(?!\.\.?$)[a-z\d._-]{1,100}$/iu;
+interface Observation { readonly time: number; readonly source: string; readonly mode: string }
 const ANONYMOUS: Cluster = { language: null, release: false, publishedAt: null, tag: null };
 const REASON = "Contribution history is unavailable.";
 
@@ -31,12 +35,17 @@ function utcDay(value: string): boolean {
   const timestamp = Date.parse(`${value}T00:00:00.000Z`);
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
 }
-function utcStamp(value: string): string | null {
-  const date = value.slice(0, 10);
-  return utcDay(date) && value.startsWith(`${date}T`) ? date : null;
+function instant(value: unknown): number | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(value)) return null;
+  const normalized = value.includes(".") ? value.replace(/\.(\d+)Z$/u, (_, digits: string) => `.${digits.padEnd(3, "0")}Z`) : value.replace(/Z$/u, ".000Z");
+  const time = Date.parse(value);
+  return Number.isFinite(time) && new Date(time).toISOString() === normalized ? time : null;
 }
-function usable(value: unknown): boolean {
-  return isRecord(value) && USABLE.has(String(value.mode));
+function observation(value: unknown): Observation | null {
+  if (!isRecord(value) || typeof value.mode !== "string" || !USABLE.has(value.mode) || typeof value.source !== "string" || !SOURCES.has(value.source)) return null;
+  if ((value.mode === "demo") !== (value.source === "synthetic-demo")) return null;
+  const time = instant(value.generatedAt);
+  return time === null ? null : { time, source: value.source, mode: value.mode };
 }
 function languageName(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -59,29 +68,39 @@ function readDays(value: unknown): DayPoint[] | null {
   }
   return days;
 }
-function readClusters(projects: unknown): Cluster[] {
-  if (!isRecord(projects) || !Array.isArray(projects.projects) || projects.projects.length === 0) return [ANONYMOUS];
+function readClusters(projects: unknown, root: Observation, contributionTime: number): Cluster[] {
+  if (!isRecord(projects) || !Array.isArray(projects.projects) || projects.projects.length === 0 || projects.projects.length > 6) return [ANONYMOUS];
+  const board = observation(projects.freshness);
+  if (!board || board.mode === "partial" || (root.source === "synthetic-demo") !== (board.source === "synthetic-demo") ||
+    Math.max(root.time, contributionTime, board.time) - board.time > STALE_MS) return [ANONYMOUS];
   const clusters: Cluster[] = [];
+  const seen = new Set<string>();
   for (let index = 0; index < projects.projects.length; index += 1) {
     const project: unknown = projects.projects[index];
-    if (!isRecord(project)) continue;
+    if (!isRecord(project) || typeof project.repo !== "string" || !REPOSITORY.test(project.repo)) continue;
+    const repository = project.repo.toLowerCase();
+    if (seen.has(repository)) return [ANONYMOUS];
+    seen.add(repository);
     const releaseRecord = isRecord(project.release) ? project.release : null;
-    const release = project.releaseState === "published" && releaseRecord !== null;
+    const published = instant(releaseRecord?.publishedAt);
+    const tag = boundedToken(releaseRecord?.tag);
+    const release = project.releaseState === "published" && published !== null && published <= board.time && tag !== null;
     clusters.push({
       language: languageName(project.primaryLanguage),
       release,
-      publishedAt: releaseRecord && release && typeof releaseRecord.publishedAt === "string" ? utcStamp(releaseRecord.publishedAt) : null,
-      tag: releaseRecord && release ? boundedToken(releaseRecord.tag) : null,
+      publishedAt: release && published !== null ? new Date(published).toISOString().slice(0, 10) : null,
+      tag: release ? tag : null,
     });
   }
   return clusters.length > 0 ? clusters : [ANONYMOUS];
 }
 function buildNebula(snapshot: PortfolioSnapshot): NebulaModel | SceneUnavailable {
-  if (!usable(snapshot.freshness) || !isRecord(snapshot.contributions) || !usable(snapshot.contributions.freshness)) return sceneUnavailable(REASON);
-  const generatedAtDate = typeof snapshot.freshness.generatedAt === "string" ? utcStamp(snapshot.freshness.generatedAt) : null;
-  const days = generatedAtDate === null ? null : readDays(snapshot.contributions.days);
-  if (generatedAtDate === null || days === null) return sceneUnavailable(REASON);
-  return { generatedAtDate, clusters: readClusters(snapshot.projects), days };
+  const root = observation(snapshot?.freshness);
+  const contribution = observation(snapshot?.contributions?.freshness);
+  if (!root || !contribution || (root.source === "synthetic-demo") !== (contribution.source === "synthetic-demo")) return sceneUnavailable(REASON);
+  const days = readDays(snapshot.contributions.days);
+  if (days === null) return sceneUnavailable(REASON);
+  return { generatedAtDate: new Date(root.time).toISOString().slice(0, 10), clusters: readClusters(snapshot.projects, root, contribution.time), days };
 }
 function accessibility(model: NebulaModel): { title: string; description: string } {
   return {
