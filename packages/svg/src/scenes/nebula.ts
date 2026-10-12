@@ -54,8 +54,15 @@ function languageName(value: unknown): string | null {
   const trimmed = value.trim();
   return trimmed !== "" && trimmed.length <= 80 ? trimmed : null;
 }
+/** Tags are opaque seed-only identities, never markup. Match the collector's 200-code-point bound. */
 function boundedToken(value: unknown): string | null {
-  return typeof value === "string" && value.length <= 64 && /^[A-Za-z0-9._+-]+$/u.test(value) ? value : null;
+  // A valid code point uses at most two UTF-16 units. Reject huge input before scanning it.
+  if (typeof value !== "string" || value.length === 0 || value.length > 400) return null;
+  let codePoints = 0;
+  for (const character of value) {
+    if (++codePoints > 200 || /[\s\p{Cc}\p{Cs}]/u.test(character)) return null;
+  }
+  return value;
 }
 function readDays(value: unknown): DayPoint[] | null {
   if (!Array.isArray(value) || value.length === 0) return null;
