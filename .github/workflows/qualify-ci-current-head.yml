@@ -25,12 +25,12 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/ci-head-proof"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = a76f0e7ee40af75f084cb6c8c810f0df7f9a5798
+          test "$(git rev-parse HEAD^)" = b3a67ff8e3c3101063928ffe2c27c7c5406b9bd3
           {
             printf 'SOURCE_HEAD=%s\nSOURCE_TREE=%s\n' "$GITHUB_SHA" "$(git rev-parse HEAD^{tree})"
             node --version
             npm --version
-            sha256sum package-lock.json .github/scripts/qualify-ci-head.py packages/github/tests/ci-current-head.test.mjs
+            sha256sum package-lock.json .github/scripts/qualify-ci-head.py packages/github/tests/ci-current-head.test.mjs .github/workflows/qualify-ci-current-head.yml
           } | tee "$RUNNER_TEMP/ci-head-proof/source.txt"
           npm ci 2>&1 | tee "$RUNNER_TEMP/ci-head-proof/install.log"
       - name: Reproduce old-head attribution before applying the repair
@@ -46,16 +46,26 @@ jobs:
           grep -E '^# fail 34$' "$RUNNER_TEMP/ci-head-proof/red.log"
           grep -E '^# pass 6$' "$RUNNER_TEMP/ci-head-proof/red.log"
           grep -E 'not ok .*success run on an older revision' "$RUNNER_TEMP/ci-head-proof/red.log"
-      - name: Apply the reviewed source and verify its exact output identities
+      - name: Apply reviewed source and reconcile the observed-head fixture
         shell: bash
         run: |
           set -euo pipefail
           python3 .github/scripts/qualify-ci-head.py | tee "$RUNNER_TEMP/ci-head-proof/prepared.txt"
+          test "$(git hash-object tests/rendered-html.test.mjs)" = 35e64d2f58ce9231d40011a067a9dacc85530e56
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/rendered-html.test.mjs')
+          source = p.read_text()
+          old = 'state: "passing", label: "Passing", workflow: "ci.yml", url: null, checkedAt: RECENT_RUN_UPDATED_AT, headSha: null,'
+          assert source.count(old) == 1
+          p.write_text(source.replace(old, old.replace('headSha: null', 'headSha: CI_HEAD_SHA')))
+          PY
           test "$(git hash-object packages/github/src/client.ts)" = 429ee93ddf4b5fcec209a07a264475b27022da38
           test "$(git hash-object lib/github/client.test.ts)" = 282cfbf12ac5dc6aa47227c14d4ff1a5ce66e878
           test "$(git hash-object lib/github/terminal-conclusions.test.ts)" = 8fd180333bce9a9766170020e9c81b502b955522
-          test "$(git hash-object tests/rendered-html.test.mjs)" = 35e64d2f58ce9231d40011a067a9dacc85530e56
+          test "$(git hash-object tests/rendered-html.test.mjs)" = 18e5a377f919e2976f744cb32b45537b6bcb6c49
           test "$(git hash-object package.json)" = 31485acd5452e675f5c8db273b99f09f67043fe2
+          printf 'RECONCILED_BLOB tests/rendered-html.test.mjs %s\n' "$(git hash-object tests/rendered-html.test.mjs)" | tee -a "$RUNNER_TEMP/ci-head-proof/prepared.txt"
           npm run build:github > "$RUNNER_TEMP/ci-head-proof/green-build.log" 2>&1
           node --test --test-concurrency=2 packages/github/tests/ci-current-head.test.mjs 2>&1 | tee "$RUNNER_TEMP/ci-head-proof/green.log"
       - name: Rebuild the Action and run complete locked validation
