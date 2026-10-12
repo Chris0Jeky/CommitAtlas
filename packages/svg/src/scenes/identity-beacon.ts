@@ -10,6 +10,7 @@ import { projectNode } from '../primitives/geometric.js';
 const SOURCES = ['github-rest', 'github-graphql', 'github-profile-html', 'synthetic-demo'] as const;
 const SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const STALE_MS = 72 * 3_600_000;
+const MAX_FORWARD_SKEW_MS = 60_000;
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 120;
 
@@ -55,8 +56,9 @@ function buildIdentified(snapshot: PortfolioSnapshot, identity: IdentityConfig):
   const root = observation(snapshot?.freshness);
   const board = observation(snapshot?.projects?.freshness);
   if (!root || !board || (root.source === 'synthetic-demo') !== (board.source === 'synthetic-demo')) return unavailable('Snapshot or project observations are unavailable.');
-  // Component fetches finish independently; attribute issue counts to the board.
-  if (Math.max(root.time, board.time) - board.time > STALE_MS) return unavailable('Project observations are stale.');
+  // The root is the deterministic as-of clock, not the current wall clock.
+  // Allow bounded independent fetch completion, never arbitrary future evidence.
+  if (root.time - board.time > STALE_MS || board.time - root.time > MAX_FORWARD_SKEW_MS) return unavailable('Project observations fall outside the snapshot window.');
   const projects = readProjects(snapshot);
   if (projects === null) return unavailable('Configured projects are unavailable.');
   const used = new Set<number>();
