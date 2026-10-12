@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GitHubApiError, GitHubClient } from "./client";
 
+const HEAD_SHA = "a".repeat(40);
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 const LIFECYCLES = new Map([["atlas", "active" as const], ["old", "maintenance" as const]]);
 const WORKFLOWS = new Map([["atlas", "ci.yml"], ["old", "ci.yml"]]);
@@ -794,6 +795,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
         license: { spdx_id: "NOASSERTION" },
       });
     }
+    if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
     if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) {
       return json({
@@ -802,7 +804,7 @@ test("maps exact workflow evidence and missing releases honestly", async () => {
           conclusion: "success",
           updated_at: "2026-08-18T23:00:00Z",
           html_url: "https://github.com/acme/atlas/actions/runs/1",
-          head_sha: "abc123",
+          head_sha: HEAD_SHA,
         }],
       });
     }
@@ -836,9 +838,10 @@ test("marks old successful CI as stale", async () => {
         open_issues_count: 0,
       });
     }
+    if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
     return json({
-      workflow_runs: [{ status: "completed", conclusion: "success", updated_at: "2025-01-01T00:00:00Z" }],
+      workflow_runs: [{ head_sha: HEAD_SHA, status: "completed", conclusion: "success", updated_at: "2025-01-01T00:00:00Z" }],
     });
   };
   const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects("acme", ["old"], LIFECYCLES, WORKFLOWS);
@@ -870,9 +873,10 @@ test("queries only the configured workflow rather than the repository-wide runs 
     const url = new URL(input instanceof Request ? input.url : input.toString());
     calls.push(url.pathname);
     if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
     if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) {
-      return json({ workflow_runs: [{ status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" }] });
+      return json({ workflow_runs: [{ head_sha: HEAD_SHA, status: "completed", conclusion: "success", updated_at: "2026-08-18T23:00:00Z" }] });
     }
     assert.fail(`unexpected workflow lookup: ${url.pathname}`);
   };
@@ -892,6 +896,7 @@ test("reports a declared but unavailable workflow as unavailable", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
     if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
     if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({}, 404);
     assert.fail(`unexpected lookup: ${url.pathname}`);
@@ -1292,6 +1297,7 @@ test("treats only 404 as an absent optional release or workflow run", async () =
   const optionalFetch = (optional: () => Response): typeof fetch => async (input) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+    if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
     if (optionalPath(url.pathname)) return optional();
     assert.fail(`unexpected lookup: ${url.pathname}`);
   };
@@ -1442,8 +1448,9 @@ test("maps workflow conclusions to CI states through fetchProjects", async () =>
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
       if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
-      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [run] });
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [{ head_sha: HEAD_SHA, ...run }] });
       assert.fail(`unexpected lookup: ${url.pathname}`);
     };
     const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
@@ -1467,8 +1474,9 @@ test("reports an unknown workflow conclusion as unavailable rather than passing 
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
       if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
-      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [run] });
+      if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json({ workflow_runs: [{ head_sha: HEAD_SHA, ...run }] });
       assert.fail(`unexpected lookup: ${url.pathname}`);
     };
     const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(
@@ -1544,6 +1552,7 @@ test("reports missing or non-array workflow_runs as unavailable rather than unco
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
       if (url.pathname === "/repos/acme/atlas") return json(projectRepository("atlas"));
+      if (url.pathname.endsWith("/branches/main")) return json({ name: "main", commit: { sha: HEAD_SHA } });
       if (url.pathname.endsWith("/releases/latest")) return json({}, 404);
       if (url.pathname.endsWith("/actions/workflows/ci.yml/runs")) return json(body);
       assert.fail(`unexpected lookup: ${url.pathname}`);

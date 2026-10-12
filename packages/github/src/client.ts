@@ -368,7 +368,7 @@ export class GitHubClient {
     if (!isRecord(repo)) throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository");
     if (repo.private === true) throw privateDataError("CommitAtlas only serves public GitHub repositories");
 
-    const defaultBranch = textField(repo, "default_branch", GITHUB_TEXT_LIMITS.branch) ?? "main";
+    const defaultBranch = textField(repo, "default_branch", GITHUB_TEXT_LIMITS.branch) ?? "";
     const [releaseObservation, ci] = await Promise.all([
       this.fetchLatestRelease(owner, repository),
       configuredWorkflow
@@ -441,11 +441,24 @@ export class GitHubClient {
     branch: string,
     workflow: ProjectWorkflow,
   ): Promise<ProjectCiSignal> {
+    const unavailable = () => toJsonCiSignal(
+      calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null,
+    );
+    // Bind the workflow to the observed default-branch tip, not merely to its name.
+    // No guessed branch and no additional request when CI is unconfigured.
+    if (!branch) return unavailable();
+    const tip = await this.getJson(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/branches/${encodeURIComponent(branch)}`,
+      true,
+    );
+    if (!isRecord(tip) || tip.name !== branch || !isRecord(tip.commit) ||
+      typeof tip.commit.sha !== "string" || !/^[a-f\d]{40}$/iu.test(tip.commit.sha)) return unavailable();
+    const headSha = tip.commit.sha.toLowerCase();
     const result = await this.getJson(
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/actions/workflows/${encodeURIComponent(workflow)}/runs?branch=${encodeURIComponent(branch)}&per_page=1&exclude_pull_requests=true`,
       true,
     );
-    if (result === null || result === OPTIONAL_LOOKUP_UNAVAILABLE || !isRecord(result)) {
+    if (!isRecord(result)) {
       return toJsonCiSignal(calculateGitHubCiState({ available: false, configured: true }, this.now()), workflow, null, null);
     }
     // A 200 whose workflow_runs is missing or not an array is an unreadable
@@ -460,12 +473,15 @@ export class GitHubClient {
     if (!run) {
       return toJsonCiSignal(calculateGitHubCiState({ available: true, configured: true }, this.now()), workflow, null, null);
     }
+    // Ignore even successful, failed or pending runs for another revision.
+    // Do not attach their timestamps or URLs to the current-head signal.
+    if (typeof run.head_sha !== "string" || run.head_sha.length !== 40 || run.head_sha.toLowerCase() !== headSha) return unavailable();
     const status = calculateGitHubCiState(workflowObservation(run), this.now());
     return toJsonCiSignal(
       status,
       workflow,
       safeHttpsUrl(run.html_url),
-      textField(run, "head_sha", GITHUB_TEXT_LIMITS.commitSha),
+      headSha,
     );
   }
 
