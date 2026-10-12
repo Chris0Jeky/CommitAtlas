@@ -10,6 +10,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - name: Verify reconciled input bytes before qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'SOURCE_HEAD=%s\n' "$GITHUB_SHA"
+          sha256sum --check <<'HASHES'
+          11e0f861c8dc5047f41040c71eb155a9b04266735baa63b6b42d575607a612e4  package-lock.json
+          f2f73f706599e9956d06982abed9053d2803956f816bb8bcbe89a2cc0c4c7352  packages/svg/src/scenes/identity-beacon.ts
+          1abcff7121a553d2966e263632a39bbf4ca7e45f78309261d0e44bb1368b8817  packages/svg/tests/identity-beacon.test.mjs
+          HASHES
       - uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
@@ -19,10 +30,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'SOURCE_HEAD=%s\n' "$GITHUB_SHA"
           node --version
           npm --version
-          sha256sum package-lock.json packages/svg/src/scenes/identity-beacon.ts packages/svg/tests/identity-beacon.test.mjs
           npm run build:action
           git config user.name 'CommitAtlas qualification'
           git config user.email 'qualification@users.noreply.github.com'
