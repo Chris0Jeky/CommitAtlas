@@ -2,6 +2,8 @@
 
 # CommitAtlas
 
+<p align="center"><img src="docs/assets/hero.svg" alt="CommitAtlas" width="100%"></p>
+
 ### Your GitHub work, mapped clearly.
 
 Public GitHub evidence as accessible SVG cards and a project board, with every number labelled by source, window, and freshness.
@@ -77,6 +79,8 @@ These demos use synthetic data and make no GitHub request, so they separate rend
 The [live Atlas for `Chris0Jeky`](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=Chris0Jeky&demo=false&theme=ember&days=365&motion=subtle&layout=wide) reads GitHub on every request. It depends on anonymous GitHub availability and has returned `502` recently ([#338](https://github.com/Chris0Jeky/CommitAtlas/issues/338)). A retained public response, if one exists, carries a visible `STALE SNAPSHOT` strip.
 
 ## Architecture
+
+<p align="center"><img src="docs/assets/architecture.svg" alt="CommitAtlas architecture" width="100%"></p>
 
 ```mermaid
 flowchart LR
