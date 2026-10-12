@@ -25,6 +25,8 @@ interface Placed { readonly x: number; readonly y: number; readonly release: boo
 const USABLE = new Set(["live", "demo", "partial"]);
 const SOURCES = new Set(["github-rest", "github-graphql", "github-profile-html", "synthetic-demo"]);
 const STALE_MS = 72 * 3_600_000;
+// Collectors finish independently, but must belong to the same bounded refresh.
+const MAX_FORWARD_SKEW_MS = 60_000;
 const REPOSITORY = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?\/(?!\.\.?$)[a-z\d._-]{1,100}$/iu;
 interface Observation { readonly time: number; readonly source: string; readonly mode: string }
 const ANONYMOUS: Cluster = { language: null, release: false, publishedAt: null, tag: null };
@@ -72,7 +74,8 @@ function readClusters(projects: unknown, root: Observation, contributionTime: nu
   if (!isRecord(projects) || !Array.isArray(projects.projects) || projects.projects.length === 0 || projects.projects.length > 6) return [ANONYMOUS];
   const board = observation(projects.freshness);
   if (!board || board.mode === "partial" || (root.source === "synthetic-demo") !== (board.source === "synthetic-demo") ||
-    Math.max(root.time, contributionTime, board.time) - board.time > STALE_MS) return [ANONYMOUS];
+    Math.max(root.time, contributionTime) - board.time > STALE_MS ||
+    board.time - Math.min(root.time, contributionTime) > MAX_FORWARD_SKEW_MS) return [ANONYMOUS];
   const clusters: Cluster[] = [];
   const seen = new Set<string>();
   for (let index = 0; index < projects.projects.length; index += 1) {
