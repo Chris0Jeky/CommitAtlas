@@ -73,6 +73,8 @@ test('the complete unavailable composition retains every dark static row and its
   for (const theme of Object.keys(svg.themes)) for (const layout of ['wide', 'compact']) {
     const result = render(unavailableCoverageInputs(), { theme, layout, motion: 'ambient', backend: 'smil' });
     assert.equal(result.unavailable, true);
+    assert.match(result.svg, />UNAVAILABLE</u);
+    assert.doesNotMatch(result.svg, />OBSERVED</u);
     assert.equal(result.counters.animatedElements, 0);
     assert.doesNotMatch(result.svg, /<animate|<style/u);
     const doc = assertWellFormedXml(result.svg);
@@ -130,11 +132,19 @@ test('partial, stale, unavailable and unknown provenance cannot become complete 
   partial.snapshot.contributions.days = partial.snapshot.contributions.days.slice(0, 3);
   Object.assign(partial.snapshot.metrics.window, { observedDays: 3, complete: false });
   assert.deepEqual(row('calendar', partial).coverage, { state: 'partial', observed: 3, total: 7 });
+  const partialSvg = render(partial).svg;
+  assert.match(partialSvg, />OBSERVED</u);
+  assert.match(partialSvg, />PUBLIC SNAPSHOT</u);
   partial.snapshot.metrics.window.observedDays = 8;
   assert.equal(row('calendar', partial).coverage.state, 'unavailable');
   const stale = coverageInputs(); stale.snapshot.freshness.mode = 'stale';
   assert.equal(row('calendar', stale).coverage.state, 'unavailable');
   assert.equal(row('ci', stale).coverage.state, 'unavailable');
+  const staleSvg = render(stale).svg;
+  assert.match(staleSvg, />STALE SNAPSHOT</u);
+  assert.doesNotMatch(staleSvg, />PUBLIC SNAPSHOT</u);
+  assert.doesNotMatch(staleSvg, />OBSERVED</u);
+  assert.match(staleSvg, /STALE · CURRENT WINDOW UNVERIFIED/u);
 });
 
 test('unknown and contradictory per-project states fail neutral without echoing input text', () => {
@@ -217,7 +227,7 @@ test('unknown root source makes the whole scene unavailable despite valid nested
     const rendered = render(inputs, { motion: 'ambient', backend: 'smil' });
     assert.equal(rendered.unavailable, true, JSON.stringify({ source, mode }));
     assert.equal(rendered.counters.animatedElements, 0);
-    assert.doesNotMatch(rendered.svg, /PUBLIC SNAPSHOT|COMPLETE|<animate/u);
+    assert.doesNotMatch(rendered.svg, /PUBLIC SNAPSHOT|COMPLETE|<animate|>OBSERVED</u);
     const doc = assertWellFormedXml(rendered.svg);
     assert.equal(doc.nodes.filter(node => /-row-/u.test(node.attrs.id ?? '')).length, 7);
   }
