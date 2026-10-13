@@ -305,6 +305,21 @@ describe("core contracts", () => {
     expect(calculateCiState({ ...success, updatedAt: "2024-03-02T23:59:59Z" }, now)).toMatchObject({ state: "passing" });
   });
 
+  it("maps failing, pending, and unknown CI conclusions without treating them as passing", () => {
+    const now = "2024-03-03T00:00:00Z";
+    const fresh = { available: true, configured: true, updatedAt: "2024-03-02T00:00:00Z" };
+    for (const conclusion of ["failure", "cancelled", "timed_out"] as const) {
+      expect(calculateCiState({ ...fresh, conclusion }, now)).toMatchObject({ state: "failing", reason: "CI is failing" });
+    }
+    for (const conclusion of ["in_progress", "queued"] as const) {
+      expect(calculateCiState({ ...fresh, conclusion }, now)).toMatchObject({ state: "pending", reason: "CI is pending" });
+    }
+    for (const conclusion of ["neutral", "action_required"] as const) {
+      expect(calculateCiState({ ...fresh, conclusion }, now)).toMatchObject({ state: "unavailable", reason: "CI conclusion is unknown" });
+    }
+    expect(calculateCiState(fresh, now)).toMatchObject({ state: "unavailable", reason: "CI conclusion is unknown" });
+  });
+
   it("canonicalizes and bounds option values", () => {
     expect(parseOptions({ theme: "light", days: "14", showTitle: "false" })).toEqual({ version: 1, theme: "light", locale: "en", showTitle: false, days: 14, limit: 6, staleAfterHours: 72 });
     expect(() => parseOptions({ days: 0 })).toThrow();
