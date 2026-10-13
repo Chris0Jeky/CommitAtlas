@@ -112,11 +112,12 @@ export function buildStudioRouteUrl(
 
   if (kind === "projects" || kind === "atlas") {
     query.set(kind === "projects" ? "owner" : "user", owner);
-    if (kind === "projects" || projects.length > 0) {
-      query.set("repos", projects.map((project) => project.repo.trim()).join(","));
-      query.set("states", projects.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","));
+    const named = projects.filter((project) => project.repo.trim());
+    if (kind === "projects" || named.length > 0) {
+      query.set("repos", named.map((project) => project.repo.trim()).join(","));
+      query.set("states", named.map((project) => `${project.repo.trim()}:${project.lifecycle}`).join(","));
     }
-    const workflows = projects
+    const workflows = named
       .map((project) => {
         const repo = project.repo.trim();
         const workflow = project.workflow?.trim() ?? "";

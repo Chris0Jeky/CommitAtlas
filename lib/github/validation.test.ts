@@ -24,6 +24,9 @@ test("accepts bounded GitHub identifiers", () => {
 
 test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseGitHubHandle("-owner"), InputError);
+  assert.throws(() => parseRepositoryNames("alpha,,beta"), /empty repository name/);
+  assert.throws(() => parseRepositoryNames("alpha, ,beta"), /empty repository name/);
+  assert.throws(() => parseRepositoryNames("alpha,"), /empty repository name/);
   assert.throws(() => parseRepositoryNames("alpha,ALPHA"), /duplicates/);
   assert.throws(() => parseRepositoryNames("a,b,c,d,e,f,g"), /one and six/);
   assert.throws(() => parseRepositoryNames("../secret"), /invalid/);

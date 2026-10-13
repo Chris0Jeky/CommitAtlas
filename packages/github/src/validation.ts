@@ -24,10 +24,13 @@ export function parseGitHubHandle(value: string | null, label = "user"): string 
 }
 
 export function parseRepositoryNames(value: string | null): string[] {
-  const values = (value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const segments = (value ?? "").split(",").map((item) => item.trim());
+  // A hole must not collapse into a shorter successful list. A wholly empty value still
+  // falls through to the one-to-six check below.
+  if (segments.some((item) => item.length === 0) && segments.some((item) => item.length > 0)) {
+    throw new InputError("repos contains an empty repository name");
+  }
+  const values = segments.filter((item) => item.length > 0);
 
   if (values.length === 0 || values.length > 6) {
     throw new InputError("repos must contain between one and six repository names");
