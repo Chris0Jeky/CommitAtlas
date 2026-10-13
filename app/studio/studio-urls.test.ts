@@ -64,6 +64,23 @@ test("uses separate JSON and SVG project route paths", () => {
   assert.equal(svg.searchParams.get("motion"), "none");
 });
 
+test("omits a blank project instead of leaving a repository hole", () => {
+  const url = buildStudioRouteUrl("projects", {
+    owner: "octocat",
+    theme: "ember",
+    demo: true,
+    projects: [
+      { repo: "alpha", lifecycle: "active", workflow: "" },
+      { repo: " ", lifecycle: "planned", workflow: "ci.yml" },
+      { repo: "beta", lifecycle: "maintenance", workflow: "" },
+    ],
+  });
+  const parsed = new URL(`https://example.test${url}`);
+  assert.equal(parsed.searchParams.get("repos"), "alpha,beta");
+  assert.equal(parsed.searchParams.get("states"), "alpha:active,beta:maintenance");
+  assert.equal(parsed.searchParams.get("workflows"), null);
+});
+
 test("propagates only aligned, nonblank workflows with URL encoding", () => {
   const url = buildStudioRouteUrl("projects", { owner: "octocat", theme: "ember", demo: true, projects });
   const parsed = new URL(`https://example.test${url}`);
