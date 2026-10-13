@@ -336,6 +336,17 @@ function isSafeBody(body: string, contentType: string): boolean {
   }
 }
 
+const ISO_STAMP = "(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z)";
+
+function lastIsoStamp(body: string, pattern: RegExp): string | null {
+  let found: string | null = null;
+  for (const match of body.matchAll(pattern)) {
+    const parsed = Date.parse(match[1] ?? "");
+    if (Number.isFinite(parsed)) found = new Date(parsed).toISOString();
+  }
+  return found;
+}
+
 function observationTime(body: string, contentType: string): string | null {
   if (contentType.toLowerCase().startsWith("application/json")) {
     try {
@@ -350,9 +361,15 @@ function observationTime(body: string, contentType: string): string | null {
     } catch {
       return null;
     }
+    // A public string inside the JSON body is not a renderer stamp.
+    return null;
   }
-  const match = body.match(/Generated\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)/);
-  return match && Number.isFinite(Date.parse(match[1])) ? new Date(match[1]).toISOString() : null;
+  // The atlas footer (`Generated <time> ·`) and a desc whose whole text is that
+  // stamp are renderer output. Public biography or location text can contain the
+  // same words earlier in the body and must not become the observation time.
+  const footer = lastIsoStamp(body, new RegExp(`Generated\\s+${ISO_STAMP}\\s+·`, "g"));
+  const described = lastIsoStamp(body, new RegExp(`<desc>\\s*Generated\\s+${ISO_STAMP}\\s*</desc>`, "g"));
+  return footer ?? described;
 }
 
 function responseWithHeader(response: Response, name: string, value: string): Response {

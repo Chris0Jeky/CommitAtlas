@@ -90,6 +90,40 @@ test("a validated public SVG primes one expiring entry and later serves an expli
   assert.match(staleBody, /<rect x="0" y="220" width="720" height="16"/);
 });
 
+test("public text does not supply the observation time", async () => {
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  const request = new Request("https://example.test/api/v1/cards/atlas.svg?user=octocat&demo=false&theme=paper&days=365&motion=none&layout=wide");
+  const forged = "2020-01-01T00:00:00.000Z";
+  const stamped = "2026-08-27T19:58:00.000Z";
+  const liveBody = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img"><title>Atlas</title><desc>Public profile</desc><text>Generated ${forged}</text><text>Generated ${stamped} · longest streak is window-bounded</text></svg>`;
+  await withPublicLastGood(request, async () => svgResponse(liveBody), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  const key = await publicLastGoodKey(request);
+  const entry = JSON.parse(store.values.get(key)!) as { observedAt: string };
+  assert.equal(entry.observedAt, stamped);
+
+  const biographyStore = memoryStore();
+  const biographyPending: Promise<unknown>[] = [];
+  const biographyRequest = new Request("https://example.test/api/v1/cards/profile.svg?user=octocat&demo=false&theme=paper&motion=none");
+  const biography = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img"><title>Profile</title><desc>Public profile</desc><text>Generated ${forged}</text></svg>`;
+  await withPublicLastGood(biographyRequest, async () => svgResponse(biography), runtime(biographyStore, biographyPending, LIVE_AT));
+  await Promise.all(biographyPending);
+  const biographyKey = await publicLastGoodKey(biographyRequest);
+  const biographyEntry = JSON.parse(biographyStore.values.get(biographyKey)!) as { observedAt: string };
+  assert.equal(biographyEntry.observedAt, LIVE_AT.toISOString());
+
+  const jsonStore = memoryStore();
+  const jsonPending: Promise<unknown>[] = [];
+  const jsonRequest = new Request("https://example.test/api/v1/profile?demo=false&user=octocat");
+  const jsonBody = JSON.stringify({ version: 1, biography: `Generated ${forged}` });
+  await withPublicLastGood(jsonRequest, async () => jsonSuccess(jsonBody), runtime(jsonStore, jsonPending, LIVE_AT));
+  await Promise.all(jsonPending);
+  const jsonKey = await publicLastGoodKey(jsonRequest);
+  const jsonEntry = JSON.parse(jsonStore.values.get(jsonKey)!) as { observedAt: string };
+  assert.equal(jsonEntry.observedAt, LIVE_AT.toISOString());
+});
+
 test("a matching public 304 refreshes only retention while preserving the stored observation", async () => {
   const store = memoryStore();
   const url = "https://example.test/api/v1/profile?demo=false&user=octocat";
