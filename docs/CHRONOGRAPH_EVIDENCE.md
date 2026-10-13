@@ -25,8 +25,8 @@ record has been validated.
 
 Release ticks show only the latest published release per configured project, not complete
 release history. Long rim labels are bounded inside the compact plate; their bounded full
-text remains in the accessible description. Coincident release labels can still overlap,
-which remains a layout follow-up rather than proof that all six arbitrary labels fit.
+text remains in the accessible description. Coincident releases keep separate numbered
+rim markers and legend rows, so labels that share a timestamp no longer sit on one anchor.
 
 ## Scope of the October 8 repair
 
