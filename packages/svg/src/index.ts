@@ -1025,12 +1025,16 @@ export function renderContributionBreakdownCard(
 
 function rhythmTrendLabel(trend: RhythmCardData["trend"]): string {
   if (trend.direction === "unavailable") return "Trend unavailable";
-  if (trend.direction === "new") return `${formatNumber(trend.recent28Days, false)} recent contributions · new activity`;
-  if (trend.direction === "flat") return `${formatNumber(trend.recent28Days, false)} recent contributions · flat vs prior 28 days`;
-  if (!Number.isFinite(trend.changePercent)) return `${formatNumber(trend.recent28Days, false)} recent contributions · trend change unavailable`;
+  // formatNumber maps NaN and Infinity to 0. An unknown recent window is not zero contributions.
+  const recent = Number.isFinite(trend.recent28Days)
+    ? `${formatNumber(trend.recent28Days, false)} recent contributions`
+    : "recent contributions unavailable";
+  if (trend.direction === "new") return `${recent} · new activity`;
+  if (trend.direction === "flat") return `${recent} · flat vs prior 28 days`;
+  if (!Number.isFinite(trend.changePercent)) return `${recent} · trend change unavailable`;
   const change = trend.changePercent as number;
   const sign = change > 0 ? "+" : "";
-  return `${formatNumber(trend.recent28Days, false)} recent contributions · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28 days`;
+  return `${recent} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28 days`;
 }
 
 /** Render the personal, window-bounded contribution consistency card. */
@@ -1047,10 +1051,14 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   );
   const t = o.theme;
   const width = o.width;
+  // finite() and formatNumber map NaN and Infinity to 0. A missing rhythm signal must not
+  // look like a measured zero. Negatives stay finite and still clamp to 0.
+  const scoreKnown = Number.isFinite(data.rhythm.score);
   const score = Math.min(100, finite(data.rhythm.score));
   // Level and basis are caller-supplied prose; bound them so a direct caller cannot inflate the card.
   const level = truncateText(data.rhythm.level, MAX_RHYTHM_LEVEL_LENGTH);
   const basis = truncateText(data.rhythm.basis, MAX_RHYTHM_BASIS_LENGTH);
+  const streakKnown = Number.isFinite(data.currentStreak);
   const current = formatNumber(finite(data.currentStreak), false);
   const open = data.currentStreakBoundary === "open";
   const currentThrough = isValidIsoDate(data.currentStreakThrough) ? data.currentStreakThrough : null;
@@ -1058,7 +1066,22 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const streakText = open ? `at least ${current} days · OPEN` : `${current} days · CLOSED`;
   const streakBoundedText = open ? "open at the returned-window boundary" : "closed within the returned window";
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
-  const accessibleDescription = `${metadata.description} Personal consistency score ${Math.round(score)} out of 100, ${level}; this is not a GitHub rank. ${basis}. Density ${finite(data.density).toFixed(1).replace(/\.0$/, "")} percent across ${formatNumber(data.activeDays, false)} active days in a ${formatNumber(data.window.days, false)}-day window. Current streak: ${streakText}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  const densityKnown = Number.isFinite(data.density);
+  const activeDaysKnown = Number.isFinite(data.activeDays);
+  const windowDaysKnown = Number.isFinite(data.window.days);
+  const densityPercent = densityKnown ? finite(data.density).toFixed(1).replace(/\.0$/, "") : "";
+  const scoreClause = scoreKnown
+    ? `Personal consistency score ${Math.round(score)} out of 100`
+    : "Personal consistency score is unavailable";
+  const densityClause = densityKnown ? `Density ${densityPercent} percent` : "density unavailable";
+  const activeDaysClause = activeDaysKnown
+    ? `${formatNumber(data.activeDays, false)} active days`
+    : "active days unavailable";
+  const windowClause = windowDaysKnown
+    ? `${formatNumber(data.window.days, false)}-day window`
+    : "window unavailable";
+  const streakClause = streakKnown ? `Current streak: ${streakText}` : "current streak unavailable";
+  const accessibleDescription = `${metadata.description} ${scoreClause}, ${level}; this is not a GitHub rank. ${basis}. ${densityClause} across ${activeDaysClause} in a ${windowClause}. ${streakClause}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -1070,12 +1093,13 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const circumference = 2 * Math.PI * radius;
   const progress = circumference * score / 100;
   out += `<circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.background}" stroke-width="10"/><circle cx="${centerX}" cy="${centerY}" r="${radius}" stroke="${t.accent}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${progress.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${centerX} ${centerY})"/>`;
-  out += text(centerX, centerY + 7, `${Math.round(score)}`, 28, t.text, 800, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
+  // The word does not fit the score ring at 28px, so only the unknown numeral shrinks.
+  out += text(centerX, centerY + 7, scoreKnown ? `${Math.round(score)}` : "unavailable", scoreKnown ? 28 : 12, t.text, scoreKnown ? 800 : 700, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
   const infoX = compact ? 164 : 166;
   out += text(infoX, compact ? 91 : 88, level.toUpperCase(), 11, t.accent, 750);
-  const densityLabel = `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density · ${formatNumber(data.activeDays, false)} active days`;
+  const densityLabel = `${densityKnown ? `${densityPercent}% density` : "density unavailable"} · ${activeDaysClause}`;
   out += text(infoX, compact ? 114 : 111, truncateText(densityLabel, compact ? 34 : 64), 11, t.text, 600);
-  out += text(infoX, compact ? 134 : 131, `${formatNumber(data.window.days, false)}-day window · current ${streakText}`, 10, t.muted, 550);
+  out += text(infoX, compact ? 134 : 131, `${windowClause} · ${streakKnown ? `current ${streakText}` : "current streak unavailable"}`, 10, t.muted, 550);
   const boundaryLabel = throughPriorDay ? `Current streak observed through ${currentThrough}` : open ? "Streak can continue beyond this window" : "Streak is bounded to this window";
   out += text(infoX, compact ? 154 : 151, truncateText(boundaryLabel, compact ? 36 : 64), 10, t.muted, 550);
   const trendX = compact ? 28 : 400;
