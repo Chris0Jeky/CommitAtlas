@@ -36,27 +36,5 @@ jobs:
       - name: Run the repository gate
         run: npm run check
 
-      # Temporary capture. The quality gate rewrites action/dist on Linux and then
-      # fails the byte compare. This step records that rewritten file so it can be
-      # committed. Remove this step in the commit that records the bundle.
-      - name: Record the rebuilt Action bundle
-        if: always()
-        run: |
-          node <<'EOF'
-          const fs = require("fs");
-          const crypto = require("crypto");
-          const body = fs.readFileSync("action/dist/index.js");
-          const hash = crypto.createHash("sha1");
-          hash.update("blob " + body.length + "\0");
-          hash.update(body);
-          console.log("DIST_BYTES " + body.length);
-          console.log("DIST_GIT_BLOB " + hash.digest("hex"));
-          const encoded = body.toString("base64");
-          const width = 8000;
-          for (let index = 0; index * width < encoded.length; index += 1) {
-            console.log("DIST_B64 " + String(index).padStart(4, "0") + " " + encoded.slice(index * width, (index + 1) * width));
-          }
-          EOF
-
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
