@@ -854,24 +854,37 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
   const asOf = isValidIsoDate(data.asOf) ? data.asOf : null;
   const throughPriorDay = currentThrough && asOf && currentThrough !== asOf;
   const currentOpen = data.boundary?.current === "open";
+  // finite() maps NaN and Infinity to 0. An unknown streak must not read as a measured zero.
+  // Negatives stay finite and still clamp to 0.
+  const currentKnown = Number.isFinite(data.current);
+  const longestKnown = Number.isFinite(data.longest);
   const currentCount = finite(data.current);
-  const currentValue = `${formatNumber(currentCount, false)}${currentOpen ? "+" : ""}`;
+  const currentValue = currentKnown ? `${formatNumber(currentCount, false)}${currentOpen ? "+" : ""}` : "unavailable";
+  const longestText = longestKnown ? `${formatNumber(finite(data.longest), false)} days` : "Longest unavailable";
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
+  const currentClause = currentKnown
+    ? `Current streak: ${currentOpen ? "at least " : ""}${formatNumber(currentCount, false)} days${currentThrough ? ` through ${currentThrough}` : ""}`
+    : "current streak unavailable";
+  const longestClause = longestKnown
+    ? `Longest observed in the ${windowLabel}: ${longestText}`
+    : "Longest unavailable";
   const accessibleDescription = data.boundary
-    ? `${metadata.description} Current streak: ${currentOpen ? "at least " : ""}${formatNumber(currentCount, false)} days${currentThrough ? ` through ${currentThrough}` : ""}. Longest observed in the ${windowLabel}: ${formatNumber(finite(data.longest), false)} days. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
+    ? `${metadata.description} ${currentClause}. ${longestClause}. History before this window is not observed.${data.lastActive ? ` Last active ${truncateText(data.lastActive, 22)}.` : ""}`
     : metadata.description;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
   out += sourceMarker(data.source, data.dataState, width - 34, 31, t);
   out += numeral(34, 48, 1, "CONTRIBUTION STREAK", t);
-  const currentLabel = currentCount <= 0
-    ? "no current streak"
-    : throughPriorDay ? `days · through ${currentThrough}`
-      : currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window";
+  const currentLabel = !currentKnown
+    ? "current streak unavailable"
+    : currentCount <= 0
+      ? "no current streak"
+      : throughPriorDay ? `days · through ${currentThrough}`
+        : currentOpen ? "days current · at least" : data.boundary ? "days current" : "days in returned window";
   out += text(34, 94, currentValue, 46, t.accent, 800) + text(34, 116, currentLabel, throughPriorDay ? 10 : 12, t.text, 600);
   out += `<line x1="${width / 2}" y1="38" x2="${width / 2}" y2="${o.height - 38}" stroke="${t.border}"/>`;
-  out += text(width / 2 + 28, personalBestY, `Longest in ${windowLabel}`, 12, t.muted) + text(width / 2 + 28, longestY, `${formatNumber(finite(data.longest), false)} days`, 24, t.text, 750);
+  out += text(width / 2 + 28, personalBestY, `Longest in ${windowLabel}`, 12, t.muted) + text(width / 2 + 28, longestY, longestText, 24, t.text, 750);
   const totalLabel = Number.isFinite(data.total) ? `Total ${formatNumber(finite(data.total))}` : "Total unavailable";
   const activeDaysLabel = Number.isFinite(data.activeDays) ? `${formatNumber(finite(data.activeDays))} active days` : "Active days unavailable";
   out += text(width / 2 + 28, statusY, `${totalLabel} · ${activeDaysLabel}`, 11, t.muted);
