@@ -48,6 +48,12 @@ function toCardEvidence(
   return { source: toCardSource(freshness), ...(dataState ? { dataState } : {}) };
 }
 
+function worseCardState(contribution: string | undefined, board: string | undefined): CardDataState | undefined {
+  const rank = (mode: string | undefined) => mode === "unavailable" ? 3 : mode === "stale" ? 2 : mode === "partial" ? 1 : 0;
+  const winner = rank(board) > rank(contribution) ? board : contribution;
+  return winner === "partial" || winner === "stale" || winner === "unavailable" ? winner : undefined;
+}
+
 export function assembleStaticPortfolio(
   profile: ProfileSnapshot,
   contributions: ContributionSnapshot,
@@ -213,6 +219,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
 function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   const { profile, contributions, metrics, projects } = snapshot;
   const projectStates = projects?.projects ?? [];
+  const evidence = toCardEvidence(snapshot.freshness);
+  const dataState = worseCardState(snapshot.freshness.mode, projects?.freshness.mode);
   return {
     profile: {
       name: profile.name?.trim() || profile.login,
@@ -253,7 +261,8 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
       unavailable: projectStates.filter((project) => ["unavailable", "unconfigured"].includes(project.ci.state)).length,
     },
     generatedAt: snapshot.freshness.generatedAt,
-    ...toCardEvidence(snapshot.freshness),
+    source: evidence.source,
+    ...(dataState ? { dataState } : {}),
   };
 }
 
