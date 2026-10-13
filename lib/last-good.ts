@@ -194,12 +194,16 @@ async function refreshLastGoodRetention(
   response: Response,
   now: Date,
 ): Promise<void> {
-  const raw = await store.get(key);
-  const entry = parseEntry(raw, request, now);
-  if (!entry || response.headers.get("etag") !== entry.headers.etag) return;
+  const etag = response.headers.get("etag");
+  const entry = parseEntry(await store.get(key), request, now);
+  if (!entry || etag !== entry.headers.etag) return;
+  // Re-read immediately before the retention put. Persist this snapshot only when it still parses
+  // and its etag still matches. A write that lands after this read can still win.
+  const current = parseEntry(await store.get(key), request, now);
+  if (!current || etag !== current.headers.etag) return;
   // Re-persist the validated representation only to extend KV retention. Its original storage and
   // observation timestamps remain evidence of when the body was actually seen.
-  await store.put(key, JSON.stringify(entry), { expirationTtl: RETENTION_SECONDS });
+  await store.put(key, JSON.stringify(current), { expirationTtl: RETENTION_SECONDS });
 }
 
 async function upstreamFallbackReason(response: Response): Promise<"rate-limited" | "unavailable" | null> {

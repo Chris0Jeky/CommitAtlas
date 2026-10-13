@@ -117,7 +117,74 @@ test("a matching public 304 refreshes only retention while preserving the stored
   assert.deepEqual(store.putOptions[1], { expirationTtl: 604800 });
   const after = JSON.parse(store.values.get(key)!) as { storedAt: string; observedAt: string; body: string };
   assert.deepEqual(after, before);
-  assert.equal(store.reads, 1);
+  assert.equal(store.reads, 2);
+});
+
+test("a public 304 does not replace a newer body written during the first retention read", async () => {
+  const backing = memoryStore();
+  const url = "https://example.test/api/v1/profile?demo=false&user=octocat";
+  const request = new Request(url);
+  const priming: Promise<unknown>[] = [];
+  await withPublicLastGood(request, async () => jsonSuccess(), runtime(backing, priming, LIVE_AT));
+  await Promise.all(priming);
+
+  const key = await publicLastGoodKey(request);
+  const oldEtag = 'W/"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"';
+  const newer = JSON.stringify({
+    version: 1,
+    body: JSON.stringify({ version: 1, freshness: { generatedAt: "2026-09-02T19:30:00.000Z" } }),
+    storedAt: "2026-09-02T19:40:00.000Z",
+    observedAt: "2026-09-02T19:30:00.000Z",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      etag: 'W/"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"',
+    },
+  });
+
+  let reads = 0;
+  let releaseFirstRead: () => void = () => {};
+  const firstReadGate = new Promise<void>((resolve) => {
+    releaseFirstRead = resolve;
+  });
+  let markSnapshotted: () => void = () => {};
+  const snapshotted = new Promise<void>((resolve) => {
+    markSnapshotted = resolve;
+  });
+  const store: LastGoodStore = {
+    async get(candidate) {
+      reads += 1;
+      if (reads === 1) {
+        const snapshot = backing.values.get(candidate) ?? null;
+        markSnapshotted();
+        await firstReadGate;
+        return snapshot;
+      }
+      return backing.values.get(candidate) ?? null;
+    },
+    async put(candidate, value, options) {
+      backing.values.set(candidate, value);
+      backing.putOptions.push(options);
+    },
+  };
+
+  const pending: Promise<unknown>[] = [];
+  const responsePromise = withPublicLastGood(
+    new Request(url, { headers: { "if-none-match": oldEtag } }),
+    async () => notModified(oldEtag),
+    runtime(store, pending, new Date("2026-09-02T20:00:00.000Z")),
+  );
+  await snapshotted;
+  backing.values.set(key, newer);
+  releaseFirstRead();
+
+  const response = await responsePromise;
+  assert.equal(response.status, 304);
+  assert.equal(response.headers.get("x-route-proof"), "unchanged");
+  assert.equal(pending.length, 1);
+  await Promise.all(pending);
+  assert.equal(backing.values.get(key), newer);
+  assert.equal(reads, 2);
+  assert.equal(backing.putOptions.length, 1);
 });
 
 test("missing, mismatched, corrupt, and cross-key entries cannot be refreshed by a 304", async () => {

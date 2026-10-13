@@ -207,8 +207,13 @@ function renderRows(model: CoverageModel, context: RenderContext, a: { title: st
   const motion = compileSceneMotion(context, applications, { target: 'github-readme' });
   let output = `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(a.title)}" viewBox="0 0 ${width} ${height}"><title>${escapeXml(a.title)}</title><desc>${escapeXml(a.description)}</desc>${motion.style}`;
   output += frame(context, { title: unavailable ? 'Evidence unavailable' : 'Evidence coverage', ref: 'SCOPE / 07', family: 'instrument', width, height });
-  output += badge(context, { label: unavailable ? 'UNAVAILABLE' : model.synthetic ? 'SYNTHETIC PREVIEW' : 'PUBLIC SNAPSHOT', x: 24, y: 84 });
-  output += evidenceLabel(context, 'observed', { x: width - 160, y: 84 });
+  const staleSnapshot = model.rows.some(row => row.id === 'snapshot' && row.detail === 'STALE');
+  const header = unavailable ? 'UNAVAILABLE' : staleSnapshot ? 'STALE SNAPSHOT' : model.synthetic ? 'SYNTHETIC PREVIEW' : 'PUBLIC SNAPSHOT';
+  output += badge(context, { label: header, x: 24, y: 84 });
+  // OBSERVED is the evidence rung. It is omitted when the plate is unavailable or no row has a count.
+  if (!unavailable && placed.some(({ row }) => 'observed' in row.coverage)) {
+    output += evidenceLabel(context, 'observed', { x: width - 160, y: 84 });
+  }
   for (const { row, detail, barY, y: top } of placed) {
     const known = 'observed' in row.coverage, ink = known ? theme.text : theme.muted;
     output += `<g id="${sceneElementId(context, `row-${row.id}`)}" transform="translate(24 ${top})"><title>${escapeXml(`${row.label}: ${row.detail}`)}</title>`;
