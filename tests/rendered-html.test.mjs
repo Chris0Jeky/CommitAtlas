@@ -293,8 +293,10 @@ test("server-renders an honest interactive Studio shell", async () => {
   assert.match(html, /The path to an embed/);
   assert.match(html, /aria-label="Project 1 repository"/);
   assert.match(html, /aria-label="Project 2 repository"/);
-  assert.match(html, /aria-label="Remove project 1: Hello-World"/);
-  assert.match(html, /aria-label="Remove project 2: Spoon-Knife"/);
+  assert.match(html, /aria-label="Remove Hello-World, project 1"/);
+  assert.match(html, /aria-label="Remove Spoon-Knife, project 2"/);
+  assert.match(html, />Remove (?:<!-- -->)?Hello-World</);
+  assert.match(html, />Remove (?:<!-- -->)?Spoon-Knife</);
   assert.match(html, /<span>Breakdown<\/span>/);
   assert.match(html, /<span>Rhythm<\/span>/);
   assert.match(html, /2<!-- --> preview<!-- -->s/);

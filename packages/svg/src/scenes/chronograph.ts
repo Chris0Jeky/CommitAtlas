@@ -18,6 +18,11 @@ const RING_PERIODS = [600, 4_200, 18_000] as const;
 const RING_GROUPS = ['day', 'week', 'month'] as const;
 const FACE_TICKS = [-90, -60, -30, 0, 30, 60, 90] as const;
 const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+const MARKER_GAP = 12;
+const LEGEND_SIZE = 9;
+const LEGEND_LINE = 13;
+const LEGEND_CAP = 36;
+const LEGEND_CHAR = 0.62;
 
 interface ReleaseMark { readonly tag: string; readonly angle: number }
 interface ChronographModel {
@@ -193,6 +198,8 @@ function readReleases(snapshot: PortfolioSnapshot, from: number, to: number): { 
     if (published < from || published >= to + DAY) continue;
     marks.push({ tag: truncateText(xmlChars(rawTag), 40), angle: (published - from) / windowMs * 360 - 90 });
   }
+  // Angle is the publication instant. Ties stay separate and break on the tag.
+  marks.sort((left, right) => left.angle - right.angle || (left.tag < right.tag ? -1 : left.tag > right.tag ? 1 : 0));
   return { marks, blocked };
 }
 
@@ -220,6 +227,57 @@ function arc(cx: number, cy: number, radius: number, coverage: number, ink: stri
   return `<path d="M${num(x1)} ${num(y1)} A ${num(radius)} ${num(radius)} 0 ${sweep > 180 ? 1 : 0} 1 ${num(x2)} ${num(y2)}" fill="none" stroke="${ink}" stroke-width="3"/>`;
 }
 
+interface MarkerPoint { readonly x: number; readonly y: number }
+interface LegendBox { readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
+
+function legendLabel(index: number, tag: string, charLimit: number): string {
+  const prefix = `${index + 1}. `;
+  const tagChars = Math.max(1, Math.min(LEGEND_CAP, charLimit - [...prefix].length));
+  return truncateText(`${prefix}${truncateText(tag, tagChars)}`, Math.max(1, charLimit));
+}
+
+function markerFits(x: number, y: number, originX: number, originY: number, width: number, height: number, legend: LegendBox): boolean {
+  const left = originX + x;
+  const right = left + LEGEND_SIZE * LEGEND_CHAR;
+  const top = originY + y - LEGEND_SIZE;
+  const bottom = originY + y + LEGEND_SIZE * 0.35;
+  if (left < 4 || right > width - 4 || top < 128 || bottom > height - 112) return false;
+  return right <= legend.left || left >= legend.right || bottom <= legend.top || top >= legend.bottom;
+}
+
+// Shared instants land on one polar+(8,-6) anchor. Step along the tangent until each digit has its own point outside the legend column and footer band.
+function spreadMarkers(marks: readonly ReleaseMark[], cx: number, cy: number, ring: number, originX: number, originY: number, width: number, height: number, legend: LegendBox): MarkerPoint[] {
+  const bases = marks.map(mark => {
+    const [x, y] = polar(cx, cy, ring, mark.angle);
+    return { x: x + 8, y: y - 6, angle: mark.angle };
+  });
+  const placed: MarkerPoint[] = [];
+  for (const base of bases) {
+    const radians = base.angle * Math.PI / 180;
+    const tx = -Math.sin(radians);
+    const ty = Math.cos(radians);
+    let chosen: MarkerPoint = { x: base.x, y: base.y };
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const magnitude = Math.ceil(attempt / 2) * MARKER_GAP;
+      const direction = attempt % 2 === 1 ? 1 : -1;
+      const point = attempt === 0 ? { x: base.x, y: base.y } : {
+        x: base.x + tx * direction * magnitude, y: base.y + ty * direction * magnitude,
+      };
+      const clear = placed.every(other => {
+        const dx = point.x - other.x;
+        const dy = point.y - other.y;
+        return dx * dx + dy * dy >= MARKER_GAP * MARKER_GAP;
+      });
+      if (clear && markerFits(point.x, point.y, originX, originY, width, height, legend)) {
+        chosen = point;
+        break;
+      }
+    }
+    placed.push(chosen);
+  }
+  return placed;
+}
+
 function renderChronograph(model: ChronographModel, context: RenderContext, text: { title: string; description: string }): string {
   const theme = themes[context.theme];
   const width = context.layout === 'compact' ? 480 : 720;
@@ -229,6 +287,8 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   const cx = plotWidth / 2;
   const cy = (plotHeight - 28) / 2 + 4;
   const radius = Math.min(plotWidth / 2, (plotHeight - 28) / 2) - 16;
+  const originX = 24;
+  const originY = 134;
   const applications: MotionApplication[] = [];
   if (context.motion === 'ambient' && !model.stale) {
     RING_TARGETS.forEach((target, index) => {
@@ -249,7 +309,7 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   output += plateText(24, 104, `Observed ${model.observedAt.replace('.000Z', 'Z')}`, theme.muted, 10);
   output += plateText(24, 120, `Window ${model.windowFrom} to ${model.windowTo}`, theme.muted, 10);
   if (model.stale) output += plateText(width - 24, 104, 'STALE SNAPSHOT', theme.muted, 10, 'end');
-  output += `<g transform="translate(24 134)">`;
+  output += `<g transform="translate(${originX} ${originY})">`;
   output += orbit(context, { width: plotWidth, height: plotHeight, rings: RING_FRACTIONS, bodies: [] });
   const coverages = [
     fraction(model.activeDays, model.observedDays),
@@ -266,14 +326,27 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
     const [x2, y2] = polar(cx, cy, radius * 0.38, angle);
     output += wrap(`tick${index}`, `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${theme.muted}" stroke-width="2"/>`);
   });
+  const outerRing = RING_FRACTIONS[2] * radius;
+  const legendTop = 152;
+  const legendRight = originX + cx - outerRing - 4;
+  const legend: LegendBox = {
+    left: originX, right: legendRight, top: legendTop - LEGEND_SIZE,
+    bottom: legendTop + Math.max(0, model.releases.length - 1) * LEGEND_LINE + LEGEND_SIZE * 0.35,
+  };
   for (const mark of model.releases) {
-    const [x, y] = polar(cx, cy, RING_FRACTIONS[2] * radius, mark.angle);
+    const [x, y] = polar(cx, cy, outerRing, mark.angle);
     output += `<circle cx="${num(x)}" cy="${num(y)}" r="4" fill="none" stroke="${theme.chrome}"/>`;
-    output += `<text x="${num(x + 8)}" y="${num(y - 6)}" fill="${theme.text}" font-family="${MONO}" font-size="9">${escapeXml(truncateText(mark.tag, Math.max(1, Math.floor((width - x - 56) / 9))))}</text>`;
   }
+  spreadMarkers(model.releases, cx, cy, outerRing, originX, originY, width, height, legend).forEach((anchor, index) => {
+    output += plateText(Number(num(anchor.x)), Number(num(anchor.y)), String(index + 1), theme.text, LEGEND_SIZE);
+  });
   const needleLength = radius * 0.36;
   output += `<g id="${sceneElementId(context, 'needle')}" transform="rotate(${num(model.needle)} ${num(cx)} ${num(cy)})"><line x1="${num(cx)}" y1="${num(cy)}" x2="${num(cx + needleLength)}" y2="${num(cy)}" stroke="${model.current === 0 ? theme.muted : theme.text}" stroke-width="2"/></g>`;
   output += `</g>`;
+  const legendChars = Math.max(4, Math.floor((legendRight - originX - 2) / (LEGEND_SIZE * LEGEND_CHAR)));
+  model.releases.forEach((mark, index) => {
+    output += plateText(originX, legendTop + index * LEGEND_LINE, legendLabel(index, mark.tag, legendChars), theme.text, LEGEND_SIZE);
+  });
   const streak = model.current === 0 ? 'NO CURRENT STREAK' : `CURRENT STREAK ${model.current}`;
   output += `<text x="24" y="${height - 84}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(streak)}</text>`;
   output += `<text x="24" y="${height - 68}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(`LONGEST STREAK ${model.longest}`)}</text>`;
