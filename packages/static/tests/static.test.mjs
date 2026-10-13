@@ -283,6 +283,25 @@ test("propagates degraded freshness truth to every static card", () => {
   }
 });
 
+test("a partial project board marks the static atlas card partial and leaves contribution cards live", () => {
+  const base = snapshot();
+  const rendered = renderStaticArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      freshness: { ...base.projects.freshness, mode: "partial" },
+      projects: [{
+        ...base.projects.projects[0],
+        ci: { ...base.projects.projects[0].ci, state: "unavailable", label: "CI unavailable" },
+      }],
+    },
+  }, config());
+  assert.match(rendered["atlas.svg"], />PARTIAL SNAPSHOT</);
+  assert.match(rendered["atlas.svg"], /0\/1 CI passing · 0 attention · 1 unavailable/);
+  assert.doesNotMatch(rendered["streak.svg"], />PARTIAL SNAPSHOT</);
+  assert.doesNotMatch(rendered["activity.svg"], />PARTIAL SNAPSHOT</);
+});
+
 test("preserves the declared planned lifecycle in static project SVGs", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({
