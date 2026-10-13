@@ -85,7 +85,7 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
                 <span>{card.number} {"//"} {card.name}</span>
                 <span>{card.size}</span>
               </h3>
-              <a className="specimen-media" href={url} aria-label={`Open the synthetic ${card.title} SVG`}>
+              <a className="specimen-media" href={url} aria-label={`Open SVG for the synthetic ${card.title} card`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
@@ -101,7 +101,7 @@ export function SpecimenTray({ snapshot }: { snapshot: PortfolioSnapshot }) {
                 {/* Eight of these otherwise resolve to the identical name "Open SVG". Same name and
                     same destination as the plate's image link, which is what keeps them distinct
                     from each other rather than from their sibling. */}
-                <a href={url} aria-label={`Open the synthetic ${card.title} SVG`}>Open SVG <span aria-hidden="true">↗</span></a>
+                <a href={url} aria-label={`Open SVG for the synthetic ${card.title} card`}>Open SVG <span aria-hidden="true">↗</span></a>
               </div>
             </article>
           );

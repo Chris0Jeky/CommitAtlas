@@ -57,8 +57,8 @@ test("server-renders the CommitAtlas product surface", async () => {
   assert.match(html, /not separate cards or monitoring services/);
   assert.match(html, /Exact categorized counts when available; otherwise clearly labelled public-profile percentages/);
   assert.match(html, /Transparent personal consistency based on density and streak — not a GitHub rank/);
-  assert.match(html, /aria-label="Open the synthetic Contribution breakdown SVG"/);
-  assert.match(html, /aria-label="Open the synthetic Personal rhythm SVG"/);
+  assert.match(html, /aria-label="Open SVG for the synthetic Contribution breakdown card"/);
+  assert.match(html, /aria-label="Open SVG for the synthetic Personal rhythm card"/);
   assert.match(html, /Open SVG/);
   assert.match(html, /Open the Studio/);
   assert.match(html, /aria-label="Primary navigation"/);
