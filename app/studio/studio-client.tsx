@@ -576,7 +576,7 @@ export default function StudioClient() {
                   <label>Docs URL (optional)<input aria-label={`Project ${index + 1} docs URL (optional)`} type="text" value={project.docs} onChange={(event) => updateProject(project.id, { docs: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
                   <label>Install URL (optional)<input aria-label={`Project ${index + 1} install URL (optional)`} type="text" value={project.install} onChange={(event) => updateProject(project.id, { install: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
                   <label>Download URL (optional)<input aria-label={`Project ${index + 1} download URL (optional)`} type="text" value={project.download} onChange={(event) => updateProject(project.id, { download: event.target.value })} maxLength={500} placeholder="https://…" inputMode="url" /></label>
-                  <button className="remove-project" type="button" aria-label={`Remove project ${index + 1}: ${project.repo || "new project"}`} onClick={() => setProjects((current) => current.filter((item) => item.id !== project.id))}>Remove {project.repo || "project"}</button>
+                  <button className="remove-project" type="button" aria-label={`Remove ${project.repo || "project"}, project ${index + 1}`} onClick={() => setProjects((current) => current.filter((item) => item.id !== project.id))}>Remove {project.repo || "project"}</button>
                 </div>
               </details>
             ))}
