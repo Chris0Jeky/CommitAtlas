@@ -966,9 +966,11 @@ const breakdownLabels = [
 ] as const;
 
 function breakdownValue(value: number, basis: ContributionBreakdownCardData["basis"]): string {
+  if (!Number.isFinite(value)) return "unavailable";
+  const amount = finite(value);
   return basis === "public-profile-percentages"
-    ? `${finite(value).toFixed(1).replace(/\.0$/, "")}%`
-    : formatNumber(value, false);
+    ? `${amount.toFixed(1).replace(/\.0$/, "")}%`
+    : formatNumber(amount, false);
 }
 
 /** Render a source-labelled activity-type mix without turning percentages into counts. */
@@ -990,15 +992,17 @@ export function renderContributionBreakdownCard(
   const t = o.theme;
   const width = o.width;
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
-  const values = breakdownLabels.map(([, key]) => finite(data.breakdown[key]));
-  const total = values.reduce((sum, value) => sum + value, 0);
+  const values = breakdownLabels.map(([, key]) => data.breakdown[key]);
+  const total = values.reduce((sum, value) => sum + (Number.isFinite(value) ? finite(value) : 0), 0);
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
   // Window boundaries come from the caller, so bound them here rather than trusting the adapter.
   const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
   const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
+  const windowDaysKnown = Number.isFinite(data.window.days);
+  const windowDaysText = windowDaysKnown ? `${formatNumber(data.window.days, false)} days` : "window unavailable";
   const basisDescription = publicProfileMix
-    ? `GitHub public-profile percentages from calendar-year profile views; these are not exact counts and are not scoped to the requested ${formatNumber(data.window.days, false)}-day contribution-calendar window`
-    : `exact categorized counts for ${windowFrom} to ${windowTo}, ${formatNumber(data.window.days, false)} days`;
+    ? `GitHub public-profile percentages from calendar-year profile views; these are not exact counts and are not scoped to the requested ${windowDaysKnown ? `${formatNumber(data.window.days, false)}-day` : "unavailable"} contribution-calendar window`
+    : `exact categorized counts for ${windowFrom} to ${windowTo}, ${windowDaysText}`;
   const accessibleDescription = `${metadata.description} Basis: ${basisDescription}. ${breakdownLabels.map(([label], index) => `${label}: ${breakdownValue(values[index], data.basis)}`).join(", ")}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
@@ -1009,16 +1013,17 @@ export function renderContributionBreakdownCard(
   out += sourceMarker(data.source, data.dataState, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
-    : `${windowFrom} → ${windowTo} · ${formatNumber(data.window.days, false)} days`;
+    : `${windowFrom} → ${windowTo} · ${windowDaysText}`;
   out += mono(34, 70, scopeLabel, 10, t.muted, 500, "start", 0.06);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
   breakdownLabels.forEach(([label], index) => {
     const y = 82 + index * 26;
     const value = values[index];
+    const amount = Number.isFinite(value) ? finite(value) : 0;
     const normalized = publicProfileMix
-      ? Math.min(100, value) / 100
-      : total > 0 ? value / total : 0;
+      ? Math.min(100, amount) / 100
+      : total > 0 ? amount / total : 0;
     const fillWidth = barWidth * normalized;
     // One ink, four rows: the bar length is the variable, so the colour does not have to be.
     out += mono(34, y + 9, label, 10, t.muted, 500, "start", 0.08);
