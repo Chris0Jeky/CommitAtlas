@@ -102,15 +102,25 @@ function toCardEvidence(
   const source: CardSource = freshness.mode === "demo" || freshness.source === "synthetic-demo"
     ? "synthetic-demo"
     : freshness.source === "github-profile-html" ? "public-profile" : "public-github";
-  const dataState = freshness.mode === "partial" || freshness.mode === "stale" || freshness.mode === "unavailable"
-    ? freshness.mode
-    : undefined;
+  const dataState = degradedMode(freshness.mode);
   return { source, ...(dataState ? { dataState } : {}) };
+}
+
+function degradedMode(mode: string | undefined): CardDataState | undefined {
+  return mode === "partial" || mode === "stale" || mode === "unavailable" ? mode : undefined;
+}
+
+/** Atlas draws project CI on the same card as the contribution window, so a worse board must show. */
+function worseCardState(contribution: string | undefined, board: string | undefined): CardDataState | undefined {
+  const rank = (mode: string | undefined) => mode === "unavailable" ? 3 : mode === "stale" ? 2 : mode === "partial" ? 1 : 0;
+  return degradedMode(rank(board) > rank(contribution) ? board : contribution);
 }
 
 export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   const { profile, contributions, metrics, projects } = snapshot;
   const projectStates = projects?.projects ?? [];
+  const evidence = toCardEvidence(snapshot.freshness);
+  const dataState = worseCardState(snapshot.freshness.mode, projects?.freshness.mode);
   const passing = projectStates.filter((project) => project.ci.state === "passing").length;
   const attention = projectStates.filter((project) => project.ci.state === "failing" || project.ci.state === "pending" || project.ci.state === "stale").length;
   const unavailable = projectStates.filter((project) => project.ci.state === "unavailable" || project.ci.state === "unconfigured").length;
@@ -149,6 +159,7 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     }),
     ...(projects ? { projects: { total: projectStates.length, passing, attention, unavailable } } : {}),
     generatedAt: snapshot.freshness.generatedAt,
-    ...toCardEvidence(snapshot.freshness),
+    source: evidence.source,
+    ...(dataState ? { dataState } : {}),
   };
 }

@@ -75,6 +75,39 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.equal(atlas.streakBasis, "returned-window");
   assert.deepEqual(atlas.streakBoundary, { current: "closed", longest: "open" });
   assert.equal(atlas.source, "public-github");
+  assert.equal(atlas.dataState, undefined);
+});
+
+test("a partial project board marks the atlas card partial without downgrading a worse contribution state", () => {
+  const partialBoard: ProjectBoardSnapshot = {
+    ...projects,
+    projects: [{
+      ...projects.projects[0]!,
+      ci: { ...projects.projects[0]!.ci, state: "unavailable", label: "CI unavailable" },
+    }],
+    freshness: { generatedAt, source: "github-rest", mode: "partial" },
+  };
+  const partial = toAtlasCard(assemblePortfolioSnapshot(profile, contributions, partialBoard));
+  assert.equal(partial.source, "public-github");
+  assert.equal(partial.dataState, "partial");
+  assert.equal(partial.projects?.unavailable, 1);
+  assert.equal(partial.projects?.passing, 0);
+
+  const stale = toAtlasCard(assemblePortfolioSnapshot(profile, {
+    ...contributions,
+    freshness: { generatedAt, source: "github-rest", mode: "stale" },
+  }, partialBoard));
+  assert.equal(stale.dataState, "stale");
+
+  const unavailableBoard: ProjectBoardSnapshot = {
+    ...partialBoard,
+    freshness: { generatedAt, source: "github-rest", mode: "unavailable" },
+  };
+  const worse = toAtlasCard(assemblePortfolioSnapshot(profile, {
+    ...contributions,
+    freshness: { generatedAt, source: "github-rest", mode: "partial" },
+  }, unavailableBoard));
+  assert.equal(worse.dataState, "unavailable");
 });
 
 test("atlas input preserves degraded data state separately from public-source provenance", () => {
