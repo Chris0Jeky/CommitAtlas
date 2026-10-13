@@ -896,7 +896,18 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
 }
 
 export function renderActivityCard(data: ActivityCardData, options?: RenderOptions): string {
-  const days = data.days.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-MAX_ACTIVITY_DAYS);
+  // One calendar day is one observation. A second row for the same date is not added again,
+  // so two copies of one day cannot paint twice the contributions or two cells.
+  const seenDates = new Set<string>();
+  const days = data.days
+    .filter((day) => isValidIsoDate(day.date))
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .filter((day) => {
+      if (seenDates.has(day.date)) return false;
+      seenDates.add(day.date);
+      return true;
+    })
+    .slice(-MAX_ACTIVITY_DAYS);
   const max = Math.max(1, ...days.map((day) => finite(day.count)));
   const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
   const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
