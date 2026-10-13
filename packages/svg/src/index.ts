@@ -896,7 +896,25 @@ export function renderActivityCard(data: ActivityCardData, options?: RenderOptio
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, periodLabel, t);
   out += sourceMarker(data.source, data.dataState, width - 34, 29, t);
-  out += text(width - 34, 50, `${formatNumber(finite(data.total ?? days.reduce((sum, day) => sum + day.count, 0)))} contributions`, 12, t.text, 600, "end");
+  // NaN is not nullish, so a non-finite total must not fall through into the day sum or into 0.
+  // A missing total still sums finite day counts. Non-finite days are left out of that sum, and a
+  // window whose counts are all non-finite is unavailable rather than an observed zero.
+  let summedCounts = 0;
+  let finiteDayCounts = 0;
+  for (const day of days) {
+    if (!Number.isFinite(day.count)) continue;
+    finiteDayCounts += 1;
+    summedCounts += day.count;
+  }
+  const headlineTotal = typeof data.total === "number"
+    ? data.total
+    : days.length > 0 && finiteDayCounts === 0
+      ? Number.NaN
+      : summedCounts;
+  const contributionsLabel = Number.isFinite(headlineTotal)
+    ? `${formatNumber(headlineTotal)} contributions`
+    : "Total unavailable";
+  out += text(width - 34, 50, contributionsLabel, 12, t.text, 600, "end");
   const grid = calendarGrid(days);
   const columns = grid.columns; const columnGap = columns > 70 ? 1 : 2; const cell = Math.max(2, Math.min(11, Math.floor((width - 86 - columnGap * (columns - 1)) / columns)));
   const start = 40; const top = 66;
@@ -1082,9 +1100,12 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
   }
   const sourceByteTotal = data.languages.reduce((sum, item) => sum + finite(item.bytes), 0);
   const byteTotal = finite(data.totalBytes) > 0 ? finite(data.totalBytes) : sourceByteTotal;
-  const percentageFor = (item: LanguageStat): number => Number.isFinite(item.percentage)
-    ? Math.min(100, finite(item.percentage))
-    : finite(item.bytes) / Math.max(1, byteTotal) * 100;
+  // Neither a finite percentage nor finite bytes is an unknown share. `finite` would paint that as 0%.
+  const percentageFor = (item: LanguageStat): number | null => {
+    if (Number.isFinite(item.percentage)) return Math.min(100, finite(item.percentage));
+    if (!Number.isFinite(item.bytes)) return null;
+    return finite(item.bytes) / Math.max(1, byteTotal) * 100;
+  };
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
@@ -1093,6 +1114,7 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
   const barX = 34; const barY = 68; const barW = width - 68; const barH = 12; let cursor = barX;
   languages.forEach((item, index) => {
     const raw = percentageFor(item);
+    if (raw === null) return;
     const segment = barW * Math.max(0, Math.min(100, raw)) / 100;
     if (segment > 0) { out += `<rect x="${cursor.toFixed(2)}" y="${barY}" width="${segment.toFixed(2)}" height="${barH}" fill="${safeColor(item.color, t.languagePalette[index % t.languagePalette.length])}"/>`; cursor += segment; }
   });
@@ -1101,9 +1123,10 @@ export function renderLanguagesCard(data: LanguagesCardData, options?: RenderOpt
     const x = 34 + (index % 2) * (barW / 2); const y = 111 + Math.floor(index / 2) * 25;
     const color = safeColor(item.color, t.languagePalette[index % t.languagePalette.length]);
     const label = item.name ?? item.language ?? "Unknown language";
+    const share = raw === null ? "Languages unavailable" : `${raw.toFixed(1).replace(/\.0$/, "")}%`;
     // Square swatch, not a disc: it matches the density cell so the two surfaces read as one
     // system, and a square survives at the sizes a README actually renders at.
-    out += `<rect x="${x + 1}" y="${y - 8}" width="8" height="8" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 11.5, t.text, 600) + mono(x + barW / 2 - 10, y, `${raw.toFixed(1).replace(/\.0$/, "")}%`, 10, t.muted, 500, "end", 0.04);
+    out += `<rect x="${x + 1}" y="${y - 8}" width="8" height="8" fill="${color}"/>` + text(x + 16, y, truncateText(label, 19), 11.5, t.text, 600) + mono(x + barW / 2 - 10, y, share, 10, t.muted, 500, "end", 0.04);
   });
   return out + `</g>` + svgEnd();
 }
@@ -1838,7 +1861,22 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const currentStreakLabel = currentStreakThrough && currentStreakThrough !== data.window.to
     ? `Streak to ${currentStreakThrough.slice(5)}`
     : "Current streak";
-  const accessibleDescription = `${o.description} ${formatNumber(data.total, false)} contributions across ${windowDays} days; ${formatNumber(data.activeDays, false)} active days; ${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density; ${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak${currentStreakThrough ? ` through ${currentStreakThrough}` : ""} and ${formatNumber(data.longestStreak, false)} day longest streak in this window. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const contributionText = Number.isFinite(data.total)
+    ? `${formatNumber(data.total, false)} contributions`
+    : "Total unavailable";
+  const activeDayText = Number.isFinite(data.activeDays)
+    ? `${formatNumber(data.activeDays, false)} active days`
+    : "Active days unavailable";
+  const densityText = Number.isFinite(data.density)
+    ? `${finite(data.density).toFixed(1).replace(/\.0$/, "")}% density`
+    : "density unavailable";
+  const currentStreakText = Number.isFinite(data.currentStreak)
+    ? `${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak${currentStreakThrough ? ` through ${currentStreakThrough}` : ""}`
+    : "current streak unavailable";
+  const longestStreakText = Number.isFinite(data.longestStreak)
+    ? `${formatNumber(data.longestStreak, false)} day longest streak in this window`
+    : "longest streak unavailable";
+  const accessibleDescription = `${o.description} ${contributionText} across ${windowDays} days; ${activeDayText}; ${densityText}; ${currentStreakText} and ${longestStreakText}. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const stateLead = sourceDescriptionLead(effectiveState);
   const accessibleWithState = stateLead ? `${stateLead} ${accessibleDescription}` : accessibleDescription;
@@ -1857,13 +1895,16 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 
+  // Same rule as the streak totals and project tallies: a non-finite headline is unavailable.
+  // The label already names the stat, so the value stays the shared word rather than a new metric.
+  // A real zero still renders as zero.
   const metricValues = [
-    ["Contributions", formatNumber(data.total)],
-    ["Active days", formatNumber(data.activeDays, false)],
-    ["Density", `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%`],
-    ["Average / day", finite(data.averagePerDay).toFixed(1)],
-    [currentStreakLabel, `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d`],
-    ["Longest in window", `${formatNumber(data.longestStreak, false)}d`],
+    ["Contributions", Number.isFinite(data.total) ? formatNumber(data.total) : "unavailable"],
+    ["Active days", Number.isFinite(data.activeDays) ? formatNumber(data.activeDays, false) : "unavailable"],
+    ["Density", Number.isFinite(data.density) ? `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%` : "unavailable"],
+    ["Average / day", Number.isFinite(data.averagePerDay) ? finite(data.averagePerDay).toFixed(1) : "unavailable"],
+    [currentStreakLabel, Number.isFinite(data.currentStreak) ? `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d` : "unavailable"],
+    ["Longest in window", Number.isFinite(data.longestStreak) ? `${formatNumber(data.longestStreak, false)}d` : "unavailable"],
   ] as const;
   if (narrow) {
     const metricWidth = (width - 44) / 3;
