@@ -91,20 +91,34 @@ test("authed live (demo=false with token) takes the publicData false path", asyn
   }
 });
 
-test("public contributions responses carry the 3600s edge window", async () => {
+test("unauthenticated public contributions take the public profile branch with the 3600s edge window", async () => {
+  const publicCalls = [];
+  const sentinel = {
+    version: 1,
+    login: "octocat",
+    freshness: { mode: "public-profile", source: "github-profile-html" },
+    marker: "public-profile-sentinel",
+  };
   const restore = stubContributionFetches({
     fetchContributions: unexpectedLiveCall("fetchContributions"),
-    fetchPublicProfileContributions: unexpectedLiveCall("fetchPublicProfileContributions"),
+    fetchPublicProfileContributions: async (login, days) => {
+      publicCalls.push([login, days]);
+      return sentinel;
+    },
   });
   try {
     const response = await withWorkerEnv(
       { GITHUB_TOKEN: "" },
-      () => GET(new Request("https://example.test/api/v1/contributions?user=octocat&demo=true&days=30")),
+      () => GET(new Request("https://example.test/api/v1/contributions?user=octocat&demo=false&days=30")),
     );
 
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("cache-control") ?? "", /s-maxage=3600/);
+    assert.deepEqual(publicCalls, [["octocat", 30]]);
+    const payload = await response.json();
+    assert.equal(payload.freshness?.mode, "public-profile");
+    assert.equal(payload.freshness?.source, "github-profile-html");
     assert.equal(response.headers.get("cache-control"), PUBLIC_CACHE);
+    assert.match(response.headers.get("cache-control") ?? "", /s-maxage=3600/);
   } finally {
     restore();
   }
