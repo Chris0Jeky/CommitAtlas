@@ -45,6 +45,8 @@ test("each card has labelled controls and previews only its chosen Atlas layout"
   const html = renderToStaticMarkup(createElement(StudioCardPreview, { card: { kind: "atlas", title: "Atlas", purpose: "Overview", dimensions: "860 × 540", span: "full", compact: false },
     url: "/chosen-layout", stillUrl: "/still", login: "demo", source: "Synthetic", retained: false, view: "profile", token: "attempt", onRendered() {} }));
   for (const label of ["Profile view", "Replay", "Reduced-motion view", "Frame zero"]) assert.ok(html.includes(`>${label}</button>`));
+  assert.match(html, /aria-label="Open card for Atlas in a new tab"/);
+  assert.match(html, />Open card </);
   assert.match(html, /data-card-preview="atlas"/);
   assert.doesNotMatch(html, /<picture|srcSet|srcset/);
 });

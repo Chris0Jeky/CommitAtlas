@@ -49,7 +49,7 @@ function CardImage(props: Props & { tools: ReactNode }) {
     </dl>
     {counters && <p className="scene-preview-status">Cards currently use {counters.animatedElements ? "entrance-only motion" : "no motion"}; ambient does not add a loop.</p>}
     <footer><span>{card.dimensions}{retained ? " · retained preview" : ""}</span>
-      <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${card.title} card in a new tab`}>Open card <span aria-hidden="true">↗</span></a>
+      <a href={url} target="_blank" rel="noreferrer" aria-label={`Open card for ${card.title} in a new tab`}>Open card <span aria-hidden="true">↗</span></a>
     </footer>
   </article>;
 }
