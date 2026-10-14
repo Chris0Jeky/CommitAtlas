@@ -153,7 +153,7 @@ characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 
 atlas card bounds `window.from`, `window.to`, and `rhythm.level` to 24 characters too, and keeps
 at most the 26 most recent `trend.buckets` in its momentum strip. Every truncation appends a
 visible `…` rather than dropping text silently and never splits a surrogate pair. Non-finite
-numerics never reach visible atlas text: a non-finite `window.days` clamps like every other count,
+numerics never reach visible atlas text: a non-finite `window.days` renders `an unavailable window`,
 a non-finite `trend.changePercent` renders `trend change unavailable`, and a `projects` tally with
 any non-finite count renders `Project health unavailable` rather than a fabricated zero. Valid
 GitHub/core adapter values are far below these limits, so bounded inputs render unchanged. Delivery evidence renders unknown ratios as `UNAVAILABLE` and unknown counts as `UNKNOWN`, never as healthy readings, and prints the literal `activity flow · not quality or impact` non-claim instead of any productivity, quality, effort, or impact claim.
