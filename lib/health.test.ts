@@ -132,6 +132,8 @@ test("unconfigured pins its tone, word, and pulse flag", () => {
 test("summariseCiStates fails closed on an unknown CI state", () => {
   assert.throws(() => summariseCiStates(["bogus"] as never), /unknown CI state/);
   assert.throws(() => summariseCiStates(["passing", "bogus"] as never), /unknown CI state/);
+  assert.throws(() => summariseCiStates(["toString"] as never), /unknown CI state/);
+  assert.throws(() => summariseCiStates(["constructor"] as never), /unknown CI state/);
 });
 
 test("an unknown CI state has no presentation and never falls back to a healthy tone", () => {
