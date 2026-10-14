@@ -7,6 +7,7 @@ import {
   calculateProjectState,
   calculateStreaks,
   parseContributionCalendar,
+  parseHandle,
   parseManifest,
   parseOptions,
   parseRepo,
@@ -425,5 +426,58 @@ describe("core contracts", () => {
     };
     expect(atDensityCeiling(9)).toMatchObject({ density: 80, streak: { current: 9 }, rhythm: { score: 79, level: "strong" } });
     expect(atDensityCeiling(10)).toMatchObject({ density: 80, streak: { current: 10 }, rhythm: { score: 80, level: "relentless" } });
+  });
+
+  it("keeps repository name case and lowercases only the owner", () => {
+    expect(parseRepositorySlug("Owner/RepoName")).toBe("owner/RepoName");
+  });
+
+  it("lowercases a valid handle and rejects a handle the pattern excludes", () => {
+    expect(parseHandle({ version: 1, handle: "Chris0Jeky" })).toEqual({ version: 1, handle: "chris0jeky" });
+    expect(() => parseHandle({ version: 1, handle: "-bad" })).toThrow();
+  });
+
+  it("accepts only credential-free https links on the allowlist", () => {
+    const project = (docs: string) => ({
+      version: 1,
+      projects: [{ repo: "owner/repo", label: "One", lifecycle: "active", links: { docs } }],
+    });
+    expect(parseManifest(project("https://github.com/owner/repo")).projects[0]?.links.docs).toBe("https://github.com/owner/repo");
+    expect(parseManifest(project("https://GitHub.com/owner/repo")).projects[0]?.links.docs).toBe("https://GitHub.com/owner/repo");
+    expect(() => parseManifest(project("http://github.com/owner/repo"))).toThrow();
+    expect(() => parseManifest(project("https://example.com/docs"))).toThrow();
+    expect(() => parseManifest(project("https://user:pass@github.com/owner/repo"))).toThrow();
+  });
+
+  it("rejects calendar-impossible dates and sorts a calendar before returning it", () => {
+    expect(() => parseContributionCalendar({ version: 1, days: [{ date: "2024-02-30", count: 1, level: 0 }] })).toThrow();
+    expect(() => parseContributionCalendar({ version: 1, days: [{ date: "2023-02-29", count: 1, level: 0 }] })).toThrow();
+    expect(parseContributionCalendar({ version: 1, days: [{ date: "2024-02-29", count: 1, level: 0 }] }).days[0]?.date).toBe("2024-02-29");
+    expect(parseContributionCalendar({
+      version: 1,
+      days: [
+        { date: "2024-03-03", count: 1, level: 0 },
+        { date: "2024-03-01", count: 2, level: 1 },
+      ],
+    }).days.map((day) => day.date)).toEqual(["2024-03-01", "2024-03-03"]);
+  });
+
+  it("reports the earliest peak day when counts tie", () => {
+    expect(metricsFor("2024-03-03", [2, 5, 5]).peakDay).toEqual({ date: "2024-03-02", count: 5 });
+    expect(metricsFor("2024-03-03", [5, 1, 9]).peakDay).toEqual({ date: "2024-03-03", count: 9 });
+  });
+
+  it("uses staleAfterHours instead of always applying the 72 hour default", () => {
+    const now = "2024-03-25T12:00:00.000Z";
+    const observation = {
+      available: true,
+      configured: true,
+      conclusion: "success" as const,
+      updatedAt: "2024-03-25T09:00:00.000Z",
+    };
+    expect(calculateCiState(observation, now).state).toBe("passing");
+    expect(calculateCiState(observation, now, 1).state).toBe("stale");
+    expect(() => calculateCiState(observation, now, 0)).toThrow(/staleAfterHours/);
+    expect(() => calculateCiState(observation, now, 8761)).toThrow(/staleAfterHours/);
   });
 });
