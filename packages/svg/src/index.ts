@@ -2057,7 +2057,13 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += languages.length > 0
     ? text(detailX, detailY + 21, languages.map((language) => `${truncateText(language.name ?? language.language ?? "Other", 10)} ${finite(language.percentage).toFixed(0)}%`).join(" · "), 9, t.text, 550)
     : text(detailX, detailY + 21, "Languages unavailable", 9, t.muted, 550);
-  const profileSignal = `${formatNumber(data.profile.repositories, false)} repos · ${formatNumber(data.profile.followers)} followers${Number.isFinite(data.profile.stars) ? ` · ${formatNumber(data.profile.stars)} stars` : " · stars unavailable"}`;
+  const repositorySignal = Number.isFinite(data.profile.repositories)
+    ? `${formatNumber(data.profile.repositories, false)} repos`
+    : "repos unavailable";
+  const followerSignal = Number.isFinite(data.profile.followers)
+    ? `${formatNumber(data.profile.followers)} followers`
+    : "followers unavailable";
+  const profileSignal = `${repositorySignal} · ${followerSignal}${Number.isFinite(data.profile.stars) ? ` · ${formatNumber(data.profile.stars)} stars` : " · stars unavailable"}`;
   out += text(detailX, detailY + 37, profileSignal, 9, t.text, 550);
   const projectCounts = data.projects;
   // A non-finite or negative count is an unknown project signal. Never render it as a real tally,
