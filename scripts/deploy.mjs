@@ -75,7 +75,12 @@ const output = `${deploy.stdout ?? ""}\n${deploy.stderr ?? ""}`;
 const identity = formatDeploymentIdentity(sha, output);
 console.log(`\n${identity}`);
 if (process.env.GITHUB_STEP_SUMMARY) {
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${identity}\n`);
+  // The deploy already succeeded: an unwritable summary is a warning, never a failed deploy.
+  try {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${identity}\n`);
+  } catch (error) {
+    console.warn(`Could not write the step summary: ${error.code ?? error.message}`);
+  }
 }
 
 const reported = extractDeployedOrigin(output);
