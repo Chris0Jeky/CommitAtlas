@@ -283,6 +283,29 @@ test("propagates degraded freshness truth to every static card", () => {
   }
 });
 
+test("a truncated repository list marks the static atlas partial and omits the partial star total", () => {
+  const base = snapshot();
+  const rendered = renderStaticArtifacts({
+    ...base,
+    profile: { ...base.profile, repositoriesTruncated: true, stars: 999 },
+  }, parseStaticConfig({ ...rawConfig(), cards: ["atlas"] }));
+  assert.match(rendered["atlas.svg"], />PARTIAL SNAPSHOT</);
+  assert.match(rendered["atlas.svg"], /Partially observed public GitHub data/);
+  assert.doesNotMatch(rendered["atlas.svg"], />999</);
+});
+
+test("a stale contribution window stays stale when the repository list is truncated", () => {
+  const base = snapshot();
+  const rendered = renderStaticArtifacts({
+    ...base,
+    profile: { ...base.profile, repositoriesTruncated: true },
+    contributions: { ...base.contributions, freshness: { ...base.contributions.freshness, mode: "stale" } },
+    freshness: { ...base.freshness, mode: "stale" },
+  }, parseStaticConfig({ ...rawConfig(), cards: ["atlas"] }));
+  assert.match(rendered["atlas.svg"], />STALE SNAPSHOT</);
+  assert.doesNotMatch(rendered["atlas.svg"], />PARTIAL SNAPSHOT</);
+});
+
 test("a partial project board marks the static atlas card partial and leaves contribution cards live", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({
