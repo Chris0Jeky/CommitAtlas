@@ -1235,18 +1235,26 @@ function atlasMetric(x: number, y: number, label: string, value: string, theme: 
   return text(x, y, value, 20, theme.text, 760) + text(x, y + 17, label.toUpperCase(), 9, theme.muted, 650);
 }
 
+function atlasRecentCount(value: number): string {
+  // formatNumber maps a missing count to 0. An unknown recent window is not zero contributions.
+  return Number.isFinite(value) ? formatNumber(value) : "recent unavailable";
+}
+
 function atlasTrendLabel(data: AtlasCardData): string {
-  if (data.trend.direction === "unavailable") return `${formatNumber(data.trend.recent28Days)} in latest 28 days`;
-  if (data.trend.direction === "new") return `${formatNumber(data.trend.recent28Days)} · new activity`;
+  const recent = atlasRecentCount(data.trend.recent28Days);
+  if (data.trend.direction === "unavailable") return `${recent} in latest 28 days`;
+  if (data.trend.direction === "new") return `${recent} · new activity`;
   const change = data.trend.changePercent;
-  if (change === null) return `${formatNumber(data.trend.recent28Days)} in latest 28 days`;
+  if (change === null) return `${recent} in latest 28 days`;
   // A non-finite change is an unknown signal, not a zero one: say so instead of printing NaN.
-  if (!Number.isFinite(change)) return `${formatNumber(data.trend.recent28Days)} · trend change unavailable`;
+  if (!Number.isFinite(change)) return `${recent} · trend change unavailable`;
   const sign = change > 0 ? "+" : "";
-  return `${formatNumber(data.trend.recent28Days)} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28d`;
+  return `${recent} · ${sign}${change.toFixed(1).replace(/\.0$/, "")}% vs prior 28d`;
 }
 
 function atlasBreakdownValue(value: number, basis: AtlasCardData["breakdownBasis"]): string {
+  // A missing mix value is not a measured zero. Negatives stay finite and still clamp to 0.
+  if (!Number.isFinite(value)) return "unavailable";
   if (basis === "public-profile-percentages") {
     return `${finite(value).toFixed(1).replace(/\.0$/, "")}%`;
   }
@@ -1915,7 +1923,10 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   // clamp them here rather than trusting the adapter that normally supplies them.
   const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
   const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
-  const windowDays = formatNumber(data.window.days, false);
+  // formatNumber maps a missing length to 0. The header and the description share this gate.
+  const windowDaysKnown = Number.isFinite(data.window.days);
+  const windowDays = windowDaysKnown ? formatNumber(data.window.days, false) : "";
+  const windowSpan = windowDaysKnown ? `${windowDays} days` : "an unavailable window";
   const rhythmLevel = truncateText(data.rhythm.level, MAX_RHYTHM_LEVEL_LENGTH);
   const currentStreakThrough = isValidIsoDate(data.currentStreakThrough) ? data.currentStreakThrough : null;
   const currentStreakLabel = currentStreakThrough && currentStreakThrough !== data.window.to
@@ -1936,7 +1947,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const longestStreakText = Number.isFinite(data.longestStreak)
     ? `${formatNumber(data.longestStreak, false)} day longest streak in this window`
     : "longest streak unavailable";
-  const accessibleDescription = `${o.description} ${contributionText} across ${windowDays} days; ${activeDayText}; ${densityText}; ${currentStreakText} and ${longestStreakText}. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const accessibleDescription = `${o.description} ${contributionText} across ${windowSpan}; ${activeDayText}; ${densityText}; ${currentStreakText} and ${longestStreakText}. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const stateLead = sourceDescriptionLead(effectiveState);
   const accessibleWithState = stateLead ? `${stateLead} ${accessibleDescription}` : accessibleDescription;
@@ -1952,7 +1963,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
       ? t.muted
       : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted;
   out += text(width - 22, 28, sourceLabel, 9, sourceColor, 700, "end");
-  out += text(width - 22, 45, `${windowDays}D · ${windowTo}`, 9, t.muted, 550, "end");
+  out += text(width - 22, 45, windowDaysKnown ? `${windowDays}D · ${windowTo}` : `unavailable · ${windowTo}`, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 
   // Same rule as the streak totals and project tallies: a non-finite headline is unavailable.
@@ -1990,7 +2001,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const cell = Math.max(2, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * columnGap) / columns)));
   const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
   out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
-  out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, `${formatNumber(data.peakDay.count, false)} PEAK · ${truncateText(data.peakDay.date, 10)}`, 8.5, t.muted, 500, "end", 0.1);
+  const peakKnown = Number.isFinite(data.peakDay.count);
+  const peakDate = truncateText(data.peakDay.date, 10);
+  out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, peakKnown ? `${formatNumber(data.peakDay.count, false)} PEAK · ${peakDate}` : `peak unavailable · ${peakDate}`, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   grid.cells.forEach(({ day, column, row }) => {
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
@@ -2026,11 +2039,12 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   breakdown.forEach(([label, value], index) => {
     const y = breakdownY + 18 + index * 24;
     const trackWidth = Math.max(1, breakdownWidth - 104);
-    // Divide before scaling: multiplying a huge finite value first can overflow to Infinity.
-    const barWidth = Math.max(2, trackWidth * (finite(value) / breakdownMax));
+    // A missing value keeps the track and skips the bar. A real zero still draws the 2px stub.
+    const valueKnown = Number.isFinite(value);
+    const barWidth = valueKnown ? Math.max(2, trackWidth * (finite(value) / breakdownMax)) : 0;
     out += mono(breakdownX, y + 8, label, 8.5, t.muted, 500, "start", 0.08);
     out += `<rect x="${breakdownX + 76}" y="${y + 1}" width="${trackWidth}" height="6" fill="${t.track}"/>`;
-    out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y + 1}" width="${barWidth.toFixed(2)}" height="6" fill="${t.mixInk}"/>`;
+    if (valueKnown) out += `<rect class="atlas-bar" x="${breakdownX + 76}" y="${y + 1}" width="${barWidth.toFixed(2)}" height="6" fill="${t.mixInk}"/>`;
     out += mono(width - 24, y + 8, atlasBreakdownValue(value, data.breakdownBasis), 9, t.text, 600, "end", 0.04);
   });
 
@@ -2047,14 +2061,18 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const trendGap = 3;
   const trendBarWidth = Math.max(3, (trendWidth - Math.max(0, trendBuckets.length - 1) * trendGap) / Math.max(1, trendBuckets.length));
   trendBuckets.forEach((value, index) => {
-    // Divide before scaling: multiplying a huge finite value first can overflow to Infinity.
+    // A missing bucket is not a measured stub. A real zero keeps the 2px bar.
+    if (!Number.isFinite(value)) return;
     const barHeight = Math.max(2, 22 * (finite(value) / trendMax));
     out += `<rect class="atlas-bar" x="${(trendX + index * (trendBarWidth + trendGap)).toFixed(2)}" y="${(trendBaseline - barHeight).toFixed(2)}" width="${trendBarWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="2" fill="${t.accent}"/>`;
   });
 
   const rhythmX = narrow ? trendX + trendWidth + 22 : Math.floor(width * .40);
+  // finite() maps a missing score to 0. The rhythm card already says unavailable; this footer must agree.
+  // A finite negative still clamps to 0. Values above 100 stay unclamped, as this footer already did.
+  const rhythmScoreKnown = Number.isFinite(data.rhythm.score);
   out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
-  out += text(rhythmX, footerTop + 27, `${Math.round(finite(data.rhythm.score))}/100`, 23, t.text, 780);
+  out += text(rhythmX, footerTop + 27, rhythmScoreKnown ? `${Math.round(finite(data.rhythm.score))}/100` : "unavailable", rhythmScoreKnown ? 23 : 12, t.text, rhythmScoreKnown ? 780 : 700);
   out += mono(rhythmX, footerTop + 43, `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY`, 7.5, t.muted, 600, "start", 0.08);
 
   const detailX = narrow ? 24 : Math.floor(width * .60);
@@ -2062,7 +2080,11 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const languages = (data.languages ?? []).slice(0, 3);
   out += text(detailX, detailY + 2, "PORTFOLIO SIGNALS", 10, t.muted, 700);
   out += languages.length > 0
-    ? text(detailX, detailY + 21, languages.map((language) => `${truncateText(language.name ?? language.language ?? "Other", 10)} ${finite(language.percentage).toFixed(0)}%`).join(" · "), 9, t.text, 550)
+    ? text(detailX, detailY + 21, languages.map((language) => {
+        const name = truncateText(language.name ?? language.language ?? "Other", 10);
+        const share = Number.isFinite(language.percentage) ? `${finite(language.percentage).toFixed(0)}%` : "unavailable";
+        return `${name} ${share}`;
+      }).join(" · "), 9, t.text, 550)
     : text(detailX, detailY + 21, "Languages unavailable", 9, t.muted, 550);
   const repositorySignal = Number.isFinite(data.profile.repositories)
     ? `${formatNumber(data.profile.repositories, false)} repos`
