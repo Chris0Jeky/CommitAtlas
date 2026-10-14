@@ -38,7 +38,7 @@
     "strategy": "none"
   },
   "health": {
-    "endpoint": null,
+    "endpoint": "/api/v1/health",
     "observer": "external-probe",
     "signals": [
       "readiness",
