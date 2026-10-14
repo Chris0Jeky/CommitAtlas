@@ -89,13 +89,12 @@ test("marks profile totals partial at the five-page cap even when the user count
   assert.deepEqual(pages, [1, 2, 3, 4, 5]);
 });
 
-test("checks later profile pages for invalid shapes, private data and upstream failures", async () => {
+test("checks later profile pages for invalid shapes and private data", async () => {
   for (const [body, status, code] of [
     [{}, 200, "invalid_response"],
     [[null], 200, "invalid_response"],
     [[{ stargazers_count: 1, forks_count: 1, private: true }], 200, "private_data"],
     [[{ stargazers_count: -1, forks_count: 1 }], 200, "invalid_response"],
-    [{}, 500, "github_unavailable"],
   ] as const) {
     const fetchImpl: typeof fetch = async (input) => {
       const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -111,6 +110,21 @@ test("checks later profile pages for invalid shapes, private data and upstream f
       (error: unknown) => error instanceof GitHubApiError && error.code === code,
     );
   }
+});
+
+test("degrades to partial totals when GitHub cannot serve a later profile page", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 150, followers: 1, following: 1 });
+    }
+    if (url.searchParams.get("page") === "2") return json({}, 500);
+    return json(Array.from({ length: 100 }, () => ({ stargazers_count: 1, forks_count: 1 })));
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.equal(profile.stars, 100);
+  assert.equal(profile.repositoriesTruncated, true);
+  assert.equal(profile.freshness.mode, "partial");
 });
 
 test("confirms an exact full profile page with an empty next page", async () => {

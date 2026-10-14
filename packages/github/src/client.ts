@@ -104,7 +104,14 @@ export class GitHubClient {
     let lastPageLength = repositories.length;
     // shortcut: at most 500 repositories within the shared deadline; revisit the budget when larger complete profiles are required.
     for (let page = 2; lastPageLength === 100 && page <= PROFILE_REPOSITORY_PAGE_CAP; page++) {
-      const nextPage = await this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100&page=${page}`);
+      let nextPage: unknown;
+      try {
+        nextPage = await this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100&page=${page}`);
+      } catch (error) {
+        // A later page that GitHub cannot serve degrades the totals to partial; page 1 already succeeded.
+        if (error instanceof GitHubApiError && (error.code === "github_unavailable" || error.code === "github_rate_limited")) break;
+        throw error;
+      }
       if (!Array.isArray(nextPage) || nextPage.some((repository) => !isRecord(repository))) {
         throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository list");
       }
