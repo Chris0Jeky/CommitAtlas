@@ -220,7 +220,10 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   const { profile, contributions, metrics, projects } = snapshot;
   const projectStates = projects?.projects ?? [];
   const evidence = toCardEvidence(snapshot.freshness);
-  const dataState = worseCardState(snapshot.freshness.mode, projects?.freshness.mode);
+  const dataState = worseCardState(
+    worseCardState(snapshot.freshness.mode, projects?.freshness.mode),
+    profile.repositoriesTruncated ? "partial" : undefined,
+  );
   return {
     profile: {
       name: profile.name?.trim() || profile.login,
