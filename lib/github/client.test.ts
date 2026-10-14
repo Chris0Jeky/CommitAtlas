@@ -37,6 +37,101 @@ test("normalizes a public profile without inventing contribution data", async ()
   assert.deepEqual(calls.map((url) => url.pathname).sort(), ["/users/octocat", "/users/octocat/repos"]);
 });
 
+test("sums profile totals across 150 repositories on two pages", async () => {
+  const pages: number[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 150, followers: 1, following: 1 });
+    }
+    assert.equal(url.pathname, "/users/octocat/repos");
+    assert.equal(url.searchParams.get("type"), "owner");
+    assert.equal(url.searchParams.get("per_page"), "100");
+    const page = Number(url.searchParams.get("page") ?? 1);
+    pages.push(page);
+    assert.ok(page <= 2);
+    return json(Array.from({ length: page === 1 ? 100 : 50 }, () => ({
+      stargazers_count: page, forks_count: 2,
+      language: page === 1 ? "TypeScript" : "Python",
+      pushed_at: page === 1 ? "2026-08-17T10:00:00Z" : "2026-08-18T10:00:00Z",
+    })));
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.equal(profile.stars, 200);
+  assert.equal(profile.forks, 300);
+  assert.deepEqual(profile.primaryLanguages.map(({ name, repositories }) => ({ name, repositories })), [
+    { name: "TypeScript", repositories: 100 }, { name: "Python", repositories: 50 },
+  ]);
+  assert.equal(profile.latestPushAt, "2026-08-18T10:00:00Z");
+  assert.equal(profile.repositoriesTruncated, false);
+  assert.equal(profile.freshness.mode, "live");
+  assert.deepEqual(pages, [1, 2]);
+});
+
+test("marks profile totals partial at the five-page cap even when the user count matches", async () => {
+  const pages: number[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 500, followers: 1, following: 1 });
+    }
+    assert.equal(url.pathname, "/users/octocat/repos");
+    const page = Number(url.searchParams.get("page") ?? 1);
+    pages.push(page);
+    assert.ok(page <= 5);
+    return json(Array.from({ length: 100 }, () => ({ stargazers_count: 1, forks_count: 2 })));
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.equal(profile.stars, 500);
+  assert.equal(profile.forks, 1000);
+  assert.equal(profile.repositoriesTruncated, true);
+  assert.equal(profile.freshness.mode, "partial");
+  assert.deepEqual(pages, [1, 2, 3, 4, 5]);
+});
+
+test("checks later profile pages for invalid shapes, private data and upstream failures", async () => {
+  for (const [body, status, code] of [
+    [{}, 200, "invalid_response"],
+    [[null], 200, "invalid_response"],
+    [[{ stargazers_count: 1, forks_count: 1, private: true }], 200, "private_data"],
+    [[{ stargazers_count: -1, forks_count: 1 }], 200, "invalid_response"],
+    [{}, 500, "github_unavailable"],
+  ] as const) {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input.toString());
+      if (url.pathname === "/users/octocat") {
+        return json({ login: "octocat", public_repos: 101, followers: 1, following: 1 });
+      }
+      assert.equal(url.pathname, "/users/octocat/repos");
+      if (url.searchParams.get("page") === "2") return json(body, status);
+      return json(Array.from({ length: 100 }, () => ({ stargazers_count: 1, forks_count: 1 })));
+    };
+    await assert.rejects(
+      new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat"),
+      (error: unknown) => error instanceof GitHubApiError && error.code === code,
+    );
+  }
+});
+
+test("confirms an exact full profile page with an empty next page", async () => {
+  const pages: number[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (url.pathname === "/users/octocat") {
+      return json({ login: "octocat", public_repos: 100, followers: 1, following: 1 });
+    }
+    assert.equal(url.pathname, "/users/octocat/repos");
+    const page = Number(url.searchParams.get("page") ?? 1);
+    pages.push(page);
+    assert.ok(page <= 2);
+    return json(Array.from({ length: page === 1 ? 100 : 0 }, () => ({ stargazers_count: 1, forks_count: 1 })));
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile("octocat");
+  assert.equal(profile.stars, 100);
+  assert.equal(profile.repositoriesTruncated, false);
+  assert.deepEqual(pages, [1, 2]);
+});
+
 test("requires a server-side token for contribution calendars", async () => {
   await assert.rejects(
     new GitHubClient({ now: () => NOW }).fetchContributions("octocat"),
