@@ -113,6 +113,49 @@ export interface StarterCiPresentation {
   workflowLabel: string;
 }
 
+export function studioCiTone(state: string): string {
+  if (state === "passing") return "good";
+  if (state === "pending" || state === "stale") return "warn";
+  if (state === "failing") return "bad";
+  return "unknown";
+}
+
+export interface StudioProjectCiReading {
+  state: string;
+  label: string;
+  tone: string;
+}
+
+/**
+ * A last-good board is marked `stale` while each row still carries the cached conclusion.
+ * That cached pass is not a current pass.
+ */
+export function studioProjectCiReading(options: {
+  boardMode: string;
+  state: string;
+  label: string;
+}): StudioProjectCiReading {
+  if (options.boardMode === "stale") {
+    return { state: "stale", label: "Stale result", tone: "warn" };
+  }
+  return { state: options.state, label: options.label, tone: studioCiTone(options.state) };
+}
+
+/**
+ * The validated project list is cleared when the board request fails. The heading must not
+ * report that clearance as a measured zero.
+ */
+export function studioDashboardProjectHeading(options: {
+  boardCount: number | null;
+  visibleDeclaredCount: number;
+  typedCount: number;
+  boardWithheld: boolean;
+}): string {
+  if (options.boardWithheld) return `${options.typedCount} declared · board unavailable`;
+  const count = options.boardCount ?? options.visibleDeclaredCount;
+  return `${count} declared projects`;
+}
+
 export function starterCiPresentation(workflow: string): StarterCiPresentation {
   const configuredWorkflow = workflow.trim();
   return configuredWorkflow
