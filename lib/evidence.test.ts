@@ -379,3 +379,20 @@ test("evidence pins the printed followers value for a fixed live snapshot", () =
   const none = buildEvidence({ ...base, profile: { ...base.profile, followers: 0 } });
   assert.equal(none.byId["followers"]!.value, "0");
 });
+
+test("language share names the leading language and stays blank when none were returned", () => {
+  const base = fixedLiveSnapshot();
+  const named = buildEvidence(base).byId.languages!;
+  assert.equal(named.value, "TypeScript 60%");
+  assert.equal(named.tier, "derived");
+  assert.equal(named.rule, "language-share-derived");
+  assert.match(named.basis, /1 languages across the public repositories/);
+
+  const empty = buildEvidence({
+    ...base,
+    profile: { ...base.profile, primaryLanguages: [] },
+  }).byId.languages!;
+  assert.equal(empty.value, "—");
+  assert.match(empty.basis, /no public repository languages/);
+  assert.doesNotMatch(empty.value, /0%/);
+});
