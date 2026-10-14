@@ -120,7 +120,10 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   const { profile, contributions, metrics, projects } = snapshot;
   const projectStates = projects?.projects ?? [];
   const evidence = toCardEvidence(snapshot.freshness);
-  const dataState = worseCardState(snapshot.freshness.mode, projects?.freshness.mode);
+  const dataState = worseCardState(
+    worseCardState(snapshot.freshness.mode, projects?.freshness.mode),
+    profile.repositoriesTruncated ? "partial" : undefined,
+  );
   const passing = projectStates.filter((project) => project.ci.state === "passing").length;
   const attention = projectStates.filter((project) => project.ci.state === "failing" || project.ci.state === "pending" || project.ci.state === "stale").length;
   const unavailable = projectStates.filter((project) => project.ci.state === "unavailable" || project.ci.state === "unconfigured").length;
