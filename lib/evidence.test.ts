@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { EvidenceLayer } from "../app/chassis/evidence-layer";
 import {
   EVIDENCE_TIERS,
   EVIDENCE_TIER_PRESENTATION,
@@ -395,4 +398,32 @@ test("language share names the leading language and stays blank when none were r
   assert.equal(empty.value, "—");
   assert.match(empty.basis, /no public repository languages/);
   assert.doesNotMatch(empty.value, /0%/);
+});
+
+test("a non-finite rhythm score is unavailable in the evidence record, never NaN/100 or a band", () => {
+  for (const score of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const broken: PortfolioSnapshot = {
+      ...snapshot,
+      metrics: { ...snapshot.metrics, rhythm: { score, level: "starting" } },
+    };
+    const set = buildEvidence(broken);
+    const text = JSON.stringify([set.byId.rhythm, set.byId["rhythm-level"]]);
+    assert.doesNotMatch(text, /NaN|Infinity/, `${score} leaked into the evidence records`);
+    assert.equal(set.byId.rhythm!.value, "unavailable");
+    assert.match(set.byId.rhythm!.formula ?? "", /= unavailable$/);
+    // The band is a function of the score. With no score there is no band to name.
+    assert.equal(set.byId["rhythm-level"]!.value, "unavailable");
+    assert.notEqual(set.byId["rhythm-level"]!.formula, null);
+
+    // The landing page prints `rhythm.value` through EvidenceLayer; check the rendered markup.
+    const html = renderToStaticMarkup(createElement(EvidenceLayer, { evidence: set }));
+    assert.doesNotMatch(html, /NaN|Infinity/);
+    assert.doesNotMatch(html, /unavailable\/100/);
+    assert.match(html, /unavailable/);
+  }
+});
+
+test("a finite rhythm score still prints as a score over 100", () => {
+  assert.equal(evidence.byId.rhythm!.value, "72/100");
+  assert.match(evidence.byId["rhythm-level"]!.basis, /score of 72 falls in the band .*strong/);
 });
