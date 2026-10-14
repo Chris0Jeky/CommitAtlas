@@ -150,7 +150,7 @@ full 731-day window. One-year windows remain below the 30KB SVG output budget; t
 two-year worst case (maxed counts) holds a measured 56KB budget. Caller-supplied prose on
 the insight cards is bounded the same way: breakdown `window.from` and `window.to` truncate to 24
 characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 characters. The
-atlas card bounds `window.from`, `window.to`, and `rhythm.level` to 24 characters too, and keeps
+atlas card shows `window.from` and `window.to` only when each is a valid `YYYY-MM-DD` calendar date and renders `unavailable` otherwise, bounds `rhythm.level` to 24 characters, and keeps
 at most the 26 most recent `trend.buckets` in its momentum strip. Every truncation appends a
 visible `…` rather than dropping text silently and never splits a surrogate pair. Non-finite
 numerics never reach visible atlas text: a non-finite `window.days` renders `an unavailable window`,
