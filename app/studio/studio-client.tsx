@@ -22,6 +22,8 @@ import {
   describeProjectActionUrl,
   findProjectDraft,
   starterCiPresentation,
+  studioDashboardProjectHeading,
+  studioProjectCiReading,
   studioSourceLabel,
 } from "./studio-presentation";
 import {
@@ -230,6 +232,13 @@ export default function StudioClient() {
   const configurationIsValidated = isStudioPreviewCurrent(configurationKey, validatedPreview);
   const visibleBoard = configurationIsValidated ? board : null;
   const visibleProjectDrafts = configurationIsValidated ? previewConfiguration.projects : activeProjects;
+  const boardWithheld = configurationIsValidated && visibleBoard === null && activeProjects.length > 0 && previewConfiguration.projects.length === 0;
+  const dashboardHeading = studioDashboardProjectHeading({
+    boardCount: visibleBoard ? visibleBoard.projects.length : null,
+    visibleDeclaredCount: visibleProjectDrafts.length,
+    typedCount: activeProjects.length,
+    boardWithheld,
+  });
   const visibleNotice = phase === "ready" && validatedPreview && !configurationIsValidated
     ? configurationChangedNotice()
     : notice;
@@ -650,9 +659,9 @@ export default function StudioClient() {
             ))}
           </div>
 
-          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{visibleBoard?.projects.length ?? visibleProjectDrafts.length} declared projects</h3></div><span>Open links below</span></div>
+          <div className="dashboard-heading"><div><p>Project dashboard</p><h3>{dashboardHeading}</h3></div><span>Open links below</span></div>
           <div className="dashboard-list">
-            {(visibleBoard?.projects ?? []).map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} />)}
+            {visibleBoard ? visibleBoard.projects.map((project) => <ProjectRow key={project.repo} project={project} draft={findProjectDraft(projects, project.name)} boardMode={visibleBoard.freshness.mode} />) : null}
             {!visibleBoard && visibleProjectDrafts.map((project) => <StarterProjectRow key={project.id} project={project} owner={handle.trim() || "octocat"} />)}
             {!visibleProjectDrafts.length && <div className="empty-projects"><strong>No project board available</strong><span>Add repositories or run Preview again to build a project-health dashboard.</span></div>}
           </div>
@@ -683,10 +692,11 @@ export default function StudioClient() {
   );
 }
 
-function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: ProjectDraft }) {
+function ProjectRow({ project, draft, boardMode }: { project: ProjectSnapshot; draft?: ProjectDraft; boardMode: string }) {
   const docs = describeProjectActionUrl(draft?.docs);
   const install = describeProjectActionUrl(draft?.install);
   const download = describeProjectActionUrl(draft?.download);
+  const ci = studioProjectCiReading({ boardMode, state: project.ci.state, label: project.ci.label });
   // An invalid typed download stays visible instead of being masked by the release fallback.
   const downloadHref = download.href ?? (download.raw ? null : project.release?.download?.url ?? null);
   const actions = [
@@ -701,8 +711,8 @@ function ProjectRow({ project, draft }: { project: ProjectSnapshot; draft?: Proj
   ].filter((item) => item.presentation.error);
   return (
     <article className="dashboard-project">
-      <div className="project-title"><span className="signal-mark" data-state={project.ci.state} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
-      <dl><div><dt>CI</dt><dd className={ciTone(project.ci.state)}>{project.ci.label}</dd></div><div><dt>Release</dt><dd className={project.releaseState === "unavailable" ? "unknown" : undefined}>{releaseLabel(project)}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
+      <div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.name}</h4><p>{project.description || "No repository description supplied."}</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div>
+      <dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd className={project.releaseState === "unavailable" ? "unknown" : undefined}>{releaseLabel(project)}</dd></div><div><dt>Language</dt><dd>{project.primaryLanguage || "Unavailable"}</dd></div><div><dt>Stars</dt><dd>{formatNumber(project.stars)}</dd></div></dl>
       {(actions.length > 0 || invalid.length > 0) && <div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}{invalid.map(({ label, presentation }) => <span key={label} className="project-action-invalid">{label}: {presentation.raw} <small role="alert">{presentation.error}</small></span>)}</div>}
     </article>
   );
@@ -725,20 +735,6 @@ function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: s
     { label: "Download", presentation: download },
   ].filter((item) => item.presentation.error);
   return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}{invalid.map(({ label, presentation }) => <span key={label} className="project-action-invalid">{label}: {presentation.raw} <small role="alert">{presentation.error}</small></span>)}</div></article>;
-}
-
-/**
- * Tone for the CI value text.
- *
- * `stale` is warn rather than muted: it is a real observation that has aged out of the freshness
- * window, which is a finding, not an absence. The two genuine absences stay untinted so they can
- * never be mistaken for a reading.
- */
-function ciTone(state: string): string {
-  if (state === "passing") return "good";
-  if (state === "pending" || state === "stale") return "warn";
-  if (state === "failing") return "bad";
-  return "unknown";
 }
 
 function formatNumber(value: number | null | undefined): string {
