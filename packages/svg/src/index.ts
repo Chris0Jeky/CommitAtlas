@@ -996,8 +996,11 @@ export function renderContributionBreakdownCard(
   const total = values.reduce((sum, value) => sum + (Number.isFinite(value) ? finite(value) : 0), 0);
   const basisLabel = publicProfileMix ? "PUBLIC PROFILE %" : "EXACT COUNTS";
   // Window boundaries come from the caller, so bound them here rather than trusting the adapter.
-  const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
-  const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
+  // An invalid calendar string is not a window edge. Days stay on their own finite check.
+  const windowFromKnown = isValidIsoDate(data.window.from);
+  const windowToKnown = isValidIsoDate(data.window.to);
+  const windowFrom = windowFromKnown ? truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH) : "unavailable";
+  const windowTo = windowToKnown ? truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH) : "unavailable";
   const windowDaysKnown = Number.isFinite(data.window.days);
   const windowDaysText = windowDaysKnown ? `${formatNumber(data.window.days, false)} days` : "window unavailable";
   const basisDescription = publicProfileMix
@@ -1013,7 +1016,11 @@ export function renderContributionBreakdownCard(
   out += sourceMarker(data.source, data.dataState, width - 34, 70, t);
   const scopeLabel = publicProfileMix
     ? width < 480 ? "Profile activity mix · not window-scoped" : "GitHub profile activity mix · not window-scoped"
-    : `${windowFrom} → ${windowTo} · ${windowDaysText}`;
+    : windowFromKnown || windowToKnown
+      ? `${windowFrom} → ${windowTo} · ${windowDaysText}`
+      : windowDaysKnown
+        ? `unavailable · ${windowDaysText}`
+        : "unavailable";
   out += mono(34, 70, scopeLabel, 10, t.muted, 500, "start", 0.06);
   const barX = Math.min(174, Math.max(136, width * 0.24));
   const barWidth = Math.max(40, width - barX - 106);
