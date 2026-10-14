@@ -1,15 +1,96 @@
 {
-  "schema_version":1,"reviewed_on":"2026-09-10","repository":"Chris0Jeky/CommitAtlas","stable_id":"commitatlas","runtime_class":"edge",
-  "public_origin":"https://commit-atlas.commit-atlas.workers.dev/","origin_evidence":"repository-reported",
-  "target":"Retain existing Worker, static assets and LAST_GOOD KV",
-  "source_paths":["wrangler.jsonc","docs/DEPLOYMENT.md"],
-  "persistent_state":["Existing LAST_GOOD KV namespace"],
-  "invariants":["Build before deploying; preserve existing origin verification","Private credentials/data never enter public SVGs or assets","Canonical origin and deploy-probe base have different purposes","Stale or missing data is never marked healthy"],
-  "gates":["Owned canonical hostname","Reviewed deployment trigger and exact build","Verified KV preservation and deterministic route probes"],
-  "tasks":[
-    {"id":"CA1","goal":"Prepare independent canonical and probe-origin configuration","acceptance":"SITE_ORIGIN and DEPLOY_BASE_URL remain explicit; fork and alias behavior are tested"},
-    {"id":"CA2","goal":"Preserve the build-to-deploy contract","acceptance":"No bare Wrangler deployment of an unbuilt checkout; existing deterministic probes pass"},
-    {"id":"CA3","goal":"Retain data and cache boundaries during migration","acceptance":"LAST_GOOD remains bound; public/private fallback rules and stable embed routes are unchanged"}
+  "schema": "agent-hq/hosting-manifest@2",
+  "stable_id": "commitatlas",
+  "repository": "Chris0Jeky/CommitAtlas",
+  "reviewed_on": "2026-09-10",
+  "status": "live",
+  "workload": {
+    "class": "edge",
+    "serves": "dynamic",
+    "package": "worker-bundle",
+    "host_bound": false,
+    "always_on": false,
+    "request_path": "server"
+  },
+  "state": {
+    "authority": "edge-store",
+    "writers": "multi",
+    "replicas": 0,
+    "ephemeral": true
+  },
+  "ingress": {
+    "mode": "public",
+    "private_by_design": false,
+    "hostnames": [],
+    "origins": [
+      "https://commit-atlas.commit-atlas.workers.dev/"
+    ]
+  },
+  "data_classes": [
+    "public"
   ],
-  "activation_authorized":false
+  "backup": {
+    "policy": "none-needed"
+  },
+  "deploy": {
+    "lane": "edge",
+    "artifact": "worker-bundle-sha",
+    "strategy": "none"
+  },
+  "health": {
+    "endpoint": null,
+    "observer": "external-probe",
+    "signals": [
+      "readiness",
+      "red"
+    ]
+  },
+  "cost": {
+    "envelope_usd_month": 0
+  },
+  "adapters": [
+    {
+      "provider": "cloudflare",
+      "role": "primary",
+      "status": "live",
+      "descriptor": "wrangler.jsonc"
+    }
+  ],
+  "activation_authorized": false,
+  "source_paths": [
+    "wrangler.jsonc",
+    "docs/DEPLOYMENT.md"
+  ],
+  "invariants": [
+    "Build before deploying; preserve existing origin verification",
+    "Private credentials/data never enter public SVGs or assets",
+    "Canonical origin and deploy-probe base have different purposes",
+    "Stale or missing data is never marked healthy"
+  ],
+  "gates": [
+    "Owned canonical hostname",
+    "Reviewed deployment trigger and exact build",
+    "Verified KV preservation and deterministic route probes"
+  ],
+  "tasks": [
+    {
+      "id": "CA1",
+      "goal": "Prepare independent canonical and probe-origin configuration",
+      "acceptance": "SITE_ORIGIN and DEPLOY_BASE_URL remain explicit; fork and alias behavior are tested"
+    },
+    {
+      "id": "CA2",
+      "goal": "Preserve the build-to-deploy contract",
+      "acceptance": "No bare Wrangler deployment of an unbuilt checkout; existing deterministic probes pass"
+    },
+    {
+      "id": "CA3",
+      "goal": "Retain data and cache boundaries during migration",
+      "acceptance": "LAST_GOOD remains bound; public/private fallback rules and stable embed routes are unchanged"
+    }
+  ],
+  "notes": [
+    "v1 target: Retain existing Worker, static assets and LAST_GOOD KV",
+    "v1 persistent state: Existing LAST_GOOD KV namespace"
+  ]
 }
