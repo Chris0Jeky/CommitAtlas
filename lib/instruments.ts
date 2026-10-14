@@ -302,6 +302,36 @@ export function quarterMeter(score: number): number {
   return Math.min(4, Math.ceil(Math.min(100, score) / 25));
 }
 
+export interface RhythmGaugeReadout {
+  /** Raw finite score, or `unavailable`. Not JSX and not precomposed with `/100`. */
+  text: string;
+  /** When true, the component appends `/100` (it may wrap that suffix itself). */
+  showScale: boolean;
+  /** When false, do not draw the needle or its charge. The rest angle is a measured zero. */
+  showNeedle: boolean;
+  /** `quarterMeter` for a finite score, including a genuine zero. Absent for a non-finite score. */
+  meter: number | undefined;
+}
+
+/**
+ * Printed rhythm reading.
+ *
+ * `gaugeReading` rests a non-finite score on the zero needle and `quarterMeter` bins it to an empty
+ * meter. Those shapes are a measured zero, and printing the raw value would say `NaN/100`. This
+ * withholds the needle, the `/100` scale, and the meter instead.
+ */
+export function rhythmGaugeReadout(score: number): RhythmGaugeReadout {
+  if (!Number.isFinite(score)) {
+    return { text: "unavailable", showScale: false, showNeedle: false, meter: undefined };
+  }
+  return {
+    text: String(score),
+    showScale: true,
+    showNeedle: true,
+    meter: quarterMeter(score),
+  };
+}
+
 /**
  * Compact a count the way the chassis prints it: `1.1k`, never `1.1K` and never `1,142` in a stat
  * slot. Exact values remain available in the evidence drawer, so this abbreviation is a display

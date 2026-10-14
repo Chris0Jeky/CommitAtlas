@@ -9,8 +9,8 @@ import {
   gaugeReading,
   isEmptyDensityCell,
   momentumTrace,
-  quarterMeter,
   reticle,
+  rhythmGaugeReadout,
   type DensityCell,
 } from "@/lib/instruments";
 
@@ -124,6 +124,7 @@ export function MomentumPlotter({
 }
 
 export function RhythmGauge({ score, caption }: { score: number; caption: ReactNode }) {
+  const readout = rhythmGaugeReadout(score);
   const gauge = gaugeReading(score);
   const needle = { transformOrigin: "110px 110px", "--needle": `${gauge.angle}deg` } as CSSProperties;
 
@@ -132,16 +133,18 @@ export function RhythmGauge({ score, caption }: { score: number; caption: ReactN
       <div className="bay-instrument">
         <svg viewBox={gauge.viewBox} aria-hidden="true" focusable="false">
           <path d={gauge.arc} fill="none" stroke="color-mix(in srgb, var(--ink) 14%, transparent)" strokeWidth="3" />
-          <path
-            className="m2-charge"
-            d={gauge.arc}
-            pathLength={100}
-            strokeDasharray={gauge.dash}
-            fill="none"
-            stroke="var(--chrome)"
-            strokeOpacity="0.85"
-            strokeWidth="3"
-          />
+          {readout.showNeedle ? (
+            <path
+              className="m2-charge"
+              d={gauge.arc}
+              pathLength={100}
+              strokeDasharray={gauge.dash}
+              fill="none"
+              stroke="var(--chrome)"
+              strokeOpacity="0.85"
+              strokeWidth="3"
+            />
+          ) : null}
           <g stroke="color-mix(in srgb, var(--ink) 30%, transparent)" strokeWidth="1.5">
             {gauge.ticks.map((tick, index) => (
               <line
@@ -160,13 +163,20 @@ export function RhythmGauge({ score, caption }: { score: number; caption: ReactN
             <text x="104" y="16">50</text>
             <text x="184" y="120">100</text>
           </g>
-          <g className="m2-needle" style={needle}>
-            <line x1={gauge.centre.x} y1={gauge.centre.y} x2={gauge.centre.x} y2="34" stroke="var(--ink)" strokeWidth="2" />
-          </g>
+          {readout.showNeedle ? (
+            <g className="m2-needle" style={needle}>
+              <line x1={gauge.centre.x} y1={gauge.centre.y} x2={gauge.centre.x} y2="34" stroke="var(--ink)" strokeWidth="2" />
+            </g>
+          ) : null}
           <circle cx={gauge.centre.x} cy={gauge.centre.y} r="5" fill="var(--ground)" stroke="var(--ink)" strokeWidth="1.5" />
         </svg>
       </div>
-      <BayRead value={<>{score}<small>/100</small></>} caption={caption} evidenceId="rhythm" meter={quarterMeter(score)} />
+      <BayRead
+        value={readout.showScale ? <>{readout.text}<small>/100</small></> : readout.text}
+        caption={caption}
+        evidenceId="rhythm"
+        meter={readout.meter}
+      />
     </>
   );
 }
