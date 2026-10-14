@@ -10,9 +10,68 @@ import {
   findProjectDraft,
   safeProjectActionUrl,
   starterCiPresentation,
+  studioCiTone,
+  studioDashboardProjectHeading,
+  studioProjectCiReading,
   studioSourceLabel,
   visibleProfileStars,
 } from "./studio-presentation";
+
+test("a stale board does not paint its cached CI conclusion as current", () => {
+  assert.deepEqual(studioProjectCiReading({ boardMode: "stale", state: "passing", label: "Passing" }), {
+    state: "stale",
+    label: "Stale result",
+    tone: "warn",
+  });
+  assert.deepEqual(studioProjectCiReading({ boardMode: "stale", state: "failing", label: "Failing" }), {
+    state: "stale",
+    label: "Stale result",
+    tone: "warn",
+  });
+  assert.equal(studioCiTone("passing"), "good");
+  assert.deepEqual(studioProjectCiReading({ boardMode: "live", state: "passing", label: "Passing" }), {
+    state: "passing",
+    label: "Passing",
+    tone: "good",
+  });
+  assert.deepEqual(studioProjectCiReading({ boardMode: "live", state: "failing", label: "Failing" }), {
+    state: "failing",
+    label: "Failing",
+    tone: "bad",
+  });
+  assert.deepEqual(studioProjectCiReading({ boardMode: "demo", state: "unconfigured", label: "Not configured" }), {
+    state: "unconfigured",
+    label: "Not configured",
+    tone: "unknown",
+  });
+});
+
+test("an unavailable board does not report the cleared project list as zero", () => {
+  assert.equal(studioDashboardProjectHeading({
+    boardCount: null,
+    visibleDeclaredCount: 0,
+    typedCount: 2,
+    boardWithheld: true,
+  }), "2 declared · board unavailable");
+  assert.equal(studioDashboardProjectHeading({
+    boardCount: null,
+    visibleDeclaredCount: 2,
+    typedCount: 2,
+    boardWithheld: false,
+  }), "2 declared projects");
+  assert.equal(studioDashboardProjectHeading({
+    boardCount: 2,
+    visibleDeclaredCount: 2,
+    typedCount: 2,
+    boardWithheld: false,
+  }), "2 declared projects");
+  assert.equal(studioDashboardProjectHeading({
+    boardCount: 0,
+    visibleDeclaredCount: 0,
+    typedCount: 0,
+    boardWithheld: false,
+  }), "0 declared projects");
+});
 
 test("starter CI never invents a healthy state", () => {
   // Both rows are unknown, but they are not the *same* unknown: nothing to watch, versus something

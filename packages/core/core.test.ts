@@ -7,6 +7,7 @@ import {
   calculateProjectState,
   calculateStreaks,
   parseContributionCalendar,
+  parseHandle,
   parseManifest,
   parseOptions,
   parseRepo,
@@ -337,5 +338,146 @@ describe("core contracts", () => {
     const zeroDay = [{ date: "2024-03-03", count: 0, level: 0 }];
     expect(calculateStreaks(zeroDay, { asOf: "2024-03-03" })).toMatchObject({ current: 0, longest: 0 });
     expect(calculateActivitySeries(zeroDay, { asOf: "2024-03-03", days: 1 })).toMatchObject({ total: 0, points: [{ date: "2024-03-03", count: 0, level: 0 }] });
+  });
+
+  function daysEnding(asOf: string, length: number, countAt: (indexFromStart: number) => number) {
+    const end = Date.parse(`${asOf}T00:00:00.000Z`);
+    return Array.from({ length }, (_, index) => {
+      const date = new Date(end - (length - 1 - index) * 86_400_000).toISOString().slice(0, 10);
+      const count = countAt(index);
+      return { date, count, level: count > 0 ? 1 : 0 };
+    });
+  }
+
+  function metricsFor(asOf: string, counts: readonly number[]) {
+    return calculateContributionMetrics(daysEnding(asOf, counts.length, (index) => counts[index] ?? 0), {
+      asOf,
+      days: counts.length,
+      commits: 0,
+      issues: 0,
+      pullRequests: 0,
+      reviews: 0,
+    });
+  }
+
+  it("sums the two 28-day windows and names the direction from those sums", () => {
+    const up = metricsFor("2024-03-25", [...Array(28).fill(1), ...Array(28).fill(2)]);
+    expect(up.trend.recent28Days).toBe(56);
+    expect(up.trend.previous28Days).toBe(28);
+    expect(up.trend.direction).toBe("up");
+    expect(up.trend.changePercent).toBe(100);
+
+    const down = metricsFor("2024-03-25", [...Array(28).fill(4), ...Array(28).fill(1)]);
+    expect(down.trend.recent28Days).toBe(28);
+    expect(down.trend.previous28Days).toBe(112);
+    expect(down.trend.direction).toBe("down");
+    expect(down.trend.changePercent).toBe(-75);
+
+    const flat = metricsFor("2024-03-25", Array(56).fill(1));
+    expect(flat.trend.direction).toBe("flat");
+    expect(flat.trend.changePercent).toBe(0);
+
+    const fresh = metricsFor("2024-03-25", [...Array(28).fill(0), ...Array(28).fill(3)]);
+    expect(fresh.trend.previous28Days).toBe(0);
+    expect(fresh.trend.recent28Days).toBe(84);
+    expect(fresh.trend.direction).toBe("new");
+    expect(fresh.trend.changePercent).toBeNull();
+
+    const quiet = metricsFor("2024-03-25", Array(56).fill(0));
+    expect(quiet.trend.direction).toBe("flat");
+    expect(quiet.trend.changePercent).toBeNull();
+
+    const short = metricsFor("2024-03-25", Array(20).fill(1));
+    expect(short.trend.previous28Days).toBeNull();
+    expect(short.trend.recent28Days).toBe(20);
+    expect(short.trend.direction).toBe("unavailable");
+    expect(short.trend.changePercent).toBeNull();
+  });
+
+  it("caps rhythm at the published density and streak ceilings and keeps the level thresholds", () => {
+    expect(metricsFor("2024-03-25", Array(10).fill(0)).rhythm).toMatchObject({ score: 0, level: "starting" });
+
+    const dense = metricsFor("2024-03-25", Array(10).fill(1));
+    expect(dense.density).toBe(100);
+    expect(dense.streak.current).toBe(10);
+    expect(dense.rhythm).toMatchObject({ score: 80, level: "relentless" });
+
+    const longStreak = metricsFor("2024-03-25", [...Array(40).fill(0), ...Array(40).fill(1)]);
+    expect(longStreak.density).toBe(50);
+    expect(longStreak.streak.current).toBe(40);
+    expect(longStreak.rhythm).toMatchObject({ score: 74, level: "strong" });
+
+    const scoreForActiveDays = (active: number) => metricsFor("2024-03-25", [...Array(active).fill(1), ...Array(100 - active).fill(0)]).rhythm;
+    expect(scoreForActiveDays(22)).toMatchObject({ score: 19, level: "starting" });
+    expect(scoreForActiveDays(23)).toMatchObject({ score: 20, level: "building" });
+    expect(scoreForActiveDays(45)).toMatchObject({ score: 39, level: "building" });
+    expect(scoreForActiveDays(46)).toMatchObject({ score: 40, level: "steady" });
+    expect(scoreForActiveDays(67)).toMatchObject({ score: 59, level: "steady" });
+    expect(scoreForActiveDays(69)).toMatchObject({ score: 60, level: "strong" });
+    // Trailing zeros keep the current streak at 0. Past the 80% density ceiling the density term stays 70.
+    expect(scoreForActiveDays(90)).toMatchObject({ score: 70, level: "strong" });
+    expect(scoreForActiveDays(91)).toMatchObject({ score: 70, level: "strong" });
+
+    const atDensityCeiling = (streak: number) => {
+      const counts = Array(100).fill(0);
+      for (let index = 0; index < 80 - streak; index += 1) counts[index] = 1;
+      for (let index = 0; index < streak; index += 1) counts[100 - streak + index] = 1;
+      return metricsFor("2024-03-25", counts);
+    };
+    expect(atDensityCeiling(9)).toMatchObject({ density: 80, streak: { current: 9 }, rhythm: { score: 79, level: "strong" } });
+    expect(atDensityCeiling(10)).toMatchObject({ density: 80, streak: { current: 10 }, rhythm: { score: 80, level: "relentless" } });
+  });
+
+  it("keeps repository name case and lowercases only the owner", () => {
+    expect(parseRepositorySlug("Owner/RepoName")).toBe("owner/RepoName");
+  });
+
+  it("lowercases a valid handle and rejects a handle the pattern excludes", () => {
+    expect(parseHandle({ version: 1, handle: "Chris0Jeky" })).toEqual({ version: 1, handle: "chris0jeky" });
+    expect(() => parseHandle({ version: 1, handle: "-bad" })).toThrow();
+  });
+
+  it("accepts only credential-free https links on the allowlist", () => {
+    const project = (docs: string) => ({
+      version: 1,
+      projects: [{ repo: "owner/repo", label: "One", lifecycle: "active", links: { docs } }],
+    });
+    expect(parseManifest(project("https://github.com/owner/repo")).projects[0]?.links.docs).toBe("https://github.com/owner/repo");
+    expect(parseManifest(project("https://GitHub.com/owner/repo")).projects[0]?.links.docs).toBe("https://GitHub.com/owner/repo");
+    expect(() => parseManifest(project("http://github.com/owner/repo"))).toThrow();
+    expect(() => parseManifest(project("https://example.com/docs"))).toThrow();
+    expect(() => parseManifest(project("https://user:pass@github.com/owner/repo"))).toThrow();
+  });
+
+  it("rejects calendar-impossible dates and sorts a calendar before returning it", () => {
+    expect(() => parseContributionCalendar({ version: 1, days: [{ date: "2024-02-30", count: 1, level: 0 }] })).toThrow();
+    expect(() => parseContributionCalendar({ version: 1, days: [{ date: "2023-02-29", count: 1, level: 0 }] })).toThrow();
+    expect(parseContributionCalendar({ version: 1, days: [{ date: "2024-02-29", count: 1, level: 0 }] }).days[0]?.date).toBe("2024-02-29");
+    expect(parseContributionCalendar({
+      version: 1,
+      days: [
+        { date: "2024-03-03", count: 1, level: 0 },
+        { date: "2024-03-01", count: 2, level: 1 },
+      ],
+    }).days.map((day) => day.date)).toEqual(["2024-03-01", "2024-03-03"]);
+  });
+
+  it("reports the earliest peak day when counts tie", () => {
+    expect(metricsFor("2024-03-03", [2, 5, 5]).peakDay).toEqual({ date: "2024-03-02", count: 5 });
+    expect(metricsFor("2024-03-03", [5, 1, 9]).peakDay).toEqual({ date: "2024-03-03", count: 9 });
+  });
+
+  it("uses staleAfterHours instead of always applying the 72 hour default", () => {
+    const now = "2024-03-25T12:00:00.000Z";
+    const observation = {
+      available: true,
+      configured: true,
+      conclusion: "success" as const,
+      updatedAt: "2024-03-25T09:00:00.000Z",
+    };
+    expect(calculateCiState(observation, now).state).toBe("passing");
+    expect(calculateCiState(observation, now, 1).state).toBe("stale");
+    expect(() => calculateCiState(observation, now, 0)).toThrow(/staleAfterHours/);
+    expect(() => calculateCiState(observation, now, 8761)).toThrow(/staleAfterHours/);
   });
 });

@@ -17,7 +17,9 @@
  *                     (set it when the Worker answers on a custom domain)
  */
 import { spawnSync } from "node:child_process";
+import { appendFileSync } from "node:fs";
 
+import { formatDeploymentIdentity } from "./deploy-identity.mjs";
 import { extractDeployedOrigin } from "./deployed-origin.mjs";
 
 const skipBuild = process.argv.includes("--skip-build");
@@ -57,6 +59,10 @@ if (!skipBuild) {
   exitOnFailure("npm run build", runShell("npm run build", { stdio: "inherit" }).status);
 }
 
+// Prefer the checked-out commit: workflow_run's GITHUB_SHA can name another head.
+const git = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
+const sha = git.status === 0 ? git.stdout.trim() : process.env.GITHUB_SHA;
+
 console.log("\n> deploying to Cloudflare Workers\n");
 // Captured rather than inherited because the deployed origin has to be read
 // back out of it; echoed immediately so nothing is hidden from the operator.
@@ -65,7 +71,19 @@ process.stdout.write(deploy.stdout ?? "");
 process.stderr.write(deploy.stderr ?? "");
 exitOnFailure("wrangler deploy", deploy.status);
 
-const reported = extractDeployedOrigin(`${deploy.stdout ?? ""}\n${deploy.stderr ?? ""}`);
+const output = `${deploy.stdout ?? ""}\n${deploy.stderr ?? ""}`;
+const identity = formatDeploymentIdentity(sha, output);
+console.log(`\n${identity}`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  // The deploy already succeeded: an unwritable summary is a warning, never a failed deploy.
+  try {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${identity}\n`);
+  } catch (error) {
+    console.warn(`Could not write the step summary: ${error.code ?? error.message}`);
+  }
+}
+
+const reported = extractDeployedOrigin(output);
 const override = process.env.DEPLOY_BASE_URL?.trim();
 const baseUrl = override || reported;
 
