@@ -35,6 +35,7 @@ const OPTIONAL_LOOKUP_UNAVAILABLE = Symbol("optional-lookup-unavailable");
 const MAX_RESPONSE_BYTES = 1_500_000;
 const REQUEST_DEADLINE_MS = 12_000;
 const PROJECT_CONCURRENCY = 2;
+const PROFILE_REPOSITORY_PAGE_CAP = 5;
 const UTC_DAY_MS = 86_400_000;
 const CONTRIBUTION_QUERY_DAYS = 365;
 const GITHUB_TEXT_LIMITS = {
@@ -99,10 +100,28 @@ export class GitHubClient {
     if (repositories.some((repository) => !isRecord(repository))) {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository list");
     }
-    const parsedRepositories = repositories;
+    const parsedRepositories = [...repositories];
+    let lastPageLength = repositories.length;
+    // shortcut: at most 500 repositories within the shared deadline; revisit the budget when larger complete profiles are required.
+    for (let page = 2; lastPageLength === 100 && page <= PROFILE_REPOSITORY_PAGE_CAP; page++) {
+      let nextPage: unknown;
+      try {
+        nextPage = await this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100&page=${page}`);
+      } catch (error) {
+        // A later page that GitHub cannot serve degrades the totals to partial; page 1 already succeeded.
+        if (error instanceof GitHubApiError && (error.code === "github_unavailable" || error.code === "github_rate_limited")) break;
+        throw error;
+      }
+      if (!Array.isArray(nextPage) || nextPage.some((repository) => !isRecord(repository))) {
+        throw new GitHubApiError("invalid_response", "GitHub returned an invalid repository list");
+      }
+      parsedRepositories.push(...nextPage);
+      lastPageLength = nextPage.length;
+    }
     if (parsedRepositories.some((repository) => repository.private === true)) {
       throw privateDataError("GitHub returned a private repository in a public profile response");
     }
+    const repositoriesTruncated = lastPageLength === 100 || requiredMetric(user, "public_repos") > parsedRepositories.length;
     const languageCounts = new Map<string, number>();
     let stars = 0;
     let forks = 0;
@@ -129,11 +148,11 @@ export class GitHubClient {
       forks,
       primaryLanguages: toLanguageSignals(languageCounts),
       latestPushAt,
-      repositoriesTruncated: requiredMetric(user, "public_repos") > parsedRepositories.length,
+      repositoriesTruncated,
       freshness: {
         generatedAt: this.now().toISOString(),
         source: "github-rest",
-        mode: "live",
+        mode: repositoriesTruncated ? "partial" : "live",
       },
     };
   }
