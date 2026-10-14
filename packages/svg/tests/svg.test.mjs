@@ -801,19 +801,25 @@ test("insight cards bound hostile direct-caller text at the package boundary", (
     window: { from: overlong, to: overlong, days: 90 },
     rhythm: { score: 44, level: overlong, basis: overlong },
   }));
-  for (const output of [breakdown, rhythm]) {
-    assertSafeSvg(output);
-    assertWellFormedXml(output);
-    assertFiniteGeometry(output);
-    assert.doesNotMatch(output, /NaN|Infinity/);
-    assert.doesNotMatch(output, /<foreignObject/i);
-    assert.doesNotMatch(output, /A{200}/, "unbounded caller text reached the rendered card");
-    assert.match(output, /…/, "truncation must stay visible instead of dropping text silently");
-    // Far below the 30KB budget: the same inputs rendered over 100KB before the boundary clamp.
-    assert.ok(Buffer.byteLength(output, "utf8") < 6_000, `bounded card grew to ${Buffer.byteLength(output, "utf8")} bytes`);
-  }
-  // Hostile text is escaped and kept, not dropped: the prefix survives truncation.
-  assert.match(breakdown, /&lt;img src=x onerror=/);
+  // Window edges are calendar dates. A non-date is replaced, so the hostile payload does not survive.
+  assertSafeSvg(breakdown);
+  assertWellFormedXml(breakdown);
+  assertFiniteGeometry(breakdown);
+  assert.doesNotMatch(breakdown, /NaN|Infinity/);
+  assert.doesNotMatch(breakdown, /<foreignObject/i);
+  assert.doesNotMatch(breakdown, /A{200}/, "unbounded caller text reached the rendered card");
+  assert.doesNotMatch(breakdown, /onerror/i, "hostile window text must not be painted");
+  assert.match(breakdown, />unavailable · 90 days</);
+  assert.ok(Buffer.byteLength(breakdown, "utf8") < 6_000, `bounded card grew to ${Buffer.byteLength(breakdown, "utf8")} bytes`);
+  // Rhythm level and basis are still free text, so truncation stays visible.
+  assertSafeSvg(rhythm);
+  assertWellFormedXml(rhythm);
+  assertFiniteGeometry(rhythm);
+  assert.doesNotMatch(rhythm, /NaN|Infinity/);
+  assert.doesNotMatch(rhythm, /<foreignObject/i);
+  assert.doesNotMatch(rhythm, /A{200}/, "unbounded caller text reached the rendered card");
+  assert.match(rhythm, /…/, "truncation must stay visible instead of dropping text silently");
+  assert.ok(Buffer.byteLength(rhythm, "utf8") < 6_000, `bounded card grew to ${Buffer.byteLength(rhythm, "utf8")} bytes`);
   assert.match(rhythm, /&lt;IMG SRC=X ONERROR=&quot;ALE…/);
   // Valid adapter-shaped values stay verbatim, so bounding does not rewrite truthful labels.
   const valid = renderRhythmCard(rhythmFixture());
