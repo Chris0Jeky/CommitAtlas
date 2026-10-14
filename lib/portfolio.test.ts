@@ -78,6 +78,32 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.equal(atlas.dataState, undefined);
 });
 
+test("a truncated repository list marks the atlas partial and omits stars and languages", () => {
+  const atlas = toAtlasCard(assemblePortfolioSnapshot({
+    ...profile,
+    stars: 999,
+    repositoriesTruncated: true,
+    freshness: { generatedAt, source: "github-rest", mode: "partial" },
+  }, contributions, projects));
+  assert.equal(atlas.dataState, "partial");
+  assert.equal(atlas.source, "public-github");
+  assert.equal("stars" in atlas.profile, false);
+  assert.equal("languages" in atlas, false);
+  assert.equal(atlas.profile.repositories, 4);
+});
+
+test("a stale contribution window stays stale when the repository list is truncated", () => {
+  const atlas = toAtlasCard(assemblePortfolioSnapshot({
+    ...profile,
+    repositoriesTruncated: true,
+  }, {
+    ...contributions,
+    freshness: { generatedAt, source: "github-graphql", mode: "stale" },
+  }, projects));
+  assert.equal(atlas.dataState, "stale");
+  assert.equal("stars" in atlas.profile, false);
+});
+
 test("a partial project board marks the atlas card partial without downgrading a worse contribution state", () => {
   const partialBoard: ProjectBoardSnapshot = {
     ...projects,

@@ -14,6 +14,10 @@ Hosted last-good resilience uses one non-secret Workers KV binding.
 `vite build` writes both, plus a deploy-ready `dist/server/wrangler.json` derived from the root
 [`wrangler.jsonc`](../wrangler.jsonc). Do not hand-edit the generated file — change `wrangler.jsonc`.
 
+An offline `npm run build` emits `dist/server/wrangler.json` with
+`assets: { "directory": "../client" }` and no `assets.run_worker_first` key (the default is false),
+so matching static assets are served directly without invoking the Worker; routing is unchanged.
+
 ## One-time Cloudflare setup
 
 ```bash
@@ -40,6 +44,11 @@ differs per Cloudflare account — the maintainer's is
 `https://commit-atlas.commit-atlas.workers.dev`, and yours will not be. Nothing is hard-coded; if
 the origin cannot be read the script says so and exits non-zero rather than verifying someone
 else's site.
+
+The deploy log and, when `GITHUB_STEP_SUMMARY` is set, the Actions step summary record the checked-out
+commit SHA (`git rev-parse HEAD`, falling back to `GITHUB_SHA`) and Wrangler's `Current Version ID`;
+missing values are explicitly `unknown`. Follow-up: inject the build SHA into the health response
+and compare it in the deployment probe; the current probe does not verify commit identity.
 
 The bundle is well under the 3 MiB gzipped script limit. Confirm current Workers and KV quotas for
 your account before deploying sustained traffic; CommitAtlas does not assume a paid plan.

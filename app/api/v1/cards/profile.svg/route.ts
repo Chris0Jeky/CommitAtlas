@@ -24,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
       motion: query.motion,
       title: `${snapshot.login} profile`,
       description: snapshot.repositoriesTruncated
-        ? `Public GitHub profile summary for ${snapshot.login}. Aggregate star totals are unavailable because the repository list is partial.`
+        ? "Aggregate star totals are unavailable because the repository list is partial."
         : `Public GitHub profile summary for ${snapshot.login}.`,
     });
     return await cardSvgResponse(request, body, { edgeSeconds: 900, publicData, inlineStyles: motionRenderMetadata(query.motion).inlineStyles }, "profile", snapshot.freshness.mode);

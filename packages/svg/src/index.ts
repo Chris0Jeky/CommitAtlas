@@ -1921,8 +1921,11 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const currentStreakOpen = data.streakBoundary?.current === "open";
   // Window boundaries, the rhythm level, and the window length come from the caller, so bound and
   // clamp them here rather than trusting the adapter that normally supplies them.
-  const windowFrom = truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH);
-  const windowTo = truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH);
+  // truncateText keeps a bad string. A window label is a date only when it is a real calendar day.
+  const windowFromKnown = isValidIsoDate(data.window.from);
+  const windowToKnown = isValidIsoDate(data.window.to);
+  const windowFrom = windowFromKnown ? truncateText(data.window.from, MAX_WINDOW_LABEL_LENGTH) : "unavailable";
+  const windowTo = windowToKnown ? truncateText(data.window.to, MAX_WINDOW_LABEL_LENGTH) : "unavailable";
   // formatNumber maps a missing length to 0. The header and the description share this gate.
   const windowDaysKnown = Number.isFinite(data.window.days);
   const windowDays = windowDaysKnown ? formatNumber(data.window.days, false) : "";
@@ -1963,7 +1966,10 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
       ? t.muted
       : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted;
   out += text(width - 22, 28, sourceLabel, 9, sourceColor, 700, "end");
-  out += text(width - 22, 45, windowDaysKnown ? `${windowDays}D · ${windowTo}` : `unavailable · ${windowTo}`, 9, t.muted, 550, "end");
+  const windowHeader = windowDaysKnown
+    ? `${windowDays}D · ${windowTo}`
+    : windowToKnown ? `unavailable · ${windowTo}` : "unavailable";
+  out += text(width - 22, 45, windowHeader, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
 
   // Same rule as the streak totals and project tallies: a non-finite headline is unavailable.
@@ -2002,8 +2008,16 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
   out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
   const peakKnown = Number.isFinite(data.peakDay.count);
-  const peakDate = truncateText(data.peakDay.date, 10);
-  out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, peakKnown ? `${formatNumber(data.peakDay.count, false)} PEAK · ${peakDate}` : `peak unavailable · ${peakDate}`, 8.5, t.muted, 500, "end", 0.1);
+  const peakDateKnown = isValidIsoDate(data.peakDay.date);
+  const peakDate = peakDateKnown ? truncateText(data.peakDay.date, 10) : "";
+  const peakLabel = peakKnown && peakDateKnown
+    ? `${formatNumber(data.peakDay.count, false)} PEAK · ${peakDate}`
+    : peakKnown
+      ? `${formatNumber(data.peakDay.count, false)} PEAK · date unavailable`
+      : peakDateKnown
+        ? `peak unavailable · ${peakDate}`
+        : "peak unavailable";
+  out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, peakLabel, 8.5, t.muted, 500, "end", 0.1);
   const heatmapPaths = new Map<string, string[]>();
   grid.cells.forEach(({ day, column, row }) => {
     const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
@@ -2109,7 +2123,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     : projectCountsKnown
       ? text(detailX, detailY + 53, `${finite(projectCounts.passing)}/${finite(projectCounts.total)} CI passing · ${finite(projectCounts.attention)} attention · ${finite(projectCounts.unavailable)} unavailable`, 9, finite(projectCounts.attention) > 0 ? t.warning : t.muted, 550)
       : text(detailX, detailY + 53, "Project health unavailable", 9, t.muted, 550);
-  out += text(width - 22, height - 10, `Generated ${truncateText(data.generatedAt, 25)} · longest streak is window-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
+  // pulseTimestampValue rejects a non-timestamp and an impossible calendar day. Do not print the raw string.
+  const generatedLabel = pulseTimestampValue(data.generatedAt) !== null ? truncateText(data.generatedAt, 25) : "unavailable";
+  out += text(width - 22, height - 10, `Generated ${generatedLabel} · longest streak is window-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
   return out + svgEnd();
 }
 
