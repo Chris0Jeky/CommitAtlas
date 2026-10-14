@@ -325,6 +325,21 @@ test("a partial project board marks the static atlas card partial and leaves con
   assert.doesNotMatch(rendered["activity.svg"], />PARTIAL SNAPSHOT</);
 });
 
+test("an unrecognized project CI state is counted as unavailable in the static atlas, not dropped from every bucket", () => {
+  const base = snapshot();
+  const rendered = renderStaticArtifacts({
+    ...base,
+    projects: {
+      ...base.projects,
+      projects: [{
+        ...base.projects.projects[0],
+        ci: { ...base.projects.projects[0].ci, state: "bogus", label: "CI bogus" },
+      }],
+    },
+  }, config());
+  assert.match(rendered["atlas.svg"], /0\/1 CI passing · 0 attention · 1 unavailable/);
+});
+
 test("preserves the declared planned lifecycle in static project SVGs", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({

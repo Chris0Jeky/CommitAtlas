@@ -224,6 +224,8 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     worseCardState(snapshot.freshness.mode, projects?.freshness.mode),
     profile.repositoriesTruncated ? "partial" : undefined,
   );
+  const passing = projectStates.filter((project) => project.ci.state === "passing").length;
+  const attention = projectStates.filter((project) => ["failing", "pending", "stale"].includes(project.ci.state)).length;
   return {
     profile: {
       name: profile.name?.trim() || profile.login,
@@ -259,9 +261,11 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
     }),
     projects: {
       total: projectStates.length,
-      passing: projectStates.filter((project) => project.ci.state === "passing").length,
-      attention: projectStates.filter((project) => ["failing", "pending", "stale"].includes(project.ci.state)).length,
-      unavailable: projectStates.filter((project) => ["unavailable", "unconfigured"].includes(project.ci.state)).length,
+      passing,
+      attention,
+      // The complement, as `toAtlasCard` in lib/portfolio.ts computes it: anything that is not
+      // passing or needing attention, including a state this build does not recognize, is unavailable.
+      unavailable: projectStates.length - passing - attention,
     },
     generatedAt: snapshot.freshness.generatedAt,
     source: evidence.source,

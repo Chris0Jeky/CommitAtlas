@@ -1,5 +1,5 @@
 import type { PortfolioSnapshot } from "./github/types";
-import { compactCount, signedPercent } from "./instruments";
+import { compactCount, rhythmGaugeReadout, signedPercent } from "./instruments";
 import { summariseCiStates } from "./health";
 
 /**
@@ -148,6 +148,11 @@ export function buildEvidence(snapshot: PortfolioSnapshot): EvidenceSet {
   const ciStates = (projects?.projects ?? []).map((project) => project.ci.state);
   const reading = summariseCiStates(ciStates);
 
+  // The same availability decision the gauge makes: a non-finite score is unavailable, not a
+  // number, and the band is a function of the score, so it is unavailable with it.
+  const rhythm = rhythmGaugeReadout(metrics.rhythm.score);
+  const rhythmScore = rhythm.showScale ? rhythm.text : "unavailable";
+
   const records: EvidenceRecord[] = [
     {
       id: "contributions",
@@ -226,21 +231,23 @@ export function buildEvidence(snapshot: PortfolioSnapshot): EvidenceSet {
     {
       id: "rhythm",
       label: "rhythm score",
-      value: `${metrics.rhythm.score}/100`,
+      value: rhythm.showScale ? `${rhythmScore}/100` : rhythmScore,
       tier: "derived",
       rule: "rhythm-derived",
       basis: `Active-day density of ${metrics.density}% and a current streak of ${metrics.streak.current} ${metrics.streak.current === 1 ? "day" : "days"}, both measured inside the ${window}.`,
-      formula: `min(1, density / 80) × 70 + min(1, streak / 30) × 30 = ${metrics.rhythm.score}`,
+      formula: `min(1, density / 80) × 70 + min(1, streak / 30) × 30 = ${rhythmScore}`,
       caveat:
         "A personal consistency reading, not a GitHub rank and not a percentile. Nobody else's score is an input, so it cannot place you against anyone.",
     },
     {
       id: "rhythm-level",
       label: "rhythm level",
-      value: metrics.rhythm.level,
+      value: rhythm.showScale ? metrics.rhythm.level : "unavailable",
       tier: "hypothesis",
       rule: "rhythm-band-hypothesis",
-      basis: `The score of ${metrics.rhythm.score} falls in the band CommitAtlas names "${metrics.rhythm.level}".`,
+      basis: rhythm.showScale
+        ? `The score of ${rhythmScore} falls in the band CommitAtlas names "${metrics.rhythm.level}".`
+        : "The rhythm score is unavailable, so no band is named. CommitAtlas does not read a missing score as the lowest band.",
       formula: "≥80 relentless · ≥60 strong · ≥40 steady · ≥20 building · else starting",
       caveat:
         "The bands are a CommitAtlas invention. Nothing in GitHub's data says where \"steady\" ends and \"strong\" begins, so the word is a label on a threshold, not a finding.",
