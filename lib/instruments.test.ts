@@ -9,6 +9,7 @@ import {
   momentumTrace,
   quarterMeter,
   reticle,
+  rhythmGaugeReadout,
   signedPercent,
 } from "./instruments";
 
@@ -204,6 +205,24 @@ test("the four-square meter bins a reading without rounding nothing up to someth
   assert.equal(quarterMeter(140), 4);
   assert.equal(quarterMeter(-5), 0);
   assert.equal(quarterMeter(Number.NaN), 0);
+});
+
+test("a non-finite rhythm score is unavailable, not a measured zero", () => {
+  // Finite scores, including a genuine zero and values outside 0–100, still print the raw number
+  // and keep the needle. The meter is the locked quarter bin, so an empty meter means zero.
+  assert.deepEqual(rhythmGaugeReadout(0), { text: "0", showScale: true, showNeedle: true, meter: 0 });
+  assert.deepEqual(rhythmGaugeReadout(72), { text: "72", showScale: true, showNeedle: true, meter: 3 });
+  assert.deepEqual(rhythmGaugeReadout(140), { text: "140", showScale: true, showNeedle: true, meter: 4 });
+  assert.deepEqual(rhythmGaugeReadout(-5), { text: "-5", showScale: true, showNeedle: true, meter: 0 });
+
+  for (const score of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const readout = rhythmGaugeReadout(score);
+    assert.deepEqual(readout, { text: "unavailable", showScale: false, showNeedle: false, meter: undefined });
+    assert.equal(`${readout.text}${readout.showScale ? "/100" : ""}`, "unavailable", String(score));
+    // The locked geometry still rests here. The readout must not present that rest as the reading.
+    assert.equal(gaugeReading(score).angle, -90);
+    assert.equal(quarterMeter(score), 0);
+  }
 });
 
 test("the density grid carries each day's count and level through unchanged", () => {
