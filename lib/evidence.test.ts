@@ -404,7 +404,7 @@ test("a non-finite rhythm score is unavailable in the evidence record, never NaN
   for (const score of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
     const broken: PortfolioSnapshot = {
       ...snapshot,
-      metrics: { ...snapshot.metrics, rhythm: { score, level: "starting" } },
+      metrics: { ...snapshot.metrics, rhythm: { ...snapshot.metrics.rhythm, score } },
     };
     const set = buildEvidence(broken);
     const text = JSON.stringify([set.byId.rhythm, set.byId["rhythm-level"]]);
