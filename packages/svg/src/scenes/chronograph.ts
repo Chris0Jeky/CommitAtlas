@@ -291,8 +291,12 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   const originY = 134;
   const applications: MotionApplication[] = [];
   if (context.motion === 'ambient' && !model.stale) {
+    // CSS transform-box is the root viewBox, so the origin must include this group's translate.
+    // SMIL rotates in the group's user space and must keep the local center.
+    const pivotX = context.backend === 'css' ? cx + originX : cx;
+    const pivotY = context.backend === 'css' ? cy + originY : cy;
     RING_TARGETS.forEach((target, index) => {
-      applications.push({ primitive: 'rotate', target, decorative: true, loopGroup: RING_GROUPS[index], params: { cx, cy, durationMs: RING_PERIODS[index] } });
+      applications.push({ primitive: 'rotate', target, decorative: true, loopGroup: RING_GROUPS[index], params: { cx: pivotX, cy: pivotY, durationMs: RING_PERIODS[index] } });
     });
   }
   if (context.motion === 'subtle' && !model.stale) {

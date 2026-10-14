@@ -98,6 +98,15 @@ test('chronograph passes the shared harness and keeps ring motion decorative', (
   const subtle = render(undefined, { motion: 'subtle', backend: 'smil' });
   assert.equal(subtle.counters.animatedElements, 7);
   assert.equal(subtle.counters.loopingGroups, 0);
+  const cssWide = render(undefined, { motion: 'ambient', backend: 'css', layout: 'wide' });
+  assert.match(cssWide.svg, /transform-origin:360px 249px/u);
+  assert.doesNotMatch(cssWide.svg, /transform-origin:336px 115px/u);
+  const cssCompact = render(undefined, { motion: 'ambient', backend: 'css', layout: 'compact' });
+  assert.match(cssCompact.svg, /transform-origin:240px 249px/u);
+  assert.doesNotMatch(cssCompact.svg, /transform-origin:216px 115px/u);
+  const smilWide = render(undefined, { motion: 'ambient', backend: 'smil', layout: 'wide' });
+  assert.match(smilWide.svg, /0 336 115;360 336 115/u);
+  assert.doesNotMatch(smilWide.svg, /0 360 249/u);
   assert.doesNotMatch(subtle.svg, /type="rotate"/u);
 });
 
