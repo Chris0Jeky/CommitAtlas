@@ -180,7 +180,7 @@ export function summariseCiStates(states: readonly CiState[]): CiReading {
     pending: 0,
   };
   for (const state of states) {
-    if (!(state in counts)) throw new Error(`unknown CI state: ${String(state)}`);
+    if (!Object.hasOwn(counts, state)) throw new Error(`unknown CI state: ${String(state)}`);
     counts[state] += 1;
   }
 
