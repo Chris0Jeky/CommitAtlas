@@ -78,6 +78,18 @@ test("assembles one canonical portfolio snapshot and rich atlas input", () => {
   assert.equal(atlas.dataState, undefined);
 });
 
+test("an unrecognized project CI state counts as unavailable", () => {
+  const board = {
+    ...projects,
+    projects: [{
+      ...projects.projects[0]!,
+      ci: { ...projects.projects[0]!.ci, state: "bogus" as never },
+    }],
+  };
+  const atlas = toAtlasCard(assemblePortfolioSnapshot(profile, contributions, board));
+  assert.deepEqual(atlas.projects, { total: 1, passing: 0, attention: 0, unavailable: 1 });
+});
+
 test("a truncated repository list marks the atlas partial and omits stars and languages", () => {
   const atlas = toAtlasCard(assemblePortfolioSnapshot({
     ...profile,

@@ -126,7 +126,7 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
   );
   const passing = projectStates.filter((project) => project.ci.state === "passing").length;
   const attention = projectStates.filter((project) => project.ci.state === "failing" || project.ci.state === "pending" || project.ci.state === "stale").length;
-  const unavailable = projectStates.filter((project) => project.ci.state === "unavailable" || project.ci.state === "unconfigured").length;
+  const unavailable = projectStates.length - passing - attention;
   return {
     profile: {
       name: profile.name?.trim() || profile.login,
