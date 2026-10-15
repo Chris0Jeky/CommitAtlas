@@ -2087,7 +2087,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const rhythmScoreKnown = Number.isFinite(data.rhythm.score);
   out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
   out += text(rhythmX, footerTop + 27, rhythmScoreKnown ? `${Math.round(finite(data.rhythm.score))}/100` : "unavailable", rhythmScoreKnown ? 23 : 12, t.text, rhythmScoreKnown ? 780 : 700);
-  out += mono(rhythmX, footerTop + 43, `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY`, 7.5, t.muted, 600, "start", 0.08);
+  // The band is a function of the score, so it is withheld with it, as the evidence record withholds its band.
+  const rhythmBand = rhythmScoreKnown ? `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY` : "UNAVAILABLE · PERSONAL CONSISTENCY";
+  out += mono(rhythmX, footerTop + 43, rhythmBand, 7.5, t.muted, 600, "start", 0.08);
 
   const detailX = narrow ? 24 : Math.floor(width * .60);
   const detailY = narrow ? footerTop + 78 : footerTop;

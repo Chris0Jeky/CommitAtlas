@@ -247,6 +247,26 @@ test("specimenCards prints the demo readings and survives a boardless snapshot",
   assert.equal(again.find((card) => card.kind === "profile")?.note, "24 REPOS · 312 FOLLOWERS · 487 STARS");
 });
 
+test("specimenCards withholds the rhythm reading when the score is non-finite", () => {
+  // The gauge and the evidence drawer already say unavailable. This plate must agree, not print NaN/100.
+  for (const score of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const unknown: PortfolioSnapshot = {
+      ...snapshot,
+      metrics: { ...snapshot.metrics, rhythm: { ...snapshot.metrics.rhythm, score } },
+    };
+    const note = specimenCards(unknown).find((card) => card.kind === "rhythm")?.note;
+    assert.equal(note, "unavailable · NOT A RANK", String(score));
+    assert.doesNotMatch(note ?? "", /NaN|Infinity/);
+  }
+
+  // A genuine zero is a measured reading and still prints 0/100.
+  const zero: PortfolioSnapshot = {
+    ...snapshot,
+    metrics: { ...snapshot.metrics, rhythm: { ...snapshot.metrics.rhythm, score: 0 } },
+  };
+  assert.equal(specimenCards(zero).find((card) => card.kind === "rhythm")?.note, "0/100 · NOT A RANK");
+});
+
 test("CARD_THEMES pins the four shipped themes with no duplicate ids", () => {
   assert.deepEqual(CARD_THEMES.map((theme) => theme.id), ["aurora", "midnight", "paper", "ember"]);
   assert.equal(new Set(CARD_THEMES.map((theme) => theme.id)).size, CARD_THEMES.length);

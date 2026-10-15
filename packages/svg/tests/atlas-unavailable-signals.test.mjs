@@ -43,6 +43,21 @@ test("a non-finite atlas rhythm score is unavailable instead of 0/100", () => {
   }
 });
 
+test("a non-finite atlas rhythm score withholds the band with the number", () => {
+  for (const score of [undefined, null, ...nonFinite]) {
+    const output = render({ rhythm: { ...base.rhythm, score } });
+    assert.match(output, />UNAVAILABLE · PERSONAL CONSISTENCY<\/text>/);
+    assert.doesNotMatch(output, /STEADY · PERSONAL CONSISTENCY/);
+    assert.doesNotMatch(output, /NaN|Infinity/);
+  }
+});
+
+test("a known atlas rhythm score keeps its band", () => {
+  const output = render({ rhythm: { ...base.rhythm, score: 44 } });
+  assert.match(output, />44\/100<\/text>/);
+  assert.match(output, />STEADY · PERSONAL CONSISTENCY<\/text>/);
+});
+
 test("a real zero atlas rhythm score stays 0/100", () => {
   const output = render({ rhythm: { ...base.rhythm, score: 0 } });
   assert.match(output, />0\/100<\/text>/);
