@@ -2,7 +2,7 @@ import { fetchPortfolioSnapshot } from "./portfolio";
 import type { PortfolioSnapshot, ProjectLifecycle } from "./github/types";
 import { buildStudioRouteUrl, type StudioCardKind, type StudioRouteOptions } from "@/app/studio/studio-urls";
 import { themes, type ThemeName } from "@/packages/svg/src/index";
-import { compactCount } from "./instruments";
+import { compactCount, rhythmGaugeReadout } from "./instruments";
 
 /**
  * The landing page's data contract.
@@ -116,6 +116,9 @@ export interface SpecimenCard {
  */
 export function specimenCards(snapshot: PortfolioSnapshot): readonly SpecimenCard[] {
   const { profile, metrics } = snapshot;
+  // The same availability decision the gauge and the evidence drawer make: a non-finite score is
+  // unavailable, never NaN/100.
+  const rhythm = rhythmGaugeReadout(metrics.rhythm.score);
   return [
     {
       kind: "atlas",
@@ -169,7 +172,7 @@ export function specimenCards(snapshot: PortfolioSnapshot): readonly SpecimenCar
       title: "Personal rhythm",
       purpose: "Transparent personal consistency based on density and streak — not a GitHub rank.",
       size: "RESPONSIVE",
-      note: `${metrics.rhythm.score}/100 · NOT A RANK`,
+      note: `${rhythm.showScale ? `${rhythm.text}/100` : rhythm.text} · NOT A RANK`,
       width: 720,
       height: 220,
     },
