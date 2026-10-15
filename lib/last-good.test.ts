@@ -149,9 +149,60 @@ test("a matching public 304 refreshes only retention while preserving the stored
   await Promise.all(pending);
   assert.equal(store.putOptions.length, 2);
   assert.deepEqual(store.putOptions[1], { expirationTtl: 604800 });
-  const after = JSON.parse(store.values.get(key)!) as { storedAt: string; observedAt: string; body: string };
-  assert.deepEqual(after, before);
+  const after = JSON.parse(store.values.get(key)!) as { storedAt: string; observedAt: string; body: string; validatedAt: string };
+  assert.deepEqual(after, { ...before, validatedAt: "2026-09-02T20:00:00.000Z" });
   assert.equal(store.reads, 2);
+
+  const stale = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-09-04T20:00:00.000Z")));
+  assert.equal(stale.status, 200, "day 8 remains eligible after the matching day 6 validation");
+  assert.equal(stale.headers.get("x-commitatlas-observed-at"), before.observedAt);
+  assert.equal(stale.headers.get("x-commitatlas-last-good-at"), before.storedAt);
+  assert.equal(stale.headers.get("x-commitatlas-last-good-age"), "691200");
+
+  const expired = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+    runtime(store, [], new Date("2026-09-09T20:00:01.000Z")));
+  assert.equal(expired.status, 502, "retention still expires seven days after validation");
+});
+
+test("a matching SVG 304 keeps day-8 fallback eligible for each recoverable GitHub failure", async () => {
+  const store = memoryStore();
+  const request = new Request("https://example.test/api/v1/cards/atlas.svg?user=octocat&demo=false");
+  const pending: Promise<unknown>[] = [];
+  const original = svgBody("2026-08-27T19:58:00.000Z");
+  await withPublicLastGood(request, async () => svgResponse(original), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  const etag = svgResponse(original).headers.get("etag")!;
+  await withPublicLastGood(new Request(request, { headers: { "if-none-match": etag } }),
+    async () => notModified(etag), runtime(store, pending, new Date("2026-09-02T20:00:00Z")));
+  await Promise.all(pending);
+
+  for (const [status, code] of [
+    [429, "github_rate_limited"], [502, "github_unavailable"], [502, "github_timeout"],
+    [502, "github_auth_required"], [502, "github_forbidden"],
+  ] as const) {
+    const stale = await withPublicLastGood(request, async () => githubError(status, code),
+      runtime(store, [], new Date("2026-09-04T20:00:00Z")));
+    assert.equal(stale.status, 200, code);
+    assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale", code);
+    assert.match(await stale.text(), /STALE SNAPSHOT.*OBSERVED 2026-08-27T19:58:00\.000Z/, code);
+  }
+});
+
+test("invalid or future validation timestamps cannot extend fallback eligibility", async () => {
+  const store = memoryStore();
+  const request = new Request("https://example.test/api/v1/profile?demo=false&user=octocat");
+  const pending: Promise<unknown>[] = [];
+  await withPublicLastGood(request, async () => jsonSuccess(), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  const key = await publicLastGoodKey(request);
+  const entry = JSON.parse(store.values.get(key)!) as Record<string, unknown>;
+  for (const validatedAt of [null, 123, "invalid", "2026-08-27T19:00:00Z", "2026-09-10T20:00:00Z"]) {
+    store.values.set(key, JSON.stringify({ ...entry, validatedAt }));
+    const response = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+      runtime(store, [], new Date("2026-09-04T20:00:00Z")));
+    assert.equal(response.status, 502, String(validatedAt));
+  }
 });
 
 test("a public 304 does not replace a newer body written during the first retention read", async () => {

@@ -567,7 +567,8 @@ test("keeps rate-limit and upstream-outage codes distinct from not found in the 
   for (const [status, expectedStatus, expectedCode] of [
     [404, 404, "github_not_found"],
     [500, 502, "github_unavailable"],
-    [403, 502, "github_unavailable"],
+    [401, 502, "github_auth_required"],
+    [403, 502, "github_forbidden"],
     [429, 429, "github_rate_limited"],
   ]) {
     const response = await withMockedFetch(
@@ -575,7 +576,11 @@ test("keeps rate-limit and upstream-outage codes distinct from not found in the 
       () => request("/api/v1/profile?user=octocat"),
     );
     assert.equal(response.status, expectedStatus, `upstream ${status}`);
-    assert.equal((await response.json()).error.code, expectedCode, `upstream ${status}`);
+    const payload = await response.json();
+    assert.equal(payload.version, 1);
+    assert.equal(payload.status, "error");
+    assert.deepEqual(Object.keys(payload).sort(), ["error", "generatedAt", "status", "version"]);
+    assert.equal(payload.error.code, expectedCode, `upstream ${status}`);
   }
 
   const exhausted = await withMockedFetch(
@@ -796,6 +801,49 @@ test("the built Worker serves an honest public last-good response after a primed
     ...livePayload,
     freshness: { ...livePayload.freshness, mode: "stale" },
   });
+});
+
+test("the built atlas and scene routes consult LAST_GOOD for every recoverable GitHub failure", async (context) => {
+  const worker = await loadBuiltWorker("svg-last-good-failure-classes");
+  const values = new Map();
+  const env = {
+    ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    LAST_GOOD: { get: async (key) => values.get(key) ?? null, put: async () => assert.fail("failure must not persist") },
+  };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+  const realNow = Date.now.bind(Date);
+  let elapsed = 0;
+  context.mock.method(Date, "now", () => realNow() + elapsed);
+  for (const path of ["/api/v1/cards/atlas.svg", "/api/v1/scenes/evidence-coverage.svg", "/api/v1/scenes/chronograph.svg"]) {
+    const redirect = await withMockedFetch(async () => assert.fail("canonicalization must precede GitHub"),
+      () => worker.fetch(new Request(`http://localhost${path}?user=%20octocat%20&demo=false`), env, ctx));
+    assert.equal(redirect.status, 308);
+    const canonical = new URL(redirect.headers.get("location"));
+    const pairs = [...canonical.searchParams].sort(([ak, av], [bk, bv]) => ak.localeCompare(bk) || av.localeCompare(bv));
+    const hash = createHash("sha256").update(`${path}?${new URLSearchParams(pairs)}`).digest("hex");
+    const observedAt = new Date().toISOString();
+    values.set(`public-last-good:v1:${hash}`, JSON.stringify({
+      version: 1, storedAt: observedAt, observedAt,
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img"><title>Fixture</title><desc>Public fixture</desc></svg>',
+      headers: { "content-type": "image/svg+xml", etag: `W/"${"a".repeat(64)}"` },
+    }));
+    for (const failure of [401, 403, 429, 503, "network", "timeout"]) {
+      elapsed = 0;
+      const stale = await withMockedFetch(async () => {
+        if (failure === "network") throw new TypeError("fixture-sensitive-network-detail");
+        if (failure === "timeout") elapsed = 13_000;
+        return new Response(null, { status: typeof failure === "number" ? failure : 503 });
+      }, () => worker.fetch(new Request(canonical), env, ctx));
+      assert.equal(stale.status, 200, `${path}: ${failure}`);
+      assert.equal(stale.headers.get("x-commitatlas-data-state"), "stale");
+      assert.equal(stale.headers.get("x-commitatlas-fallback-reason"), failure === 429 ? "rate-limited" : "unavailable");
+      assert.match(await stale.text(), /STALE SNAPSHOT/);
+    }
+    elapsed = 0;
+    const missing = await withMockedFetch(async () => new Response(null, { status: 404 }),
+      () => worker.fetch(new Request(canonical), env, ctx));
+    assert.equal(missing.status, 404, "not found must never resurrect a retained representation");
+  }
 });
 
 async function withMockedFetch(fetchImpl, operation) {

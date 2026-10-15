@@ -45,12 +45,13 @@ interface LastGoodEntry {
   readonly body: string;
   readonly storedAt: string;
   readonly observedAt: string;
+  readonly validatedAt?: string;
   readonly headers: Readonly<Record<string, string>>;
 }
 
 /**
  * Preserve a validated, public-only API representation across anonymous GitHub
- * quota and deadline failures. Synthetic and token-backed requests never enter
+ * upstream refusals, quota and deadline failures. Synthetic and token-backed requests never enter
  * this path, and a cold miss keeps the route's original bounded error.
  */
 export async function withPublicLastGood(
@@ -201,9 +202,8 @@ async function refreshLastGoodRetention(
   // and its etag still matches. A write that lands after this read can still win.
   const current = parseEntry(await store.get(key), request, now);
   if (!current || etag !== current.headers.etag) return;
-  // Re-persist the validated representation only to extend KV retention. Its original storage and
-  // observation timestamps remain evidence of when the body was actually seen.
-  await store.put(key, JSON.stringify(current), { expirationTtl: RETENTION_SECONDS });
+  // Retention follows validation; storage and observation still describe the original body.
+  await store.put(key, JSON.stringify({ ...current, validatedAt: now.toISOString() }), { expirationTtl: RETENTION_SECONDS });
 }
 
 async function upstreamFallbackReason(response: Response): Promise<"rate-limited" | "unavailable" | null> {
@@ -211,7 +211,7 @@ async function upstreamFallbackReason(response: Response): Promise<"rate-limited
   try {
     const payload = await response.clone().json() as { error?: { code?: unknown } };
     if (payload.error?.code === "github_rate_limited") return "rate-limited";
-    if (payload.error?.code === "github_unavailable") return "unavailable";
+    if (["github_unavailable", "github_timeout", "github_auth_required", "github_forbidden"].includes(String(payload.error?.code))) return "unavailable";
   } catch {
     return null;
   }
@@ -232,8 +232,11 @@ function parseEntry(raw: string | null, request: Request, now: Date): LastGoodEn
 
   const storedAt = Date.parse(value.storedAt);
   const observedAt = Date.parse(value.observedAt);
-  const ageMs = now.getTime() - storedAt;
-  if (!Number.isFinite(storedAt) || !Number.isFinite(observedAt) || ageMs < -300_000
+  if (value.validatedAt !== undefined && typeof value.validatedAt !== "string") return null;
+  const validatedAt = value.validatedAt === undefined ? storedAt : Date.parse(value.validatedAt);
+  const ageMs = now.getTime() - validatedAt;
+  if (!Number.isFinite(storedAt) || !Number.isFinite(observedAt) || !Number.isFinite(validatedAt)
+      || validatedAt < storedAt || ageMs < -300_000
       || ageMs > RETENTION_SECONDS * 1000 || observedAt > storedAt + 300_000
       || observedAt < storedAt - RETENTION_SECONDS * 1000) return null;
 
@@ -256,6 +259,7 @@ function parseEntry(raw: string | null, request: Request, now: Date): LastGoodEn
     body: value.body,
     storedAt: new Date(storedAt).toISOString(),
     observedAt: new Date(observedAt).toISOString(),
+    ...(value.validatedAt === undefined ? {} : { validatedAt: new Date(validatedAt).toISOString() }),
     headers,
   };
 }

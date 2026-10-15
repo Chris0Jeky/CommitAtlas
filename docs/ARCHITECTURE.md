@@ -70,13 +70,31 @@ details through that path.
 - Missing, partial, gapped, stale, restricted, and unavailable evidence is never silently rewritten
   as zero or passing.
 - A GitHub `403` becomes `github_rate_limited` only with a valid `Retry-After`, exhausted
-  `x-ratelimit-remaining`, or an explicit rate-limit/abuse message. Other 403s are unavailable:
+  `x-ratelimit-remaining`, or an explicit rate-limit/abuse message. Other 403s are `github_forbidden`:
   optional project signals degrade locally, while required lookups return the bounded 502 contract.
   Project snapshots carry `releaseState` (`published`, `none`, or `unavailable`) so a refused release
   lookup can never be rendered or counted as an observed absence.
 - The rhythm score is a documented within-window consistency summary, not a universal developer rank.
 
 ## Hosted delivery and caching
+
+API errors retain the v1 envelope:
+`{ version: 1, status: "error", error: { code, message }, generatedAt }`.
+Messages describe the failure without copying upstream bodies or transport exceptions.
+The typed `GitHubApiError.code` union is the shared client contract; Studio displays the safe message.
+
+| Code | HTTP status | Meaning |
+| --- | --- | --- |
+| `github_timeout` | 502 | The shared 12-second request deadline expired, including body reads. |
+| `github_auth_required` | 502 | GitHub returned 401 or a GraphQL authentication-required error. This concerns server credentials, not the visitor. |
+| `github_forbidden` | 502 | GitHub returned a non-rate-limit 403 or a GraphQL permission error. |
+| `github_rate_limited` | 429 | A primary or secondary quota refusal, including GraphQL payload errors; validated retry guidance is provided. |
+| `github_unavailable` | 502 | An upstream 5xx, immediate network/read failure, or unclassified GraphQL failure. It does not imply a deadline expired. |
+| `github_not_found` | 404 | No matching public resource; private and missing resources remain indistinguishable. |
+
+Credential preflight HTTP failures use the same classification. A successful preflight that lacks
+explicit public-only scope proof still fails closed as `private_data`. Optional project 403s stay
+local unavailable signals; later profile-page deadline failures still produce partial totals.
 
 The hosted service is best-effort and cache-first. Public responses use canonical cache keys and
 bounded edge lifetimes; private/token responses use `no-store`. Stable ETags support conditional
@@ -89,8 +107,9 @@ repository, lifecycle, and workflow choices cannot collide or leak across respon
 requests, token-backed requests, invalid input, not-found answers, and malformed upstream data are
 never written or served from this layer.
 
-Entries expire after seven days. When anonymous GitHub later produces a supported quota (`429`) or
-availability (`502`) error, a valid entry is returned with `X-CommitAtlas-Data-State: stale`, its
+Entries expire seven days after storage or the latest matching validation. When anonymous GitHub
+later produces `github_rate_limited`, `github_timeout`, `github_auth_required`, `github_forbidden`,
+or `github_unavailable`, a valid entry is returned with `X-CommitAtlas-Data-State: stale`, its
 stored and observed timestamps, a short cache lifetime, and an HTTP stale warning. SVG responses
 also receive a high-contrast `STALE SNAPSHOT` strip below the original view box content and add the
 same warning to the accessible description. Versioned JSON bodies preserve their observed values
@@ -99,9 +118,11 @@ cross-key lookup retains the original bounded error.
 
 A matching public `304 Not Modified` is also useful evidence: GitHub has confirmed that the
 canonical representation is still current even though it did not resend the body. CommitAtlas
-therefore refreshes that entry's KV retention through `ctx.waitUntil()`, but only when the request,
-response, canonical key, and stored weak ETag all agree. The stored and observed timestamps are
-preserved because no body was newly observed. Missing, expired, malformed, or mismatched entries
+therefore refreshes that entry's KV retention and separate `validatedAt` timestamp through
+`ctx.waitUntil()`, but only when the request, response, canonical key, and stored weak ETag all
+agree. The parser uses validation time for retention eligibility; entries without it use `storedAt`.
+The stored and observed timestamps (including stale age headers) are preserved because no body
+was newly observed. Missing, expired, malformed, or mismatched entries
 are not revived, and a KV read or write failure cannot replace the original `304`.
 
 KV is eventually consistent, so a just-primed value may take time to become visible in another

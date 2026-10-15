@@ -10,6 +10,27 @@ The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [DEMO_GUIDE.md](./DEMO_GUIDE.md), and the complete evidence matrix is in
 [RELEASE_CANDIDATE_QA_2026-08-20.md](./RELEASE_CANDIDATE_QA_2026-08-20.md).
 
+## Issue #338 source repair, 2026-10-15
+
+The working-tree repair separates GitHub authentication, permission, quota, deadline and
+availability errors without changing the v1 envelope. Public LAST_GOOD eligibility now follows
+a separate matching-304 validation timestamp, while original storage/observation evidence stays
+unchanged. This fixes the 200 at day 0 -> matching 304 at day 6 -> upstream failure at day 8 case;
+it does not establish the cause of the deployed October 8 outage. See
+[the error and retention contract](ARCHITECTURE.md#hosted-delivery-and-caching).
+
+Deployment, KV binding/key contents and owner token setup remain separate. The driver's
+2026-10-15 measurement reports no Worker secrets; no secret was accessed or configured by this
+repair. Token-backed requests continue to bypass the public fallback by design.
+
+Local evidence: the original focused suites passed 99/99; the regression-first run failed
+10/104 tests for the expected error-classification and retention defects. The repaired focused
+suites pass 105/105; `npm run test:github` passes its 41 package checks, discovery check and
+303 source/route tests. `npm test` passes 65/65 built-output checks, including all three reported
+SVG routes across upstream failure classes. Typecheck, lint, Action rebuild and five executed
+Action checks pass. No commit, push, deployment or full `npm run check` is claimed. Local command
+logs are retained under ignored `work/issue-338/`.
+
 ## Scene delivery checkpoint, 2026-10-07
 
 #333 completes the lifecycle map (#137): bounded declared rows, distinct CI words and

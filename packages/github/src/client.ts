@@ -58,7 +58,7 @@ const GITHUB_TEXT_LIMITS = {
 
 export class GitHubApiError extends Error {
   constructor(
-    readonly code: "github_unavailable" | "github_rate_limited" | "github_not_found" | "token_required" | "invalid_response" | "private_data",
+    readonly code: "github_unavailable" | "github_timeout" | "github_auth_required" | "github_forbidden" | "github_rate_limited" | "github_not_found" | "token_required" | "invalid_response" | "private_data",
     message: string,
     readonly status = 502,
     readonly retryAfter: string | null = null,
@@ -109,7 +109,7 @@ export class GitHubClient {
         nextPage = await this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100&page=${page}`);
       } catch (error) {
         // A later page that GitHub cannot serve degrades the totals to partial; page 1 already succeeded.
-        if (error instanceof GitHubApiError && (error.code === "github_unavailable" || error.code === "github_rate_limited")) break;
+        if (error instanceof GitHubApiError && (error.code === "github_unavailable" || error.code === "github_timeout" || error.code === "github_rate_limited")) break;
         throw error;
       }
       if (!Array.isArray(nextPage) || nextPage.some((repository) => !isRecord(repository))) {
@@ -517,7 +517,7 @@ export class GitHubClient {
     if (!isRecord(payload)) {
       throw new GitHubApiError("invalid_response", "GitHub returned an invalid GraphQL response");
     }
-    assertGraphqlPayload(payload);
+    assertGraphqlPayload(payload, response.headers, this.now());
     return payload;
   }
 
@@ -537,10 +537,11 @@ export class GitHubClient {
     const response = await this.fetchWithDeadline(new URL("/rate_limit", API_ORIGIN), {
       headers: this.headers(),
     });
+    if (!response.ok) throw await this.transportError(response, "GitHub data is currently unavailable");
     const hasScopeEvidence = response.headers.has("x-oauth-scopes");
     const scopes = response.headers.get("x-oauth-scopes");
     await response.body?.cancel();
-    if (!response.ok || !hasScopeEvidence || !hasOnlyPublicClassicScopes(token, scopes)) {
+    if (!hasScopeEvidence || !hasOnlyPublicClassicScopes(token, scopes)) {
       throw privateDataError("Public GitHub routes require a token with explicit public-only classic OAuth scopes");
     }
   }
@@ -581,7 +582,7 @@ export class GitHubClient {
     }
     if (!response.ok) {
       const error = await this.transportError(response, "GitHub data is currently unavailable");
-      if (allowMissing && response.status === 403 && error.code === "github_unavailable") {
+      if (allowMissing && response.status === 403 && error.code === "github_forbidden") {
         return OPTIONAL_LOOKUP_UNAVAILABLE;
       }
       throw error;
@@ -618,18 +619,14 @@ export class GitHubClient {
     return this.readBoundedText(response);
   }
 
-  /**
-   * Keep the three upstream failure meanings separate: a rate limit carries
-   * retry guidance, a 404 is the non-disclosing not-found contract, and every
-   * other failure stays an upstream outage.
-   */
+  /** Classify upstream refusals without returning GitHub response bodies. */
   private async transportError(response: Response, unavailableMessage: string): Promise<GitHubApiError> {
     if (response.status === 403) {
       const headerEvidence = hasDirectRateLimitEvidence(response.headers, this.now());
       const messageEvidence = headerEvidence ? false : await this.hasRateLimitMessage(response);
       if (headerEvidence) await response.body?.cancel();
       if (!headerEvidence && !messageEvidence) {
-        return new GitHubApiError("github_unavailable", unavailableMessage, 502);
+        return forbiddenError();
       }
       return new GitHubApiError(
         "github_rate_limited",
@@ -639,6 +636,7 @@ export class GitHubClient {
       );
     }
     await response.body?.cancel();
+    if (response.status === 401) return authRequiredError(retryAfterValue(response.headers, this.now()));
     if (response.status === 429) {
       return new GitHubApiError(
         "github_rate_limited",
@@ -670,7 +668,8 @@ export class GitHubClient {
       return await this.withRemainingDeadline(this.fetchImpl(input, { ...init, signal: timeout }));
     } catch (error) {
       if (error instanceof GitHubApiError) throw error;
-      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+      if (timeout.aborted) throw deadlineError();
+      throw new GitHubApiError("github_unavailable", "GitHub could not be reached");
     }
   }
 
@@ -701,9 +700,10 @@ export class GitHubClient {
         chunks.push(value);
       }
     } catch (error) {
-      await reader.cancel();
+      await reader.cancel().catch(() => undefined);
       if (error instanceof GitHubApiError) throw error;
-      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+      if (Date.now() >= this.deadlineAt) throw deadlineError();
+      throw new GitHubApiError("github_unavailable", "GitHub response could not be read");
     }
     try {
       return new TextDecoder("utf-8", { fatal: true }).decode(concatChunks(chunks, byteLength));
@@ -719,7 +719,7 @@ export class GitHubClient {
       return await Promise.race([
         operation,
         new Promise<T>((_, reject) => {
-          timeout = setTimeout(() => reject(new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline")), remaining);
+          timeout = setTimeout(() => reject(deadlineError()), remaining);
         }),
       ]);
     } finally {
@@ -730,7 +730,7 @@ export class GitHubClient {
   private remainingDeadline(): number {
     const remaining = this.deadlineAt - Date.now();
     if (remaining <= 0) {
-      throw new GitHubApiError("github_unavailable", "GitHub did not respond before the request deadline");
+      throw deadlineError();
     }
     return remaining;
   }
@@ -775,16 +775,40 @@ function notFoundError(): GitHubApiError {
  * `errors`. Recognise exactly that shape before the generic GraphQL error path
  * so it yields the same not-found contract as every REST route. The upstream
  * message quotes the login that was probed, so it is discarded in favour of the
- * one shared not-found message. Any other error, or a mix, stays an outage.
+ * one shared not-found message. Other errors receive a bounded upstream classification.
  */
-function assertGraphqlPayload(payload: Record<string, unknown>): void {
+function assertGraphqlPayload(payload: Record<string, unknown>, headers: Headers, now: Date): void {
   const errors = Array.isArray(payload.errors) ? payload.errors : [];
   const missingUser = isRecord(payload.data) && payload.data.user === null;
   const onlyNotFound = errors.every((error) => isRecord(error) && error.type === "NOT_FOUND");
   if (missingUser && onlyNotFound) throw notFoundError();
   if (errors.length > 0) {
+    for (const error of errors) {
+      if (!isRecord(error)) continue;
+      const type = error.type ?? (isRecord(error.extensions) ? error.extensions.code : undefined);
+      const message = typeof error.message === "string" ? error.message : "";
+      if (type === "RATE_LIMITED" || rateLimitMessage(message)) {
+        throw new GitHubApiError("github_rate_limited", "GitHub rate limit reached; retry after the reset window",
+          429, rateLimitRetryAfterValue(headers, now));
+      }
+      if (type === "UNAUTHORIZED" || type === "UNAUTHENTICATED"
+          || /\brequires (?:you to be )?authenticat(?:ed|ion)\b/i.test(message)) throw authRequiredError();
+      if (type === "FORBIDDEN") throw forbiddenError();
+    }
     throw new GitHubApiError("github_unavailable", "GitHub could not satisfy the requested data", 502);
   }
+}
+
+function deadlineError(): GitHubApiError {
+  return new GitHubApiError("github_timeout", "GitHub did not respond before the request deadline");
+}
+
+function authRequiredError(retryAfter: string | null = null): GitHubApiError {
+  return new GitHubApiError("github_auth_required", "GitHub requires valid server-side authentication", 502, retryAfter);
+}
+
+function forbiddenError(): GitHubApiError {
+  return new GitHubApiError("github_forbidden", "GitHub refused access to the requested data");
 }
 
 function hasOnlyPublicClassicScopes(token: string, scopes: string | null): boolean {
