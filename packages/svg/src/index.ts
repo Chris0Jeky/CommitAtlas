@@ -1096,6 +1096,8 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   const scoreClause = scoreKnown
     ? `Personal consistency score ${Math.round(score)} out of 100`
     : "Personal consistency score is unavailable";
+  // The band is a function of the score, so it is withheld with the score.
+  const levelClause = scoreKnown ? `, ${level}` : "";
   const densityClause = densityKnown ? `Density ${densityPercent} percent` : "density unavailable";
   const activeDaysClause = activeDaysKnown
     ? `${formatNumber(data.activeDays, false)} active days`
@@ -1104,7 +1106,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
     ? `${formatNumber(data.window.days, false)}-day window`
     : "window unavailable";
   const streakClause = streakKnown ? `Current streak: ${streakText}` : "current streak unavailable";
-  const accessibleDescription = `${metadata.description} ${scoreClause}, ${level}; this is not a GitHub rank. ${basis}. ${densityClause} across ${activeDaysClause} in a ${windowClause}. ${streakClause}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
+  const accessibleDescription = `${metadata.description} ${scoreClause}${levelClause}; this is not a GitHub rank. ${basis}. ${densityClause} across ${activeDaysClause} in a ${windowClause}. ${streakClause}${currentThrough ? ` through ${currentThrough}` : ""}; it is ${streakBoundedText}. ${rhythmTrendLabel(data.trend)}.`;
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
   out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t);
@@ -1119,7 +1121,7 @@ export function renderRhythmCard(data: RhythmCardData, options?: RenderOptions):
   // The word does not fit the score ring at 28px, so only the unknown numeral shrinks.
   out += text(centerX, centerY + 7, scoreKnown ? `${Math.round(score)}` : "unavailable", scoreKnown ? 28 : 12, t.text, scoreKnown ? 800 : 700, "middle") + text(centerX, centerY + 24, "/ 100", 10, t.muted, 650, "middle");
   const infoX = compact ? 164 : 166;
-  out += text(infoX, compact ? 91 : 88, level.toUpperCase(), 11, t.accent, 750);
+  out += text(infoX, compact ? 91 : 88, scoreKnown ? level.toUpperCase() : "UNAVAILABLE", 11, t.accent, 750);
   const densityLabel = `${densityKnown ? `${densityPercent}% density` : "density unavailable"} · ${activeDaysClause}`;
   out += text(infoX, compact ? 114 : 111, truncateText(densityLabel, compact ? 34 : 64), 11, t.text, 600);
   out += text(infoX, compact ? 134 : 131, `${windowClause} · ${streakKnown ? `current ${streakText}` : "current streak unavailable"}`, 10, t.muted, 550);
