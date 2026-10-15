@@ -319,7 +319,7 @@ test("multi-year token requests retain the original absolute deadline", async (c
     return json(rangePayload(variables));
   };
   await assert.rejects(new GitHubClient({ token: "server-secret", fetchImpl, now: () => NOW }).fetchContributions("octocat", 730),
-    (error: unknown) => error instanceof GitHubApiError && error.code === "github_unavailable");
+    (error: unknown) => error instanceof GitHubApiError && error.code === "github_timeout");
   assert.equal(calls, 1, "do not reset the budget for another collection");
 });
 
@@ -1143,7 +1143,7 @@ test("classifies 403 as rate-limited only when GitHub supplies supporting eviden
       new GitHubClient({ fetchImpl: async () => response(), now: () => NOW }).fetchProfile("octocat"),
       (error: unknown) => {
         assert.ok(error instanceof GitHubApiError, label);
-        assert.equal(error.code, "github_unavailable", label);
+        assert.equal(error.code, "github_forbidden", label);
         assert.equal(error.status, 502, label);
         assert.equal(error.retryAfter, null, label);
         return true;
@@ -1260,8 +1260,73 @@ test("applies one deadline across all GitHub calls", async () => {
   const fetchImpl: typeof fetch = async () => new Promise<Response>(() => undefined);
   await assert.rejects(
     new GitHubClient({ fetchImpl, deadlineMs: 5 }).fetchProfile("octocat"),
-    (error: unknown) => error instanceof GitHubApiError && error.code === "github_unavailable",
+    (error: unknown) => error instanceof GitHubApiError && error.code === "github_timeout",
   );
+});
+
+test("immediate fetch and body failures do not claim the request deadline expired", async () => {
+  for (const fetchImpl of [
+    async () => { throw new TypeError("fixture-sensitive-network-detail"); },
+    async () => new Response(new ReadableStream({ start(controller) {
+      controller.error(new Error("fixture-sensitive-stream-detail"));
+    } })),
+    async () => { throw new DOMException("fixture-sensitive-abort-detail", "AbortError"); },
+  ] satisfies (typeof fetch)[]) {
+    await assert.rejects(new GitHubClient({ fetchImpl }).fetchProfile("octocat"), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_unavailable");
+      assert.doesNotMatch(error.message, /deadline|fixture-sensitive/);
+      return true;
+    });
+  }
+});
+
+test("a stalled response body is a deadline failure", async () => {
+  await assert.rejects(new GitHubClient({ deadlineMs: 15,
+    fetchImpl: async () => new Response(new ReadableStream({ start() {} })),
+  }).fetchProfile("octocat"), (error: unknown) => {
+    assert.ok(error instanceof GitHubApiError);
+    assert.equal(error.code, "github_timeout");
+    assert.match(error.message, /deadline/);
+    return true;
+  });
+});
+
+test("credential preflight distinguishes upstream refusal from unsafe token scopes", async () => {
+  for (const [status, code] of [[401, "github_auth_required"], [403, "github_forbidden"],
+    [429, "github_rate_limited"], [503, "github_unavailable"]] as const) {
+    await assert.rejects(new GitHubClient({ token: "ghp_fixture",
+      fetchImpl: async () => json({ message: "fixture-sensitive-upstream-detail" }, status),
+    }).fetchProfile("octocat"), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, code);
+      assert.doesNotMatch(error.message, /fixture-sensitive|deadline/);
+      return true;
+    });
+  }
+});
+
+test("GraphQL payload refusals carry safe auth, permission, and rate-limit codes", async () => {
+  for (const [errorEntry, code, status] of [
+    [{ type: "RATE_LIMITED" }, "github_rate_limited", 429],
+    [{ message: "You have exceeded a secondary rate limit. fixture-sensitive" }, "github_rate_limited", 429],
+    [{ type: "UNAUTHORIZED" }, "github_auth_required", 502],
+    [{ extensions: { code: "UNAUTHENTICATED" } }, "github_auth_required", 502],
+    [{ message: "This endpoint requires you to be authenticated. fixture-sensitive" }, "github_auth_required", 502],
+    [{ type: "FORBIDDEN" }, "github_forbidden", 502],
+    [{ type: "SERVICE_UNAVAILABLE", message: "fixture-sensitive" }, "github_unavailable", 502],
+  ] as const) {
+    await assert.rejects(new GitHubClient({ token: "ghp_public-only", now: () => NOW,
+      fetchImpl: graphqlFetch({ errors: [errorEntry] }),
+    }).fetchContributions("octocat", 7), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, code);
+      assert.equal(error.status, status);
+      assert.equal(error.retryAfter, code === "github_rate_limited" ? "60" : null);
+      assert.doesNotMatch(error.message, /fixture-sensitive|deadline/);
+      return true;
+    });
+  }
 });
 
 test("bounds concurrent project lookups below the Worker connection limit", async () => {
@@ -1364,7 +1429,6 @@ test("recognizes the partial GraphQL not-found answer before the generic error p
   );
 
   for (const [label, payload] of [
-    ["non-not-found error", { data: { user: null }, errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded" }] }],
     ["mixed errors", { data: { user: null }, errors: [{ type: "NOT_FOUND" }, { type: "SERVICE_UNAVAILABLE" }] }],
     ["error with a resolved user", { data: { user: { contributionsCollection: null } }, errors: [{ type: "SERVICE_UNAVAILABLE" }] }],
   ] as const) {
@@ -1383,7 +1447,8 @@ test("keeps rate-limit and upstream-outage semantics distinct from not found", a
     [404, "github_not_found", 404, null],
     [500, "github_unavailable", 502, "30"],
     [502, "github_unavailable", 502, "30"],
-    [403, "github_unavailable", 502, null],
+    [401, "github_auth_required", 502, "30"],
+    [403, "github_forbidden", 502, null],
     [429, "github_rate_limited", 429, "30"],
   ] as const) {
     const fetchImpl: typeof fetch = async () => new Response(null, { status, headers: { "x-ratelimit-reset": reset } });
