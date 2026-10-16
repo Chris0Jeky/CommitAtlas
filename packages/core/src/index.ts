@@ -18,6 +18,7 @@ function containsControlCharacter(value: string): boolean {
 const WorkflowIdentitySchema = z.string()
   .refine((value) => !containsControlCharacter(value), "Workflow identity must not contain control characters")
   .trim()
+  .min(1)
   .max(200)
   .refine((value) => !value.replace(/[\\]/g, "/").split("/").some((segment) => segment === "." || segment === ".."), "Workflow identity must not contain dot path segments");
 
