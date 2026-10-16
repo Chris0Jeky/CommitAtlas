@@ -1,4 +1,5 @@
 import { apiErrorResponse, optionsResponse, svgResponse } from "@/lib/http";
+import { GitHubApiError } from "@/lib/github/client";
 import { InputError } from "@/lib/github/validation";
 import { MOTION_PROBES } from "@/tests/fixtures/motion-probes";
 
@@ -16,7 +17,7 @@ export async function GET(
 
     const probeId = probe.slice(0, -4);
     if (!Object.prototype.hasOwnProperty.call(MOTION_PROBES, probeId)) {
-      throw new InputError("unknown motion probe");
+      throw new GitHubApiError("github_not_found", "unknown motion probe", 404);
     }
 
     const body = MOTION_PROBES[probeId as keyof typeof MOTION_PROBES];

@@ -8,6 +8,7 @@ import {
   buildStudioRouteUrl,
   buildStudioSceneUrl,
   isCopyableStudioOrigin,
+  studioSelectionFromQuery,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
   STUDIO_SCENE_IDS,
@@ -308,6 +309,13 @@ test("scene preview URLs are the route canonical query", () => {
   assert.throws(() => buildStudioSceneUrl("not-a-scene", {
     owner: "octocat", theme: "ember", demo: true,
   }), /unknown studio scene/);
+});
+
+test("gallery query preselects only hosted cards and scenes", () => {
+  assert.deepEqual(studioSelectionFromQuery("?card=atlas&scene=chronograph"), { card: "atlas", scene: "chronograph" });
+  assert.deepEqual(studioSelectionFromQuery("?card=cadence&scene=nebula"), { card: null, scene: null });
+  assert.deepEqual(studioSelectionFromQuery("?card=identity-beacon&scene=identity-beacon"), { card: null, scene: null });
+  assert.deepEqual(studioSelectionFromQuery(""), { card: null, scene: null });
 });
 
 test("pack and scene selection change the preview configuration key", () => {

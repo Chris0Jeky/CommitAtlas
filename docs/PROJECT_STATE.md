@@ -5,6 +5,21 @@ Last verified: 2026-08-30 (v0.4.0 released, production and profile evidence curr
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Gallery route, local proof 2026-10-16
+
+`/gallery` serves the synthetic demo snapshot. With fetch stubbed to throw, the built Worker
+returns the five family headings and one tile per registered card, registered scene, and the
+vendored WB-C1 finding. The printed count equals that registry. Each tile prints its id, family,
+evidence rung, pack, and motion, plus one `SYNTHETIC DEMO` marker. An identity beacon without an
+identity is unavailable. The finding prints C0 and reject, and the page does not contain
+`promoted`. Two requests are byte-identical and share a weak ETag; a matching If-None-Match
+returns 304. This route keeps `cache-control: no-store, must-revalidate`. The sitemap and the
+landing and Studio nav include `/gallery`. Studio query preselect applies after hydration, and
+only for a hosted card or hosted scene. This note is local source proof. It is not a deployment
+or a browser playback claim.
+
+
+
 The release path is in [V0_1_PLAN.md](./V0_1_PLAN.md), the static contract is in
 [STATIC_GENERATOR_PLAN.md](./STATIC_GENERATOR_PLAN.md), the walkthrough is in
 [DEMO_GUIDE.md](./DEMO_GUIDE.md), and the complete evidence matrix is in

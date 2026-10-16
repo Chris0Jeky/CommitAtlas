@@ -1,7 +1,7 @@
 "use client";
 
 import type { HostedMotionProfile, ScenePack } from "@/packages/svg/src/index";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 import { ChassisFooter, ConsoleHeader, STUDIO_LINKS } from "../chassis/console";
 import { WorkflowMap } from "../chassis/workflow-map";
 import {
@@ -37,6 +37,7 @@ import {
   isCopyableStudioOrigin,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
+  studioSelectionFromQuery,
   type StudioCardKind,
 } from "./studio-urls";
 import {
@@ -169,14 +170,24 @@ export default function StudioClient() {
   const [theme, setTheme] = useState("ember");
   const [motion, setMotion] = useState<HostedMotionProfile>("subtle");
   const [pack, setPack] = useState<ScenePack>("survey");
-  const [selectedScenes, setSelectedScenes] = useState<Set<string>>(() => new Set());
+  const gallerySearch = useSyncExternalStore(() => () => {}, () => window.location.search, () => "");
+  const gallerySelection = studioSelectionFromQuery(gallerySearch);
+  const [sceneOverride, setSceneOverride] = useState<Set<string> | null>(null);
+  const [cardOverride, setCardOverride] = useState<Set<CardKind> | null>(null);
+  const selectedScenes = useMemo(
+    () => sceneOverride ?? new Set<string>(gallerySelection.scene ? [gallerySelection.scene] : []),
+    [gallerySelection.scene, sceneOverride],
+  );
+  const selectedCards = useMemo(
+    () => cardOverride ?? new Set<CardKind>(gallerySelection.card ? [gallerySelection.card] : ["atlas", "projects"]),
+    [cardOverride, gallerySelection.card],
+  );
   const [sceneView, setSceneView] = useState<ScenePreviewView>("profile");
   const [sceneReplay, setSceneReplay] = useState(0);
   const [renderedCards, setRenderedCards] = useState<ReadonlyMap<string, SceneImageReceipt>>(() => new Map());
   const [renderedScenes, setRenderedScenes] = useState<ReadonlyMap<string, SceneImageReceipt>>(() => new Map());
   const [layout, setLayout] = useState<"wide" | "compact">("wide");
   const [projects, setProjects] = useState<ProjectDraft[]>(starterProjects);
-  const [selectedCards, setSelectedCards] = useState<Set<CardKind>>(() => new Set(["atlas", "projects"]));
   const [profile, setProfile] = useState<ProfileSnapshot>(starterProfile);
   const [contributions, setContributions] = useState<ContributionSnapshot | null>(starterContributions);
   const [board, setBoard] = useState<ProjectBoardSnapshot | null>(null);
@@ -442,8 +453,8 @@ export default function StudioClient() {
 
   function toggleCard(kind: CardKind) {
     setRenderedCards(current => { const next = new Map(current); next.delete(kind); return next; });
-    setSelectedCards((current) => {
-      const next = new Set(current);
+    setCardOverride((current) => {
+      const next = new Set(current ?? selectedCards);
       if (next.has(kind)) next.delete(kind);
       else next.add(kind);
       return next;
@@ -530,8 +541,8 @@ export default function StudioClient() {
             <legend>Scenes to show &amp; copy</legend>
             {STUDIO_SCENE_IDS.map((id) => (
               <label key={id}>
-                <input type="checkbox" checked={selectedScenes.has(id)} onChange={() => setSelectedScenes((current) => {
-                  const next = new Set(current);
+                <input type="checkbox" checked={selectedScenes.has(id)} onChange={() => setSceneOverride((current) => {
+                  const next = new Set(current ?? selectedScenes);
                   if (next.has(id)) next.delete(id);
                   else next.add(id);
                   return next;

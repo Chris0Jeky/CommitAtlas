@@ -44,14 +44,22 @@ export function ConsoleHeader({
 export const LANDING_LINKS = [
   { href: "#capabilities", label: "Capabilities" },
   { href: "#cards", label: "Examples" },
+  { href: "/gallery", label: "Gallery" },
   { href: "/studio", label: "Studio" },
   { href: SOURCE_REPOSITORY, label: "GitHub", external: true },
 ] as const;
 
 export const STUDIO_LINKS = [
   { href: "/", label: "Overview" },
+  { href: "/gallery", label: "Gallery" },
   { href: "#configure", label: "Configure" },
   { href: "#preview", label: "Preview" },
+  { href: SOURCE_REPOSITORY, label: "GitHub", external: true },
+] as const;
+
+export const GALLERY_LINKS = [
+  { href: "/", label: "Overview" },
+  { href: "/studio", label: "Studio" },
   { href: SOURCE_REPOSITORY, label: "GitHub", external: true },
 ] as const;
 
