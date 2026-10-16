@@ -7,7 +7,9 @@ import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
   buildStudioSceneUrl,
+  buildStudioSourceUrl,
   isCopyableStudioOrigin,
+  isValidStudioOwner,
   studioSelectionFromQuery,
   isStudioPreviewCurrent,
   resolveStudioBaseUrl,
@@ -324,4 +326,12 @@ test("pack and scene selection change the preview configuration key", () => {
   assert.equal(key, buildStudioConfigurationKey({ ...baseline, pack: "survey", scenes: [] }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, pack: "orbital" }));
   assert.notEqual(key, buildStudioConfigurationKey({ ...baseline, scenes: ["evidence-coverage"] }));
+});
+
+test("the pre-preview Source link needs a valid handle", () => {
+  assert.equal(isValidStudioOwner("foo bar"), false);
+  assert.equal(buildStudioSourceUrl("foo bar", "Hello-World"), null);
+  assert.equal(buildStudioSourceUrl("octocat", " "), null);
+  assert.equal(isValidStudioOwner("octocat"), true);
+  assert.equal(buildStudioSourceUrl("octocat", "Hello World"), "https://github.com/octocat/Hello%20World");
 });

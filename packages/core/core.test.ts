@@ -200,6 +200,10 @@ describe("core contracts", () => {
     expect(() => resolveAutoWindow([])).toThrow("empty calendar");
   });
 
+  it("rejects automatic windows with invalid dates", () => {
+    expect(() => resolveAutoWindow([{ date: "not-a-date", count: 1 }])).toThrow();
+  });
+
   it("derives a transparent contribution summary without claiming a global rank", () => {
     const days = Array.from({ length: 84 }, (_, index) => ({
       date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
