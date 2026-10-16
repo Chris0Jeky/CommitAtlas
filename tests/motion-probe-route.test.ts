@@ -50,13 +50,30 @@ test("serves each canonical motion fixture byte-for-byte through the SVG respons
   }
 });
 
-test("returns a bounded uncached error for unknown and path-like probe ids", async () => {
+test("returns 404 for unknown probe ids", async () => {
   for (const probe of [
+    "nope.svg",
     "unknown.svg",
     "constructor.svg",
     "toString.svg",
     "../css-breathe.svg",
     "css-breathe%2F..%2Fother.svg",
+  ]) {
+    const response = await GET(
+      new Request(`https://example.test/api/v1/probes/motion/${probe}`),
+      { params: Promise.resolve({ probe }) },
+    );
+    assert.equal(response.status, 404, probe);
+    assert.equal(response.headers.get("cache-control"), "no-store", probe);
+    assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/, probe);
+    const body = await response.json() as { status?: string; error?: { code?: string } };
+    assert.equal(body.status, "error", probe);
+    assert.equal(body.error?.code, "github_not_found", probe);
+  }
+});
+
+test("returns a bounded uncached error for malformed probe ids", async () => {
+  for (const probe of [
     "css-breathe",
     "css-breathe.svg/other",
     "css-breathe.svg?x=<svg>",
