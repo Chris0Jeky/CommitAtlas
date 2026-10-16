@@ -2,7 +2,7 @@ import { ProjectLifecycleSchema, type ProjectLifecycle } from "@commit-atlas/cor
 import type { ProjectWorkflow } from "./types.js";
 import { decodeWorkflowMapComponent } from "./workflow-map.js";
 
-const HANDLE = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
+const HANDLE = /^(?!.*--)[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 const REPOSITORY = /^(?!\.{1,2}$)(?!.*\.\.)[a-z\d._-]{1,100}$/i;
 const MAX_WORKFLOW_CODE_POINTS = 200;
 const MAX_PROJECTS = 6;
