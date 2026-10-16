@@ -172,8 +172,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
       rhythm: metrics.rhythm,
     }, { ...common, width });
   }
-  if (selected.has("languages")) {
-    if (profile.repositoriesTruncated) throw new Error("Language distribution is unavailable for a truncated repository list");
+  if (selected.has("languages") && !profile.repositoriesTruncated) {
+    // Skip when truncated: an unknown language mix must not look like a real result.
     artifacts["languages.svg"] = renderLanguagesCard({
       ...toCardEvidence(profile.freshness),
       languages: profile.primaryLanguages.map((language) => ({ name: language.name, percentage: language.share })),
