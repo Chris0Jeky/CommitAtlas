@@ -71,7 +71,7 @@ export const SOURCE_REPOSITORY = "https://github.com/Chris0Jeky/CommitAtlas";
  * rule that governs the product's CI freshness governs its sitemap too. Google ignores both fields
  * outright, so keeping them would be pure assertion for no benefit.
  */
-export const INDEXABLE_PAGES: readonly string[] = ["/", "/studio"];
+export const INDEXABLE_PAGES: readonly string[] = ["/", "/studio", "/gallery"];
 
 /** Absolute URL for a site-relative path, with no chance of a double slash. */
 export function absoluteUrl(path: string): string {
