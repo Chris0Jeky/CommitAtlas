@@ -43,6 +43,7 @@ test("an unavailable beacon is not labelled observed, and the finding stays C0",
   assert.match(finding.svg, />C0</);
   assert.match(finding.svg, />reject</);
   assert.match(finding.svg, /WB-C1 method trial/);
+  assert.match(finding.svg, /<rect width="720" height="180" fill="#11110f"\/>/);
   assert.equal(finding.studioHref, "/#research-bridge-title");
 
   const joined = first.tiles.map((tile) => `${tile.note}\n${tile.svg}`).join("\n");

@@ -301,7 +301,7 @@ function findingTile(): GalleryTile {
   const title = escapeXml(summary.trial.title);
   const verdict = escapeXml(summary.trial.verdict);
   const grade = escapeXml(summary.classification);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${title}" viewBox="0 0 720 180"><title>${title}</title><desc>Classification ${grade}. Decision ${verdict}.</desc><text x="24" y="48" fill="#edf0e2" font-size="14">${grade}</text><text x="24" y="80" fill="#edf0e2" font-size="14">${verdict}</text><text x="24" y="120" fill="#edf0e2" font-size="16">${title}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${title}" viewBox="0 0 720 180"><title>${title}</title><desc>Classification ${grade}. Decision ${verdict}.</desc><rect width="720" height="180" fill="#11110f"/><text x="24" y="48" fill="#edf0e2" font-size="14">${grade}</text><text x="24" y="80" fill="#edf0e2" font-size="14">${verdict}</text><text x="24" y="120" fill="#edf0e2" font-size="16">${title}</text></svg>`;
   return tile({
     id: "wbc1",
     label: "WB-C1",
