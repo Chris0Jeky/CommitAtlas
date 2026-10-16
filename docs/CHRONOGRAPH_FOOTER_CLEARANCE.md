@@ -8,4 +8,4 @@ At main `290f4d801ccb7a2040d453791c3cff6f597b125a`, the 480-unit-high SVG has fo
 
 The new test is included in the package's explicit normal test list. Local validation passed 33 new tests and the 36 existing chronograph tests, including the overlap counterexample. Exact-head full CI remains the merge gate.
 
-The separate #344 slow-clock, M2 needle-settle and coincident-release-label work remains open. No runtime, Action bundle, hosted allowlist or motion policy changes are part of this regression-only slice.
+The slow clock is now the 666/4662/19980 ms triple. Coincident release labels were already shipped. The needle stays on its true angle: a settle animation would replace the transform and show a false reading at frame zero. Timed browser captures are still absent, so issue 344 stays open. Neither slice changes the hosted allowlist. The hosted catalogue includes chronograph.
