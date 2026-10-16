@@ -32,6 +32,17 @@ test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseRepositoryNames("../secret"), /invalid/);
 });
 
+test("rejects dot-only and double-dot repository names", () => {
+  assert.throws(() => parseRepositoryNames("a..b"), /invalid/);
+  assert.throws(() => parseRepositoryNames("."), /invalid/);
+  assert.throws(() => parseRepositoryNames(".."), /invalid/);
+  assert.deepEqual(parseRepositoryNames("alpha, beta.repo, gamma_repo"), [
+    "alpha",
+    "beta.repo",
+    "gamma_repo",
+  ]);
+});
+
 test("requires an explicit core lifecycle for every requested repository", () => {
   const states = parseLifecycleMap("alpha:active,beta:maintenance,gamma:planned", ["alpha", "beta", "gamma"]);
   assert.equal(states.get("alpha"), "active");
