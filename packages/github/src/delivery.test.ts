@@ -285,6 +285,39 @@ test("explicit benchmark provenance requires a real calendar date", () => {
   }
 });
 
+test("deriveDeliverySnapshot requires repository query identity to match the plan", () => {
+  const queryPlan = buildDeliveryQueryPlan({
+    login: "octo",
+    repositories: ["octo/a"],
+    asOf: AS_OF,
+  });
+  const counts: Record<string, number> = Object.fromEntries(queryPlan.queries.map(({ alias }) => [alias, 0]));
+  Object.assign(counts, {
+    lifetimeAuthored: 5,
+    lifetimeMerged: 3,
+    lifetimeClosed: 4,
+    lifetimeOpen: 1,
+    lifetimeDrafts: 0,
+    opened7: 1,
+    merged7: 1,
+    opened30: 2,
+    merged30: 2,
+    opened90: 3,
+    merged90: 2,
+    opened365: 5,
+    merged365: 3,
+    repoOpened30_0: 2,
+  });
+  const aligned = deriveDeliverySnapshot({ plan: queryPlan, counts });
+  assert.equal(aligned.repositories.length, 1);
+  assert.equal(aligned.repositories[0]?.repository, "octo/a");
+  const swapped: DeliveryQueryPlan = {
+    ...queryPlan,
+    queries: queryPlan.queries.map((query) => (query.repository ? { ...query, repository: "octo/b" } : query)),
+  };
+  assert.throws(() => deriveDeliverySnapshot({ plan: swapped, counts }), /repositor/i);
+});
+
 test("explicit benchmark provenance requires an absolute HTTPS URL without credentials or controls", () => {
   const queryPlan = plan();
   for (const sourceUrl of ["https://", "https:///", "https:example.invalid", "https:///example.invalid", "http://example.invalid", "https://[bad", "https://example.invalid:99999", "https://user:secret@example.invalid", "https://example.invalid/\nreport", "https://example.invalid/ report", " https://example.invalid", "https://example.invalid\\report", null, 7]) {
