@@ -91,8 +91,8 @@ const CARD_FAMILY: Record<GalleryCardId, GalleryFamily> = {
   activity: "instrument",
   languages: "instrument",
   projects: "instrument",
-  cadence: "map",
-  releases: "map",
+  cadence: "instrument",
+  releases: "instrument",
 };
 
 const CARD_LABEL: Record<GalleryCardId, string> = {

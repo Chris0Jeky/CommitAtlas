@@ -67,6 +67,7 @@ test("motion none emits no stylesheet, and lifecycle is declared rather than a s
   assert.equal(chronograph.studioHref, "/studio?scene=chronograph");
   assert.equal(first.tiles.find((tile) => tile.id === "cadence")?.studioHref, "/studio");
   assert.equal(first.tiles.find((tile) => tile.id === "atlas")?.studioHref, "/studio?card=atlas");
+  for (const id of GALLERY_CARD_IDS) assert.equal(first.tiles.find((tile) => tile.id === id)?.family, "instrument", `${id} is a shipped card, so an Instrument`);
 });
 
 test("gallery responses carry a stable weak entity tag", async () => {
