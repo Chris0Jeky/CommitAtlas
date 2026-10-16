@@ -139,6 +139,14 @@ test("buildDeliveryQueryPlan rejects unsafe, duplicate, cross-owner, empty, and 
   }), /repository/i);
 });
 
+test("buildDeliveryQueryPlan rejects dot-segment repository names", () => {
+  assert.throws(() => buildDeliveryQueryPlan({
+    login: "octocat",
+    repositories: ["octocat/.."],
+    asOf: AS_OF,
+  }), /repository/i);
+});
+
 test("deriveDeliverySnapshot calculates transparent high-volume flow signals", () => {
   const queryPlan = plan();
   const snapshot = deriveDeliverySnapshot({
@@ -275,6 +283,39 @@ test("explicit benchmark provenance requires a real calendar date", () => {
     assert.equal(deriveDeliverySnapshot({ plan: queryPlan, counts: validCounts(queryPlan),
       benchmark: { ...SYNTHETIC_BENCHMARK, publishedAt } }).benchmark?.publishedAt, publishedAt);
   }
+});
+
+test("deriveDeliverySnapshot requires repository query identity to match the plan", () => {
+  const queryPlan = buildDeliveryQueryPlan({
+    login: "octo",
+    repositories: ["octo/a"],
+    asOf: AS_OF,
+  });
+  const counts: Record<string, number> = Object.fromEntries(queryPlan.queries.map(({ alias }) => [alias, 0]));
+  Object.assign(counts, {
+    lifetimeAuthored: 5,
+    lifetimeMerged: 3,
+    lifetimeClosed: 4,
+    lifetimeOpen: 1,
+    lifetimeDrafts: 0,
+    opened7: 1,
+    merged7: 1,
+    opened30: 2,
+    merged30: 2,
+    opened90: 3,
+    merged90: 2,
+    opened365: 5,
+    merged365: 3,
+    repoOpened30_0: 2,
+  });
+  const aligned = deriveDeliverySnapshot({ plan: queryPlan, counts });
+  assert.equal(aligned.repositories.length, 1);
+  assert.equal(aligned.repositories[0]?.repository, "octo/a");
+  const swapped: DeliveryQueryPlan = {
+    ...queryPlan,
+    queries: queryPlan.queries.map((query) => (query.repository ? { ...query, repository: "octo/b" } : query)),
+  };
+  assert.throws(() => deriveDeliverySnapshot({ plan: swapped, counts }), /repositor/i);
 });
 
 test("explicit benchmark provenance requires an absolute HTTPS URL without credentials or controls", () => {

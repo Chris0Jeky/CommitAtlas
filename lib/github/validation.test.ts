@@ -32,6 +32,17 @@ test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseRepositoryNames("../secret"), /invalid/);
 });
 
+test("rejects dot-only and double-dot repository names", () => {
+  assert.throws(() => parseRepositoryNames("a..b"), /invalid/);
+  assert.throws(() => parseRepositoryNames("."), /invalid/);
+  assert.throws(() => parseRepositoryNames(".."), /invalid/);
+  assert.deepEqual(parseRepositoryNames("alpha, beta.repo, gamma_repo"), [
+    "alpha",
+    "beta.repo",
+    "gamma_repo",
+  ]);
+});
+
 test("requires an explicit core lifecycle for every requested repository", () => {
   const states = parseLifecycleMap("alpha:active,beta:maintenance,gamma:planned", ["alpha", "beta", "gamma"]);
   assert.equal(states.get("alpha"), "active");
@@ -60,6 +71,16 @@ test("aligns optional workflow identities to the requested repository subset", (
   for (const workflow of [".", "..", ".github/../ci.yml", ".github\\..\\ci.yml"]) {
     assert.throws(() => parseWorkflowMap(`alpha:${workflow}`, ["alpha"]), /invalid/);
   }
+});
+
+test("rejects C0 and C1 controls in workflow identities", () => {
+  const c1 = String.fromCharCode(0x80);
+  const del = String.fromCharCode(0x7f);
+  const lastC1 = String.fromCharCode(0x9f);
+  assert.throws(() => parseWorkflowMap(`myrepo:work${c1}flow`, ["myrepo"]), InputError);
+  assert.throws(() => parseWorkflowMap(`myrepo:work${del}flow`, ["myrepo"]), InputError);
+  assert.throws(() => parseWorkflowMap(`myrepo:work${lastC1}flow`, ["myrepo"]), InputError);
+  assert.equal(parseWorkflowMap("myrepo:ci.yml", ["myrepo"]).get("myrepo"), "ci.yml");
 });
 
 test("round-trips workflow map delimiters and literal escape-looking text", () => {

@@ -1408,3 +1408,11 @@ button, input, select, textarea { font: inherit; }
 .scene-image-tools button { font: inherit; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border); background: transparent; color: inherit; border-radius: 4px; cursor: pointer; }
 .scene-image-tools button[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 1px; }
 .scene-preview-status { padding: 0 16px; font-size: 12px; line-height: 1.5; }
+
+.gallery-page { padding-block: 32px; }
+.gallery-page h1 { margin: 0 0 8px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.gallery-grid article { background: var(--plate); color: var(--ink); border: 1px solid var(--line); padding: 16px; overflow: auto; }
+.gallery-grid h3 { margin: 0 0 8px; }
+.gallery-grid p { color: var(--muted); margin: 0 0 6px; }
+.gallery-grid svg { display: block; max-width: 100%; height: auto; background: var(--ground); }
