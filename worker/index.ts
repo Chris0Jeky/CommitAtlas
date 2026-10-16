@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { InputError } from "@/lib/github/validation";
 import { apiErrorResponse } from "@/lib/http";
+import { stampGalleryResponse } from "@/lib/gallery";
 import { withPublicLastGood, type LastGoodStore } from "@/lib/last-good";
 import { getGitHubToken, withWorkerEnv, type CommitAtlasWorkerEnv } from "@/lib/runtime-env";
 
@@ -58,6 +59,9 @@ const worker = {
     }
 
     return withWorkerEnv(env, async () => {
+      if (url.pathname === "/gallery") {
+        return stampGalleryResponse(request, await handler.fetch(request, env, ctx));
+      }
       const binding = (env as Partial<CloudflareBindings>).LAST_GOOD;
       const store: LastGoodStore | undefined = binding ? {
         get: (key) => binding.get(key, "text"),

@@ -42,6 +42,21 @@ export interface StudioRouteOptions {
   scenes?: readonly string[];
 }
 
+const STUDIO_QUERY_CARDS: readonly StudioCardKind[] = [
+  "atlas", "profile", "streak", "breakdown", "rhythm", "activity", "languages", "projects",
+];
+
+/** Apply a gallery link only for cards and scenes the Studio checkboxes can select. */
+export function studioSelectionFromQuery(search: string): { card: StudioCardKind | null; scene: string | null } {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const card = params.get("card");
+  const scene = params.get("scene");
+  return {
+    card: card !== null && (STUDIO_QUERY_CARDS as readonly string[]).includes(card) ? card as StudioCardKind : null,
+    scene: scene !== null && (STUDIO_SCENE_IDS as readonly string[]).includes(scene) ? scene : null,
+  };
+}
+
 export function buildStudioConfigurationKey(options: StudioRouteOptions): string {
   return JSON.stringify({
     owner: options.owner.trim(),

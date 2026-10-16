@@ -935,3 +935,75 @@ test("the built Worker attributes workflow status only to the captured default-b
     assert.equal(payload.freshness.mode, matches ? "live" : "partial");
   }
 });
+
+async function registeredGalleryCount() {
+  const gallery = await readFile(new URL("../lib/gallery.ts", import.meta.url), "utf8");
+  const cards = /export const GALLERY_CARD_IDS = \[([\s\S]*?)\] as const/.exec(gallery);
+  assert.ok(cards);
+  const scene = await readFile(new URL("../packages/svg/src/scene.ts", import.meta.url), "utf8");
+  const builtins = /function loadBuiltins\(\): void \{([\s\S]*?)\n\}/.exec(scene);
+  assert.ok(builtins);
+  const cardCount = [...cards[1].matchAll(/"([a-z0-9-]+)"/g)].length;
+  const sceneCount = [...builtins[1].matchAll(/registry\.set\(/g)].length;
+  const findingCount = [...gallery.matchAll(/(?<!function )findingTile\(\)/g)].length;
+  return cardCount + sceneCount + findingCount;
+}
+
+test("the gallery lists every registered output without calling GitHub", async () => {
+  const load = () => withMockedFetch(() => {
+    throw new Error("gallery must not call GitHub");
+  }, () => request("/gallery"));
+  const first = await load();
+  assert.equal(first.status, 200);
+  assert.match(first.headers.get("content-type") ?? "", /^text\/html\b/i);
+  const etag = first.headers.get("etag") ?? "";
+  assert.match(etag, /^W\/"[a-f0-9]{64}"$/);
+  assert.equal(first.headers.get("cache-control"), "no-store, must-revalidate");
+  const html = await first.text();
+  for (const heading of ["Instruments", "Maps", "Signatures", "Scenes", "Findings"]) {
+    assert.match(html, new RegExp(`<h2[^>]*>${heading}</h2>`));
+  }
+  assert.match(html, /None registered\./);
+  assert.equal([...html.matchAll(/<h2\b/g)].length, 5);
+  const articles = [...html.matchAll(/<article\b[\s\S]*?<\/article>/g)].map((match) => match[0]);
+  const count = Number(/data-gallery-count="(\d+)"/.exec(html)?.[1]);
+  assert.equal(articles.length, count);
+  assert.equal(count, await registeredGalleryCount());
+  assert.equal((html.match(/data-marker="synthetic-demo"/g) ?? []).length, count);
+  assert.match(html.replaceAll("<!-- -->", ""), new RegExp(`>${count} outputs<`));
+  const beacon = articles.find((article) => article.includes('data-gallery-id="identity-beacon"'));
+  assert.ok(beacon);
+  assert.match(beacon, /data-rung="unavailable"/);
+  assert.match(beacon, /UNAVAILABLE/);
+  assert.doesNotMatch(beacon, /data-rung="observed"/);
+  const finding = articles.find((article) => article.includes('data-gallery-id="wbc1"'));
+  assert.ok(finding);
+  assert.match(finding, /data-rung="C0"/);
+  assert.match(finding, />C0</);
+  assert.match(finding, />reject</);
+  assert.doesNotMatch(html, /promoted/i);
+  for (const article of articles) {
+    const text = article.replaceAll("<!-- -->", "");
+    assert.match(text, /data-gallery-family="(?:instrument|map|signature|scene|finding)"/);
+    assert.match(text, /data-rung="(?:observed|derived|hypothesis|C0|declared|partial|stale|unavailable)"/);
+    assert.match(text, /data-pack="\S+"/);
+    assert.match(text, /data-motion="\S+"/);
+    assert.match(text, /<p>Family (?:Instruments|Maps|Signatures|Scenes|Findings)<\/p>/);
+    assert.match(text, /<p>Evidence (?:observed|derived|hypothesis|C0|declared|partial|stale|unavailable)<\/p>/);
+    assert.match(text, /<p>Pack \S+<\/p>/);
+    assert.match(text, /<p>Motion \S+<\/p>/);
+    assert.doesNotMatch(article, /<style/i);
+  }
+  const lifecycle = articles.find((article) => article.includes('data-gallery-id="lifecycle-map"'));
+  assert.ok(lifecycle);
+  assert.match(lifecycle, /data-rung="declared"/);
+
+  const second = await load();
+  assert.equal(await second.text(), html);
+  assert.equal(second.headers.get("etag"), etag);
+  const cached = await withMockedFetch(() => {
+    throw new Error("gallery must not call GitHub");
+  }, () => request("/gallery", {}, { headers: { "if-none-match": etag } }));
+  assert.equal(cached.status, 304);
+  assert.equal(cached.headers.get("etag"), etag);
+});
