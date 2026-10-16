@@ -1,7 +1,7 @@
 const DELIVERY_WINDOW_DAYS = [7, 30, 90, 365] as const;
 const MAX_DELIVERY_REPOSITORIES = 6;
 const HANDLE_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
-const REPOSITORY_NAME_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
+const REPOSITORY_NAME_PATTERN = /^(?!\.{1,2}$)(?!.*\.\.)[A-Za-z0-9._-]{1,100}$/;
 
 export type DeliveryWindowDays = (typeof DELIVERY_WINDOW_DAYS)[number];
 
