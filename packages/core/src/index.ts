@@ -191,6 +191,10 @@ export const AUTO_WINDOW_MIN_DAYS = 7;
 
 export function resolveAutoWindow(days: readonly { readonly date: string; readonly count: number }[]): number {
   if (days.length === 0) throw new Error("Cannot resolve an automatic window from an empty calendar");
+  for (const day of days) {
+    if (typeof day?.date !== "string" || !isUtcDate(day.date)) throw new Error(`Invalid contribution date: ${String(day?.date)}`);
+    if (typeof day?.count !== "number" || !Number.isSafeInteger(day.count) || day.count < 0) throw new Error(`Invalid contribution count: ${String(day?.count)}`);
+  }
   const sorted = [...days].sort((left, right) => left.date.localeCompare(right.date));
   const asOf = sorted.at(-1)?.date;
   const oldest = sorted[0]?.date;
