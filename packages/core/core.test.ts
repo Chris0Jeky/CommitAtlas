@@ -72,6 +72,17 @@ describe("core contracts", () => {
     }
   });
 
+  it("rejects empty workflow identities at parse time", () => {
+    const manifest = (workflow: string) => ({
+      version: 1 as const,
+      projects: [{ repo: "owner/repo", label: "repo", lifecycle: "active" as const, workflow, links: {} }],
+    });
+
+    for (const workflow of ["", "   "]) {
+      expect(() => parseManifest(manifest(workflow)), JSON.stringify(workflow)).toThrow();
+    }
+  });
+
   it("calculates current and longest UTC streaks across a leap day and a gap", () => {
     expect(calculateStreaks(calendar, { asOf: "2024-02-29" })).toMatchObject({
       current: 2,
@@ -187,6 +198,10 @@ describe("core contracts", () => {
     expect(resolveAutoWindow(history(50, 50))).toBe(50);
     expect(resolveAutoWindow([...history(731, 231)].reverse())).toBe(500);
     expect(() => resolveAutoWindow([])).toThrow("empty calendar");
+  });
+
+  it("rejects automatic windows with invalid dates", () => {
+    expect(() => resolveAutoWindow([{ date: "not-a-date", count: 1 }])).toThrow();
   });
 
   it("derives a transparent contribution summary without claiming a global rank", () => {
