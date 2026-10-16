@@ -294,6 +294,23 @@ test("a truncated repository list marks the static atlas partial and omits the p
   assert.doesNotMatch(rendered["atlas.svg"], />999</);
 });
 
+test("a truncated repository list skips the languages card instead of aborting generation", async () => {
+  const base = snapshot();
+  const truncated = { ...base, profile: { ...base.profile, repositoriesTruncated: true } };
+  const rendered = renderStaticArtifacts(truncated, config());
+  assert.ok(!("languages.svg" in rendered), "truncated output must omit languages.svg");
+  assert.ok("profile.svg" in rendered);
+  assert.ok("activity.svg" in rendered);
+  assert.ok("languages.svg" in renderStaticArtifacts(base, config()));
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-truncated-"));
+  try {
+    const dry = await generateStaticFromSnapshot({ root, config: config(), snapshot: truncated, dryRun: true });
+    assert.ok(dry.manifest.artifacts.every((artifact) => artifact.path !== "languages.svg"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("a stale contribution window stays stale when the repository list is truncated", () => {
   const base = snapshot();
   const rendered = renderStaticArtifacts({

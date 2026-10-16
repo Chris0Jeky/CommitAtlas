@@ -3,7 +3,7 @@ import type { ProjectWorkflow } from "./types.js";
 import { decodeWorkflowMapComponent } from "./workflow-map.js";
 
 const HANDLE = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
-const REPOSITORY = /^(?!\.\.?$)[a-z\d._-]{1,100}$/i;
+const REPOSITORY = /^(?!\.{1,2}$)(?!.*\.\.)[a-z\d._-]{1,100}$/i;
 const MAX_WORKFLOW_CODE_POINTS = 200;
 const MAX_PROJECTS = 6;
 const MAX_REPOSITORY_CHARACTERS = 100;
@@ -147,6 +147,6 @@ function isWorkflowIdentity(value: string): value is ProjectWorkflow {
     && !value.split(/[\\/]/).some((segment) => segment === "." || segment === "..")
     && ![...value].some((character) => {
       const code = character.codePointAt(0)!;
-      return code <= 0x1f || code === 0x7f;
+      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
     });
 }
