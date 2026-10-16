@@ -147,6 +147,6 @@ function isWorkflowIdentity(value: string): value is ProjectWorkflow {
     && !value.split(/[\\/]/).some((segment) => segment === "." || segment === "..")
     && ![...value].some((character) => {
       const code = character.codePointAt(0)!;
-      return code <= 0x1f || code === 0x7f;
+      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
     });
 }
