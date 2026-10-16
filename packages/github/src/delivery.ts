@@ -208,6 +208,11 @@ export function deriveDeliverySnapshot(input: {
   if (repositoryQueries.length !== input.plan.repositories.length) {
     throw new Error("Delivery query plan must contain one 30-day repository query per configured repository");
   }
+  const expectedRepositories = input.plan.repositories.map((repository) => repository.toLowerCase()).sort();
+  const actualRepositories = repositoryQueries.map((query) => query.repository.toLowerCase()).sort();
+  if (expectedRepositories.some((repository, index) => repository !== actualRepositories[index])) {
+    throw new Error("Delivery repository queries must match the configured repositories");
+  }
   const repositories = repositoryQueries.map((query): DeliveryRepositoryWindow => ({
     repository: query.repository,
     opened30: read(query.alias),
