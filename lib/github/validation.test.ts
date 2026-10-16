@@ -32,6 +32,13 @@ test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseRepositoryNames("../secret"), /invalid/);
 });
 
+test("rejects consecutive-hyphen handles at boundary", () => {
+  assert.throws(
+    () => parseGitHubHandle("a--b"),
+    (error: unknown) => error instanceof InputError && error.code === "invalid_input",
+  );
+});
+
 test("rejects dot-only and double-dot repository names", () => {
   assert.throws(() => parseRepositoryNames("a..b"), /invalid/);
   assert.throws(() => parseRepositoryNames("."), /invalid/);
