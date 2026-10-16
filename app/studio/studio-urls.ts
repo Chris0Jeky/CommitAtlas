@@ -30,6 +30,22 @@ export { HOSTED_SCENE_IDS as STUDIO_SCENE_IDS, HOSTED_SCENE_LABELS as STUDIO_SCE
   HOSTED_SCENE_PACKS as STUDIO_SCENE_SUPPORTED_PACKS } from "@/lib/hosted-scene-catalog";
 import { HOSTED_SCENE_IDS as STUDIO_SCENE_IDS } from "@/lib/hosted-scene-catalog";
 
+/** GitHub handle rule shared with the Studio preview gate. */
+export const STUDIO_HANDLE_PATTERN = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
+
+export function isValidStudioOwner(owner: string): boolean {
+  return STUDIO_HANDLE_PATTERN.test(owner.trim());
+}
+
+/** Pre-preview Source destination. Null when the owner handle is invalid. */
+export function buildStudioSourceUrl(owner: string, repo: string): string | null {
+  const login = owner.trim();
+  const name = repo.trim();
+  if (!login || !name) return null;
+  if (!isValidStudioOwner(login)) return null;
+  return `https://github.com/${login}/${encodeURIComponent(name)}`;
+}
+
 export interface StudioRouteOptions {
   owner: string;
   theme: string;

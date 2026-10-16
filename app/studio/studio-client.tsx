@@ -30,6 +30,8 @@ import {
   buildStudioConfigurationKey,
   buildStudioRouteUrl,
   buildStudioSceneUrl,
+  buildStudioSourceUrl,
+  isValidStudioOwner,
   STUDIO_PREVIEW_DAYS,
   STUDIO_SCENE_IDS,
   STUDIO_SCENE_LABELS,
@@ -338,7 +340,7 @@ export default function StudioClient() {
   async function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const login = handle.trim();
-    if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) {
+    if (!isValidStudioOwner(login)) {
       setPhase("error");
       setNotice(retainedPreviewNotice("Enter a valid GitHub handle before previewing.", profile.login));
       return;
@@ -728,11 +730,18 @@ function StarterProjectRow({ project, owner }: { project: ProjectDraft; owner: s
   const docs = describeProjectActionUrl(project.docs);
   const install = describeProjectActionUrl(project.install);
   const download = describeProjectActionUrl(project.download);
-  const actions = [["Source", `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(project.repo.trim())}`], ["Docs", docs.href], ["Install", install.href], ["Download", download.href]].filter((item): item is [string, string] => Boolean(item[1]));
+  const trimmedOwner = owner.trim();
+  const ownerValid = isValidStudioOwner(trimmedOwner);
+  const sourceHref = buildStudioSourceUrl(trimmedOwner, project.repo);
+  const sourceInvalid = !ownerValid && project.repo.trim()
+    ? { raw: `${trimmedOwner}/${project.repo.trim()}`, error: "Enter a valid GitHub handle before following the Source link." }
+    : null;
+  const actions = [["Source", sourceHref], ["Docs", docs.href], ["Install", install.href], ["Download", download.href]].filter((item): item is [string, string] => Boolean(item[1]));
   const invalid = [
     { label: "Docs", presentation: docs },
     { label: "Install", presentation: install },
     { label: "Download", presentation: download },
+    ...(sourceInvalid ? [{ label: "Source", presentation: { raw: sourceInvalid.raw, href: null, error: sourceInvalid.error } }] : []),
   ].filter((item) => item.presentation.error);
   return <article className="dashboard-project synthetic"><div className="project-title"><span className="signal-mark" data-state={ci.state} aria-hidden="true" /><div><h4>{project.repo}</h4><p>Synthetic project preview — run Preview to load the API.</p></div><span className="lifecycle-chip">{project.lifecycle}</span></div><dl><div><dt>CI</dt><dd className={ci.tone}>{ci.label}</dd></div><div><dt>Release</dt><dd>Unavailable</dd></div><div><dt>Workflow</dt><dd>{ci.workflowLabel}</dd></div><div><dt>Source</dt><dd>Synthetic</dd></div></dl><div className="project-actions">{actions.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer">{label}<span aria-hidden="true">↗</span></a>)}{invalid.map(({ label, presentation }) => <span key={label} className="project-action-invalid">{label}: {presentation.raw} <small role="alert">{presentation.error}</small></span>)}</div></article>;
 }
