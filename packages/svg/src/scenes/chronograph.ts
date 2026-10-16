@@ -13,8 +13,8 @@ const MAX_WEEK_INDEX = Math.ceil(MAX_WINDOW_DAYS / 7) + 2;
 const NEEDLE_CAP = 30;
 const RING_FRACTIONS = [0.42, 0.68, 0.94] as const;
 const RING_TARGETS = ['ringDay', 'ringWeek', 'ringMonth'] as const;
-// Day, week, and month rings: 600ms × 1 / 7 / 30, inside the compiler's 60..20000ms range.
-const RING_PERIODS = [600, 4_200, 18_000] as const;
+// Slowest exact integer 1:7:30 triple inside the compiler's 60..20000ms range.
+const RING_PERIODS = [666, 4_662, 19_980] as const;
 const RING_GROUPS = ['day', 'week', 'month'] as const;
 const FACE_TICKS = [-90, -60, -30, 0, 30, 60, 90] as const;
 const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';

@@ -91,9 +91,12 @@ test('chronograph passes the shared harness and keeps ring motion decorative', (
   assert.equal(stripSceneMotion(moving.svg), still.svg);
   assert.equal(moving.counters.loopingGroups, 3);
   assert.ok(moving.counters.loopingGroups <= 4);
-  assert.match(moving.svg, /dur="0\.6s"/u);
-  assert.match(moving.svg, /dur="4\.2s"/u);
-  assert.match(moving.svg, /dur="18s"/u);
+  assert.match(moving.svg, /dur="0\.666s"/u);
+  assert.match(moving.svg, /dur="4\.662s"/u);
+  assert.match(moving.svg, /dur="19\.98s"/u);
+  assert.equal(4662 / 666, 7);
+  assert.equal(19980 / 666, 30);
+  assert.ok(19980 <= 20000);
   assert.match(still.svg, /rotate\(-54 /u);
   const subtle = render(undefined, { motion: 'subtle', backend: 'smil' });
   assert.equal(subtle.counters.animatedElements, 7);
@@ -307,6 +310,20 @@ for (const [label, change] of [
   const value = inputs(); change(value.snapshot.projects.projects[0]);
   const result = definition().buildModel(value);
   assert.deepEqual(result.releases, []); assert.equal(result.releasesBlocked, true);
+});
+
+test('the needle keeps the true angle and has no animation child', () => {
+  const moving = render(undefined, { motion: 'ambient', backend: 'smil' });
+  const needle = parseSceneXml(moving.svg).nodes.find(node => node.name === 'g' && node.attrs.id?.endsWith('-needle'));
+  assert.ok(needle);
+  assert.match(needle.attrs.transform ?? '', /rotate\(-54 /u);
+  assert.equal(needle.children.some(node => node.name === 'animate' || node.name === 'animateTransform'), false);
+  assert.doesNotMatch(render(undefined, { motion: 'none' }).svg, /<animate/u);
+  const stale = inputs();
+  stale.snapshot.freshness.mode = 'stale';
+  const staleSvg = render(stale, { motion: 'ambient', backend: 'smil' }).svg;
+  assert.doesNotMatch(staleSvg, /<animate/u);
+  assert.match(staleSvg, /rotate\(-54 /u);
 });
 
 test('chronograph does not animate stale observations in either backend', () => {

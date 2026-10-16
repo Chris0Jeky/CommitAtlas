@@ -36,8 +36,12 @@ mixed provenance. Thirty-six focused tests pass after repair, with existing full
 and frame-zero tests retained. A local CairoSVG static review covers four themes, both
 layouts and fresh/stale/blocked/zero states. It is not timed-browser or Camo evidence.
 
-This repair does not claim the complete #136 motion brief. The existing 0.6/4.2/18-second
-ring periods are unchanged and are not the requested slow clock motion. The M2 needle
-settle sequence is also not implemented. Those require a separately reviewed motion-policy
-change and timed evidence; byte/element budgets must not be raised to conceal a mismatch.
-The current hosted allowlist does not expose chronograph, and this repair does not widen it.
+This repair does not claim the complete #136 motion brief. The slow clock is the slowest
+exact integer 1:7:30 triple that fits the compiler's 60..20000 ms range: 666 ms, 4662 ms
+and 19980 ms (SMIL 0.666s, 4.662s and 19.98s). That triple replaces the earlier
+0.6/4.2/18-second periods. The M2 needle-settle sequence is deliberately not implemented:
+the rotate primitive always runs 0 to 360 and replaces transform, so animating the needle
+would show a false reading at frame zero. The needle stays on the true streak angle and
+has no animation child. Coincident release labels already ship as separate numbered rim
+markers and legend rows. The hosted catalogue includes chronograph; this change does not
+alter that allowlist. Timed browser captures are still absent, so issue 344 stays open.
