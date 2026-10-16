@@ -139,6 +139,14 @@ test("buildDeliveryQueryPlan rejects unsafe, duplicate, cross-owner, empty, and 
   }), /repository/i);
 });
 
+test("buildDeliveryQueryPlan rejects dot-segment repository names", () => {
+  assert.throws(() => buildDeliveryQueryPlan({
+    login: "octocat",
+    repositories: ["octocat/.."],
+    asOf: AS_OF,
+  }), /repository/i);
+});
+
 test("deriveDeliverySnapshot calculates transparent high-volume flow signals", () => {
   const queryPlan = plan();
   const snapshot = deriveDeliverySnapshot({
