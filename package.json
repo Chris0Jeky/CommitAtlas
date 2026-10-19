@@ -71,7 +71,7 @@
     "test:dependency-codecs": "node --test tests/dependency-codecs.test.mjs"
   },
   "dependencies": {
-    "react": "^19.3.0",
+    "react": "^19.3.1",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5"
   },
