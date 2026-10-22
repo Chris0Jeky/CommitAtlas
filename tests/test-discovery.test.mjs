@@ -13,7 +13,18 @@ const root = new URL("..", import.meta.url);
 const tracked = (pattern) =>
   execFileSync("git", ["ls-files", "-z", "--", pattern], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
 
-// Model the explicit npm invocations and && chains used in package scripts, not a shell.
+// Tokenize quoted words before splitting the shell operators used in package scripts.
+function scriptSegments(script) {
+  const segments = [{ operator: null, tokens: [] }];
+  for (const match of script.matchAll(/(?<operator>&&|\|\||;)|(?<word>(?:"[^"]*"|'[^']*'|[^\s"'&|;])+)/g)) {
+    const { operator, word } = match.groups;
+    if (operator) segments.push({ operator, tokens: [] });
+    else segments.at(-1).tokens.push(word.replace(/"([^"]*)"|'([^']*)'/g, (_, double, single) => double ?? single));
+  }
+  return segments;
+}
+
+// Model explicit test runners and npm invocations, not arbitrary shell execution.
 // Keys are repository-relative package directories; values are their scripts objects.
 export function collectReachableTests(packages) {
   const referenced = new Set();
@@ -26,12 +37,20 @@ export function collectReachableTests(packages) {
       throw new Error(`Missing npm script ${script} in ${dir}/package.json`);
     }
     visited.add(key);
-    for (const command of scripts[script].split("&&")) {
-      const tokens = (command.match(/"[^"]*"|'[^']*'|[^\s]+/g) ?? [])
-        .map((token) => token.replace(/^(["'])(.*)\1$/, "$2"));
-      for (const file of tokens.filter((token) => /\.test\.[cm]?[jt]sx?$/.test(token))) {
-        referenced.add(posix.join(dir, file));
+    for (const { operator, tokens } of scriptSegments(scripts[script])) {
+      // A fallback alone cannot prove that a suite runs on the successful path.
+      if (operator === "||") continue;
+      while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[0] ?? "") || tokens[0] === "cross-env") {
+        tokens.shift();
       }
+      const isRunner = (["node", "tsx"].includes(tokens[0]) && tokens[1] === "--test")
+        || tokens[0] === "vitest";
+      if (isRunner) {
+        for (const file of tokens.slice(1).filter((token) => /\.test\.[cm]?[jt]sx?$/.test(token))) {
+          referenced.add(posix.join(dir, file));
+        }
+      }
+      // npm's forwarded arguments are not proof that the target script uses them.
       if (tokens[0] !== "npm") continue;
       let targetDir = dir;
       let index = 1;
@@ -59,6 +78,43 @@ test("discovery follows transitive npm run, npm test and && chains", () => {
     "tests/nested.test.ts", "tests/alias.test.mjs", "tests/direct.test.mjs",
   ]));
 });
+
+for (const [label, check, expected] of [
+  ["forwarded npm arguments", "npm run noop -- tests/orphan.test.mjs", []],
+  ["non-runner arguments", "node noop.mjs tests/orphan.test.mjs", []],
+  ["fallback runner", "node success.mjs || node --test tests/orphan.test.mjs", []],
+  ["fallback npm script", "node success.mjs || npm run suite", []],
+  ["cross-env npm run", "cross-env MODE=test npm run suite", ["tests/suite.test.mjs"]],
+  ["semicolon chain", "node success.mjs; npm run suite", ["tests/suite.test.mjs"]],
+  ["quoted operator", 'node --test "tests/a&&b.test.mjs"', ["tests/a&&b.test.mjs"]],
+  ["quoted npm argument", 'npm run suite -- "a&&npm run missing"', ["tests/suite.test.mjs"]],
+]) {
+  test(`discovery handles ${label}`, () => {
+    const packages = new Map([[".", {
+      check, noop: "node noop.mjs", suite: "node --test tests/suite.test.mjs",
+    }]]);
+    assert.deepEqual(collectReachableTests(packages), new Set(expected));
+  });
+}
+
+test("discovery follows wrapped aliases and workspaces after shell operators", () => {
+  const packages = new Map([
+    [".", { check: 'MODE=test cross-env LABEL="a&&b; c||d" npm test; cross-env MODE=test npm --prefix packages/a run suite', test: "tsx --test tests/root.test.ts" }],
+    ["packages/a", { suite: "MODE=test cross-env EXTRA=yes node --test tests/local.test.mjs" }],
+  ]);
+  assert.deepEqual(collectReachableTests(packages), new Set([
+    "tests/root.test.ts", "packages/a/tests/local.test.mjs",
+  ]));
+});
+
+for (const runner of ["node --test", "tsx --test", "vitest", "vitest run"]) {
+  test(`discovery recognizes ${runner} with environment prefixes`, () => {
+    const packages = new Map([[".", {
+      check: `MODE=test cross-env LABEL='a&&b; c||d' ${runner} tests/suite.test.ts`,
+    }]]);
+    assert.deepEqual(collectReachableTests(packages), new Set(["tests/suite.test.ts"]));
+  });
+}
 
 test("discovery resolves prefixed scripts and test paths relative to each package", () => {
   const packages = new Map([
