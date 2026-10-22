@@ -200,6 +200,72 @@ test("a junction swapped into staged storage after preparation cannot redirect a
   await unchanged(f);
 });
 
+test("ancestor swaps after the target check stop writes and cleanup before outside mutation", async t => {
+  for (const operation of ["write", "cleanup"]) await t.test(operation, async t => {
+    let armed = false, swapped = false, victim, directory, outside, checks = 0;
+    async function swap() {
+      armed = false;
+      swapped = true;
+      await fs.rename(directory, `${directory}-saved`);
+      await fs.symlink(outside, directory, process.platform === "win32" ? "junction" : "dir");
+    }
+    const storage = { ...nodePublicationStorage, async lstat(file, ...args) {
+      let result, failure;
+      try { result = await fs.lstat(file, ...args); } catch (error) { failure = error; }
+      if (armed && operation === "write" && file === victim) await swap();
+      if (failure) throw failure;
+      return result;
+    }, async realpath(file, ...args) {
+      const result = await fs.realpath(file, ...args);
+      if (armed && operation === "cleanup" && file === victim && ++checks === 3) await swap();
+      return result;
+    } };
+    const f = await fixture(t, storage);
+    if (operation === "cleanup") { await prepared(f); await cleaning(f); }
+    else await f.store.createTransaction(f.journal);
+    victim = artifact(f.root, f.id, 0, "staged");
+    directory = path.dirname(victim);
+    outside = path.join(f.temp, "outside");
+    await fs.mkdir(outside);
+    const sentinel = path.join(outside, "atlas.svg");
+    if (operation === "cleanup") await fs.writeFile(sentinel, f.next.get("0:atlas.svg"));
+    armed = true;
+    await assert.rejects(operation === "write" ?
+      f.store.writeArtifact(f.id, 0, "atlas.svg", "staged", f.next.get("0:atlas.svg")) :
+      f.store.removeArtifact(f.id, 0, "atlas.svg", "staged"));
+    assert.equal(swapped, true);
+    if (operation === "write") assert.deepEqual(await fs.readdir(outside), []);
+    else assert.deepEqual(await fs.readFile(sentinel), f.next.get("0:atlas.svg"));
+    // Restoring the namespace must not silently revive this failed store's mutations.
+    await fs.unlink(directory);
+    await fs.rename(`${directory}-saved`, directory);
+    await assert.rejects(f.store.writeArtifact(f.id, 1, "new.svg", "staged", f.next.get("1:new.svg")), /containment|ancestor/);
+    await unchanged(f);
+  });
+});
+
+test("a swap inside exclusive open is detected before payload bytes are written", async t => {
+  let victim, directory, outside, armed = false;
+  const storage = { ...nodePublicationStorage, async open(file, ...args) {
+    if (armed && file === victim) {
+      armed = false;
+      await fs.rename(directory, `${directory}-saved`);
+      await fs.symlink(outside, directory, process.platform === "win32" ? "junction" : "dir");
+    }
+    return fs.open(file, ...args);
+  } };
+  const f = await fixture(t, storage);
+  await f.store.createTransaction(f.journal);
+  victim = artifact(f.root, f.id, 0, "staged");
+  directory = path.dirname(victim);
+  outside = path.join(f.temp, "outside");
+  await fs.mkdir(outside);
+  armed = true;
+  await assert.rejects(f.store.writeArtifact(f.id, 0, "atlas.svg", "staged", f.next.get("0:atlas.svg")));
+  // Path-based open can still create an empty file: this is a production blocker.
+  assert.equal((await fs.stat(path.join(outside, "atlas.svg"))).size, 0);
+});
+
 test("regular-file entry checks reject directories, hard links and file symlinks", async t => {
   const f = await fixture(t);
   await f.store.createTransaction(f.journal);
@@ -280,6 +346,120 @@ test("stale, remote, unknown and malformed locks are preserved until explicit re
     assert.deepEqual(await fs.readFile(file), content);
     await fs.unlink(file); // Explicit fixture operator action, never store stale-lock reclamation.
   }
+});
+
+test("failed lock acquisition retains safe release ownership after write, sync, close or directory flush failure", async t => {
+  for (const failure of ["write", "partial-write", "sync", "close", "directory-flush"]) await t.test(failure, async t => {
+    const f = await fixture(t);
+    await f.store.releaseLock();
+    let armed = true;
+    const fail = () => { armed = false; throw Object.assign(new Error(`injected lock ${failure}`), { code: "EIO" }); };
+    const storage = { ...nodePublicationStorage,
+      async flushDirectory(file) {
+        if (armed && failure === "directory-flush" && file === control(f.root)) fail();
+        return nodePublicationStorage.flushDirectory(file);
+      },
+      async open(file, flags, mode) {
+        const handle = await fs.open(file, flags, mode);
+        const lockWrite = file === control(f.root, "publication.lock") && (flags & 1) !== 0;
+        return {
+          stat: (...args) => handle.stat(...args), readFile: (...args) => handle.readFile(...args),
+          async writeFile(data) {
+            if (armed && lockWrite && failure === "write") fail();
+            if (armed && lockWrite && failure === "partial-write") { await handle.writeFile(data.subarray(0, 5)); fail(); }
+            await handle.writeFile(data);
+          },
+          async sync() { if (armed && lockWrite && failure === "sync") fail(); await handle.sync(); },
+          async close() { await handle.close(); if (armed && lockWrite && failure === "close") fail(); },
+        };
+      },
+    };
+    const store = await openPublicationControlStore(f.root, options(storage));
+    await assert.rejects(store.acquireLock(), /injected lock/);
+    await assert.rejects(store.createTransaction(f.journal), /acquisition|exclusive lock/);
+    const second = await openPublicationControlStore(f.root, options());
+    await assert.rejects(second.acquireLock(), { code: "EEXIST" });
+    await store.releaseLock();
+    await second.acquireLock();
+    await second.releaseLock();
+  });
+});
+
+test("partial lock release refuses replacement bytes", async t => {
+  const f = await fixture(t);
+  await f.store.releaseLock();
+  const fault = faultStorage();
+  const store = await openPublicationControlStore(f.root, options(fault.storage));
+  fault.arm(operation => operation === "file-flush");
+  await assert.rejects(store.acquireLock(), /injected/);
+  await fs.writeFile(control(f.root, "publication.lock"), "other owner");
+  await assert.rejects(store.releaseLock(), /owner changed/);
+  assert.equal(await fs.readFile(control(f.root, "publication.lock"), "utf8"), "other owner");
+});
+
+test("three failed status renames remove owned temps and leave status unchanged", async t => {
+  let failures = 0;
+  const storage = { ...nodePublicationStorage, async rename(...args) {
+    if (failures++ < 3) throw Object.assign(new Error("injected sharing failure"), { code: "EBUSY" });
+    return fs.rename(...args);
+  } };
+  const f = await fixture(t, storage);
+  await f.store.createTransaction(f.journal);
+  await stage(f);
+  // A zero deadline makes each injected failure one complete replacement attempt.
+  await f.store.releaseLock();
+  f.store = await openPublicationControlStore(f.root, { ...options(storage), sharingRetryMs: 0 });
+  await f.store.acquireLock(f.id);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await assert.rejects(f.store.advanceStatus(f.id, "prepared"), /injected sharing failure/);
+    assert.equal((await f.store.readStatus(f.id)).phase, "preparing");
+    assert.deepEqual((await fs.readdir(transaction(f.root, f.id))).sort(), ["journal.json", "status.json", "targets"]);
+  }
+  await f.store.advanceStatus(f.id, "prepared");
+});
+
+test("cleanup bounds retained status temps and refuses to delete changed or unowned bytes", async t => {
+  for (const changed of [false, true]) await t.test(changed ? "changed ownership" : "retry cleanup", async t => {
+    let failRename = false, failUnlink = false, retained;
+    const storage = { ...nodePublicationStorage,
+      async rename(...args) {
+        if (failRename) { failRename = false; throw new Error("injected status rename"); }
+        return fs.rename(...args);
+      },
+      async unlink(file) {
+        if (failUnlink && /status-.*\.tmp$/.test(file)) {
+          retained = file;
+          throw new Error("injected temp unlink");
+        }
+        return fs.unlink(file);
+      },
+    };
+    const f = await fixture(t, storage);
+    await prepared(f);
+    await cleaning(f);
+    await cleanup(f);
+    failRename = failUnlink = true;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await assert.rejects(f.store.advanceStatus(f.id, "complete"), /injected temp unlink/);
+      assert.equal((await fs.readdir(transaction(f.root, f.id))).filter(name => name.endsWith(".tmp")).length, 1);
+    }
+    assert.equal((await f.store.readStatus(f.id)).phase, "cleaning");
+    failUnlink = false;
+    if (changed) {
+      await fs.writeFile(retained, "caller-owned");
+      await assert.rejects(f.store.advanceStatus(f.id, "complete"), /owner changed/);
+      assert.equal(await fs.readFile(retained, "utf8"), "caller-owned");
+      await f.store.releaseLock();
+      const restart = await openPublicationControlStore(f.root, options());
+      await restart.acquireLock(f.id);
+      await assert.rejects(restart.advanceStatus(f.id, "complete"), /unowned status temporary/);
+      assert.equal(await fs.readFile(retained, "utf8"), "caller-owned");
+    } else {
+      await f.store.advanceStatus(f.id, "complete");
+      assert.equal((await f.store.readStatus(f.id)).phase, "complete");
+      assert.deepEqual((await fs.readdir(transaction(f.root, f.id))).sort(), ["journal.json", "status.json", "targets"]);
+    }
+  });
 });
 
 test("lock release and writes refuse a substituted owner; incomplete transactions block new generations", async t => {

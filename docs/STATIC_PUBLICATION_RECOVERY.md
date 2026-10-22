@@ -2,6 +2,16 @@
 
 Status: proposed design for issue #256
 
+Slice-2 control-store qualification: Node provides no handle-relative `openat`/`unlinkat`
+primitives. Ancestor kind, realpath and directory identity checks immediately before and
+after mutations detect swaps and stop further mutations, including pathname cleanup.
+This is detection, not prevention: a swap inside a pathname syscall can still create an
+outside entry (including an empty file before the post-open check), write or delete outside
+the root, or evade detection if restored between checks. Preventing these races remains a
+blocker for slice 4 production enablement. Failed status temps are removed only with this
+store's exclusive-create identity and matching bytes; unowned temps after restart block
+progress for explicit recovery rather than being guessed safe to delete.
+
 ## Decision summary
 
 CommitAtlas should not claim true atomic publication across unrelated output directories. Ordinary filesystem rename primitives can make one file replacement atomic inside one filesystem namespace, but they cannot make a set of changes across arbitrary directories or mounts become visible at one instant.
