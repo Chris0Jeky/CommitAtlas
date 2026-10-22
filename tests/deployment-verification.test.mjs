@@ -210,12 +210,12 @@ test("the sitemap check accepts exactly the declared pages", async () => {
   await sitemapCheck().run(async () => sitemapResponse([...SITEMAP_PATHS].reverse()));
 });
 
-for (const [label, paths] of [
-  ["a missing page", SITEMAP_PATHS.slice(1)],
-  ["an unexpected page", [...SITEMAP_PATHS, "/extra"]],
-  ["a repeated page", [...SITEMAP_PATHS.slice(1), SITEMAP_PATHS[1]]],
+for (const [label, paths, message] of [
+  ["a missing page", SITEMAP_PATHS.slice(1), /expected sitemap pages/],
+  ["an unexpected page", [...SITEMAP_PATHS, "/extra"], /expected sitemap pages/],
+  ["a repeated page", [...SITEMAP_PATHS, SITEMAP_PATHS[1]], /repeats an entry/],
 ]) {
   test(`the sitemap check rejects ${label}`, async () => {
-    await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)));
+    await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)), message);
   });
 }

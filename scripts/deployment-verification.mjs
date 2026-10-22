@@ -74,13 +74,13 @@ async function scheduleRetry({ target, attempt, reason, sleep, report }) {
   await sleep(delay);
 }
 
-/** Build the ordered deployment checks for one verifier run. */
 /**
  * The pages `/sitemap.xml` must list: `INDEXABLE_PAGES` in lib/site.ts, which this plain .mjs cannot
  * import. tests/deployment-verification.test.mjs fails if the two lists drift apart.
  */
 export const SITEMAP_PATHS = Object.freeze(["/", "/studio", "/gallery"]);
 
+/** Build the ordered deployment checks for one verifier run. */
 export function createDeploymentChecks() {
   // Each route declares its own allowed parameters (lib/svg-routes.ts), so a
   // single shared query string would be rejected as an unknown parameter. Probe
