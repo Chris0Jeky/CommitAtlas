@@ -24,6 +24,42 @@ interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
 }
 
+// Production HTML has inline Vinext hydration/pre-paint scripts and inline
+// React/SDK styles. This is a bounded source allowlist, not a nonce-based XSS
+// boundary. Keep eval and event-handler attributes disabled. Fonts and scripts
+// are bundled locally; Studio decodes fetched SVGs through blob: image URLs.
+const HTML_CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "script-src-attr 'none'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self' https://pulseboard-observatory.commit-atlas.workers.dev",
+  "worker-src 'none'",
+].join("; ");
+
+function withHtmlSecurityHeaders(response: Response): Response {
+  if (!/^text\/html(?:\s*;|\s*$)/i.test(response.headers.get("content-type") ?? "")) return response;
+  const headers = new Headers(response.headers);
+  // Do not weaken an explicit policy supplied by a route/framework. Development
+  // uses Vite HMR and Google CDN fonts; never enable those sources in production.
+  if (!headers.has("Content-Security-Policy") && process.env.NODE_ENV !== "development") {
+    headers.set("Content-Security-Policy", HTML_CONTENT_SECURITY_POLICY);
+  }
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("X-Frame-Options", "DENY");
+  // Preserve the original stream, status, cache policy and validators, including
+  // the gallery's bodyless 304. Never buffer or rewrite hydration payloads here.
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -58,7 +94,7 @@ const worker = {
       }, allowedWidths);
     }
 
-    return withWorkerEnv(env, async () => {
+    const response = await withWorkerEnv(env, async () => {
       if (url.pathname === "/gallery") {
         return stampGalleryResponse(request, await handler.fetch(request, env, ctx));
       }
@@ -77,6 +113,7 @@ const worker = {
         },
       );
     });
+    return withHtmlSecurityHeaders(response);
   },
 };
 

@@ -31,6 +31,86 @@ async function request(path, extraEnv = {}, init = {}) {
   );
 }
 
+function htmlSecurityPolicy(response) {
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  const policy = response.headers.get("content-security-policy");
+  assert.ok(policy, "HTML must carry an enforced CSP, not just a report-only policy");
+  return new Map(policy.split(";").filter((part) => part.trim()).map((part) => {
+    const [directive, ...sources] = part.trim().split(/\s+/);
+    return [directive, sources];
+  }));
+}
+
+test("the built Worker hardens every HTML document, including its not-found page", async () => {
+  for (const [path, status] of [["/", 200], ["/studio", 200], ["/gallery", 200], ["/missing-security-fixture", 404]]) {
+    const response = await render(path);
+    assert.equal(response.status, status, path);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+    const policy = htmlSecurityPolicy(response);
+    for (const directive of ["base-uri", "object-src", "frame-src", "frame-ancestors", "worker-src", "script-src-attr"]) {
+      assert.deepEqual(policy.get(directive), ["'none'"], `${path}: ${directive}`);
+    }
+    assert.deepEqual(policy.get("default-src"), ["'self'"]);
+    assert.deepEqual(policy.get("form-action"), ["'self'"]);
+    assert.deepEqual(policy.get("script-src"), ["'self'", "'unsafe-inline'"]);
+    assert.deepEqual(policy.get("style-src"), ["'self'", "'unsafe-inline'"]);
+    assert.deepEqual(policy.get("font-src"), ["'self'"]);
+    assert.deepEqual(policy.get("img-src"), ["'self'", "data:", "blob:"]);
+    assert.deepEqual(policy.get("connect-src"), ["'self'", "https://pulseboard-observatory.commit-atlas.workers.dev"]);
+    await response.text();
+  }
+});
+
+test("the HTML policy accommodates the production bootstrap and bundled resources", async () => {
+  const response = await render();
+  htmlSecurityPolicy(response);
+  const html = await response.text();
+  // Vinext's hydration payload and the two pre-paint bootstraps are inline.
+  assert.match(html, /<script>[^<]+<\/script>/);
+  assert.match(html, /<style\b/);
+  for (const [, source] of html.matchAll(/<(?:script|img)\b[^>]*\bsrc="([^"]+)"/g)) {
+    assert.ok(source.startsWith("/") || source.startsWith("data:") || source.startsWith("blob:"), source);
+  }
+  assert.doesNotMatch(html, /(?:src|href)="https:\/\/fonts\.(?:googleapis|gstatic)\.com\//);
+  // The SDK's only cross-origin transport is deliberately allowlisted, not all HTTPS hosts.
+  const sdk = await readFile(new URL("../public/pulseboard.js", import.meta.url), "utf8");
+  const collector = /"collector":"([^"]+)"/.exec(sdk)?.[1];
+  assert.equal(collector, "https://pulseboard-observatory.commit-atlas.workers.dev");
+});
+
+test("HTML hardening does not replace the API's stricter JSON and SVG policies", async () => {
+  for (const path of ["/api/v1/health", "/api/v1/cards/atlas.svg?user=octocat&demo=true"]) {
+    let response = await request(path);
+    if (response.status === 308) {
+      const canonical = new URL(response.headers.get("location"));
+      response = await request(canonical.pathname + canonical.search);
+    }
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+    const policy = response.headers.get("content-security-policy") ?? "";
+    assert.match(policy, /default-src 'none'/);
+    assert.match(policy, /script-src 'none'/);
+    assert.match(policy, /(?:^|;\s*)sandbox(?:;|$)/);
+    assert.doesNotMatch(policy, /pulseboard-observatory/);
+    await response.text();
+  }
+});
+
+test("HTML hardening leaves App Router navigation payloads unchanged", async () => {
+  for (const path of ["/?_rsc", "/studio?_rsc", "/gallery?_rsc"]) {
+    const response = await request(path, {}, { headers: { RSC: "1" } });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "text/x-component");
+    assert.equal(response.headers.get("content-security-policy"), null);
+    assert.equal(response.headers.get("x-frame-options"), null);
+    assert.equal(response.headers.get("cache-control"), "no-store, must-revalidate");
+    assert.match(response.headers.get("vary") ?? "", /(?:^|,\s*)RSC(?:,|$)/);
+    assert.ok((await response.text()).length > 0);
+  }
+});
+
 test("server-renders the CommitAtlas product surface", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -238,7 +318,7 @@ function cspRunsRouteBootstrap(csp, head) {
   return sources.includes("'unsafe-inline'") || sources.includes(hash) || Boolean(nonce && sources.includes(`'nonce-${nonce}'`));
 }
 
-test("a future CSP must still run the inline landing-route bootstrap", async () => {
+test("recognizes CSP sources that admit the inline landing-route bootstrap", async () => {
   const html = await (await render("/studio")).text();
   const head = html.slice(0, html.indexOf("</head>"));
   const body = /<script[^>]*>([^<]*data-pulseboard-route[^<]*)<\/script>/.exec(head)?.[1] ?? "";
@@ -263,8 +343,8 @@ test("loads the Pulseboard SDK on every page the root layout renders, the 404 in
     assert.doesNotMatch(html, /observatory\.js/, `${pathname} still loads the retired observer`);
     const head = html.slice(0, html.indexOf("</head>"));
     assert.match(head, /setAttribute\("data-pulseboard-route",r\)/, `${pathname} names its landing route before the SDK`);
-    // The HTML pages declare no CSP today. If one is added it must admit the collector, and its
-    // script policy must still run the inline landing-route bootstrap (a nonce on that script, its
+    // The HTML CSP must admit the collector, and its script policy must still
+    // run the inline landing-route bootstrap (a nonce on that script, its
     // sha256 hash, or 'unsafe-inline'); a bare `script-src 'self'` would silently record `home` again.
     const csp = response.headers.get("content-security-policy");
     if (csp) {
@@ -1006,4 +1086,6 @@ test("the gallery lists every registered output without calling GitHub", async (
   }, () => request("/gallery", {}, { headers: { "if-none-match": etag } }));
   assert.equal(cached.status, 304);
   assert.equal(cached.headers.get("etag"), etag);
+  assert.deepEqual(htmlSecurityPolicy(cached), htmlSecurityPolicy(first));
+  assert.equal(await cached.text(), "");
 });
