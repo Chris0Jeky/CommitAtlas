@@ -245,7 +245,10 @@ async function fetchStaticPortfolio(
   fetchImpl?: typeof fetch,
   currentDay: "closed" | "open" = "closed",
 ): Promise<PortfolioSnapshot> {
-  const client = new GitHubClient({ fetchImpl, now: () => now });
+  // A static refresh is a background job: allow the observed ~10s calendar
+  // backend failure, its Retry-After delay and one recovery request. Hosted
+  // request clients retain their shorter default budget.
+  const client = new GitHubClient({ fetchImpl, now: () => now, deadlineMs: 30_000 });
   const repositories = config.projects.map((project) => project.repo.split("/")[1]!);
   const lifecycles = new Map<string, ProjectLifecycle>();
   const workflows = new Map<string, ProjectWorkflow>();
