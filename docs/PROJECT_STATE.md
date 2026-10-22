@@ -5,6 +5,31 @@ Last verified: 2026-08-30 (v0.4.0 released, production and profile evidence curr
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Issue #256 slice 2: repository control store, 2026-10-22
+
+`packages/static/src/publication-control-store.ts` adds repository-contained transaction storage
+behind the slice-1 protocol and codec. Only tests import it; the package entry point, v1 writer,
+CLI defaults and Action remain unchanged. Journal and artifact files use exclusive creation,
+staged/backup bytes are digest-checked, status replacements flush and close their temporary file
+before rename, and incomplete/corrupt transactions block another generation.
+
+The four open design decisions remain explicit in `PUBLICATION_CONTROL_POLICY`: destination
+mutation is disabled pending ownership migration; status stays under the control root; stale
+locks require explicit recovery and are never automatically reclaimed; directory flush is required
+unless tests explicitly select `directoryFlush: "report-unsupported"`. Unsupported directory flush
+is reported as weaker durability, and file flush failures remain fatal.
+
+The temp-directory tests cover containment (including Windows junctions), entry kinds, exclusive
+creation, digests, locking, durability, all slice-2 named storage checkpoints and interruption after
+each transaction-creation storage operation. Destination installation and on-disk rollback or
+roll-forward belong to the later publication engine; their existing slice-1 tests remain pure.
+This is local source work, with no production v2 activation or Action bundle rebuild.
+Local proving: `npm run test:static` passes 244/245 tests (one existing Windows file-symlink
+skip); `npm run typecheck`, `npm run lint`, and `node --test tests/test-discovery.test.mjs`
+pass. A restart regression proves readable bytes left by a failed flush are flushed again before
+preparation advances. Native directory flush reports unsupported on this Windows host; Linux,
+macOS and actual power-loss durability are not verified here. No human-action file is declared.
+
 ## Gallery route, local proof 2026-10-16
 
 `/gallery` serves the synthetic demo snapshot. With fetch stubbed to throw, the built Worker
