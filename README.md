@@ -33,16 +33,17 @@ The product direction is a deterministic, privacy-aware generative profile graph
 
 **Released:** v0.4.0.
 
-- Eight hosted SVG routes and the live Studio run on the public Cloudflare Worker.
-- Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`. In this compatibility slice, every non-`none` profile remains byte-identical to the existing subtle load motion.
-- The source CLI and bundled Node 24 Action generate eleven card types from one public snapshot: the hosted eight plus static Cadence, Releases, and Delivery cards.
+- This checkout provides eight hosted card routes, four hosted scene routes, the Studio, and a synthetic `/gallery`. Source availability here does not establish deployment or profile adoption of the newer scenes.
+- Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`, subject to each scene's supported profiles. Existing cards still map every non-`none` profile to the same subtle load motion; registered scenes use the motion compiler for their own textures.
+- The source CLI and bundled Node 24 Action support eleven card types: the hosted eight plus static Cadence, Releases, and opt-in Delivery. The ten ordinary types share one public portfolio snapshot; Delivery requires a GitHub token and separate public PR-flow evidence.
+- The exported CSS/SMIL motion compiler, deterministic scene engine, and six registered scenes ship in source. All six support the `survey` pack; four pack geometries exist, but built-in scenes do not yet opt into the other three.
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
 - The Studio and landing pages load the Pulseboard SDK 3.2.0 with a visible **Beta** bar and a choice of categories; SVG cards and JSON routes never load it. See [Usage measurement](#usage-measurement).
 - npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
-**Planned, not shipped:** differentiated ambient/cinematic motion, a motion compiler, a scene engine, owner-reviewed Developer Lens projections, additional research finding projections, and broader visual families. The implementation programme is in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md); none of those plans changes the current release boundary.
+**Open:** differentiated ambient motion for existing cards (#126 and the remaining card work under #111), the complete GitHub/browser motion matrix (#113) and measured budgets (#114), the full projection reader (#145) and owner-reviewed Developer Lens publication (#170 / Q-9), and research-finding scenes and further visual families under #111. Chronograph timing and release labels are implemented; timed browser acceptance remains open under #344. The implementation programme and source status are in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md).
 
 Every push to `main` that passes CI deploys to Cloudflare Workers and is checked against the origin produced by that deployment.
 
@@ -57,7 +58,7 @@ CommitAtlas keeps four kinds of information visibly separate:
 
 The rhythm score summarizes consistency and breadth inside the displayed window. It is not a GitHub rank and is never compared across people.
 
-A scene may later use evidence as a deterministic visual seed, but spectacle must never carry an unstated claim. Everything remains readable at frame zero; unavailable never animates as healthy; identical inputs must produce byte-identical output.
+Registered scenes use their canonical model as a deterministic visual seed, but spectacle must never carry an unstated claim. Everything remains readable at frame zero; unavailable never animates as healthy; identical inputs must produce byte-identical output.
 
 ## Shipped surfaces
 
@@ -71,9 +72,15 @@ A scene may later use evidence as a deterministic visual seed, but spectacle mus
 | Activity | Bounded daily contribution graph and exact date window | `/api/v1/cards/activity.svg` / `activity.svg` |
 | Languages | Repository-language share, never guessed proficiency | `/api/v1/cards/languages.svg` / `languages.svg` |
 | Projects | Up to six curated projects with lifecycle, named-workflow CI, release, and freshness | `/api/v1/projects.svg` / `projects.svg`, `projects.json`, `projects.md` |
-| Evidence coverage | Calendar, activity-mix, CI, release, and collection-scope coverage for one public snapshot | `/api/v1/scenes/evidence-coverage.svg` |
+| Evidence coverage | Calendar, activity-mix, CI, release, and collection-scope coverage for one public snapshot | `/api/v1/scenes/evidence-coverage.svg` / `scene-evidence-coverage.svg` |
+| Activity terrain | Weekly contribution terrain, supplied streak, and latest-release markers | `/api/v1/scenes/activity-terrain.svg` / `scene-activity-terrain.svg` |
+| Chronograph | Day/week/month coverage, supplied streak, and latest-release markers with separate numbered labels | `/api/v1/scenes/chronograph.svg` / `scene-chronograph.svg` |
+| Lifecycle map | Declared project lifecycle with independent CI, release, and freshness signals | `/api/v1/scenes/lifecycle-map.svg` / `scene-lifecycle-map.svg` |
+| Identity beacon | Bounded configured identity and project bodies sized by observed open issues/PRs | static-only `scene-identity-beacon.svg` |
+| Nebula | Deterministic aesthetic field seeded by public observations, labelled as a scene | static-only `scene-nebula.svg` |
 | Cadence | Contribution share by UTC weekday, window-scoped | static-only `cadence.svg` |
 | Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
+| Delivery | Scoped public PR-flow evidence with unavailable benchmarks stated | static-only `delivery.svg`, `delivery.json` |
 
 The primary Atlas condenses a 365-day public activity window (extendable to two years with `days=730`, or `days=auto` for the full observed history up to two years) into one `860 × 380` SVG: contribution heatmap and totals, active-day density, peak day, streaks, public collaboration mix, twelve-bucket momentum, recent change, rhythm, language distribution, and configured project health.
 
@@ -116,7 +123,7 @@ npm run check
 
 ## Generate dependable profile assets
 
-Static generation is credential-free. It reads GitHub’s logged-out public profile view and public REST endpoints, renders selected cards from one snapshot, and writes a SHA-256 manifest. Selecting Projects also writes source/config-labelled catalogues.
+Default static generation is credential-free. It reads GitHub’s logged-out public profile view and public REST endpoints, renders the ordinary cards and selected scenes from one snapshot, and writes a SHA-256 manifest. Opt-in Delivery collects separate public PR-flow evidence with a GitHub token. Selecting Projects also writes source/config-labelled catalogues.
 
 ```bash
 cp .commitatlas.example.json .commitatlas.json
@@ -127,7 +134,7 @@ node packages/static/dist/cli.js generate --config .commitatlas.json
 
 The v1 config is one-owner and public-only. It rejects unknown fields, credentials, absolute/traversing/symlinked paths, untracked config, duplicate outputs, and invalid workflow identities. Generation validates variants before staged per-file replacement and preserves unrelated files in the output directory.
 
-The repository-root `action.yml` runs on Node 24 and only generates files. It never commits, pushes, uploads, or receives `GITHUB_TOKEN`. Pin it to an immutable CommitAtlas commit; let the consumer workflow own checkout and any reviewed commit/push step. A failed refresh leaves the last committed assets available.
+The repository-root `action.yml` runs on Node 24 and only generates files. It never commits, pushes, or uploads; its optional `github-token` input supports Delivery collection. Pin it to an immutable CommitAtlas commit; let the consumer workflow own checkout and any reviewed commit/push step. A failed refresh leaves the last committed assets available.
 
 See [STATIC_GENERATOR_PLAN.md](docs/STATIC_GENERATOR_PLAN.md) and [DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full contracts.
 
@@ -169,8 +176,8 @@ Developer Lens projections follow a separate publication boundary. Private/local
 Near-term work is evidence-gated:
 
 1. finish proving which SVG motion backend works through GitHub README `<img>` rendering before differentiating the compatibility motion profiles;
-2. compile motion from one primitive model with frame-zero and reduced-motion invariants;
-3. add deterministic maps and scenes without letting aesthetics imply facts;
+2. extend adoption of the shipped CSS/SMIL compiler while preserving frame-zero and reduced-motion invariants (#126 and remaining card work under #111);
+3. extend the six registered maps and scenes without letting aesthetics imply facts (#111);
 4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;
 5. accept Lab research findings only through product-owned schemas with pinned provenance, decision vocabulary, limitations, and unsupported claims; do not invent coverage or expiry fields that the finding contract does not define;
 6. keep hosted data public-only, keep usage measurement to the Pulseboard SDK's disclosed categories on the HTML pages only, and never send typed handles, repository names or URLs;
@@ -195,9 +202,12 @@ CommitAtlas does not invent a global developer rank, language proficiency, CI re
 ### Static scene configuration
 
 Static config v1 accepts `scenes: []`, `scenePack: "survey"`, and optional
-bounded `identity` text. Defaults preserve existing card artifacts. Only
-registered scenes may be selected; `evidence-coverage` is the first available
-production definition, showing observed coverage and unavailable source states. Selected scenes render from one
+bounded `identity` text. Defaults preserve existing card artifacts. The registered
+scenes are `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`,
+`identity-beacon`, and `nebula`. All currently require `scenePack: "survey"`.
+The first four accept `none | subtle | ambient`; Identity Beacon accepts
+`none | ambient | cinematic` and requires `identity`; Nebula accepts `none | ambient`.
+Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
 The Action's `scenes` output is a JSON array of generated paths (`[]` when
 disabled), including during dry-run.
