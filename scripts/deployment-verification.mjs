@@ -80,6 +80,11 @@ async function scheduleRetry({ target, attempt, reason, sleep, report }) {
  */
 export const SITEMAP_PATHS = Object.freeze(["/", "/studio", "/gallery"]);
 
+/** Undo the five predefined XML entities app/sitemap.xml/route.ts escapes. */
+function decodeXmlText(value) {
+  return value.replace(/&(amp|lt|gt|quot|apos);/g, (_, name) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[name]);
+}
+
 /** Build the ordered deployment checks for one verifier run. */
 export function createDeploymentChecks() {
   // Each route declares its own allowed parameters (lib/svg-routes.ts), so a
@@ -154,7 +159,9 @@ export function createDeploymentChecks() {
         assert(/^application\/xml\b/i.test(contentType), `expected application/xml, got "${contentType}"`);
         const body = await response.text();
         const locations = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-        const paths = locations.map((location) => new URL(location).pathname);
+        const urls = locations.map((location) => new URL(decodeXmlText(location)));
+        for (const url of urls) assert(!url.search && !url.hash, `sitemap entry is not a canonical page URL: ${url.href}`);
+        const paths = urls.map((url) => url.pathname);
         assert(new Set(paths).size === paths.length, `sitemap repeats an entry: ${paths.join(", ")}`);
         assert(
           paths.length === SITEMAP_PATHS.length && SITEMAP_PATHS.every((path) => paths.includes(path)),

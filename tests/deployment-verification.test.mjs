@@ -219,3 +219,17 @@ for (const [label, paths, message] of [
     await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)), message);
   });
 }
+
+test("the sitemap check rejects query strings and fragments", async () => {
+  for (const suffix of ["?preview=1", "#section"]) {
+    const paths = [...SITEMAP_PATHS.slice(0, -1), `${SITEMAP_PATHS.at(-1)}${suffix}`];
+    await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)), /not a canonical page URL/);
+  }
+});
+
+test("the sitemap check decodes XML entities in <loc>", async () => {
+  const body = `<urlset>${SITEMAP_PATHS.map((path) => `<url><loc>https://commitatlas.example${path}</loc></url>`).join("")}` +
+    "<url><loc>https://commitatlas.example/a&amp;b</loc></url></urlset>";
+  const response = new Response(body, { status: 200, headers: { "content-type": "application/xml" } });
+  await assert.rejects(sitemapCheck().run(async () => response), /got \/, \/studio, \/gallery, \/a&b$/);
+});
