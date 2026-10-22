@@ -13,18 +13,106 @@ const root = new URL("..", import.meta.url);
 const tracked = (pattern) =>
   execFileSync("git", ["ls-files", "-z", "--", pattern], { cwd: root, encoding: "utf8" }).split("\0").filter(Boolean);
 
-// Keep the explicit, cross-platform npm test lists from silently dropping a suite.
-test("every tracked test file is run by an npm script", () => {
+// Model the explicit npm invocations and && chains used in package scripts, not a shell.
+// Keys are repository-relative package directories; values are their scripts objects.
+export function collectReachableTests(packages) {
   const referenced = new Set();
-  for (const manifest of tracked("*package.json").filter((path) => !path.includes("node_modules/"))) {
-    const dir = posix.dirname(manifest);
-    const { scripts = {} } = JSON.parse(readFileSync(new URL(manifest, root), "utf8"));
-    for (const command of Object.values(scripts)) {
-      for (const [file] of command.matchAll(/[\w./-]+\.test\.[cm]?[jt]sx?/g)) referenced.add(posix.join(dir, file));
+  const visited = new Set();
+  const visit = (dir, script) => {
+    const key = `${dir}:${script}`;
+    if (visited.has(key)) return;
+    const scripts = packages.get(dir);
+    if (!scripts || !Object.hasOwn(scripts, script)) {
+      throw new Error(`Missing npm script ${script} in ${dir}/package.json`);
     }
+    visited.add(key);
+    for (const command of scripts[script].split("&&")) {
+      const tokens = (command.match(/"[^"]*"|'[^']*'|[^\s]+/g) ?? [])
+        .map((token) => token.replace(/^(["'])(.*)\1$/, "$2"));
+      for (const file of tokens.filter((token) => /\.test\.[cm]?[jt]sx?$/.test(token))) {
+        referenced.add(posix.join(dir, file));
+      }
+      if (tokens[0] !== "npm") continue;
+      let targetDir = dir;
+      let index = 1;
+      const prefixed = tokens[index] === "--prefix";
+      if (prefixed) {
+        targetDir = posix.join(dir, tokens[index + 1]);
+        index += 2;
+      }
+      if (tokens[index] === "run") visit(targetDir, tokens[index + 1]);
+      else if (prefixed || tokens[index] === "test") visit(targetDir, tokens[index]);
+    }
+  };
+  visit(".", "check");
+  return referenced;
+}
+
+test("discovery follows transitive npm run, npm test and && chains", () => {
+  const packages = new Map([[".", {
+    check: "npm run first && npm test && node --test tests/direct.test.mjs",
+    first: "npm run nested",
+    nested: "tsx --test tests/nested.test.ts",
+    test: "node --test tests/alias.test.mjs",
+  }]]);
+  assert.deepEqual(collectReachableTests(packages), new Set([
+    "tests/nested.test.ts", "tests/alias.test.mjs", "tests/direct.test.mjs",
+  ]));
+});
+
+test("discovery resolves prefixed scripts and test paths relative to each package", () => {
+  const packages = new Map([
+    [".", { check: 'npm --prefix "packages/a" test && npm --prefix packages/b run suite && npm --prefix packages/b suite' }],
+    ["packages/a", { test: "npm run suite && npm --prefix ../b run suite", suite: "node --test tests/local.test.mjs" }],
+    ["packages/b", { suite: "node --test ./tests/local.test.mjs ../../tests/shared.test.mjs" }],
+  ]);
+  assert.deepEqual(collectReachableTests(packages), new Set([
+    "packages/a/tests/local.test.mjs", "packages/b/tests/local.test.mjs", "tests/shared.test.mjs",
+  ]));
+});
+
+test("unreachable root and workspace scripts cannot cover test files", () => {
+  const packages = new Map([
+    [".", { check: "node --test tests/reachable.test.mjs && npm --prefix packages/a run build", unused: "node --test tests/orphan.test.mjs && npm run missing" }],
+    ["packages/a", { build: "node build.mjs", test: "node --test tests/orphan.test.mjs" }],
+  ]);
+  assert.deepEqual(collectReachableTests(packages), new Set(["tests/reachable.test.mjs"]));
+});
+
+test("discovery terminates cycles across scripts and packages", () => {
+  const packages = new Map([
+    [".", { check: "npm run loop && npm --prefix packages/a test", loop: "npm run check && node --test tests/root.test.mjs" }],
+    ["packages/a", { test: "npm --prefix ../.. run check && node --test tests/local.test.mjs" }],
+  ]);
+  assert.deepEqual(collectReachableTests(packages), new Set([
+    "tests/root.test.mjs", "packages/a/tests/local.test.mjs",
+  ]));
+});
+
+for (const [label, packages, message] of [
+  ["root check", new Map([[".", {}]]), "Missing npm script check in ./package.json"],
+  ["transitive script", new Map([[".", { check: "npm run suite", suite: "npm run missing" }]]), "Missing npm script missing in ./package.json"],
+  ["test alias", new Map([[".", { check: "npm test" }]]), "Missing npm script test in ./package.json"],
+  ["workspace script", new Map([[".", { check: "npm --prefix packages/a run missing" }], ["packages/a", {}]]), "Missing npm script missing in packages/a/package.json"],
+  ["workspace manifest", new Map([[".", { check: "npm --prefix packages/absent test" }]]), "Missing npm script test in packages/absent/package.json"],
+]) {
+  test(`discovery fails for a missing ${label}`, () => {
+    assert.throws(() => collectReachableTests(packages), { message });
+  });
+}
+
+// CI runs check; deploy also runs build (already reachable via npm test).
+// Neither workflow runs an additional test script outside this graph.
+// Keep the explicit, cross-platform npm test lists from silently dropping a suite.
+test("every tracked test file is reachable from npm run check", () => {
+  const packages = new Map();
+  for (const manifest of tracked("*package.json").filter((path) => !path.includes("node_modules/"))) {
+    const { scripts = {} } = JSON.parse(readFileSync(new URL(manifest, root), "utf8"));
+    packages.set(posix.dirname(manifest), scripts);
   }
+  const referenced = collectReachableTests(packages);
   const tests = tracked("*.test.*").filter((path) => /\.test\.[cm]?[jt]sx?$/.test(path));
   assert.ok(tests.length > 50, `expected the repository's test files, found ${tests.length}`);
   const missing = tests.filter((path) => !referenced.has(path) && !RUN_ELSEWHERE.has(path));
-  assert.deepEqual(missing, [], "test files referenced by no npm script");
+  assert.deepEqual(missing, [], "test files not reachable from npm run check");
 });
