@@ -20,3 +20,23 @@ Include the affected route or package, reproduction steps, impact, and any safe 
 ## Deployment responsibilities
 
 The hosted public instance is public-data only. Self-hosters are responsible for limiting token scopes, rotating exposed credentials, reviewing generated public artifacts, and configuring platform access controls. A generated SVG becomes public wherever it is embedded or committed.
+
+### HTML response policy
+
+The production Worker adds an enforced Content Security Policy, `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: no-referrer`, and `X-Frame-Options: DENY` to HTML responses,
+including not-found documents and gallery revalidation responses. Bodies, cache directives,
+and ETags are unchanged. JSON/SVG APIs retain their separate, stricter sandbox policies.
+
+HTML resources are same-origin, with `data:` gallery images, `blob:` Studio SVG previews,
+and the existing `https://pulseboard-observatory.commit-atlas.workers.dev` collector as
+explicit exceptions. Production fonts are self-hosted by the build. Framing, objects,
+workers, base elements, inline event-handler attributes, and JavaScript eval are disallowed.
+
+This is baseline hardening, not a strict CSP or a complete XSS defense: inline script
+elements remain allowed for Vinext hydration and the pre-paint theme/route bootstraps,
+and inline styles remain allowed for React and the Pulseboard SDK. A strict script policy
+needs framework-compatible nonces or hashes, not removal of that allowance alone. An
+existing explicit HTML CSP is preserved. The default CSP is omitted during development
+for Vite HMR/CDN fonts, without adding those sources or eval to the production policy.
+Forks that replace the collector must update the explicit `connect-src` exception as well.
