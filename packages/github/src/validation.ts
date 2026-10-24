@@ -1,10 +1,9 @@
 import { ProjectLifecycleSchema, type ProjectLifecycle } from "@commit-atlas/core";
 import type { ProjectWorkflow } from "./types.js";
-import { decodeWorkflowMapComponent } from "./workflow-map.js";
+import { decodeWorkflowMapComponent, isWorkflowIdentity, MAX_WORKFLOW_CODE_POINTS } from "./workflow-map.js";
 
 const HANDLE = /^(?!.*--)[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 const REPOSITORY = /^(?!\.{1,2}$)(?!.*\.\.)[a-z\d._-]{1,100}$/i;
-const MAX_WORKFLOW_CODE_POINTS = 200;
 const MAX_PROJECTS = 6;
 const MAX_REPOSITORY_CHARACTERS = 100;
 const MAX_LIFECYCLE_CHARACTERS = 11;
@@ -138,15 +137,4 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function stringField(record: Record<string, unknown>, key: string): string | null {
   const value = record[key];
   return typeof value === "string" ? value : null;
-}
-
-function isWorkflowIdentity(value: string): value is ProjectWorkflow {
-  return value === value.trim()
-    && [...value].length >= 1
-    && [...value].length <= MAX_WORKFLOW_CODE_POINTS
-    && !value.split(/[\\/]/).some((segment) => segment === "." || segment === "..")
-    && ![...value].some((character) => {
-      const code = character.codePointAt(0)!;
-      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
-    });
 }
