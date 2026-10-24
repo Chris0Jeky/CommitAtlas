@@ -188,6 +188,63 @@ test("reads the credential-free public profile calendar and labelled activity pe
   assert.equal(contributions.freshness.source, "github-profile-html");
 });
 
+test("recovers one public calendar 503 without changing its year or sending credentials", async () => {
+  const calls: { url: string; authorization: string | null }[] = [];
+  let cancelled = false;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    calls.push({ url: input.toString(), authorization: new Headers(init?.headers).get("authorization") });
+    if (calls.length === 1) return new Response(new ReadableStream({
+      cancel() { cancelled = true; },
+    }), { status: 503, headers: { "retry-after": "0" } });
+    assert.equal(cancelled, true);
+    return html(publicContributionHtml(2026, { "2026-08-19": 7 }, {
+      Commits: 70, "Pull requests": 15, Issues: 10, "Code review": 5,
+    }));
+  };
+  const snapshot = await new GitHubClient({ token: "must-not-leave-process", fetchImpl, now: () => NOW })
+    .fetchPublicProfileContributions("octocat", 1);
+  assert.equal(snapshot.totalContributions, 7);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]?.url, calls[1]?.url);
+  assert.ok(calls.every(({ authorization }) => authorization === null));
+});
+
+test("bounds public calendar 503 recovery to one retry", async () => {
+  let attempts = 0;
+  await assert.rejects(new GitHubClient({ now: () => NOW, fetchImpl: async () => {
+    attempts += 1;
+    return new Response("unavailable", { status: 503, headers: { "retry-after": "0" } });
+  } }).fetchPublicProfileContributions("octocat", 1),
+  (error: unknown) => error instanceof GitHubApiError && error.code === "github_unavailable");
+  assert.equal(attempts, 2);
+});
+
+test("honors public calendar Retry-After seconds and HTTP dates before retrying", async () => {
+  for (const retryAfterHeader of [() => "1", () => new Date(Math.ceil(Date.now() / 1_000) * 1_000 + 1_000).toUTCString()]) {
+    const retryAfter = retryAfterHeader();
+    let attempts = 0;
+    const startedAt = Date.now();
+    await new GitHubClient({ now: () => NOW, fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response("unavailable", { status: 503, headers: { "retry-after": retryAfter } });
+      assert.ok(Date.now() - startedAt >= 950, retryAfter);
+      return html(publicContributionHtml(2026, {}, { Commits: 100, "Pull requests": 0, Issues: 0, "Code review": 0 }));
+    } }).fetchPublicProfileContributions("octocat", 1);
+    assert.equal(attempts, 2);
+  }
+});
+
+test("does not retry a public calendar refusal or wait past the shared deadline", async () => {
+  for (const status of [401, 403, 404, 429, 503]) {
+    let attempts = 0;
+    await assert.rejects(new GitHubClient({ deadlineMs: 100, now: () => NOW, fetchImpl: async () => {
+      attempts += 1;
+      return new Response("refused", { status, headers: { "retry-after": "5" } });
+    } }).fetchPublicProfileContributions("octocat", 1), GitHubApiError);
+    assert.equal(attempts, 1, `status=${status}`);
+  }
+});
+
 test("clamps multi-year profile windows to two trailing years", async () => {
   const calls: URL[] = [];
   const fetchImpl: typeof fetch = async (input) => {
