@@ -1,4 +1,4 @@
-import { encodeWorkflowMapComponent } from "@/lib/github/workflow-map";
+import { encodeWorkflowMapComponent, isWorkflowIdentity } from "@/lib/github/workflow-map";
 
 /** One evidence window for collection, preview configuration, card URLs, and README output. */
 export const STUDIO_PREVIEW_DAYS = 365;
@@ -35,6 +35,15 @@ export const STUDIO_HANDLE_PATTERN = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i;
 
 export function isValidStudioOwner(owner: string): boolean {
   return STUDIO_HANDLE_PATTERN.test(owner.trim());
+}
+
+/**
+ * Workflow form input: blank (after trim) means "not configured" and is sent as nothing;
+ * anything else must satisfy the same identity rule the projects API enforces.
+ */
+export function isValidStudioWorkflowInput(workflow: string): boolean {
+  const trimmed = workflow.trim();
+  return trimmed === "" || isWorkflowIdentity(trimmed);
 }
 
 /** Pre-preview Source destination. Null when the owner handle is invalid. */
