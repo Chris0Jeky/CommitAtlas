@@ -10,7 +10,13 @@ outside entry (including an empty file before the post-open check), write or del
 the root, or evade detection if restored between checks. Preventing these races remains a
 blocker for slice 4 production enablement. Failed status temps are removed only with this
 store's exclusive-create identity and matching bytes; unowned temps after restart block
-progress for explicit recovery rather than being guessed safe to delete.
+progress for explicit recovery rather than being guessed safe to delete. Owned removal (lock
+release, status temps) first renames the path to a fresh `<name>.<uuid>.quarantine` and
+verifies identity and bytes there, so a replacement installed after the ownership check is
+quarantined, never unlinked; any leftover quarantine blocks lock acquisition and status
+progress. An exclusive create whose identity cannot be read is left in place for explicit
+recovery, and a completed transaction whose on-disk `targets` entries differ from its journal
+blocks the next generation.
 
 ## Decision summary
 
