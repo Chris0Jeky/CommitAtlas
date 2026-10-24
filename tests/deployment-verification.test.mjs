@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
   createDeploymentChecks,
+  SITEMAP_PATHS,
   fetchWithBoundedRetry,
   MAX_ATTEMPTS,
   RETRY_DELAYS_MS,
@@ -180,4 +182,54 @@ test("a successful motion response preserves the exact route identity and reques
   assert.equal(new URL(result.calls[0].target).search, "");
   assert.deepEqual(result.delays, []);
   assert.deepEqual(result.reports, []);
+});
+
+function sitemapCheck() {
+  const check = createDeploymentChecks().find(({ name }) => name.startsWith("sitemap.xml"));
+  assert.ok(check);
+  return check;
+}
+
+function sitemapResponse(paths) {
+  const urls = paths.map((path) => `  <url><loc>https://commitatlas.example${path}</loc></url>`).join("\n");
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n${urls}\n</urlset>\n`, {
+    status: 200,
+    headers: { "content-type": "application/xml; charset=utf-8" },
+  });
+}
+
+test("SITEMAP_PATHS matches INDEXABLE_PAGES in lib/site.ts", () => {
+  const source = readFileSync(new URL("../lib/site.ts", import.meta.url), "utf8");
+  const declared = /export const INDEXABLE_PAGES[^=]*=\s*\[([^\]]*)\]/.exec(source);
+  assert.ok(declared, "INDEXABLE_PAGES not found in lib/site.ts");
+  const pages = [...declared[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual([...SITEMAP_PATHS], pages);
+});
+
+test("the sitemap check accepts exactly the declared pages", async () => {
+  await sitemapCheck().run(async () => sitemapResponse([...SITEMAP_PATHS].reverse()));
+});
+
+for (const [label, paths, message] of [
+  ["a missing page", SITEMAP_PATHS.slice(1), /expected sitemap pages/],
+  ["an unexpected page", [...SITEMAP_PATHS, "/extra"], /expected sitemap pages/],
+  ["a repeated page", [...SITEMAP_PATHS, SITEMAP_PATHS[1]], /repeats an entry/],
+]) {
+  test(`the sitemap check rejects ${label}`, async () => {
+    await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)), message);
+  });
+}
+
+test("the sitemap check rejects query strings and fragments", async () => {
+  for (const suffix of ["?preview=1", "#section"]) {
+    const paths = [...SITEMAP_PATHS.slice(0, -1), `${SITEMAP_PATHS.at(-1)}${suffix}`];
+    await assert.rejects(sitemapCheck().run(async () => sitemapResponse(paths)), /not a canonical page URL/);
+  }
+});
+
+test("the sitemap check decodes XML entities in <loc>", async () => {
+  const body = `<urlset>${SITEMAP_PATHS.map((path) => `<url><loc>https://commitatlas.example${path}</loc></url>`).join("")}` +
+    "<url><loc>https://commitatlas.example/a&amp;b</loc></url></urlset>";
+  const response = new Response(body, { status: 200, headers: { "content-type": "application/xml" } });
+  await assert.rejects(sitemapCheck().run(async () => response), /got \/, \/studio, \/gallery, \/a&b$/);
 });
