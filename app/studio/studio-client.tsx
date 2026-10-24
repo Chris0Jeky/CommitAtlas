@@ -32,6 +32,7 @@ import {
   buildStudioSceneUrl,
   buildStudioSourceUrl,
   isValidStudioOwner,
+  isValidStudioWorkflowInput,
   STUDIO_PREVIEW_DAYS,
   STUDIO_SCENE_IDS,
   STUDIO_SCENE_LABELS,
@@ -361,6 +362,12 @@ export default function StudioClient() {
     if (invalidRepo) {
       setPhase("error");
       setNotice(retainedPreviewNotice("Enter a valid repository name before previewing.", profile.login));
+      return;
+    }
+
+    if (activeProjects.some((project) => !isValidStudioWorkflowInput(project.workflow))) {
+      setPhase("error");
+      setNotice(retainedPreviewNotice("Enter a valid workflow before previewing: a file name or path such as ci.yml without . or .. segments or control characters, or leave it blank", profile.login));
       return;
     }
 
