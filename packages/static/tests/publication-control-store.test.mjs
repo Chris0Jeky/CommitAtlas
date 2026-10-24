@@ -331,6 +331,7 @@ test("stale, remote, unknown and malformed locks are preserved until explicit re
   const owner = await f.store.inspectLock();
   assert.equal(owner.pid, process.pid);
   await f.store.releaseLock();
+  assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]); // Lock path free, no quarantine left.
   const file = control(f.root, "publication.lock");
   for (const record of [
     { ...owner, pid: 2147483647, startedAt: "2000-01-01T00:00:00.000Z" },
@@ -397,10 +398,86 @@ test("partial lock release refuses replacement bytes", async t => {
   assert.equal(await fs.readFile(control(f.root, "publication.lock"), "utf8"), "other owner");
 });
 
+test("owned removal quarantines before verification and never deletes a replacement lock", async t => {
+  let lockFile, replace = false;
+  async function swap(file) {
+    if (!replace || file !== lockFile) return;
+    replace = false; // A recovering process replaces the lock after our ownership check.
+    await fs.unlink(file);
+    await fs.writeFile(file, "recovering owner", { flag: "wx" });
+  }
+  const storage = { ...nodePublicationStorage,
+    async rename(source, ...args) { await swap(source); return fs.rename(source, ...args); },
+    async unlink(file) { await swap(file); return fs.unlink(file); } };
+  const f = await fixture(t, storage);
+  lockFile = control(f.root, "publication.lock");
+  replace = true;
+  await assert.rejects(f.store.releaseLock(), /owner changed; explicit recovery required/);
+  const quarantined = (await fs.readdir(control(f.root))).filter(name => name.endsWith(".quarantine"));
+  assert.equal(quarantined.length, 1);
+  const next = await openPublicationControlStore(f.root, options());
+  await assert.rejects(next.acquireLock(), /quarantine is present/);
+  assert.equal(await fs.readFile(control(f.root, quarantined[0]), "utf8"), "recovering owner");
+});
+
+test("owned removal retries from its own quarantine after a rename that persisted then failed", async t => {
+  const fault = faultStorage(), f = await fixture(t, fault.storage);
+  fault.arm(operation => operation === "rename");
+  await assert.rejects(f.store.releaseLock(), /injected after rename/);
+  await f.store.releaseLock();
+  assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+});
+
+test("leftover status quarantine files block progress instead of being ignored", async t => {
+  const f = await fixture(t);
+  await f.store.createTransaction(f.journal);
+  await stage(f);
+  await fs.writeFile(transaction(f.root, f.id, "status-x.tmp.y.quarantine"), "retained");
+  await assert.rejects(f.store.advanceStatus(f.id, "prepared"), /unowned status temporary/);
+  assert.equal((await f.store.readStatus(f.id)).phase, "preparing");
+});
+
+test("an exclusive create whose identity cannot be read fails closed for explicit recovery", async t => {
+  const f = await fixture(t);
+  await f.store.releaseLock();
+  const lockFile = control(f.root, "publication.lock");
+  const storage = { ...nodePublicationStorage, async open(file, flags, mode) {
+    const handle = await fs.open(file, flags, mode);
+    if (file !== lockFile || !(flags & 1)) return handle;
+    return { async stat() { throw Object.assign(new Error("injected stat"), { code: "EIO" }); },
+      readFile: (...args) => handle.readFile(...args), writeFile: (...args) => handle.writeFile(...args),
+      sync: () => handle.sync(), close: () => handle.close() };
+  } };
+  const store = await openPublicationControlStore(f.root, options(storage));
+  await assert.rejects(store.acquireLock(), /identity is unknown; explicit recovery required/);
+  assert.equal((await fs.stat(lockFile)).size, 0);
+  await assert.rejects(store.releaseLock(), /requires the exclusive lock/);
+  await assert.rejects((await openPublicationControlStore(f.root, options())).acquireLock(), { code: "EEXIST" });
+});
+
+test("completed transactions with undeclared on-disk target entries block the next generation", async t => {
+  for (const entry of ["999/staged/payload", "000/extra/payload"]) await t.test(entry, async t => {
+    const f = await fixture(t);
+    await prepared(f);
+    await cleaning(f);
+    await cleanup(f);
+    await f.store.advanceStatus(f.id, "complete");
+    const file = transaction(f.root, f.id, "targets", ...entry.split("/"));
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, "undeclared");
+    await f.store.releaseLock();
+    const next = await openPublicationControlStore(f.root, options());
+    const lock = await next.acquireLock();
+    await assert.rejects(next.createTransaction({ ...f.journal, transactionId: lock.transactionId }), /recovery bytes/);
+    assert.equal(await fs.readFile(file, "utf8"), "undeclared");
+  });
+});
+
 test("three failed status renames remove owned temps and leave status unchanged", async t => {
   let failures = 0;
   const storage = { ...nodePublicationStorage, async rename(...args) {
-    if (failures++ < 3) throw Object.assign(new Error("injected sharing failure"), { code: "EBUSY" });
+    // Only status replacement fails; owned removal also renames (to its quarantine name).
+    if (args[1].endsWith("status.json") && failures++ < 3) throw Object.assign(new Error("injected sharing failure"), { code: "EBUSY" });
     return fs.rename(...args);
   } };
   const f = await fixture(t, storage);
@@ -427,7 +504,7 @@ test("cleanup bounds retained status temps and refuses to delete changed or unow
         return fs.rename(...args);
       },
       async unlink(file) {
-        if (failUnlink && /status-.*\.tmp$/.test(file)) {
+        if (failUnlink && /status-.*\.tmp\..*\.quarantine$/.test(file)) {
           retained = file;
           throw new Error("injected temp unlink");
         }
@@ -441,7 +518,7 @@ test("cleanup bounds retained status temps and refuses to delete changed or unow
     failRename = failUnlink = true;
     for (let attempt = 0; attempt < 3; attempt++) {
       await assert.rejects(f.store.advanceStatus(f.id, "complete"), /injected temp unlink/);
-      assert.equal((await fs.readdir(transaction(f.root, f.id))).filter(name => name.endsWith(".tmp")).length, 1);
+      assert.equal((await fs.readdir(transaction(f.root, f.id))).filter(name => name.endsWith(".quarantine")).length, 1);
     }
     assert.equal((await f.store.readStatus(f.id)).phase, "cleaning");
     failUnlink = false;

@@ -90,7 +90,7 @@ const LOCK = `${CONTROL}/publication.lock`;
 const LOCK_LIMIT = 1024;
 const encoder = new TextEncoder();
 type FileIdentity = { dev: number; ino: number };
-type OwnedFile = FileIdentity & { bytes: Uint8Array };
+type OwnedFile = FileIdentity & { bytes: Uint8Array; quarantine?: string };
 
 /** Opening creates only the control root, never an output directory or publication. */
 export async function openPublicationControlStore(root: string, options: ControlStoreOptions = {}) {
@@ -141,6 +141,10 @@ class PublicationControlStore {
       hostname: hostname(), transactionId: recoverTransactionId ?? randomUUID() };
     const bytes = encoder.encode(`${JSON.stringify(owner)}\n`);
     await this.create(LOCK, bytes, identity => { this.heldLock = { ...identity, bytes }; });
+    // Scanned after the exclusive create so a quarantine renamed before it is always seen.
+    if ((await this.io.readdir(this.absolute(CONTROL))).some(name => name.endsWith(".quarantine"))) {
+      throw new Error("publication lock quarantine is present; explicit recovery required");
+    }
     this.lockAcquired = true;
     return owner;
   }
@@ -333,9 +337,20 @@ class PublicationControlStore {
 
   private async assertRecoveryBytesAbsent(journal: PublicationJournal): Promise<void> {
     await this.cleanupStatusTemps(journal.transactionId);
-    for (const [index] of journal.targets.entries()) {
+    const targets = `${this.transactionPath(journal.transactionId)}/targets`;
+    const indices = journal.targets.map((_, index) => String(index).padStart(3, "0"));
+    // Undeclared on-disk entries are unexplained recovery state, never ignored.
+    await this.checked(targets, "directory");
+    if ((await this.io.readdir(this.absolute(targets))).sort().join() !== [...indices].sort().join()) {
+      throw new Error("publication transaction still contains recovery bytes");
+    }
+    for (const index of indices) {
+      await this.checked(`${targets}/${index}`, "directory");
+      if ((await this.io.readdir(this.absolute(`${targets}/${index}`))).sort().join() !== "backup,staged") {
+        throw new Error("publication transaction still contains recovery bytes");
+      }
       for (const kind of ["staged", "backup"] as const) {
-        const directory = `${this.transactionPath(journal.transactionId)}/targets/${String(index).padStart(3, "0")}/${kind}`;
+        const directory = `${targets}/${index}/${kind}`;
         await this.checked(directory, "directory");
         if ((await this.io.readdir(this.absolute(directory))).length) throw new Error("publication transaction still contains recovery bytes");
         await this.flush(directory);
@@ -425,8 +440,13 @@ class PublicationControlStore {
       throw error;
     }
     try {
-      const stat = await handle.stat();
-      if (!stat.isFile() || stat.nlink !== 1) throw new Error("publication control entry is not a regular file");
+      // Without a proved identity the created entry is never removed: fail closed, not deleted.
+      const stat = await handle.stat().catch(error => {
+        throw new Error("publication control entry was created but its identity is unknown; explicit recovery required", { cause: error });
+      });
+      if (!stat.isFile() || stat.nlink !== 1) {
+        throw new Error("publication control entry was created but its identity is unknown; explicit recovery required");
+      }
       created?.({ dev: stat.dev, ino: stat.ino });
       // Opening can already create an empty file outside a swapped ancestor. Do not write
       // payload bytes or attempt pathname deletion there. Node has no openat-style primitive.
@@ -494,23 +514,33 @@ class PublicationControlStore {
       !Buffer.from(bytes).equals(Buffer.from(expected))) throw new Error("publication lock or temporary file owner changed");
   }
 
+  /** Rename to a fresh unique name first; only that name is verified and unlinked. */
   private async removeOwned(file: string, owner: OwnedFile, partial: boolean): Promise<void> {
-    await this.assertOwned(file, owner, partial);
-    await this.checked(file, "file");
-    await this.mutate([path.posix.dirname(file)], () => this.io.unlink(this.absolute(file)));
+    const quarantine = owner.quarantine ??= `${file}.${randomUUID()}.quarantine`;
+    if (!await this.checked(quarantine, "file", true)) {
+      await this.assertOwned(file, owner, partial);
+      await this.checked(file, "file");
+      await this.mutate([path.posix.dirname(file)], () => this.io.rename(this.absolute(file), this.absolute(quarantine)));
+    }
+    // A replacement renamed in place of ours stays quarantined; scanners then fail closed.
+    try { await this.assertOwned(quarantine, owner, partial); }
+    catch (error) { throw new Error("publication lock or temporary file owner changed; explicit recovery required", { cause: error }); }
+    await this.mutate([path.posix.dirname(file)], () => this.io.unlink(this.absolute(quarantine)));
   }
 
   private async cleanupStatusTemps(id: string): Promise<void> {
     const base = this.transactionPath(id);
     for (const [file, owner] of this.statusTemps) {
       if (path.posix.dirname(file) !== base) continue;
-      if (await this.checked(file, "file", true)) await this.removeOwned(file, owner, true);
+      if (await this.checked(owner.quarantine ?? file, "file", true) || await this.checked(file, "file", true)) {
+        await this.removeOwned(file, owner, true);
+      }
       this.statusTemps.delete(file);
       await this.flush(base);
     }
     await this.checked(base, "directory");
-    if ((await this.io.readdir(this.absolute(base))).some(name => /^status-.*\.tmp$/.test(name))) {
-      throw new Error("publication has unowned status temporary files; explicit recovery required");
+    if ((await this.io.readdir(this.absolute(base))).some(name => /^status-.*\.tmp$/.test(name) || name.endsWith(".quarantine"))) {
+      throw new Error("publication has unowned status temporary or quarantine files; explicit recovery required");
     }
   }
 }
