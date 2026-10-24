@@ -10,6 +10,7 @@ import { calculateContributionMetrics } from "@commit-atlas/core";
 import {
   assembleStaticPortfolio,
   codeSpan,
+  generateStatic,
   generateStaticFromSnapshot,
   loadStaticConfig,
   parseStaticConfig,
@@ -128,6 +129,50 @@ test("renders wide and compact Atlas variants from one snapshot", () => {
   const wideDescription = rendered["atlas.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
   const compactDescription = rendered["atlas-compact.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
   assert.equal(compactDescription, wideDescription);
+});
+
+test("static refresh can recover a calendar 503 after the hosted twelve-second budget", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-retry-"));
+  let clock = Date.now();
+  t.mock.method(Date, "now", () => clock);
+  let attempts = 0;
+  try {
+    await promisify(execFile)("git", ["init"], { cwd: root, windowsHide: true });
+    await writeFile(path.join(root, ".commitatlas.json"), JSON.stringify({
+      ...rawConfig(), days: 7, cards: ["profile"],
+      projects: [{ repo: "octocat/atlas", label: "Atlas", lifecycle: "active" }],
+    }));
+    await promisify(execFile)("git", ["add", ".commitatlas.json"], { cwd: root, windowsHide: true });
+    const fetchImpl = async (input) => {
+      const url = new URL(input.toString());
+      if (url.origin === "https://github.com") {
+        attempts += 1;
+        if (attempts === 1) {
+          clock += 13_000;
+          return new Response("Backend fetch failed", {
+            status: 503, headers: { "retry-after": new Date(clock + 1_000).toUTCString() },
+          });
+        }
+        const cells = Array.from({ length: 365 }, (_, index) => {
+          const date = new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10);
+          return `<td data-date="${date}" data-level="0"></td><tool-tip>No contributions on ${date}.</tool-tip>`;
+        }).join("");
+        return new Response(cells, { headers: { "content-type": "text/html" } });
+      }
+      if (url.pathname.endsWith("/releases/latest")) return new Response("{}", { status: 404 });
+      const payload = url.pathname === "/repos/octocat/atlas"
+        ? { name: "atlas", private: false, default_branch: "main", stargazers_count: 0, forks_count: 0, open_issues_count: 0 }
+        : url.pathname.endsWith("/repos") ? []
+        : { login: "octocat", public_repos: 0, followers: 0, following: 0 };
+      return new Response(JSON.stringify(payload), { headers: { "content-type": "application/json" } });
+    };
+    const result = await generateStatic({ cwd: root, asOf: "2026-08-20", fetchImpl });
+    assert.equal(result.manifest.window.to, "2026-08-20");
+    assert.equal(result.written, true);
+    assert.equal(attempts, 2);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("loads only a tracked, non-symlinked repository config", async () => {

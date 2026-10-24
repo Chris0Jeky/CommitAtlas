@@ -297,14 +297,31 @@ export class GitHubClient {
       if (url.origin !== WEB_ORIGIN || !url.pathname.startsWith("/users/")) {
         throw new GitHubApiError("invalid_response", "Refused a non-GitHub profile target");
       }
-      const response = await this.fetchWithDeadline(url, {
+      const init: RequestInit = {
         redirect: "error",
         headers: new Headers({
           Accept: "text/html",
           "Accept-Language": "en-US,en;q=0.9",
           "User-Agent": "CommitAtlas/0.2 (+https://github.com/Chris0Jeky/CommitAtlas)",
         }),
-      });
+      };
+      let response = await this.fetchWithDeadline(url, init);
+      // GitHub's public calendar can return a transient backend 503 even
+      // while the profile and other years are available. Retry that GET once,
+      // within the original shared budget; never retry refusals or bad markup.
+      if (response.status === 503) {
+        // Transport scheduling follows wall time, independently of an as-of
+        // snapshot clock, which static generation deliberately freezes.
+        const retryAfter = retryAfterValue(response.headers, new Date(Date.now()));
+        const delayMs = retryAfter === null ? 1_000 : /^\d+$/.test(retryAfter)
+          ? Number(retryAfter) * 1_000
+          : Math.max(0, Date.parse(retryAfter) - Date.now());
+        if (delayMs < this.remainingDeadline()) {
+          await response.body?.cancel();
+          await this.withRemainingDeadline(new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
+          response = await this.fetchWithDeadline(url, init);
+        }
+      }
       const html = await this.readHtmlResponse(response);
       return parsePublicContributionPage(html, year);
     }));
