@@ -1,9 +1,49 @@
 # CommitAtlas project state
 
-Last verified: 2026-08-30 (v0.4.0 released, production and profile evidence current)
+Release/deployment receipt last verified: 2026-08-30 (v0.4.0 released, production and profile evidence current at that checkpoint)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
+
+## Current source inventory, reconciled 2026-10-22
+
+This inventory reflects checkout `6d122c8`, inspected without network access or installed
+dependencies. It does not refresh deployment, profile adoption, browser playback, or GitHub issue
+state. The dated receipts below retain their original scope; branch-only and "not shipped"
+statements in those receipts are historical, not the current source boundary.
+
+- **Compiler and engine ship in source.** `packages/svg/src/index.ts` exports `MotionPlan`, the
+  scene registry/render APIs, deterministic seed helpers, and provisional backend/budget policy.
+  `motion/compiler.ts`, `motion/css.ts`, `motion/smil.ts`, and `scene.ts` implement that surface;
+  `tests/motion.test.mjs` and `tests/scene.test.mjs` in the SVG package cover its structural contracts.
+  Existing cards retain compatibility motion. Atlas adoption (#126), the complete compatibility
+  matrix (#113, with #180's WebKit diagnostic), and measured budgets (#114) remain open.
+- **Six built-ins are registered** in `packages/svg/src/scene.ts`: `evidence-coverage` (#133),
+  `activity-terrain` (#135), `chronograph` (#136), `lifecycle-map` (#137), `identity-beacon` (#134),
+  and `nebula` (#157). The hosted catalogue and `app/api/v1/scenes/[id]/route.ts` expose only the
+  first four. Identity Beacon and Nebula are static scenes, not hosted SVG endpoints. All six
+  currently support only `survey`; `packs.ts` implements the four frame geometries (#156), not
+  four selectable variants of every built-in.
+- **Static/Action delivery is implemented.** The CLI calls `generateStatic`; the static renderer
+  selects registered scenes and writes `scene-<id>.svg` artifacts with per-theme manifests.
+  The Action calls the same generator and reports generated paths through its `scenes` output.
+  Identity Beacon requires validated static identity and accepts `none | ambient | cinematic`;
+  Nebula accepts `none | ambient`; the hosted four accept `none | subtle | ambient`.
+  SVG scene tests, static scene/identity tests, and `action/action.test.mjs` cover these seams.
+- **Chronograph timing and labels are implemented.** Its decorative rings encode 666/4662/19980 ms
+  periods; coincident releases use separate numbered markers and legend rows. The needle remains
+  fixed at its true reading. `packages/svg/tests/chronograph.test.mjs` and
+  `chronograph-release-labels.test.mjs` assert these behaviors. Timed browser captures remain open
+  under #344; the complete #136 motion acceptance is not claimed.
+- **Projection scenes remain open.** The engine accepts only its synthetic C0 common lens context;
+  full projection validation remains #145 and C1 publication remains #170 / Q-9. Findings inputs
+  still produce explicit unavailable output. The gallery's WB-C1 tile uses the existing pinned
+  method-trial summary, not a `research-instrument` scene or a shipped finding projection reader.
+  Those scenes and the remaining catalogue are tracked under #111. Studio preview tooling exists,
+  but #141's README round-trip and remaining acceptance are not established by source inspection.
+
+Exports, registry metadata, hosted routes, static/Action entry points and existing test assertions
+were inspected for this reconciliation. No test pass or new runtime evidence is claimed here.
 
 ## Issue #256 slice 2: repository control store, 2026-10-22
 
@@ -348,9 +388,9 @@ implied by this producer checkpoint.
   3:1 where it only strokes or fills, and asserts that a per-theme override exists only where the
   shared value genuinely failed.
 
-- Eight selectable SVG surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
-  and Projects. The landing page and Studio expose the complete suite instead of hiding the richer
-  contribution views behind one overview.
+- Eight selectable SVG card surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
+  and Projects, plus four hosted scenes and two static-only scenes listed in the current source
+  inventory above. The synthetic `/gallery` groups registered outputs by family.
 - Atlas combines an up-to-two-year density heatmap (7–730 days or `auto`, default 365), total and active days, average and peak, current and
   window-bounded longest streaks, contribution mix, 28-day momentum, public-repository languages,
   project health, and the transparent Rhythm score.
@@ -360,10 +400,11 @@ implied by this producer checkpoint.
 - Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
   Midnight, and Paper themes support hosted `motion=none|subtle|ambient`; package and static
   callers additionally accept `cinematic`. This compatibility slice deliberately maps every
-  non-`none` profile to the same transform-only Subtle motion, with essential content visible
+  non-`none` card profile to the same transform-only Subtle motion, with essential content visible
   at frame zero and a reduced-motion override. Defaults remain Atlas `subtle`, other hosted
-  cards `none`, and static generation `none`. Differentiated ambient/cinematic backends and
-  the GitHub/WebKit evidence gates remain separate, unfinished work.
+  cards `none`, and static generation `none`. The CSS/SMIL compiler already drives registered
+  scenes; differentiated card textures (#126 and remaining card work under #111) and
+  the GitHub/WebKit evidence gates (#113/#180) remain unfinished.
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
   provenance, errors, and copyable README Markdown.
@@ -381,9 +422,11 @@ implied by this producer checkpoint.
   Docs, Install, and Download destinations appear only when observed or explicitly configured;
   individual action links remain in HTML/Markdown because an embedded README SVG cannot reliably
   expose multiple click targets.
-- Credential-free `@commit-atlas/static` CLI and Node 24 GitHub Action. One snapshot can create ten
-  selected SVG types, an optional compact Atlas, `projects.json`, `projects.md`, and a byte/SHA-256
-  manifest — up to 14 output files — while removing only known stale CommitAtlas artifacts. Optional
+- `@commit-atlas/static` CLI and Node 24 GitHub Action. The default ten card types use one
+  credential-free public portfolio snapshot. Opt-in Delivery is the eleventh type and needs a
+  GitHub token for separate public PR-flow evidence. Selected registered scenes, responsive Atlas
+  variants, catalogues and Delivery JSON add artifacts to the byte/SHA-256 manifest; the former
+  14-file ceiling no longer describes the source. Cleanup preserves unrelated output files. Optional
   bounded `themes` entries render opposite-scheme outputs into explicit directories from that same
   snapshot; each directory retains its own v1 manifest and ownership-aware cleanup boundary.
 - Generated catalog boundaries are pinned by adversarial fixtures: untrusted release tags and
@@ -606,7 +649,7 @@ implied by this producer checkpoint.
   publication and Marketplace listing remain separate owner decisions. v0.4.0 is released and the
   release path tracked by #102 is complete.
 
-## Next programme (planned, not shipped)
+## Next programme (dated planning receipts; current source inventory above)
 
 - **2026-09-10: hosting preparation is recorded but inactive.** [`.hosting/manifest.json`](../.hosting/manifest.json)
   preserves the existing Worker, static assets, and `LAST_GOOD` KV boundary. The resumable queue is
