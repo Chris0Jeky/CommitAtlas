@@ -1,7 +1,10 @@
 # CommitAtlas expansion programme
 
-**Status: accepted development backlog, nothing shipped.** Written 2026-08-29 from an owner brief
-and verified against the code at `2969032`. Shipped state stays in
+**Status: partially implemented; source status reconciled 2026-10-22 at `6d122c8`.** Originally
+written 2026-08-29 from an owner brief and verified against the code at `2969032`.
+The compiler, scene engine, six built-in scenes, static/Action scene delivery, four pack
+geometries and synthetic gallery now exist. Browser/README motion acceptance, full projection
+readers and the remaining catalogue are still open. Shipped state stays in
 [PROJECT_STATE.md](./PROJECT_STATE.md); this document says where the product is going and why,
 in enough detail that an agent can pick any seeded issue and start. Tracking issue:
 [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111). Cross-project seams are specified in
@@ -12,7 +15,8 @@ Read order for an implementing agent: this file → the issue → the files the 
 
 ## 1. The brief
 
-The owner wants three things from CommitAtlas that it does not deliver today:
+The original 2026-08-29 brief asked for three things. This is historical motivation, not a
+current deployment or profile observation:
 
 1. **A profile that feels alive.** The cards on the live profile do not visibly animate.
 2. **More to display**, including outputs whose purpose is aesthetic rather than metric.
@@ -26,8 +30,9 @@ plus a motion system that can render spectacle without ever letting the spectacl
 
 ## 2. Dissection of the brainstorm against the code
 
-Every claim the brainstorm made was checked. This table is the reconciliation; the rest of the
-document builds only on the corrected rows.
+Every claim the brainstorm made was checked at `2969032`. This table retains that dated
+reconciliation, including the then-current two-profile motion model; it is not a current API
+inventory. Current source status is recorded in §5–§10 and PROJECT_STATE.
 
 | Claim | Finding | Evidence |
 | --- | --- | --- |
@@ -56,12 +61,13 @@ instead of forcing a rewrite.
 > A generative visual identity system for software developers, powered by verifiable engineering
 > signals.
 
-"Card" stays the word for the ten shipped instruments. Everything new is one of five **families**,
+"Card" stays the word for the eleven supported static card types (the default ten plus opt-in
+Delivery). Everything new is one of five **families**,
 and each family has a fixed relationship to the evidence ladder in DESIGN_CHASSIS:
 
 | Family | What it is | Evidence rung and label rule |
 | --- | --- | --- |
-| **Instruments** | Compact factual modules: the ten existing cards plus small new ones | `observed`/`derived` per reading, exactly as today |
+| **Instruments** | Compact factual modules: existing cards plus small new ones | `observed`/`derived` per reading, exactly as today |
 | **Maps** | Large visualizations of relationships: terrain, lifecycle map, release train, chronograph | Geometry is `observed`; any band or threshold is printed as `hypothesis` |
 | **Signatures** | Interpretations imported from Developer Lens: DNA, archetype, craft ring, delivery loop | Always `derived`, always stamped `DERIVED SIGNATURE · not a productivity score`, always carrying the projection's coverage and privacy note |
 | **Scenes** | Aesthetic compositions that use observed data as a seed: nebula, city, reactor, river | Stamped `SCENE`; no numeric claim is printed unless it is also printed as an instrument reading beside it |
@@ -91,6 +97,10 @@ Invariants carried forward unchanged, because they are what make the product wor
   is gated by Q-9 — never assumed, never a CommitAtlas fixture, never hosted.
 
 ## 4. Target architecture
+
+This remains the target architecture. The GitHub-only scene path exists; the full Lens and
+finding projection paths remain open under #145 and #111. The current hosted allowlist contains
+no Lens scenes, and the static config has no Lens or finding projection input.
 
 ```text
 GitHub public evidence ─────► @commit-atlas/github ─────► PortfolioSnapshot ─────────────┐
@@ -130,6 +140,12 @@ Adapters stay where they are: `lib/svg-adapters.ts` for the hosted app and
 
 ## 5. Motion system
 
+**Source status:** #125's `MotionPlan` compiler is exported with CSS and SMIL backends and
+structural tests. The table below describes the target behaviors: existing cards still alias
+non-`none` profiles to Subtle, while registered scenes declare their own supported profiles and
+textures. Atlas adoption remains #126; other card textures remain under #111. Backend defaults
+and budgets are explicitly provisional pending #113/#114, not proof of browser playback.
+
 ### 5.1 Profiles
 
 | Profile | Behaviour | Where allowed | Notes |
@@ -139,8 +155,9 @@ Adapters stay where they are: `lib/svg-adapters.ts` for the hosted app and
 | `ambient` | Indefinitely repeating slow textures: breathe, scan, orbit, plotter glint, particle drift, pending pulse | hosted + static | Web and Studio may loop indefinitely; the `github-readme` target uses the bounded interval in D-15 |
 | `cinematic` | A 10–20s repeating sequence: acquisition → nodes appear → scan → plot → rest → reset | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments; the `github-readme` target uses the bounded interval in D-15 |
 
-Hosted routes accept `none|subtle|ambient` after Phase 1; the canonical query, ETag, last-good
-cache key, and CSP toggle all include the profile. Static config accepts all four.
+Hosted card/scene queries already accept `none|subtle|ambient`; static config accepts all four
+profiles. A scene must also support the selected profile. Current hosted scenes use SMIL through
+the provisional `github-readme` default; their CSP uses the renderer's actual inline-style flag.
 
 ### 5.2 Two backends, one primitive API
 
@@ -271,8 +288,9 @@ Contract tests every scene must pass, written once in a shared harness and run p
 7. No `Date.now`, `Math.random`, or `crypto.randomUUID` in `packages/svg/src` — an ESLint
    restriction, not a review convention.
 
-The #128 implementation introduced the additive engine and shared contract harness. The
-#133 implementation adds the first opt-in registered scene, `evidence-coverage`. Renderers compile one scoped motion plan with an explicit backend/target; final
+The #128 implementation introduced the additive engine and shared contract harness. Six built-ins
+are now registered: `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`,
+`identity-beacon`, and `nebula`. Renderers compile one scoped motion plan with an explicit backend/target; final
 SVG bytes and trusted emitted targets/groups enforce the provisional classes. Signature fixtures
 use a validated C0 consumer-only common context. This is not the raw Lens projection reader:
 producer coverage semantics and freshness validation remain behind #145. The finding
@@ -281,21 +299,29 @@ schema adapter remains reserved; #132 adds the bounded static identity adapter. 
 ## 7. Scene catalogue
 
 Each row is one seeded issue. Data basis names the *only* inputs the scene may read.
+The motion column records design intent, not completed acceptance. Source status in Notes comes
+from the registry and scene tests: all six built-ins currently support only `survey`. "Open under
+#111" identifies remaining programme work without implying that its issue has been closed or
+its browser behavior verified.
 
 ### Phase 1 — GitHub-only (no projection needed)
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
-| *(atlas, ambient)* | instrument | existing `AtlasCardData` | M3 density scan / M6 survey beam, M4 reticle breathe | The first visible fix for the brief; ports the chassis motion into the flagship card |
-| *(standalone cards, ambient)* | instrument | existing card data | one texture each: plotter head (activity), needle settle (rhythm), pending pulse (projects), beam (profile) | Each card keeps its exact geometry |
-| `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / three-to-four project bodies breathing | Static-only in Phase 1: free text never comes from a query string |
-| `evidence-coverage` | instrument | contribution source and basis, per-project CI state, `releaseState`, freshness mode | scan illuminates available rows and leaves unavailable rows dark | Makes the product's honesty visible: `PUBLIC PROFILE · COMPLETE`, `LINE CHANGES · NOT OBSERVED` |
-| `activity-terrain` | map | contribution days, releases, streaks | survey line traverses the contours | Weekly activity → elevation; releases → peaks; nothing observed → flat basin, labelled |
-| `chronograph` | map | contribution days, releases, streak | rings turn at different rates; streak needle settles | Inner days, middle weeks, outer months; release markers on the rim |
-| `lifecycle-map` | map | configured lifecycle, CI, release, freshness | markers breathe; pending pulses | `planned → active → maintenance → paused → archived` as a metro line; lifecycle is an owner declaration and is labelled as one |
-| `release-train` | map | bounded release history per project (new fetch) | a packet moves along the track between stations | Needs the release-history slice; prereleases are sidings; unavailable history is a blocked signal, not an empty track |
+| *(atlas, ambient)* | instrument | existing `AtlasCardData` | M3 density scan / M6 survey beam, M4 reticle breathe | Open #126; current cards retain compatibility motion |
+| *(standalone cards, ambient)* | instrument | existing card data | one texture each: plotter head (activity), needle settle (rhythm), pending pulse (projects), beam (profile) | Open under #111; each card keeps its exact geometry |
+| `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / matched project bodies breathing | Implemented #134, static-only; bounded identity is required; `none`, `ambient`, `cinematic` |
+| `evidence-coverage` | instrument | contribution source and basis, per-project CI state, `releaseState`, freshness mode | scan illuminates available rows and leaves unavailable rows dark | Implemented #133, hosted + static; observed coverage and neutral unavailable rows |
+| `activity-terrain` | map | contribution days, releases, streaks | survey line traverses the contours | Implemented #135, hosted + static; weekly activity → elevation, latest-release markers; no complete release-history claim |
+| `chronograph` | map | contribution days, releases, streak | decorative rings turn at different rates; needle stays at the true streak angle | Implemented #136 scene, hosted + static. Timing and label code for #344 ships (666/4662/19980 ms; separate numbered release markers/legend); timed browser acceptance remains open. Needle settle is deliberately absent to preserve frame zero |
+| `lifecycle-map` | map | configured lifecycle, CI, release, freshness | markers breathe; pending pulses | Implemented #137, hosted + static; lifecycle is labelled as an owner declaration |
+| `release-train` | map | bounded release history per project (new fetch) | a packet moves along the track between stations | Open under #111, gated on Q-2/release-history fetch; prereleases are sidings; unavailable history is a blocked signal, not an empty track |
 
 ### Phase 2 — Developer Lens projection
+
+All rows in this phase remain open under #111, dependent on the full projection reader #145;
+no signature scene is registered. The synthetic common lens context in engine tests does not
+implement this reader. Owner C1 publication remains separately gated by #170 / Q-9.
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
@@ -308,10 +334,14 @@ Each row is one seeded issue. Data basis names the *only* inputs the scene may r
 
 ### Phase 3 — findings, aesthetic scenes, packs
 
+Only Nebula is registered from this scene list (#157), with static `none | ambient` output.
+Every other row remains open under #111, including the gated data decisions named below.
+The gallery's finding tile is the existing WB-C1 method-trial summary, not `research-instrument`.
+
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
 | `research-instrument` | finding | a vendored `ResearchFindingProjection.v1` | two traces; motion and labels branch on `decision.outcome` — `reject`: the candidate trace fades while the retained baseline stays lit, `BASELINE RETAINED`; `revise_once`: both traces stay lit with a dashed revision marker, `REVISE ONCE`; `benchmarked`: both stay lit, `BENCHMARKED · research evidence, not promotion` | Data class, decision, limitations, and unsupported claims in the frame; frame zero already prints the outcome word |
-| `nebula` | scene | contribution days, repositories, languages, releases; seed | twinkle on decorative stars only | Survey pack. Positions come from the canonical model hash. One decorative twinkle group (M10, opacity floor 0.35). A full year is drawn whole; an over-budget field fails closed |
+| `nebula` | scene | contribution days, repositories, languages, releases; seed | twinkle on decorative stars only | Implemented #157, static-only, survey pack. Positions come from the canonical model hash. One decorative twinkle group (M10, opacity floor 0.35). A full year is drawn whole; an over-budget field fails closed |
 | `spectrogram` | scene | per-project weekly commit series (new fetch, Q-7) plus daily totals | thin scan line | Bands per project, interference where projects overlap in a week; **parked** until Q-7 — the current snapshot has daily totals and category aggregates only, so no cross-project band can be observed today |
 | `system-weather` | scene | derived from snapshot trends (and `lens` if present) | atmosphere drift | Trends seed a metaphor only; every line is stamped `hypothesis`, never presented as a signature or measurement |
 | `pipeline-telemetry` | map | named-workflow CI plus its latest run's jobs (new fetch, Q-8) | packets through the observed job sequence; a failed job gets M7 | **Parked** until Q-8 — the snapshot records one overall workflow state, so stages cannot be drawn from it; the fallback composition is the single observed state, never invented stages |
@@ -337,7 +367,16 @@ stays the existing corner-18 frame and does not paint its grid, so survey SVG st
 Orbital, spectral, and terminal change that corner and paint a grid plus marker in the theme's
 chrome ink.
 
+This is implemented frame geometry (#156), covered by `packages/svg/tests/packs.test.mjs`.
+It does not mean built-in scenes support every pack: their registry metadata currently permits
+only `survey`. Broader scene/pack adoption remains open under #111.
+
 ## 8. Cross-project projections
+
+**Target contract, still open (#145 and #111):** no full projection reader or registered
+signature/finding scene exists in this checkout. Only the synthetic C0 common lens context and
+the pinned method-trial bridge are implemented. The table and freshness rules below specify the
+intended seam, not completed producer/consumer compatibility.
 
 Ownership follows the two sibling repositories' own boundaries, not this repository's convenience:
 
@@ -358,6 +397,12 @@ Field shapes, bounds, denied content, fixtures, tests, and the required merge or
 
 ## 9. Delivery
 
+**Source status:** the CLI and Node 24 Action generate registered scenes through
+`packages/static/src/generate.ts` and `render.ts`, validate each scene's pack/profile support,
+and report per-theme artifacts and manifests; the Action exposes the `scenes` output. Hosted
+delivery currently allows only Evidence Coverage, Activity Terrain, Chronograph and Lifecycle
+Map. The target model below does not establish profile adoption or hosted Lens support (#111).
+
 | Model | Use | Constraint |
 | --- | --- | --- |
 | Hosted endpoint (`/api/v1/scenes/<id>.svg`) | public adoption, previews, Studio | GitHub-only scenes and `demo=true` lens scenes; Camo caching; anonymous rate limits; CSP toggle for animated profiles |
@@ -369,6 +414,13 @@ Camo notes from GitHub's documentation: return a correct `image/svg+xml` content
 and its description must survive every scene and motion profile.
 
 ## 10. Studio motion lab and verification harness
+
+**Source status:** Studio has hosted-scene selection, replay/still views, decoded-image approval
+and renderer counters (`app/studio/studio-scene-preview*`, `lib/scene-metadata.ts`). #141 remains
+open for remaining acceptance, including README round-trip qualification. `/gallery` groups
+synthetic registered outputs and the existing finding tile. The complete scene playback harness
+described below remains programme work under #111; the retained #113 probe matrix is incomplete.
+These target lists are not claims that every control or browser/embedding combination ships.
 
 **Studio (a person's tool):** motion profile and pack selectors; replay (re-mount the preview);
 pause/resume when the selected preview backend and embedding surface support it;
@@ -435,6 +487,12 @@ repository. The Action never commits.
 
 The complete dependency-ordered issue list is maintained in the tracking issue #111 (the issues
 are the source of truth for scope; this document is the source of truth for intent).
+
+Current source does not establish any phase's full definition of done. P0 still has #113/#114
+evidence gates. P1 has the compiler, engine and initial scenes, but existing-card ambient adoption
+(#126 and remaining card work under #111) and browser/profile acceptance remain open. P2 still
+needs #145 and owner publication #170 / Q-9. P3 has Nebula, frame-pack geometry and the synthetic
+gallery; the finding projection reader and remaining scenes are open under #111.
 
 ## 14. Decisions and open questions
 
