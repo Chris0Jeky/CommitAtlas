@@ -237,12 +237,58 @@ test("honors public calendar Retry-After seconds and HTTP dates before retrying"
 test("does not retry a public calendar refusal or wait past the shared deadline", async () => {
   for (const status of [401, 403, 404, 429, 503]) {
     let attempts = 0;
+    const startedAt = Date.now();
     await assert.rejects(new GitHubClient({ deadlineMs: 100, now: () => NOW, fetchImpl: async () => {
       attempts += 1;
       return new Response("refused", { status, headers: { "retry-after": "5" } });
-    } }).fetchPublicProfileContributions("octocat", 1), GitHubApiError);
+    } }).fetchPublicProfileContributions("octocat", 1), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      if (status === 503) {
+        // Retry-After 5 s cannot fit a 100 ms budget, so the 503 must surface as
+        // unavailable at once instead of sleeping into a github_timeout.
+        assert.equal(error.code, "github_unavailable");
+        assert.ok(Date.now() - startedAt < 1_000, `elapsed=${Date.now() - startedAt}`);
+      }
+      return true;
+    });
     assert.equal(attempts, 1, `status=${status}`);
   }
+});
+
+test("waits the default one second before retrying a public calendar 503 without Retry-After", async () => {
+  let attempts = 0;
+  let firstAttemptAt = 0;
+  let retriedAt = 0;
+  await new GitHubClient({ now: () => NOW, fetchImpl: async () => {
+    attempts += 1;
+    if (attempts === 1) {
+      firstAttemptAt = Date.now();
+      return new Response("unavailable", { status: 503 });
+    }
+    retriedAt = Date.now();
+    return html(publicContributionHtml(2026, {}, { Commits: 100, "Pull requests": 0, Issues: 0, "Code review": 0 }));
+  } }).fetchPublicProfileContributions("octocat", 1);
+  assert.equal(attempts, 2);
+  assert.ok(retriedAt - firstAttemptAt >= 950, `gap=${retriedAt - firstAttemptAt}`);
+});
+
+test("reports a public calendar retry that outlives the shared deadline as a timeout", async () => {
+  let attempts = 0;
+  await assert.rejects(new GitHubClient({ deadlineMs: 1_300, now: () => NOW, fetchImpl: async (_input, init) => {
+    attempts += 1;
+    if (attempts === 1) return new Response("unavailable", { status: 503, headers: { "retry-after": "1" } });
+    // The 1 s retry fits the budget, but the second GET never answers: it must end
+    // when the request's abort signal fires, as a real fetch would.
+    return new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+  } }).fetchPublicProfileContributions("octocat", 1), (error: unknown) => {
+    assert.ok(error instanceof GitHubApiError);
+    assert.equal(error.code, "github_timeout");
+    return true;
+  });
+  assert.equal(attempts, 2);
 });
 
 test("clamps multi-year profile windows to two trailing years", async () => {
