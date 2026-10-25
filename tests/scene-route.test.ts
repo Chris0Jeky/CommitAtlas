@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GET } from "@/app/api/v1/scenes/[id]/route";
+import { GitHubClient } from "@/lib/github/client";
+import { demoContributions, demoProfile } from "@/lib/github/demo";
 import { withWorkerEnv } from "@/lib/runtime-env";
 
 const scene = (id: string, query: string) =>
@@ -51,5 +53,24 @@ test("rejects an unknown scene, cinematic motion, and an unknown pack", async ()
     const nope = await call("evidence-coverage", "user=octocat&demo=true&pack=nope");
     assert.equal(nope.status, 400);
     assert.equal((await nope.json()).error.code, "invalid_input");
+  });
+});
+
+test("token-backed scene plates are never marked publicly cacheable", async (t) => {
+  let sourceCalls = 0;
+  t.mock.method(GitHubClient.prototype, "fetchProfile", async (login: string) => {
+    sourceCalls += 1;
+    return demoProfile(login);
+  });
+  t.mock.method(GitHubClient.prototype, "fetchContributions", async (login: string, days: number | "auto") => {
+    sourceCalls += 1;
+    return demoContributions(login, days === "auto" ? 7 : days);
+  });
+  await withWorkerEnv({ GITHUB_TOKEN: "test-token-not-real" }, async () => {
+    // Canonical parser form (demo=false), so the request is not redirected before the cache header.
+    const response = await call("evidence-coverage", "user=octocat&demo=false");
+    assert.equal(response.status, 200);
+    assert.equal(sourceCalls, 2, "token-backed scene must use the authenticated sources");
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
   });
 });
