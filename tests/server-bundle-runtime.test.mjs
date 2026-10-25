@@ -61,3 +61,68 @@ test("the harness does not swallow another cloudflare protocol import", async ()
       && error.message.includes("cloudflare:"),
   );
 });
+
+for (const failure of ["synchronous fetch", "rejected fetch", "fallback refetch"]) {
+  test(`the image optimizer bounds a ${failure} failure`, async () => {
+    const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url).href);
+    const bindingDetail = "synthetic-binding-detail-must-stay-private";
+    let fetches = 0;
+    const logged = [];
+    const originalError = console.error;
+    console.error = (...args) => { logged.push(args.map(String).join(" ")); };
+    let response;
+    try {
+      response = await worker.fetch(
+        new Request("http://localhost/_vinext/image?url=%2Fopengraph.png&w=640&q=75"),
+        {
+          ASSETS: {
+            fetch() {
+              fetches++;
+              if (failure === "fallback refetch" && fetches === 1) {
+                return Promise.resolve(new Response("synthetic image bytes", {
+                  headers: { "Content-Type": "image/png" },
+                }));
+              }
+              if (failure === "rejected fetch") return Promise.reject(bindingDetail);
+              throw new Error(bindingDetail);
+            },
+          },
+          ...(failure === "fallback refetch" ? {
+            IMAGES: {
+              input(stream) {
+                return {
+                  transform() {
+                    return {
+                      async output() {
+                        // A transform that consumed the source forces Vinext to refetch.
+                        await new Response(stream).arrayBuffer();
+                        throw new Error("synthetic transform failure");
+                      },
+                    };
+                  },
+                };
+              },
+            },
+          } : {}),
+        },
+        { waitUntil() {}, passThroughOnException() {} },
+      );
+    } finally {
+      console.error = originalError;
+    }
+    assert.equal(fetches, failure === "fallback refetch" ? 2 : 1);
+    assert.equal(response.status, 500);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.match(response.headers.get("content-security-policy"), /sandbox/);
+    const { generatedAt, ...body } = await response.json();
+    assert.ok(Number.isFinite(Date.parse(generatedAt)));
+    assert.deepEqual(body, {
+      version: 1,
+      status: "error",
+      error: { code: "internal_error", message: "CommitAtlas could not complete the request" },
+    });
+    assert.ok(logged.every((line) => !line.includes(bindingDetail)), "binding details must not be logged");
+  });
+}
