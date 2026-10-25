@@ -150,6 +150,37 @@ test("delegates the live path to fetchProjects with the parsed maps", async () =
   }
 });
 
+test("token-backed live project boards are never marked publicly cacheable", async () => {
+  const liveSnapshot: ProjectBoardSnapshot = {
+    version: 1,
+    owner: "octocat",
+    projects: [],
+    freshness: {
+      generatedAt: "2026-08-20T00:00:00.000Z",
+      source: "github-rest",
+      mode: "live",
+    },
+  };
+  let fetchCalls = 0;
+  const original = GitHubClient.prototype.fetchProjects;
+  GitHubClient.prototype.fetchProjects = async function (): Promise<ProjectBoardSnapshot> {
+    fetchCalls += 1;
+    return liveSnapshot;
+  };
+  try {
+    const response = await withWorkerEnv(
+      { GITHUB_TOKEN: "test-token-not-real" },
+      () => GET(new Request("https://example.test/api/v1/projects?owner=octocat&repos=atlas&states=atlas:active")),
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalls, 1);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+  } finally {
+    GitHubClient.prototype.fetchProjects = original;
+  }
+});
+
 function normalizeGeneratedAt(snapshot: ProjectBoardSnapshot): ProjectBoardSnapshot {
   return {
     ...snapshot,

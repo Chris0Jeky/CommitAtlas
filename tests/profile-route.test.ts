@@ -102,3 +102,25 @@ test("without demo the route delegates to GitHubClient.fetchProfile", async () =
     restore();
   }
 });
+
+test("token-backed live profiles are never marked publicly cacheable", async () => {
+  const sentinel = { version: 1, login: "octocat", marker: "token-profile-sentinel" };
+  let fetchCalls = 0;
+  const restore = stubFetchProfile(async () => {
+    fetchCalls += 1;
+    return sentinel as unknown as ProfileSnapshot;
+  });
+  try {
+    const response = await withWorkerEnv(
+      { GITHUB_TOKEN: "test-token-not-real" },
+      () => GET(new Request("https://example.test/api/v1/profile?user=octocat")),
+    );
+
+    assert.equal(fetchCalls, 1);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.deepEqual(await response.json(), sentinel);
+  } finally {
+    restore();
+  }
+});
