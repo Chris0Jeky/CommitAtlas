@@ -158,7 +158,8 @@ async function requestGraphql(input: {
         // Unreadable or malformed bodies are not affirmative quota evidence.
       }
     } else {
-      await response.body?.cancel();
+      // Discard failures must not replace an already classified upstream refusal.
+      await response.body?.cancel().catch(() => undefined);
     }
     if (rateLimited) {
       throw rateLimitError(response.headers, input.now());

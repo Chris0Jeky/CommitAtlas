@@ -90,9 +90,28 @@ test("delivery preserves secondary rate-limit headers without retrying or readin
   assert.equal(cancelled, true);
 });
 
+for (const status of [403, 429]) {
+  test(`delivery preserves an HTTP ${status} quota refusal when body cancellation rejects`, async () => {
+    await assert.rejects(() => fetchDeliverySnapshot({
+      token: "synthetic-token", login: "Chris0Jeky", repositories: REPOSITORIES, now: () => NOW,
+      fetchImpl: async () => new Response(new ReadableStream({
+        start(controller) { controller.error(new Error("sensitive-fixture")); },
+      }), { status, headers: { "retry-after": "17" } }),
+    }), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_rate_limited");
+      assert.equal(error.status, 429);
+      assert.equal(error.retryAfter, "17");
+      assert.doesNotMatch(error.message, /sensitive-fixture|synthetic-token/);
+      return true;
+    });
+  });
+}
+
 for (const [label, makeResponse, retryAfter] of [
   ["403 message", () => Response.json({ message: "You have exceeded a secondary rate limit. sensitive-fixture" }, { status: 403 }), "60"],
   ["403 plain text", () => new Response("Abuse detection mechanism triggered", { status: 403 }), "60"],
+  ["403 GraphQL type", () => Response.json({ errors: [{ type: "RATE_LIMITED" }] }, { status: 403 }), "60"],
   ["403 exhausted quota", () => new Response(null, { status: 403, headers: {
     "x-ratelimit-remaining": "0", "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30),
   } }), "30"],

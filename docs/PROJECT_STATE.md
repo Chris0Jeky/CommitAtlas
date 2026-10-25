@@ -51,11 +51,34 @@ Delivery collection preserves primary and secondary quota refusals as `github_ra
 (429), including bounded HTTP 403 messages and HTTP 200 GraphQL errors. It shares the general
 client's validated retry guidance and keeps upstream bodies out of returned errors. Successful
 counts with an exhausted-quota header remain valid; non-quota refusals keep their existing behavior.
-The focused Delivery tests reproduce the previous outage misclassification and cover both HTTP
-and GraphQL refusal forms (17 pass; the original transport fails 9). `npm run typecheck`,
-`npm run lint`, `npm run test:github` and `npm test` pass locally. The latter passes 71 built-product
-tests. No live token-backed quota exhaustion or deployment is claimed.
-No human-action file is declared. The remaining Worker/client claims stay open under #427.
+The focused Delivery tests cover HTTP and GraphQL refusal forms (20/20 pass). Review reproduced
+raw stream-cancellation errors replacing HTTP 403/429 quota refusals; discarding a failed body
+now preserves the bounded quota error. Both new cancellation regressions failed before that guard.
+The prebuilt Action bundle is rebuilt from this source.
+
+`npm run typecheck:worker`, `npm run typecheck`, `npm run lint`, `npm run test:github` and `npm test`
+pass locally. The GitHub gate passes 41 package, one discovery and 348 source/route tests; the
+built product passes 74/74. Full `npm run check` is not claimed: two static tests and two executed
+Action tests require Git-writing fixtures, excluded under this session's no-Git-writes constraint.
+All other permitted gate stages pass, including 265 static tests (one existing Windows skip)
+and three Action metadata checks.
+The Action bundle freshness check against committed content also awaits the permitted commit.
+No live token-backed quota exhaustion, hosted CI or deployment is claimed.
+No human-action file is declared. The remaining client identifier-validation claim stays open under #427.
+
+## Issue #427 image failure boundary, local proof 2026-10-25
+
+The Worker awaits image optimization inside its error boundary. Escaping asset-binding
+exceptions now return the standard 500 `internal_error` JSON with `no-store` and security
+headers. The error passed to the shared response helper has a fixed message, so escaping
+binding details enter neither that helper's log nor the response.
+
+Built-Worker regressions cover a synchronous asset-fetch throw, a rejected fetch promise,
+and a failed refetch after a transform consumes the source. All three failed against the
+original bundle; the existing successful unbound PNG passthrough remains green. `npm test`
+passes 74/74; `npm run typecheck:worker`, `npm run typecheck`, and `npm run lint` pass.
+This is local Node harness evidence with synthetic binding faults; deployed Cloudflare
+bindings remain unverified. The other #427 claims remain open. No human-action file is declared.
 
 ## Issue #256 slice 2: repository control store, 2026-10-22
 
