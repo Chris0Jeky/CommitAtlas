@@ -881,6 +881,22 @@ test("the built Worker serves an honest public last-good response after a primed
     ...livePayload,
     freshness: { ...livePayload.freshness, mode: "stale" },
   });
+
+  const [key, raw] = [...values][0];
+  const entry = JSON.parse(raw);
+  for (const invalid of ["no-referrer\u0000", "\u0100"]) {
+    values.set(key, JSON.stringify({
+      ...entry,
+      headers: { ...entry.headers, "referrer-policy": invalid },
+    }));
+    const rejectedCache = await withMockedFetch(
+      async () => githubJson({ message: "upstream unavailable" }, 500),
+      () => worker.fetch(new Request(`http://localhost${path}`), env, ctx),
+    );
+    assert.equal(rejectedCache.status, 502);
+    assert.equal(rejectedCache.headers.get("cache-control"), "no-store");
+    assert.equal((await rejectedCache.json()).error.code, "github_unavailable");
+  }
 });
 
 test("the built atlas and scene routes consult LAST_GOOD for every recoverable GitHub failure", async (context) => {

@@ -249,6 +249,12 @@ function parseEntry(raw: string | null, request: Request, now: Date): LastGoodEn
       headers[name] = header;
     }
   }
+  try {
+    // Stored strings must also be usable HTTP header values in this runtime.
+    new Headers(headers);
+  } catch {
+    return null;
+  }
   const contentType = headers["content-type"] ?? "";
   if (isSvgPath(request) !== contentType.toLowerCase().startsWith("image/svg+xml")) return null;
   if (!isSafeBody(value.body, contentType)) return null;

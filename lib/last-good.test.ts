@@ -470,6 +470,38 @@ test("cold, expired, corrupt, and non-upstream failures retain the original erro
   assert.equal((await readFailure.json() as { error: { code: string } }).error.code, "github_unavailable");
 });
 
+test("unusable stored HTTP headers retain the original bounded upstream error", async () => {
+  const request = new Request("https://example.test/api/v1/profile?user=octocat&demo=false");
+  const store = memoryStore();
+  const pending: Promise<unknown>[] = [];
+  await withPublicLastGood(request, async () => jsonSuccess(), runtime(store, pending, LIVE_AT));
+  await Promise.all(pending);
+  const key = await publicLastGoodKey(request);
+  const original = JSON.parse(store.values.get(key)!) as { headers: Record<string, string> };
+
+  for (const value of ["no-referrer\u0000", "\u0100", "\ud83d\ude00"]) {
+    store.values.set(key, JSON.stringify({
+      ...original,
+      headers: { ...original.headers, "referrer-policy": value },
+    }));
+    for (const [status, code] of [[502, "github_unavailable"], [429, "github_rate_limited"]] as const) {
+      const upstream = githubError(status, code);
+      const response = await withPublicLastGood(request, async () => upstream, runtime(store, [], LIVE_AT));
+      assert.equal(response, upstream, "a corrupt cache entry must preserve the route response");
+      assert.equal(response.status, status);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.equal((await response.json() as { error: { code: string } }).error.code, code);
+    }
+  }
+
+  store.values.set(key, JSON.stringify(original));
+  const fallback = await withPublicLastGood(request, async () => githubError(502, "github_unavailable"),
+    runtime(store, [], LIVE_AT));
+  assert.equal(fallback.status, 200, "usable stored headers must still permit stale fallback");
+  assert.equal(fallback.headers.get("x-commitatlas-data-state"), "stale");
+  assert.equal((await fallback.json() as { freshness: { mode: string } }).freshness.mode, "stale");
+});
+
 test("synthetic, token-backed, method-mismatched, and cross-key requests never reuse public entries", async () => {
   const store = memoryStore();
   const pending: Promise<unknown>[] = [];
