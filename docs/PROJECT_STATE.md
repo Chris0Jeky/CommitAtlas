@@ -45,6 +45,20 @@ statements in those receipts are historical, not the current source boundary.
 Exports, registry metadata, hosted routes, static/Action entry points and existing test assertions
 were inspected for this reconciliation. No test pass or new runtime evidence is claimed here.
 
+## Issue #427 image failure boundary, local proof 2026-10-25
+
+The Worker awaits image optimization inside its error boundary. Escaping asset-binding
+exceptions now return the standard 500 `internal_error` JSON with `no-store` and security
+headers. The error passed to the shared response helper has a fixed message, so escaping
+binding details enter neither that helper's log nor the response.
+
+Built-Worker regressions cover a synchronous asset-fetch throw, a rejected fetch promise,
+and a failed refetch after a transform consumes the source. All three failed against the
+original bundle; the existing successful unbound PNG passthrough remains green. `npm test`
+passes 74/74; `npm run typecheck:worker`, `npm run typecheck`, and `npm run lint` pass.
+This is local Node harness evidence with synthetic binding faults; deployed Cloudflare
+bindings remain unverified. The other #427 claims remain open. No human-action file is declared.
+
 ## Issue #256 slice 2: repository control store, 2026-10-22
 
 `packages/static/src/publication-control-store.ts` adds repository-contained transaction storage

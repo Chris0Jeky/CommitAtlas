@@ -83,15 +83,20 @@ const worker = {
       // so pass no transform: vinext serves the source with the same
       // security/cache headers instead of throwing inside the transform.
       const images = env.IMAGES;
-      return handleImageOptimization(request, {
-        fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
-        ...(images ? {
-          transformImage: async (body, { width, format, quality }) => {
-            const result = await images.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
-            return result.response();
-          },
-        } : {}),
-      }, allowedWidths);
+      try {
+        return await handleImageOptimization(request, {
+          fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
+          ...(images ? {
+            transformImage: async (body, { width, format, quality }) => {
+              const result = await images.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
+              return result.response();
+            },
+          } : {}),
+        }, allowedWidths);
+      } catch {
+        // Binding errors can contain internal details; keep logs and the response bounded.
+        return apiErrorResponse(new Error("Image optimization failed"));
+      }
     }
 
     const response = await withWorkerEnv(env, async () => {
