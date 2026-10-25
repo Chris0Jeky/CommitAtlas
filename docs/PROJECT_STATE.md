@@ -45,6 +45,18 @@ statements in those receipts are historical, not the current source boundary.
 Exports, registry metadata, hosted routes, static/Action entry points and existing test assertions
 were inspected for this reconciliation. No test pass or new runtime evidence is claimed here.
 
+## Issue #427 slice: Delivery quota refusals, 2026-10-25
+
+Delivery collection preserves primary and secondary quota refusals as `github_rate_limited`
+(429), including bounded HTTP 403 messages and HTTP 200 GraphQL errors. It shares the general
+client's validated retry guidance and keeps upstream bodies out of returned errors. Successful
+counts with an exhausted-quota header remain valid; non-quota refusals keep their existing behavior.
+The focused Delivery tests reproduce the previous outage misclassification and cover both HTTP
+and GraphQL refusal forms (17 pass; the original transport fails 9). `npm run typecheck`,
+`npm run lint`, `npm run test:github` and `npm test` pass locally. The latter passes 71 built-product
+tests. No live token-backed quota exhaustion or deployment is claimed.
+No human-action file is declared. The remaining Worker/client claims stay open under #427.
+
 ## Issue #256 slice 2: repository control store, 2026-10-22
 
 `packages/static/src/publication-control-store.ts` adds repository-contained transaction storage

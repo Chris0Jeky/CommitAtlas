@@ -68,6 +68,90 @@ test("fetchDeliverySnapshot requires a token before performing any request", asy
   assert.equal(calls, 0);
 });
 
+test("delivery preserves secondary rate-limit headers without retrying or reading the body", async () => {
+  let calls = 0;
+  let cancelled = false;
+  await assert.rejects(() => fetchDeliverySnapshot({
+    token: "synthetic-token", login: "Chris0Jeky", repositories: REPOSITORIES, now: () => NOW,
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response(new ReadableStream({ cancel() { cancelled = true; } }), {
+        status: 403, headers: { "retry-after": "17", "x-ratelimit-remaining": "4999" },
+      });
+    },
+  }), (error: unknown) => {
+    assert.ok(error instanceof GitHubApiError);
+    assert.equal(error.code, "github_rate_limited");
+    assert.equal(error.status, 429);
+    assert.equal(error.retryAfter, "17");
+    return true;
+  });
+  assert.equal(calls, 1);
+  assert.equal(cancelled, true);
+});
+
+for (const [label, makeResponse, retryAfter] of [
+  ["403 message", () => Response.json({ message: "You have exceeded a secondary rate limit. sensitive-fixture" }, { status: 403 }), "60"],
+  ["403 plain text", () => new Response("Abuse detection mechanism triggered", { status: 403 }), "60"],
+  ["403 exhausted quota", () => new Response(null, { status: 403, headers: {
+    "x-ratelimit-remaining": "0", "x-ratelimit-reset": String(NOW.getTime() / 1000 + 30),
+  } }), "30"],
+  ["429 fallback", () => new Response(null, { status: 429, headers: { "retry-after": "invalid" } }), "60"],
+  ["429 HTTP date", () => new Response(null, { status: 429, headers: { "retry-after": "Mon, 21 Sep 2026 18:23:00 GMT" } }), "Mon, 21 Sep 2026 18:23:00 GMT"],
+  ["200 GraphQL type", () => Response.json({ errors: [{ type: "RATE_LIMITED" }] }, { headers: { "retry-after": "19" } }), "19"],
+  ["200 GraphQL extension", () => Response.json({ errors: [{ extensions: { code: "RATE_LIMITED" } }] }), "60"],
+  ["200 GraphQL message with partial counts", () => Response.json(deliveryResponse({
+    errors: [{ message: "You have exceeded a secondary rate limit. sensitive-fixture" }],
+  })), "60"],
+] as const) {
+  test(`delivery preserves rate-limit semantics for ${label}`, async () => {
+    let calls = 0;
+    await assert.rejects(() => fetchDeliverySnapshot({
+      token: "synthetic-token", login: "Chris0Jeky", repositories: REPOSITORIES, now: () => NOW,
+      fetchImpl: async () => { calls += 1; return makeResponse(); },
+    }), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_rate_limited");
+      assert.equal(error.status, 429);
+      assert.equal(error.retryAfter, retryAfter);
+      assert.doesNotMatch(error.message, /sensitive-fixture|synthetic-token/);
+      return true;
+    });
+    assert.equal(calls, 1);
+  });
+}
+
+test("delivery does not invent rate-limit evidence from unrelated or unreadable responses", async () => {
+  for (const response of [
+    Response.json({ message: "Forbidden", detail: "rate limit" }, { status: 403 }),
+    Response.json({ message: "Forbidden" }, { status: 403, headers: { "retry-after": "invalid", "x-ratelimit-reset": "9999999999" } }),
+    Response.json({ errors: [{ type: "FORBIDDEN", detail: "rate limit" }] }),
+    new Response("rate limit", { status: 503, headers: { "retry-after": "17" } }),
+    new Response(new ReadableStream({ start(controller) { controller.error(new Error("sensitive-fixture")); } }), { status: 403 }),
+    new Response("rate limit" + "x".repeat(1_500_000), { status: 403 }),
+  ]) {
+    await assert.rejects(() => fetchDeliverySnapshot({
+      token: "synthetic-token", login: "Chris0Jeky", repositories: REPOSITORIES, now: () => NOW,
+      fetchImpl: async () => response,
+    }), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_unavailable");
+      assert.equal(error.status, 502);
+      assert.equal(error.retryAfter, null);
+      assert.doesNotMatch(error.message, /sensitive-fixture|synthetic-token/);
+      return true;
+    });
+  }
+});
+
+test("delivery accepts successful counts even when the last quota unit was used", async () => {
+  const snapshot = await fetchDeliverySnapshot({
+    token: "synthetic-token", login: "Chris0Jeky", repositories: REPOSITORIES, now: () => NOW,
+    fetchImpl: async () => Response.json(deliveryResponse(), { headers: { "x-ratelimit-remaining": "0" } }),
+  });
+  assert.equal(snapshot.source.queryCount, 14);
+});
+
 test("fetchDeliverySnapshot rejects missing, malformed, and GraphQL-error count evidence", async () => {
   const cases: Array<{ payload: Record<string, unknown>; pattern: RegExp }> = [
     { payload: { data: { scopeRepository0: { isPrivate: false } } }, pattern: /missing.*lifetimeAuthored/i },
@@ -81,7 +165,7 @@ test("fetchDeliverySnapshot rejects missing, malformed, and GraphQL-error count 
       pattern: /opened7.*non-negative integer/i,
     },
     {
-      payload: { data: null, errors: [{ type: "RATE_LIMITED", message: "rate limited" }] },
+      payload: { data: null, errors: [{ type: "INTERNAL", message: "unavailable" }] },
       pattern: /could not satisfy/i,
     },
   ];
