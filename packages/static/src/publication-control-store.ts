@@ -132,7 +132,11 @@ class PublicationControlStore {
     await this.directory(TRANSACTIONS, false);
   }
 
-  /** Existing locks, including provably dead/remote/malformed locks, are never age-deleted. */
+  /**
+   * Existing locks, including provably dead/remote/malformed locks, are never age-deleted.
+   * A failure after exclusive creation can retain an owned lock, including a failed quarantine
+   * scan. The same instance can release that lock; mutations require successful acquisition.
+   */
   async acquireLock(recoverTransactionId?: string): Promise<PublicationLock> {
     if (this.heldLock) throw new Error("publication lock is already held by this store");
     if (recoverTransactionId !== undefined) await this.readStatus(recoverTransactionId);
@@ -167,10 +171,27 @@ class PublicationControlStore {
 
   async releaseLock(): Promise<void> {
     if (!this.heldLock) throw new Error("publication mutation requires the exclusive lock");
-    await this.removeOwned(LOCK, this.heldLock, !this.lockAcquired);
+    const owner = this.heldLock;
+    const deadline = Date.now() + this.sharingRetryMs;
+    for (;;) {
+      try {
+        this.assertContainment();
+        // Unlink may persist before reporting failure. Only both missing paths permit us to
+        // finish without ownership verification; a replacement at either path stays protected.
+        if (await this.checked(owner.quarantine ?? LOCK, "file", true) || await this.checked(LOCK, "file", true)) {
+          await this.removeOwned(LOCK, owner, !this.lockAcquired);
+        }
+        // Retain release state until its directory flush succeeds so this is safely retryable.
+        await this.flush(CONTROL);
+        break;
+      } catch (error) {
+        if (this.containmentFailed || process.platform !== "win32" || !["EACCES", "EPERM", "EBUSY"].includes(errorCode(error)) || Date.now() >= deadline) throw error;
+        // Start again with path, containment and ownership checks before another mutation.
+        await delay(Math.min(10, Math.max(0, deadline - Date.now())));
+      }
+    }
     this.heldLock = undefined;
     this.lockAcquired = false;
-    await this.flush(CONTROL);
   }
 
   /** An interrupted or corrupt transaction blocks the next generation, regardless of age. */

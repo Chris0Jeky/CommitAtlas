@@ -125,6 +125,25 @@ responsive layout cannot remain stale while an unowned file of the same name sur
 owns commits and deployment. The package has no private-data mode, hidden token fallback, fixture
 publication mode, or publication side effect.
 
+### Test-only v2 control-store lock lifecycle
+
+`src/publication-control-store.ts` is an internal storage prototype imported only by tests. The
+public package entry point, v1 writer, CLI and Action do not activate it.
+
+`acquireLock()` can fail after creating a lock, including when its quarantine scan fails or finds
+retained recovery evidence. Once the store has proved the created file's identity, `releaseLock()`
+on that same instance can release it even though acquisition failed. Publication mutations remain
+blocked until acquisition succeeds. A failure before file identity is known cannot be cleaned up
+through `releaseLock()` and requires explicit recovery. Foreign locks and quarantine files are
+never reclaimed automatically.
+
+A failed release retains its ownership state until the control directory flush succeeds. Retrying
+checks both the original lock path and its remembered quarantine: a replacement must still pass
+ownership checks, while two absent paths allow completion after an unlink that persisted before
+reporting an error. Windows `EACCES`, `EPERM` and `EBUSY` failures have the same bounded retry window
+as status replacement (`sharingRetryMs`, 100 ms by default; zero disables retries). Each retry
+rechecks containment and ownership. Other errors and exhausted retries remain visible to the caller.
+
 ### Shared delivery presentation
 
 The static `delivery.svg` delegates to `@commit-atlas/svg`'s `renderDeliveryCard`; there is no
