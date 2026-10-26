@@ -1,0 +1,309 @@
+{
+  "kind": "identity-beacon-hosted-fallback-counterexample",
+  "status": "failed-closed-before-playback",
+  "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40270510543",
+  "executionCommit": "92fa040fa1bd6bc6b0ca272a13a191f2e9a95d19",
+  "artifactId": 12628061705,
+  "artifactZipSha256": "009d66875991d4b168e8bb333bddc24a215ab84db85a92d42457d747ac4a2f62",
+  "reportSha256": "ff139de15000c49a0038810e85c14a1795c9098eedf13c4272d9cc49ea65c956",
+  "browser": "143.0.7499.4",
+  "playwright": "1.57.0",
+  "layoutCases": 576,
+  "failedCases": 32,
+  "playbackRows": 0,
+  "firstCounterexample": {
+    "theme": "aurora",
+    "layout": "compact",
+    "glyph": "\ud83d\ude00",
+    "font": "serif",
+    "arrangement": "matched",
+    "source": {
+      "width": 480,
+      "height": 866
+    },
+    "errors": [
+      "text crosses the actual frame"
+    ]
+  },
+  "overflowTexts": [
+    {
+      "text": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "font": "serif",
+      "size": "22px",
+      "x": 20,
+      "y": 36,
+      "right": 569.541259765625,
+      "bottom": 63,
+      "width": 549.541259765625,
+      "height": 27
+    },
+    {
+      "text": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "font": "serif",
+      "size": "28px",
+      "x": 24,
+      "y": 82,
+      "right": 513.1651000976562,
+      "bottom": 115,
+      "width": 489.16510009765625,
+      "height": 33
+    },
+    {
+      "text": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+      "font": "serif",
+      "size": "16px",
+      "x": 24,
+      "y": 155,
+      "right": 523.1192626953125,
+      "bottom": 174,
+      "width": 499.1192626953125,
+      "height": 19
+    }
+  ],
+  "caseIdentities": [
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "aurora",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "midnight",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "paper",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "serif",
+      "arrangement": "zero"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "matched"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "mixed"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "unmatched"
+    },
+    {
+      "theme": "ember",
+      "layout": "compact",
+      "glyph": "\ud83d\ude00",
+      "font": "monospace",
+      "arrangement": "zero"
+    }
+  ],
+  "controlledFontReproduction": {
+    "packageUrl": "https://archive.ubuntu.com/ubuntu/pool/main/f/fonts-noto-color-emoji/fonts-noto-color-emoji_2.047-0ubuntu0.24.04.1_all.deb",
+    "packageSha256": "b102b62ce6a7313315223cff5e052bdf8fc0ad162c9e961ce0dc2202bc139ce2",
+    "fontFamily": "Noto Color Emoji",
+    "packageVersion": "2.047-0ubuntu0.24.04.1",
+    "fontSha256": "93cdc4ee9aa40e2afceecc63da0ca05ec7aab4bec991ece51a6b52389f48a477",
+    "fontconfigSha256": "284d8d06ed4f163f87b5f4b464bc66b6f33d1b4611721e8bc9ba648dfcaf1435",
+    "scope": "private charset-specific fontconfig preferences for1f600/231a/263a/2615/260e; system fonts unchanged; no webfont in generated SVG",
+    "oldSourceBounds": {
+      "sharedHeaderRight": 569.541259765625,
+      "mainNameRight": 513.1651000976562,
+      "taglineRight": 523.1192626953125
+    }
+  },
+  "rejectedLocalProbe": {
+    "reportSha256": "0821e6a290fd5148a0cd7996361b2fc6bee0dacec01f4ec6a8fb39b53c7f2f34",
+    "failedCases": 76,
+    "scope": "An overly broad private font-family alias assigned emoji missing-glyph metrics to CJK. Rejected as a misconfigured reproduction, not a production CJK finding or passing qualification."
+  },
+  "acceptanceBoundary": "Original geometry assertions remain unchanged. No playback or issue-complete claim derives from this failed clean run."
+}

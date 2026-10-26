@@ -12,6 +12,7 @@ const SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,s
 const STALE_MS = 72 * 3_600_000;
 const MAX_FORWARD_SKEW_MS = 60_000;
 const NODE_HEIGHT = 120;
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
 
 interface Body { readonly name: string; readonly issues: number; readonly size: number }
 interface BeaconModel {
@@ -28,21 +29,37 @@ function num(value: number): string {
   return String(Number(value.toFixed(3)));
 }
 function textLines(value: string, width: number, size: number): string[] {
-  // Reserve more than one em for fallback glyphs and never split a surrogate pair.
-  const capacity = Math.max(1, Math.floor(width / (size * 1.05)));
   const characters = [...value];
+  // Observed Ubuntu emoji fallback painted at about 1.25em; reserve 1.3em.
+  // CJK/ordinary characters retain the 1.05em allowance, not a blanket two-cell rule.
+  const advance = (character: string) => size * (EMOJI.test(character) ? 1.3 : 1.05);
+  const fitEnd = (start: number): number => {
+    let end = start, used = 0;
+    while (end < characters.length && used + advance(characters[end]!) <= width) {
+      used += advance(characters[end]!);
+      end += 1;
+    }
+    return end;
+  };
+  const hardLines = (start: number): number => {
+    let count = 0;
+    while (start < characters.length) { start = fitEnd(start); count += 1; }
+    return count;
+  };
   const lines: string[] = [];
   for (let index = 0; index < characters.length;) {
-    let end = Math.min(characters.length, index + capacity);
+    let end = fitEnd(index);
     if (end < characters.length) {
-      // Prefer a nearby word boundary without allowing many short lines to exceed the frame.
-      for (let boundary = end - 1; boundary >= index + Math.ceil(capacity * 0.75) - 1; boundary -= 1) {
-        if (characters[boundary] === ' ') { end = boundary + 1; break; }
+      // A soft break is allowed only when the remaining text still fits the four-line
+      // budget. Otherwise retain this earlier hard wrap; never overflow/drop line four.
+      for (let boundary = end - 1; boundary >= index + Math.ceil((end - index) * 0.75) - 1; boundary -= 1) {
+        if (characters[boundary] === ' ' && hardLines(boundary + 1) <= 3 - lines.length) { end = boundary + 1; break; }
       }
     }
     lines.push(characters.slice(index, end).join(''));
     index = end;
   }
+  if (lines.length > 4) throw new Error('bounded identity text exceeds the four-line layout');
   return lines;
 }
 function unavailable(reason: string): SceneUnavailable {
@@ -118,7 +135,8 @@ function renderBeacon(model: BeaconModel, context: RenderContext, text: { title:
   const nameBottom = 108 + (nameLines.length - 1) * 34;
   const taglineTop = nameBottom + 28;
   const gridTop = taglineLines.length ? taglineTop + (taglineLines.length - 1) * 20 + 24 : nameBottom + 24;
-  const columns = context.layout === 'compact' ? 1 : 3;
+  const labelAdvance = (label: string) => [...label].reduce((total, character) => total + 10 * (EMOJI.test(character) ? 1.3 : 1.05), 0);
+  const columns = context.layout === 'compact' ? 1 : model.bodies.some(body => labelAdvance(body.name) > 244) ? 2 : 3;
   const nodeWidth = (width - 48 - (columns - 1) * 16) / columns;
   const bodyTop = gridTop + 144;
   const bodyRows = Math.ceil(model.bodies.length / columns);

@@ -32,6 +32,7 @@ const report = {
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   sourceWorkingTreeDirty: execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim().length > 0,
   sourceFiles, observedAt: new Date().toISOString(), playwrightVersion, browserExecutable, browserVersion: null,
+  fontconfigOverride: Boolean(process.env.FONTCONFIG_FILE),
   frameTimes: [0, 2_000, 6_000], maximumLateMs: 1_000,
   firstFrameBoundary: 'requested zero is the first load-relative observation, not exact animation frame zero; structural motion stripping proves frame-zero geometry',
   reducedControlProtocol: 'both backends explicitly select the static none twin through picture; this does not qualify a direct-CSS media-query override inside an SVG image',
@@ -43,21 +44,23 @@ const frameSize = body => {
   return { width: Number(match[1]), height: Number(match[2]) };
 };
 const bounded = (glyph, units, suffix = '') => glyph.repeat(Math.floor((units - suffix.length) / glyph.length)) + suffix;
-const words = (units, length) => `${'W'.repeat(length)} `.repeat(Math.ceil(units / (length + 1))).slice(0, units);
+const words = (units, length, glyph = 'W') => `${glyph.repeat(length)} `.repeat(Math.ceil(units / (length + 1))).slice(0, units);
 function fixture(glyph = 'plain', arrangement = 'matched') {
   const value = sceneInputs();
   const repos = ['atlas', 'forge', 'signal'];
-  const labels = glyph === 'plain' ? ['Atlas', 'Forge', 'Signal'] : repos.map((_, index) => bounded(glyph.startsWith('words') ? 'W' : glyph, 24, `A${index}`));
+  const wordFixture = glyph.startsWith('words') || glyph === 'emoji-words';
+  const labelGlyph = glyph === 'emoji-words' ? '⌚' : wordFixture ? 'W' : glyph;
+  const labels = glyph === 'plain' ? ['Atlas', 'Forge', 'Signal'] : glyph === 'mixed-emoji' ? ['W', 'M', 'N'].map(last => `${'⌚'.repeat(13)}${'W'.repeat(10)}${last}`) : labelGlyph === '⌚' ? ['⌚'.repeat(24), `${'⌚'.repeat(23)}☕`, `${'⌚'.repeat(23)}☎`] : repos.map((_, index) => bounded(labelGlyph, 24, `A${index}`));
   value.snapshot.projects = demoProjects('scene-demo', repos, new Map(repos.map(repo => [repo, 'active'])), new Map(), new Date(value.snapshot.freshness.generatedAt));
   value.snapshot.projects.projects.forEach((project, index) => {
     project.name = labels[index];
     project.openIssuesAndPullRequests = arrangement === 'zero' ? 0 : [9, 4, 0][index];
   });
-  const unknown = labels.map((_, index) => glyph === 'plain' ? `Unmatched ${index}` : bounded(glyph.startsWith('words') ? 'W' : glyph, 24, `U${index}`));
+  const unknown = glyph === 'mixed-emoji' ? ['W', 'M', 'N'].map(last => `${'☺'.repeat(13)}${'W'.repeat(10)}${last}`) : labelGlyph === '⌚' ? ['☺'.repeat(24), `${'☺'.repeat(23)}☕`, `${'☺'.repeat(23)}☎`] : labels.map((_, index) => glyph === 'plain' ? `Unmatched ${index}` : bounded(labelGlyph, 24, `U${index}`));
   const focus = arrangement === 'unmatched' ? unknown : arrangement === 'mixed' ? [labels[0], unknown[1], labels[2]] : labels;
   value.identity = svg.createIdentityConfig({
-    name: glyph === 'plain' ? 'Ada Example' : glyph.startsWith('words') ? words(40, glyph === 'words-low' ? 10 : glyph === 'words-high' ? 12 : 11) : bounded(glyph, 40),
-    tagline: glyph === 'plain' ? 'Observed systems · synthetic qualification' : glyph.startsWith('words') ? words(80, glyph === 'words-low' ? 18 : glyph === 'words-high' ? 20 : 19) : bounded(glyph, 80),
+    name: glyph === 'plain' ? 'Ada Example' : glyph === 'mixed-emoji' ? '⌚W'.repeat(20) : glyph === 'emoji-words' ? words(40, 8, '⌚') : wordFixture ? words(40, glyph === 'words-low' ? 10 : glyph === 'words-high' ? 12 : 11) : bounded(glyph, 40),
+    tagline: glyph === 'plain' ? 'Observed systems · synthetic qualification' : glyph === 'mixed-emoji' ? '⌚W'.repeat(40) : glyph === 'emoji-words' ? words(80, 14, '⌚') : wordFixture ? words(80, glyph === 'words-low' ? 18 : glyph === 'words-high' ? 20 : 19) : bounded(glyph, 80),
     focus,
   });
   return value;
@@ -76,7 +79,7 @@ try {
   report.browserVersion = browser.version();
   const page = await browser.newPage({ deviceScaleFactor: 1 });
   for (const theme of Object.keys(svg.themes)) for (const layout of ['compact', 'wide']) {
-    for (const glyph of ['W', '界', '😀', 'words-low', 'words', 'words-high']) for (const font of ['native', 'serif', 'monospace']) {
+    for (const glyph of ['W', '界', '😀', '⌚', 'mixed-emoji', 'emoji-words', 'words-low', 'words', 'words-high']) for (const font of ['native', 'serif', 'monospace']) {
       for (const arrangement of ['matched', 'mixed', 'unmatched', 'zero']) {
         const input = fixture(glyph, arrangement);
         const rendered = render(input, { theme, layout });
@@ -100,6 +103,7 @@ try {
             const parent = element.parentElement;
             const transform = parent.transform.baseVal.consolidate().matrix;
             return { id: element.id, slotX: transform.e, slotY: transform.f,
+              slotWidth: 2 * Number(element.querySelector('circle').getAttribute('cx')),
               texts: [...element.querySelectorAll('text')].map(text => ({ text: text.textContent, ...bounds(text) })), ...bounds(element) };
           });
           return { actual: bounds(root), texts, bodies,
@@ -115,7 +119,8 @@ try {
         if (measured.bodies.length !== model.bodies.length) errors.push('matched body lost');
         measured.bodies.forEach((body, index) => {
           if (body.texts[0]?.text !== model.bodies[index].name) errors.push('full project label lost');
-          const nodeWidth = layout === 'compact' ? 432 : 260;
+          const nodeWidth = body.slotWidth;
+          if (![260, 398, 432].includes(nodeWidth)) errors.push('unexpected body slot width');
           if (body.texts.some(text => text.x < body.slotX || text.right > body.slotX + nodeWidth || text.y < body.slotY || text.bottom > body.slotY + 120)) errors.push('body label crosses its slot');
         });
         if (measured.texts.some(text => text.x < -0.1 || text.right > size.width + 0.1 || text.y < -0.1 || text.bottom > size.height + 0.1)) errors.push('text crosses the actual frame');
@@ -145,6 +150,11 @@ try {
     for (const planned of plan.slice(start, start + 2)) {
       const { layout, backend, state } = planned;
       const input = fixture();
+      if (layout === 'wide') {
+        const mixedLabel = `${'⌚'.repeat(13)}${'W'.repeat(11)}`;
+        input.snapshot.projects.projects[0].name = mixedLabel;
+        input.identity = svg.createIdentityConfig({ name: input.identity.name, tagline: input.identity.tagline, focus: [mixedLabel, ...input.identity.focus.slice(1)] });
+      }
       if (state === 'stale') input.snapshot.projects.freshness.mode = 'stale';
       const motion = state === 'none' ? 'none' : state === 'cinematic' ? 'cinematic' : 'ambient';
       const rendered = render(input, { layout, backend, motion });

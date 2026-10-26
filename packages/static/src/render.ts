@@ -25,6 +25,7 @@ import {
   type ProjectSignal,
   type SceneLensProjection,
 } from "@commit-atlas/svg";
+import { beaconSnapshot } from "./beacon-input.js";
 import type { StaticCardName, StaticConfig } from "./config.js";
 import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
 
@@ -207,7 +208,8 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   }
   for (const definition of scenes.definitions) {
     const rendered = renderSceneDefinition(definition, {
-      snapshot, ...(lens ? { lens } : {}), ...(scenes.identity ? { identity: scenes.identity } : {}),
+      snapshot: definition.id === "identity-beacon" && scenes.identity ? beaconSnapshot(snapshot, config.projects, scenes.identity.focus) : snapshot,
+      ...(lens ? { lens } : {}), ...(scenes.identity ? { identity: scenes.identity } : {}),
     }, {
       theme: config.theme, pack: scenes.pack, motion: config.motion, backend: MOTION_BACKEND_DEFAULTS["github-readme"],
       layout: config.layout, instanceNamespace: "static", seed: "",

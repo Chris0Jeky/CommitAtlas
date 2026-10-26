@@ -202,6 +202,17 @@ validated value. Plain objects or clones passed directly to the scene engine do
 not retain validation provenance. Identity is static input only, not a hosted
 query parameter, projection authorization or additional GitHub data request.
 
+Selecting `identity-beacon` requires this validated identity. Its focus strings match configured
+`projects[].label` values exactly. The static adapter associates each label with its observed
+project by the complete repository identity, using the existing case-insensitive GitHub slug
+canonicalization. It copies the Beacon input without renaming the shared snapshot used by cards
+or other scenes. Up to three matched projects become bodies; unmatched focus remains plain text.
+A focus string naming more than one configured label is rejected as ambiguous. Duplicate labels
+outside the selected focus do not prevent a unique match. Unknown, duplicate or malformed
+observed repository identities make the Beacon unavailable rather than borrowing another
+project's count. The [Beacon evidence guide](./IDENTITY_BEACON_EVIDENCE.md) separates these static
+adapter regressions from synthetic direct-image browser qualification.
+
 Each selected definition produces `scene-<id>.svg` from the **same portfolio
 snapshot** in the primary output and every configured theme variant. Layout and
 motion use the existing scene engine, size/accessibility checks and provisional

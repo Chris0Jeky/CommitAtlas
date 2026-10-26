@@ -6,6 +6,7 @@ on:
     branches: [fix/identity-beacon-browser]
     paths:
       - packages/svg/src/scenes/identity-beacon.ts
+      - packages/svg/src/primitives/index.ts
       - tests/identity-beacon-browser.mjs
       - .github/workflows/identity-beacon-browser-evidence.yml
 

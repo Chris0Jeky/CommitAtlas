@@ -128,6 +128,37 @@ test('spaces around the wrap threshold retain all bounded text within the existi
   }
 });
 
+test('emoji advance and soft-break lookahead preserve full BMP/astral identity in at most four lines', () => {
+  for (const glyph of ['😀', '⌚']) for (const spaced of [false, true]) {
+    const units = (maximum, length) => `${glyph.repeat(length)}${spaced ? ' ' : ''}`.repeat(maximum).slice(0, maximum);
+    const value = inputs();
+    value.identity = svg.createIdentityConfig({ name: units(40, 8), tagline: units(80, 14), focus: ['Alpha', 'Beta', 'Gamma'] });
+    const result = render(value, { layout: 'compact' });
+    assert.ok(Number(result.svg.match(/viewBox="0 0 480 (\d+)"/u)[1]) <= 1_000);
+    for (const [section, text, maximum] of [['name', value.identity.name, 11], ['tagline', value.identity.tagline, 20]]) {
+      const group = result.svg.match(new RegExp(`<g id="[^"]+-${section}">([\\s\\S]*?)</g>`, 'u'))[1];
+      const lines = [...group.matchAll(/<text\b[^>]*>([^<]*)<\/text>/gu)].map(match => match[1]);
+      assert.equal(lines.join(''), text);
+      assert.ok(lines.length <= 4);
+      if (!spaced) assert.ok(lines.every(line => [...line].length <= maximum), 'painted emoji advance must bound each line');
+    }
+  }
+});
+
+test('wide bodies adapt for full BMP and mixed emoji/ASCII labels and keep breathing centered', () => {
+  for (const label of ['⌚'.repeat(24), `${'⌚'.repeat(13)}${'W'.repeat(11)}`]) {
+  const value = inputs();
+  value.snapshot.projects.projects[0].name = label;
+  value.identity = svg.createIdentityConfig({ name: 'Ada', focus: [label, 'Beta', 'Gamma'] });
+  const still = render(value, { layout: 'wide' });
+  assert.ok(still.svg.includes(label));
+  assert.match(still.svg, /translate\(438 [\d.]+\)/u, 'second wide slot uses the 398px adaptive width');
+  const ambient = render(value, { layout: 'wide', backend: 'css', motion: 'ambient' });
+  assert.match(ambient.svg, /transform-origin:199px 38px/u);
+  assert.equal(stripSceneMotion(ambient.svg), still.svg);
+  }
+});
+
 const invalidEvidence = [
   ['missing root freshness', value => { delete value.snapshot.freshness; }],
   ['unknown root mode', value => { value.snapshot.freshness.mode = 'fresh'; }],
