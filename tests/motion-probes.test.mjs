@@ -18,6 +18,7 @@ import {
   reducedMotionControlSelected,
   validateHostedAssetResponse,
 } from "./motion-probes/capture.mjs";
+import * as githubCapture from "./motion-probes/capture-github.mjs";
 import {
   buildGithubCapturePlan,
   captureGithub,
@@ -39,6 +40,7 @@ const evidenceDirectory = path.join(fixtureDirectory, "evidence");
 const testOutputDirectory = path.resolve(testDirectory, ".test-output");
 const testBrowser = path.resolve(testDirectory, ".test-tools", "browser.exe");
 const testPlaywrightCli = path.resolve(testDirectory, ".test-tools", "playwright", "cli.js");
+const syntheticDimensions = { naturalWidth: 360, naturalHeight: 120, renderedWidth: 360, renderedHeight: 120 };
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const readEvidence = async (name) => JSON.parse(await readFile(path.join(evidenceDirectory, name), "utf8"));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
@@ -353,34 +355,34 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
   assert.equal(resolvedRaw.canonical, rawUrl, "raw canonical must ignore the surrounding README link");
   assert.doesNotThrow(() => validateTargetMetadata(rawRow, {
     src: rawUrl, currentSrc: rawUrl, canonical: rawUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }));
   assert.doesNotThrow(() => validateTargetMetadata(camoRow, {
     src: "https://camo.githubusercontent.com/hash", currentSrc: "https://camo.githubusercontent.com/hash",
     canonical: "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
-    sources: [], naturalWidth: 360, naturalHeight: 120,
+    sources: [], ...syntheticDimensions,
   }));
   assert.throws(() => validateTargetMetadata(rawRow, {
     src: rawUrl, currentSrc: rawUrl.replace(githubCommit, "main"), canonical: rawUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }), /full raw commit pin/);
   const wrongProbeUrl = rawUrl.replace("css-enter.svg", "css-breathe.svg");
   assert.throws(() => validateTargetMetadata(rawRow, {
     src: wrongProbeUrl, currentSrc: wrongProbeUrl, canonical: wrongProbeUrl, sources: [],
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }), /must select css-enter\.svg/);
   assert.throws(() => validateTargetMetadata(camoRow, {
     src: "https://camo.githubusercontent.com/hash", currentSrc: "https://camo.githubusercontent.com/hash",
     canonical: "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-breathe.svg",
-    sources: [], naturalWidth: 360, naturalHeight: 120,
+    sources: [], ...syntheticDimensions,
   }), /must select css-enter\.svg/);
   assert.doesNotThrow(() => validateTargetMetadata(positiveRow, {
     src: "https://camo.githubusercontent.com/control", currentSrc: "https://camo.githubusercontent.com/control",
-    canonical: positiveControlUrl, sources: [], naturalWidth: 435, naturalHeight: 50,
+    canonical: positiveControlUrl, sources: [], naturalWidth: 435, naturalHeight: 50, renderedWidth: 435, renderedHeight: 50,
   }));
   assert.throws(() => validateTargetMetadata(positiveRow, {
     src: "https://camo.githubusercontent.com/control", currentSrc: "https://camo.githubusercontent.com/control",
-    canonical: positiveControlUrl.replace("duration=2500", "duration=5000"), sources: [], naturalWidth: 435, naturalHeight: 50,
+    canonical: positiveControlUrl.replace("duration=2500", "duration=5000"), sources: [], naturalWidth: 435, naturalHeight: 50, renderedWidth: 435, renderedHeight: 50,
   }), /exact configured/);
 
   const reducedRow = plan.find((row) => row.kind === "reduced-motion-control" && row.host === "github-raw-relative");
@@ -396,7 +398,7 @@ test("GitHub target validation distinguishes pinned raw delivery and Camo canoni
     currentSrc: reducedUrl,
     canonical: reducedUrl,
     sources: rawSources,
-    naturalWidth: 360, naturalHeight: 120,
+    ...syntheticDimensions,
   }, { currentSrc: reducedUrl }));
   assert.equal(rawSources[0].srcset, rootRelativeReduced, "validation must retain the literal root-relative source value");
 
@@ -442,6 +444,7 @@ test("completed GitHub output requires every frame, measured verdict, and record
     commit: githubCommit,
     currentSrc,
     canonical: "https://example.test/canonical",
+    expectedBodySha256: "c".repeat(64),
     requestGate: {
       targetUrl: currentSrc, interceptionCount: 1,
       loadTimestampMs: 100, loadToFirstFrameMs: 1, loadToFirstFrameCompleteMs: 2,
@@ -470,6 +473,10 @@ test("completed GitHub output requires every frame, measured verdict, and record
       durationBoundary: "measuredVisibleDurationMs is browser performance time; WebM container duration is not parsed",
     },
   }));
+  for (const [index, discovery] of discoveries.entries()) Object.assign(discovery, {
+    ...plan[index], version: "1.0", currentSrc, canonical: currentSrc,
+    expectedBodySha256: "c".repeat(64), responseObservation: rows[index].responseObservation,
+  });
   assert.doesNotThrow(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }));
   rows[0] = { ...rows[0], video: { ...rows[0].video, measuredVisibleDurationMs: 2_999 } };
   assert.throws(() => validateCompletedReport({ selectedEngines, plan, discoveries, rows }), /at least three seconds/);
@@ -681,4 +688,34 @@ test("hosted diagnostic ledger keeps WebKit explicitly outside the evidence", as
   assert.equal(ledger.failure.trackingIssue, "#180");
   assert.match(ledger.failure.message, /must decode the synthetic 360x120 fixture/u);
   assert.equal(ledger.rows.some((row) => row.engine === "webkit"), false);
+});
+
+
+test("WebKit presentation dimensions preserve positive bounded geometry independently of asset bytes", () => {
+  const [row] = buildGithubCapturePlan({ hosts: ["github-raw-relative"], probes: ["css-enter"], embeds: ["img"], includeReducedControls: false, includePositiveControl: false });
+  const url = `https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/${githubCommit}/tests/fixtures/motion-probes/css-enter.svg`;
+  const metadata = { src: url, currentSrc: url, canonical: url, sources: [], naturalWidth: 400, naturalHeight: 133, renderedWidth: 400, renderedHeight: 133.328125 };
+  assert.doesNotThrow(() => validateTargetMetadata(row, metadata));
+  for (const [key, value] of [["naturalWidth", 0], ["naturalHeight", Infinity], ["renderedWidth", 0], ["renderedHeight", NaN], ["renderedWidth", 721], ["naturalWidth", 401], ["renderedHeight", 130]]) {
+    assert.throws(() => validateTargetMetadata(row, { ...metadata, [key]: value }), /dimensions|positive and bounded/);
+  }
+});
+
+test("GitHub synthetic body identity rejects a different SVG with matching presentation dimensions", () => {
+  const [row] = buildGithubCapturePlan({ hosts: ["worker-camo"], probes: ["css-enter"], embeds: ["img"], includeReducedControls: false, includePositiveControl: false });
+  const currentSrc = "https://camo.githubusercontent.com/synthetic";
+  const final = { url: currentSrc, status: 200, headersArray: [{ name: "content-type", value: "image/svg+xml" }], bodySha256: "a".repeat(64), bodyError: null };
+  assert.doesNotThrow(() => validateResponseChain(row, currentSrc, [final], "a".repeat(64)));
+  assert.throws(() => validateResponseChain(row, currentSrc, [final], "b".repeat(64)), /pinned synthetic fixture/);
+  assert.throws(() => validateResponseChain(row, currentSrc, [{ ...final, headersArray: [{ name: "content-type", value: "text/html" }] }], "a".repeat(64)), /must be SVG/);
+});
+
+test("capture clips reject replaced timed nodes and geometry outside the viewport", () => {
+  assert.equal(typeof githubCapture.validateCaptureTargetClip, "function");
+  const valid = { sameTarget: true, x: 20, y: 30, width: 400, height: 133.328125 };
+  assert.doesNotThrow(() => githubCapture.validateCaptureTargetClip("target", valid));
+  assert.throws(() => githubCapture.validateCaptureTargetClip("target", { ...valid, sameTarget: false }), /same DOM node/);
+  for (const delta of [{ x: -1 }, { y: 400 }, { width: 0 }, { height: Infinity }]) {
+    assert.throws(() => githubCapture.validateCaptureTargetClip("target", { ...valid, ...delta }), /viewport|dimensions/);
+  }
 });

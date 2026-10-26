@@ -1,0 +1,38 @@
+name: WebKit seven-row diagnostic
+
+# One bounded #180 capture. Never run the unfiltered #113 matrix from this workflow.
+on:
+  workflow_dispatch:
+  push:
+    branches: [diagnostic/issue-180-seven-rows]
+
+permissions:
+  contents: read
+
+jobs:
+  seven-rows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the reviewed capture source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up the existing Node pin
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+      - name: Install ephemeral pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/commitatlas-playwright" --no-audit --no-fund --ignore-scripts playwright@1.57.0
+          node "$RUNNER_TEMP/commitatlas-playwright/node_modules/playwright/cli.js" install --with-deps webkit
+      - name: Capture seven WebKit rows once
+        run: node tests/motion-probes/capture-github.mjs --playwright-cli "$RUNNER_TEMP/commitatlas-playwright/node_modules/playwright/cli.js" --playwright-engine webkit --probe css-enter --include-reduced-controls --include-positive-control --out "$RUNNER_TEMP/commitatlas-webkit-seven-rows"
+      - name: Preserve complete or failed-closed evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: webkit-seven-rows-${{ github.sha }}
+          path: ${{ runner.temp }}/commitatlas-webkit-seven-rows
+          if-no-files-found: error
+          retention-days: 14

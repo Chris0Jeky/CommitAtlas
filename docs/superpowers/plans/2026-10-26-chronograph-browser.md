@@ -14,7 +14,7 @@ The reproduced counterexample uses six same-instant releases, all-zero activity 
 - [x] Bound legend advance and retain one row and one marker for every independently observed release.
 - [x] Measure actual browser text boxes across every theme, both layouts, wide glyphs and coincident/near-coincident release positions.
 - [x] Capture real CSS and SMIL playback as SVG images, including still/stale controls and the 45-second return to base geometry. Record elapsed load-relative times and decoded pixel differences; structural tests alone cannot satisfy playback acceptance.
-- [ ] Retain complete-calendar, release/provenance and frame-zero regressions, rebuild the Action and pass full CI at the PR head.
-- [ ] Document exact source/browser/artifact provenance and the distinction from GitHub raw/Camo evidence.
+- [x] Retain complete-calendar, release/provenance and frame-zero regressions, rebuild the Action and pass full CI at the PR head.
+- [x] Document exact source/browser/artifact provenance and the distinction from GitHub raw/Camo evidence.
 
 Browser tooling is supplied outside repository dependencies. This does not resolve or bypass the separately parked #115 dependency decision.

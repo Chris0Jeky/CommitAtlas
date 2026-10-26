@@ -81,6 +81,32 @@ development evidence, not a claim about a published commit.
 
 The `Chronograph browser evidence` workflow repeats this synthetic check with externally
 pinned Playwright 1.57.0 and its Chromium binary, and uploads raw geometry, SVGs, PNGs, videos
-and a source-bound report for 14 days. CI receipt and exact-head full-gate results must be
-recorded before closing #344. No repository Playwright dependency, hosted scene expansion,
+and a source-bound report for 14 days. The clean-source receipt below records the hosted qualification. No repository Playwright dependency, hosted scene expansion,
 GitHub transport verdict or backend-default change is introduced.
+
+
+### Clean-source hosted receipt
+
+[Run 40266669682](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40266669682) at
+`0745d42c7be872453f9d5cdc0d8a0ce6350e5b13` passed with Playwright 1.57.0 and its explicitly
+selected Chromium 143.0.7499.4 binary. The source checkout was clean. All 576 text-layout cases
+passed; both ambient rows animated and matched the still control at 46 seconds, and all four
+still/stale rows remained unchanged. The five source hashes, all 30 PNG hashes and decoded pixel
+comparisons, and all six WebM hashes and container magic were independently rechecked.
+
+The [compact receipt](../tests/fixtures/chronograph/evidence/2026-10-26-browser.json) preserves
+source hashes, each frame's actual times, pixel differences and video hashes. The raw artifact is
+`12626334315`, ZIP SHA-256 `afcef3e0e04bd2b3b8ace4712a458d5011261ea435a35a320814d508f36e6add`;
+its full report SHA-256 is `ab2a5d2fb03de4943069a45c031c72d9be2bda93d9b4325bdece0a7d0eda2a1f`.
+Raw captures are retained by Actions until November 9, 2026; the compact receipt is tracked.
+
+The earlier hosted run at `85aa284` also passed, but reported Chromium 155.0.8059.39 while the
+installation step fetched 143. The harness then allowed the ambient `CHROME_BIN` override.
+Executable selection now defaults explicitly to the supplied Playwright driver's installed
+binary, records its path, and accepts only the task-specific `CHRONOGRAPH_BROWSER_EXECUTABLE`
+for a deliberate local override. The earlier run is not relabelled as the pinned result.
+
+The [full quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40266674256) tests the
+same code head, including the Action rebuild comparison. This supplies #344's actual layout and
+local-browser playback acceptance. It does not change provisional backend policy or complete
+the separate #113 GitHub transport matrix.

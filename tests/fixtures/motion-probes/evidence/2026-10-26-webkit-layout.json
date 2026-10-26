@@ -1,0 +1,113 @@
+{
+  "kind": "bounded-webkit-layout-metadata",
+  "observedAt": "2026-10-26T03:33:09.800Z",
+  "sourceCommit": "907e38f96182acabb447cd2944f7da8bea3fc450",
+  "scratchCommit": "039a0370b1a52fb6135e4414e04a11bff7ba21d0",
+  "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40264555209",
+  "artifactId": 12626070873,
+  "artifactZipSha256": "48de6f623490f32c32ba0b405607758b7b4a0ad5e6f1774c8ab95ca51b71a5fe",
+  "rawMetadataSha256": "5d55d28377c66910e2f521da50ebfb3bd939aaef7db01b8e3ff27e291273413c",
+  "browser": {
+    "engine": "webkit",
+    "version": "26.0",
+    "playwright": "1.57.0"
+  },
+  "selector": "img[alt=\"css-enter\"]",
+  "source": {
+    "src": "/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+    "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+    "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+    "sources": []
+  },
+  "observations": [
+    {
+      "phase": "domcontentloaded-before-scroll",
+      "documentReadyState": "interactive",
+      "observedAtMs": 2232,
+      "nodeId": 0,
+      "natural": {
+        "width": 400,
+        "height": 133
+      },
+      "rendered": {
+        "x": 33,
+        "y": 1127.96875,
+        "width": 400,
+        "height": 133.328125
+      },
+      "viewport": {
+        "width": 720,
+        "height": 480,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "reactAppClass": null,
+      "hiddenOrZeroSizeAncestorCount": 0
+    },
+    {
+      "phase": "exact-parked-scroll-and-decode",
+      "documentReadyState": "interactive",
+      "observedAtMs": 2439,
+      "nodeId": 0,
+      "natural": {
+        "width": 400,
+        "height": 133
+      },
+      "rendered": {
+        "x": 33,
+        "y": 1127.96875,
+        "width": 400,
+        "height": 133.328125
+      },
+      "viewport": {
+        "width": 720,
+        "height": 480,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "reactAppClass": null,
+      "hiddenOrZeroSizeAncestorCount": 0
+    },
+    {
+      "phase": "document-complete-and-two-animation-frames",
+      "documentReadyState": "complete",
+      "observedAtMs": 3903,
+      "nodeId": 1,
+      "natural": {
+        "width": 400,
+        "height": 133
+      },
+      "rendered": {
+        "x": 33,
+        "y": 1127.96875,
+        "width": 400,
+        "height": 133.328125
+      },
+      "viewport": {
+        "width": 720,
+        "height": 480,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "reactAppClass": "loaded",
+      "hiddenOrZeroSizeAncestorCount": 0
+    }
+  ],
+  "identity": {
+    "finalStatus": 200,
+    "finalContentType": "image/svg+xml",
+    "finalBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+    "fixtureBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+    "workerBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+  },
+  "zeroWidthReproduced": false,
+  "capturesPerformed": 0,
+  "completedRows": 0,
+  "animationEvidence": "none",
+  "observedLifecycleSeam": "The selector resolved node 0 before React hydration completed, then node 1 after the containing react-app acquired class loaded. Every recorded target and ancestor had positive geometry; no recorded ancestor was hidden.",
+  "notEstablished": [
+    "The cause of the September 25 zero-width failure was not reproduced.",
+    "The observation does not establish a hosted motion verdict, screenshot clipping correctness, or seven-row capture completion."
+  ],
+  "repairBoundary": "Wait for the containing public React app loaded marker before selecting a target; keep same-node load/frame guards and exact URL/MIME/body identity. Accept only finite positive bounded dimensions with at most one pixel of 3:1 integer presentation rounding."
+}
