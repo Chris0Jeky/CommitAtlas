@@ -14,10 +14,6 @@ on:
       - tests/studio-scene-browser.mjs
       - tests/studio-browser-server.mjs
       - .github/workflows/appearance-browser-evidence.yml
-  push:
-    branches: [design/appearance-polish-20261026]
-    paths:
-      - .github/workflows/appearance-browser-evidence.yml
 
 permissions:
   contents: read
@@ -30,6 +26,8 @@ jobs:
   evidence:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      EXPECTED_BROWSER_VERSION: 143.0.7499.4
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,6 +43,8 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/appearance-playwright" --ignore-scripts playwright@1.57.0
           node "$RUNNER_TEMP/appearance-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+          APPEARANCE_CHROMIUM=$(node --input-type=commonjs -e 'console.log(require(process.argv[1]).chromium.executablePath())' "$RUNNER_TEMP/appearance-playwright/node_modules/playwright")
+          printf 'CHROME_BIN=%s\n' "$APPEARANCE_CHROMIUM" >> "$GITHUB_ENV"
       - name: Start the synthetic built-Worker adapter
         run: |
           mkdir -p "$RUNNER_TEMP/appearance-evidence"

@@ -30,8 +30,10 @@ const report = {
   browser: null, layouts: [], navigation: [], screenshots: {}, pageErrors: [], complete: false,
   scope: "Gallery layout, theme, keyboard and reduced-motion chrome; not timed SVG playback or GitHub/Camo qualification",
 };
-const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
+const browserExecutable = process.env.CHROME_BIN ?? chromium.executablePath();
+const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
 report.browser = browser.version();
+report.browserExecutable = browserExecutable;
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 page.on("pageerror", error => report.pageErrors.push(error.message));
 const screenshot = async (name, locator = page, options = {}) => {
@@ -39,6 +41,7 @@ const screenshot = async (name, locator = page, options = {}) => {
   report.screenshots[name] = { sha256: digest(bytes), bytes: bytes.length };
 };
 try {
+  if (process.env.EXPECTED_BROWSER_VERSION) assert.equal(report.browser, process.env.EXPECTED_BROWSER_VERSION, "selected browser must match the qualification pin");
   await page.route("**/*", async route => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) { await route.abort(); return; }

@@ -20,7 +20,8 @@ const origin = production ? "https://commit-atlas.commit-atlas.workers.dev" : "h
 const backend = "http://127.0.0.1:3471";
 const out = path.resolve(process.env.STUDIO_QA_OUTPUT ?? ".studio-qa");
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
+const browserExecutable = process.env.CHROME_BIN ?? chromium.executablePath();
+const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [], requests = [], scenarios = [], layoutMeasurements = [], focusChecks = [], toolMeasurements = [];
 let fault = "none", cardFault = "none", releaseDelayed, releaseCard;
@@ -29,6 +30,7 @@ let delayed = Promise.resolve();
 let focusRequest;
 page.on("pageerror", error => errors.push(error.message));
 try {
+  if (process.env.EXPECTED_BROWSER_VERSION) assert.equal(browser.version(), process.env.EXPECTED_BROWSER_VERSION, "selected browser must match the qualification pin");
   await page.route("**/*", async route => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) { await route.abort(); return; }
@@ -316,7 +318,7 @@ try {
   assert.deepEqual(errors, []);
   const receipt = { source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     sourceWorkingTreeDirty: Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }).trim()), sourceFiles,
-    browser: browser.version(), driver: require("playwright/package.json").version,
+    browser: browser.version(), browserExecutable, driver: require("playwright/package.json").version,
     origin, mode: production ? "production-synthetic" : "built-worker-synthetic-https-proxy",
     observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements, toolMeasurements,
     keyboard: { expectedControls, reachedControls: visited.size, tabPresses, focusChecks },
