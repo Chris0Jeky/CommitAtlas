@@ -8,6 +8,8 @@ and has no hosted SVG endpoint or selectable Studio scene.
 
 [Wide and compact browser captures](./evidence/appearance-2026-10-26/README.md) show the composition
 with its actual fonts, exact readings and complete disclosure.
+The [final CI receipt](./SIGNATURE_EVIDENCE.md) records the merged #449 source, 312 measured layouts,
+14 playback/control rows, actual font and timing observations, artifact hashes and delivery checks.
 
 ## Data and interpretation
 

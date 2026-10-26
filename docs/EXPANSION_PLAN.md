@@ -1,12 +1,12 @@
 # CommitAtlas expansion programme
 
-**Status: partially implemented; source status reconciled 2026-10-26 with Signature source `1dd7339`
-and merged appearance PR #448 (`c72c3b2`).** Originally
+**Status: partially implemented; source status reconciled 2026-10-26 after Signature/appearance
+PR #449 (`d4c9075`) and the earlier appearance PR #448 (`c72c3b2`).** Originally
 written 2026-08-29 from an owner brief and verified against the code at `2969032`.
 The compiler, scene engine, seven built-in scenes, static/Action source delivery, four pack
 geometries and synthetic gallery now exist. The C0 Lens reader and first Signature consumer are
-implemented; Signature browser/bundle/integration qualification, the full README motion matrix,
-the finding projection reader and the remaining catalogue are still open. Shipped state stays in
+implemented; [Signature's scoped C0 browser/bundle qualification](./SIGNATURE_EVIDENCE.md) is complete.
+The full README motion matrix, finding projection reader and remaining catalogue are still open. Shipped state stays in
 [PROJECT_STATE.md](./PROJECT_STATE.md); this document says where the product is going and why,
 in enough detail that an agent can pick any seeded issue and start. Tracking issue:
 [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111). Cross-project seams are specified in
@@ -324,7 +324,7 @@ its browser behavior verified.
 ### Phase 2 — Developer Lens projection
 
 The first `signature` scene is implemented in the static generator and bundled Action with
-`none | ambient`; its [browser evidence](./evidence/appearance-2026-10-26/README.md) covers
+`none | ambient`; its [CI receipt](./SIGNATURE_EVIDENCE.md) covers
 synthetic layout and direct-image playback. Other Signature
 rows remain open under #111. The C0 reader supplies full producer-validated Lens contexts to static
 and demo-only hosted adapters, and Evidence Coverage displays their derived coverage, warnings and
@@ -381,7 +381,7 @@ only `survey`. Broader scene/pack adoption remains open under #111.
 
 ## 8. Cross-project projections
 
-**Lens C0 reader and first Signature source implemented; C1 adoption remains disabled.** The reader pins the published Developer Lens contract and unchanged synthetic fixture, including coverage semantics, privacy and canonical hash. The registered `signature` consumes that complete context through the static source; its remaining qualification is separate from implementation. Static and hosted adapters reject C1 under the operative Q-9 No policy recorded in #170. No finding scene is registered. The finding projection remains a target seam; the pinned method-trial bridge is the current research input.
+**Lens C0 reader and first Signature qualified; C1 adoption remains disabled.** The reader pins the published Developer Lens contract and unchanged synthetic fixture, including coverage semantics, privacy and canonical hash. The registered `signature` consumes that complete context through the static source; its [C0 qualification](./SIGNATURE_EVIDENCE.md) records the bounded source, browser and bundled delivery scope. Static and hosted adapters reject C1 under the operative Q-9 No policy recorded in #170. No finding scene is registered. The finding projection remains a target seam; the pinned method-trial bridge is the current research input.
 
 Ownership follows the two sibling repositories' own boundaries, not this repository's convenience:
 

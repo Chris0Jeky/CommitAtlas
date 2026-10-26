@@ -16,30 +16,48 @@ GitHub/Camo matrix or profile adoption. The merged build then passed all 21 depl
 in [Deploy 40401782765](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40401782765).
 Live inspection confirmed the redesigned Gallery and Replay retaining focus through image decode.
 
-**Developer Signature source (#147).** Feature commit `13492df` registers the first `signature`
-family scene. It consumes the complete validated synthetic C0 Lens projection, with a six-axis
+**Developer Signature (#147).** [#449](https://github.com/Chris0Jeky/CommitAtlas/pull/449) merged
+as `d4c9075`, completing the bounded C0 scene acceptance. The first `signature` family scene
+consumes the complete validated synthetic C0 Lens projection, with a six-axis
 radar, exact readings, producer archetype, top-two dimensions, and complete derived coverage,
 warnings, privacy and freshness. Both widths and all themes support `survey` with `none | ambient`.
 Historical projections stay still; expired inputs become unavailable before model construction.
 Gallery evidence stays Derived while freshness is separately Ready, Stale or Unavailable.
 The [scene guide](./SIGNATURE_SCENE.md) records the layout, interpretation and capture contract.
-The initial feature tree passed typecheck, lint, 685 SVG tests, 361 static tests, 107 chassis tests,
+The initial feature tree `13492df` passed typecheck, lint, 685 SVG tests, 361 static tests, 107 chassis tests,
 100 built-product tests and 23 discovery tests. The range-spacing follow-up `1dd7339` clears measured
 emoji ink boxes and passes all 686 SVG tests, typecheck and lint. Static paired artifacts carry
 verified bytes and SHA-256 manifests. The rebuilt Action is independently exercised for fresh
 ambient, stale, expired and dry-run paired outputs. Its 950189-byte bundle has SHA-256
 `0531a45effe483dfe656760015ed688503465448b2b53ab1714473c741e6b889`.
-The integrated local repository gate passed; five additional bundled-Action/Gallery regressions
-also pass and are registered in that gate. The [visual references](./evidence/appearance-2026-10-26/README.md)
-record 312 measured layouts and 14 CSS/SMIL playback/control rows, including exact rest at 46s.
-Final PR-head CI supplies its own fresh-build, source/module hashes and artifact receipts.
+The final [quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40403676106) passes
+2,058 tests, the clean Action rebuild comparison and a zero-vulnerability production audit.
+The clean native-head [Signature browser run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40403676250)
+passes 312 measured layouts and 14 CSS/SMIL playback/control rows, including exact equality with
+the still control at the final observation requested for 46s. Its report binds 22 source and 37
+built-module hashes; all 50 pixel comparisons and 108 PNG/SVG/WebM hashes were independently
+checked. The [canonical receipt](./SIGNATURE_EVIDENCE.md) preserves actual font selections, times,
+archive identities and scope. The earlier [visual references](./evidence/appearance-2026-10-26/README.md)
+retain their own development provenance.
 No hosted Signature route or Studio selection is enabled. C1/profile
 publication remains disabled under #170 / Q-9 No.
 
-**Appearance follow-up.** Studio configuration legends now receive their intended 20px separation
-from preceding controls; the deployed baseline measured zero. Browser checks measure the actual
-gaps at desktop and mobile widths. Gallery captures wait for finite theme transitions to settle,
-and historical cards now carry a Stale badge consistent with their stale evidence.
+**Appearance follow-up.** The clean native-head
+[appearance run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40403676093) passes six
+Gallery layouts with 18 tiles and 14 Studio scenarios. All 48 preview controls are reached by Tab;
+16 keyboard cases retain focus through loading and completion. Twelve group measurements confirm
+20px from preceding controls and 9px from legends to choices at desktop/mobile widths. Gallery
+captures wait for finite theme transitions to settle, and historical cards carry a Stale badge.
+The [768px Limestone capture](./evidence/appearance-2026-10-26/README.md#current-gallery-after-signature)
+is retained with its clean-head provenance and hash.
+
+The merged [main CI](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40404357062) passes.
+[Deploy 40404740015](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40404740015/job/121859468441)
+then passed all 21 deployed-origin checks at `2026-10-26T21:29:47.5524278Z`, with merge `d4c9075`
+declared as the expected build at `https://commit-atlas.commit-atlas.workers.dev`. Subsequent live
+inspection found 18 Gallery outputs and a still, derived Signature labelled Stale (54 days at that
+observation), retaining the September 1 fixture timestamp. Studio's six configuration groups kept
+the 20px/9px spacing, and Enter on Replay retained the original button's focus after image decode.
 
 ## Projection reader, browser evidence and publication planning — 2026-10-26
 
@@ -218,8 +236,8 @@ are not claimed. The v1 writer remains the production path and #256's v2 activat
 
 ## Current source inventory, reconciled 2026-10-26
 
-This inventory includes the Signature integration, rebuilt Action and the merged appearance
-change in #448; the verification scope is stated above. Deployment and profile
+This inventory includes the merged Signature and appearance follow-up in #449, the rebuilt Action,
+and the earlier appearance change in #448; the verification scope is stated above. Deployment and profile
 adoption require their own dated receipts. The older receipts below retain their original scope;
 branch-only and "not shipped" statements in those receipts are historical, not the current source
 boundary.
@@ -260,11 +278,12 @@ boundary.
   explicit picture/none twins, not a claimed direct-CSS image media-query result. This completes
   the clarified #134 scene acceptance without qualifying profile adoption or the #113 transport
   matrix.
-- **The first Signature consumer is implemented in source.** The registered `signature` requires
+- **The first C0 Signature consumer is qualified and merged.** The registered `signature` requires
   an immutable producer-validated C0 projection with snapshot-clock freshness; the legacy common
   context cannot supply its six readings. The [scene](./SIGNATURE_SCENE.md) retains all supplied
   text and exact values, with two decorative motion groups only when fresh. Its Gallery evidence
-  is derived even when historical; the separate stale state remains visible. Evidence Coverage
+  is derived even when historical; the separate stale state remains visible. The
+  [CI receipt](./SIGNATURE_EVIDENCE.md) records its source, browser and bundled delivery checks. Evidence Coverage
   also consumes the full context's synthetic derived score, warnings and age without reinterpreting
   them as GitHub observations. Further Signature scenes remain under #111. C1 publication stays
   disabled by #170 / Q-9 No. Findings inputs
