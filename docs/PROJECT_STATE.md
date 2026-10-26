@@ -5,6 +5,57 @@ Release/profile receipt last verified: 2026-08-30 (v0.4.0 released, production a
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Projection reader, browser evidence and publication planning — 2026-10-26
+
+**Chronograph acceptance (#344).** [#441](https://github.com/Chris0Jeky/CommitAtlas/pull/441)
+fixes a real Unicode legend overflow while preserving all six independent release markers and
+rows. The controlled [browser run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40266669682)
+uses clean source, Playwright 1.57.0 and its explicitly selected Chromium 143.0.7499.4. All 576
+measured layouts and six CSS/SMIL playback/control rows pass. Ambient output returns exactly to
+its still control at 46 seconds; no-motion and stale controls remain pixel-identical. Five source
+hashes, 30 PNGs, 26 pixel comparisons and six WebM hashes/container signatures were independently
+verified. The tracked [receipt](./CHRONOGRAPH_EVIDENCE.md) preserves actual frame times; the first
+capture is not claimed as exact animation frame zero. The final
+[quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40267106020) passes the merged
+tree with a fresh Action bundle. This closes #344, not the separate #113 transport matrix.
+
+**Validated C0 Lens reader (#145).** [#442](https://github.com/Chris0Jeky/CommitAtlas/pull/442)
+pins the published producer contract and unchanged synthetic showcase to
+`bae3bddf7295b767d57196887bd648ba1cfe2ab3`. Strict schema, privacy, canonical-hash, snapshot-clock
+and alias checks precede static/scene consumption. Static input must be tracked, contained, a
+regular UTF-8 file and at most 256 KiB; observed symlinks, ancestor changes, foreign Git-index
+overrides and literal-pathspec spoofing are rejected. Rechecks are detection, not atomic protection
+against hostile swap-and-restore races. The hosted adapter accepts only the vendored fixture with
+an explicit synthetic demo snapshot. The fixture retains its September 1 timestamp and ages
+normally; it is never refreshed to look current. Fresh/stale/expired boundaries, invalid-input
+failures before writes and existing no-Lens configurations are covered by regression tests.
+The parser understands C1 semantics, while publishing adapters reject C1: the operative Q-9
+answer is **No**, as [recorded by the owner](https://github.com/Chris0Jeky/CommitAtlas/issues/170#issuecomment-6132999075).
+The C0 reader does not authorize #153 profile publication or register a signature scene.
+The [exact merged-tree gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40267565012)
+passes 657 SVG tests, 341 static tests, 368 GitHub source tests and 100 built-product tests,
+alongside all other repository gates and the Action rebuild check. #145 is closed.
+
+**Lens coverage display (#151).** The existing Evidence Coverage instrument appends the validated
+synthetic projection's derived score, age/state and every supplied registry warning. These rows
+remain neutral, text-only and excluded from observed counts and scan targets. Historical scores
+say STALE or EXPIRED; independent GitHub observations retain their own validity. No-Lens and legacy
+common-context output remain byte-identical, while unavailable roots withhold the Lens section.
+The [display contract](./EVIDENCE_COVERAGE_SCENE.md) records the rejection cases, paired static
+outputs and local browser geometry scope. All eight warning texts fit within the unchanged
+instrument budget and 1000px frame bound. This does not register a signature scene or authorize
+real projection publication.
+
+**Publication shadow planner (#256).** [#440](https://github.com/Chris0Jeky/CommitAtlas/pull/440)
+adds a test-only planner over explicit ownership and a complete observation set. It plans all
+themes before mutation, preserves foreign siblings, emits canonical payloads with manifests last,
+and bounds scope and operation bytes. Sixteen planner tests include real v1 manifests, multiple
+themes, retirement, retries and dry runs; four deliberate mutations were caught. Its
+[full quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40265309834) passes.
+The planner performs no I/O and is not exported or activated in production. Ownership migration,
+the executor/recovery policy and native platform/crash qualification remain under #256; v1 is
+still the publishing path.
+
 ## Maintenance integration proof — 2026-10-26
 
 **WebKit selector/layout gate (#180).** A read-only [metadata observation](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40264555209)
@@ -20,7 +71,14 @@ animates in img/picture, and the reduced picture is static. The first Camo row t
 at 447 ms against the 250 ms sample's unchanged 440 ms completion limit. All completed artifacts
 were independently rehashed and their pixel differences recomputed. No Camo or positive-control
 recording verdict, seven-row completion, retry, or unfiltered matrix is claimed. #180 and #113
-remain open; screenshot timing instrumentation is the next separate source-only follow-up.
+remain open for the complete bounded diagnostic and subsequent matrix.
+The merged source follow-up [#443](https://github.com/Chris0Jeky/CommitAtlas/pull/443) separates
+screenshot, post-capture check and file-write durations, and retains rejected-row diagnostics
+through setup, cleanup and video finalization. The first post-screenshot browser clock remains a
+conservative upper bound; the 250 ms target and unrounded 440 ms limit are unchanged. All 44
+motion-probe tests pass independently, and the
+[exact merged-tree gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40268044755) passes.
+No additional hosted capture or revised verdict is claimed.
 
 The integrated follow-ups in [#434](https://github.com/Chris0Jeky/CommitAtlas/pull/434) and
 [#435](https://github.com/Chris0Jeky/CommitAtlas/pull/435), together with the #423/#427 repairs below,
@@ -122,12 +180,12 @@ skips, and typecheck and lint pass. These are real temporary-directory tests on 
 synthetic Windows platform/error/clock faults; native Windows sharing and power-loss durability
 are not claimed. The v1 writer remains the production path and #256's v2 activation stays open.
 
-## Current source inventory, reconciled 2026-10-22
+## Current source inventory, reconciled 2026-10-26
 
-This inventory reflects checkout `6d122c8`, inspected without network access or installed
-dependencies. It does not refresh deployment, profile adoption, browser playback, or GitHub issue
-state. The dated receipts below retain their original scope; branch-only and "not shipped"
-statements in those receipts are historical, not the current source boundary.
+This inventory reflects the source and qualification changes linked above. Deployment and profile
+adoption require their own dated receipts. The older receipts below retain their original scope;
+branch-only and "not shipped" statements in those receipts are historical, not the current source
+boundary.
 
 - **Compiler and engine ship in source.** `packages/svg/src/index.ts` exports `MotionPlan`, the
   scene registry/render APIs, deterministic seed helpers, and provisional backend/budget policy.
@@ -147,20 +205,23 @@ statements in those receipts are historical, not the current source boundary.
   Identity Beacon requires validated static identity and accepts `none | ambient | cinematic`;
   Nebula accepts `none | ambient`; the hosted four accept `none | subtle | ambient`.
   SVG scene tests, static scene/identity tests, and `action/action.test.mjs` cover these seams.
-- **Chronograph timing and labels are implemented.** Its decorative rings encode 666/4662/19980 ms
-  periods; coincident releases use separate numbered markers and legend rows. The needle remains
-  fixed at its true reading. `packages/svg/tests/chronograph.test.mjs` and
-  `chronograph-release-labels.test.mjs` assert these behaviors. Timed browser captures remain open
-  under #344; the complete #136 motion acceptance is not claimed.
-- **Projection scenes remain open.** The engine accepts only its synthetic C0 common lens context;
-  full projection validation remains #145 and C1 publication remains #170 / Q-9. Findings inputs
+- **Chronograph layout and local-browser playback are qualified.** Its decorative rings encode
+  666/4662/19980 ms periods; coincident releases keep separate numbered markers and bounded legend
+  rows. The needle remains fixed at its true reading. The structural regressions and actual
+  browser receipt in [CHRONOGRAPH_EVIDENCE.md](./CHRONOGRAPH_EVIDENCE.md) complete #344. The separate
+  GitHub raw/Camo matrix remains open.
+- **Signature scenes remain open; the C0 projection reader is implemented.** The engine accepts
+  immutable producer-validated C0 projections with snapshot-clock freshness, as well as its legacy
+  synthetic common context. Evidence Coverage consumes the full context's synthetic derived score,
+  warnings and age; it does not reinterpret them as GitHub observations. C1 publication stays
+  disabled by #170 / Q-9 No. Findings inputs
   still produce explicit unavailable output. The gallery's WB-C1 tile uses the existing pinned
   method-trial summary, not a `research-instrument` scene or a shipped finding projection reader.
   Those scenes and the remaining catalogue are tracked under #111. Studio preview tooling exists,
   but #141's README round-trip and remaining acceptance are not established by source inspection.
 
-Exports, registry metadata, hosted routes, static/Action entry points and existing test assertions
-were inspected for this reconciliation. No test pass or new runtime evidence is claimed here.
+Exports, registry metadata, hosted routes and static/Action entry points match this inventory.
+The linked receipts above distinguish source checks, timed browser evidence and remaining gates.
 
 ## Issue #427 slice: Delivery quota refusals, 2026-10-25
 

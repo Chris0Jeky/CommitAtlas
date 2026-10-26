@@ -218,6 +218,14 @@ C1 contract semantics, but all publication adapters currently reject C1 under th
 projection or private input is a fixture, log message or CommitAtlas tracked file. See
 [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) for the pin, limitations and integration boundary.
 
+The existing Evidence Coverage instrument uses a complete Lens context to append a visibly
+synthetic derived score, age/state and every supplied registry warning. These text-only rows stay
+neutral and never create observed counts, coverage bars or scan targets. Stale/expired scores are
+labelled as historical while independent GitHub rows retain their own validity. Absent or legacy
+common context leaves the original seven-row output unchanged; an unavailable root snapshot
+withholds the Lens section. [EVIDENCE_COVERAGE_SCENE.md](./EVIDENCE_COVERAGE_SCENE.md) records the
+display contract, layout bounds and paired static-output tests.
+
 ## Motion and scene delivery
 
 `@commit-atlas/svg` exports the `MotionPlan` compiler with CSS and SMIL backends and the
@@ -264,9 +272,12 @@ twin cannot approve an unseen animated configuration for Markdown.
 
 The [backend defaults and budget classes](../packages/svg/src/motion/profile.ts) remain explicitly
 provisional. The complete browser/host/embed matrix (#113, with #180's WebKit diagnostic) and
-measured render-cost budgets (#114) remain open. Identity Beacon (#134) and Chronograph (#344)
-still need their timed visual acceptance; #141 retains production and README round-trip
-qualification. This source inventory does not establish a current deployment or complete Phase 1.
+measured render-cost budgets (#114) remain open. Identity Beacon (#134) still needs its timed visual
+acceptance; #141 retains production and README round-trip qualification. Chronograph's Unicode
+layout and CSS/SMIL playback acceptance (#344) is complete: the
+[source-bound receipt](./CHRONOGRAPH_EVIDENCE.md) records 576 browser-measured layouts, six
+playback/control rows and the 46-second return to the canonical still reading. That qualification
+does not complete the separate GitHub raw/Camo matrix or Phase 1.
 
 The C0 `PublicLensProjection.v1` reader is implemented as described above; C1 publication remains
 disabled. The `ResearchFindingProjection.v1` consumer (#154) remains planned and its scene adapter
