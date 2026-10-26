@@ -15,15 +15,22 @@ export class InputError extends Error {
 }
 
 export function parseGitHubHandle(value: string | null, label = "user"): string {
-  const candidate = value?.trim() ?? "";
+  const candidate = typeof value === "string" ? value.trim() : "";
   if (!HANDLE.test(candidate)) {
     throw new InputError(`${label} must be a valid GitHub handle`);
   }
   return candidate;
 }
 
-export function parseRepositoryNames(value: string | null): string[] {
-  const segments = (value ?? "").split(",").map((item) => item.trim());
+export function parseRepositoryNames(value: string | readonly string[] | null): string[] {
+  const entries = typeof value === "string" ? value.split(",") : value ?? [];
+  if (!Array.isArray(entries)) throw new InputError("repos must contain repository names");
+  if (entries.length > MAX_PROJECTS) throw new InputError("repos must contain between one and six repository names");
+  // Array.from visits sparse slots too: a missing identifier must not disappear into a valid list.
+  const segments = Array.from(entries, (item) => {
+    if (typeof item !== "string") throw new InputError("repos contains an invalid repository name");
+    return item.trim();
+  });
   // A hole must not collapse into a shorter successful list. A wholly empty value still
   // falls through to the one-to-six check below.
   if (segments.some((item) => item.length === 0) && segments.some((item) => item.length > 0)) {

@@ -22,6 +22,22 @@ test("accepts bounded GitHub identifiers", () => {
   ]);
 });
 
+test("validates repository arrays without interpreting commas as separators", () => {
+  assert.deepEqual(parseRepositoryNames([" Alpha.git ", "beta_repo"]), ["Alpha.git", "beta_repo"]);
+  for (const repositories of [["alpha,beta"], ["alpha", ""], ["alpha", "ALPHA"], [" "]]) {
+    assert.throws(() => parseRepositoryNames(repositories), InputError);
+  }
+});
+
+test("rejects sparse repository arrays and non-list runtime values", () => {
+  const sparse = new Array<string>(3);
+  sparse[0] = "atlas";
+  sparse[2] = "beta";
+  for (const value of [sparse, {}, { length: 0 }, 42]) {
+    assert.throws(() => parseRepositoryNames(value as string[]), InputError);
+  }
+});
+
 test("rejects ambiguous and unbounded identifiers", () => {
   assert.throws(() => parseGitHubHandle("-owner"), InputError);
   assert.throws(() => parseRepositoryNames("alpha,,beta"), /empty repository name/);

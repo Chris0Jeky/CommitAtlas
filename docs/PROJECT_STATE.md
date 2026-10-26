@@ -5,6 +5,36 @@ Release/deployment receipt last verified: 2026-08-30 (v0.4.0 released, productio
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Issue #427 remaining boundaries, verified 2026-10-26
+
+All four public `GitHubClient` operations validate handles before credential proof or transport.
+Project batches validate their entire dense array before scheduling any request. Valid identifiers
+are trimmed with casing preserved, valid empty boards remain supported, and direct nonempty calls
+now share the public/static maximum of six unique repositories. Sparse slots, malformed containers,
+invalid later entries and duplicate names fail as bounded `invalid_input`, with zero upstream I/O.
+
+Built-Worker tests cover all twelve hosted SVG routes (seven cards, projects and four scenes) with
+a synthetic configured token. Successful and conditional responses remain `private, no-store`,
+reordered URLs remain direct, failures remain bounded and public LAST_GOOD receives no reads or
+writes. Tests drain deferred `waitUntil` work. Synthetic demos remain public and make no GitHub
+calls even when a token is configured. Mutating the compiled cache decision to public made all
+twelve token-route cases fail; the mutation was restored before the final gate.
+
+The installed Vinext image parser already rejects remote and recursive targets before `ASSETS`.
+Nine built-Worker target cases pin that existing boundary, including backslash and normalized-path
+variants. No new remote-fetch behavior or redundant worker URL parser was introduced. This does
+not claim that every internally caught dependency transform error is sanitized.
+
+The final local `npm run check` passes on Node 22.13.0, including 364 GitHub source/route tests,
+651 SVG tests, 294 static tests, five Action tests with a clean rebuilt-bundle comparison, and
+99 built-product tests. The focused client/parser suite passes 119 tests. This is synthetic local
+evidence; live credential setup and the 730-day token verification remain #307/#338.
+
+The Delivery quota slice merged as #430 (`60d28bf`) after independent review and full hosted
+quality gate [40222022282](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40222022282).
+Its subsequent main-branch CI [40249703863](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40249703863)
+also passes. The dated Delivery receipt below retains its earlier local-only scope.
+
 ## Issue #423 lock-release recovery, local proof 2026-10-26
 
 The test-only publication control store can finish releasing an owned lock when an unlink

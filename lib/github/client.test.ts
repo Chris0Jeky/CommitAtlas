@@ -1,11 +1,159 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GitHubApiError, GitHubClient } from "./client";
+import { InputError } from "./validation";
+import { apiErrorResponse } from "../http";
 
 const HEAD_SHA = "a".repeat(40);
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 const LIFECYCLES = new Map([["atlas", "active" as const], ["old", "maintenance" as const]]);
 const WORKFLOWS = new Map([["atlas", "ci.yml"], ["old", "ci.yml"]]);
+
+const IDENTIFIER_OPERATIONS = [
+  ["profile", (client: GitHubClient, login: string) => client.fetchProfile(login)],
+  ["GraphQL contributions", (client: GitHubClient, login: string) => client.fetchContributions(login, 1)],
+  ["public contributions", (client: GitHubClient, login: string) => client.fetchPublicProfileContributions(login, 1)],
+  ["projects", (client: GitHubClient, owner: string) => client.fetchProjects(owner, ["atlas"], LIFECYCLES)],
+] as const;
+
+for (const [label, operation] of IDENTIFIER_OPERATIONS) {
+  test(`rejects invalid ${label} handles before any GitHub request`, async () => {
+    for (const token of [undefined, "ghp_public-only"]) {
+      for (const input of ["", " ", "-owner", "owner-", "a--b", "bad/raw-identity", "owner?query", "owner\u0000", "é", "a".repeat(40), null, 42]) {
+        let requests = 0;
+        const client = new GitHubClient({ token, now: () => NOW, fetchImpl: async () => {
+          requests += 1;
+          return json({}, 404);
+        } });
+        await assert.rejects(operation(client, input as string), (error: unknown) => {
+          assert.ok(error instanceof InputError);
+          assert.equal(error.code, "invalid_input");
+          assert.doesNotMatch(error.message, /raw-identity/);
+          return true;
+        }, `${label}: ${JSON.stringify(input)}`);
+        assert.equal(requests, 0, "invalid identifiers must not spend quota on resource or credential checks");
+      }
+    }
+  });
+
+  test(`reports invalid ${label} handles even after the shared deadline expires`, async () => {
+    const client = new GitHubClient({ token: "ghp_public-only", deadlineMs: 0, fetchImpl: async () => {
+      assert.fail("invalid input must not reach transport");
+    } });
+    await assert.rejects(operation(client, "bad/raw-identity"), (error: unknown) => {
+      assert.ok(error instanceof InputError);
+      assert.equal(apiErrorResponse(error).status, 400);
+      return true;
+    });
+  });
+}
+
+test("validates every repository before starting the project batch", async () => {
+  const invalidLists = [
+    ["atlas", ""], ["atlas", " "], ["atlas", "../secret"], ["atlas", "nested/repo"],
+    ["atlas", "."], ["atlas", ".."], ["atlas", "a..b"], ["atlas", "alpha,beta"],
+    ["atlas", "repo?query"], ["atlas", "line\nbreak"], ["atlas", "répo"],
+    ["atlas", "a".repeat(101)], ["atlas", "ATLAS"], ["atlas", null],
+    ["atlas", "b", "c", "d", "e", "f", "g"],
+  ];
+  for (const token of [undefined, "ghp_public-only"]) {
+    for (const repositories of invalidLists) {
+      let requests = 0;
+      const client = new GitHubClient({ token, now: () => NOW, fetchImpl: async () => {
+        requests += 1;
+        return json({}, 404);
+      } });
+      const lifecycles = new Map(repositories.filter((repo) => typeof repo === "string")
+        .map((repo) => [repo.toLowerCase(), "active" as const]));
+      await assert.rejects(client.fetchProjects("owner", repositories as string[], lifecycles),
+        (error: unknown) => error instanceof InputError && error.code === "invalid_input",
+        JSON.stringify(repositories));
+      assert.equal(requests, 0, "a malformed later repository must not start earlier valid requests");
+    }
+  }
+});
+
+test("validates the owner even when the project list is empty", async () => {
+  const client = new GitHubClient({ now: () => NOW, fetchImpl: async () => {
+    assert.fail("an empty project board must not fetch");
+  } });
+  await assert.rejects(client.fetchProjects("bad/raw-identity", [], new Map()), InputError);
+  const board = await client.fetchProjects(" OwNeR ", [], new Map());
+  assert.equal(board.owner, "OwNeR");
+  assert.deepEqual(board.projects, []);
+});
+
+test("rejects sparse or non-array project lists before the empty-list shortcut or upstream work", async () => {
+  const sparse = new Array<string>(3);
+  sparse[0] = "atlas";
+  sparse[2] = "beta";
+  const lifecycles = new Map([["atlas", "active" as const], ["beta", "active" as const]]);
+  for (const repositories of [sparse, null, "atlas", { length: 0 }, 42]) {
+    let requests = 0;
+    const client = new GitHubClient({ fetchImpl: async () => {
+      requests += 1;
+      return json({}, 404);
+    } });
+    await assert.rejects(client.fetchProjects("owner", repositories as string[], lifecycles), InputError);
+    assert.equal(requests, 0);
+  }
+});
+
+test("uses a trimmed case-preserving login in REST requests and profile fallbacks", async () => {
+  const paths: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const path = new URL(input.toString()).pathname;
+    paths.push(path);
+    return path.endsWith("/repos") ? json([]) : json({ public_repos: 0, followers: 0, following: 0 });
+  };
+  const profile = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProfile(" OcTo-Cat ");
+  assert.deepEqual(paths, ["/users/OcTo-Cat", "/users/OcTo-Cat/repos"]);
+  assert.equal(profile.login, "OcTo-Cat");
+  assert.equal(profile.profileUrl, "https://github.com/OcTo-Cat");
+});
+
+test("uses a trimmed case-preserving login in GraphQL and public contribution snapshots", async () => {
+  let graphQlLogin: unknown;
+  const graphQlFetch: typeof fetch = async (input, init) => {
+    if (new URL(input.toString()).pathname === "/rate_limit") return json({}, 200, { "x-oauth-scopes": "public_repo" });
+    graphQlLogin = JSON.parse(String(init?.body)).variables.login;
+    return json(rangePayload({ from: "2026-08-19", to: "2026-08-19" }));
+  };
+  const graphQl = await new GitHubClient({ token: "ghp_public-only", fetchImpl: graphQlFetch, now: () => NOW })
+    .fetchContributions(" OcTo-Cat ", 1);
+  assert.equal(graphQlLogin, "OcTo-Cat");
+  assert.equal(graphQl.login, "OcTo-Cat");
+
+  let publicPath: string | undefined;
+  const publicFetch: typeof fetch = async (input) => {
+    publicPath = new URL(input.toString()).pathname;
+    return html(publicContributionHtml(2026, { "2026-08-19": 1 }, { Commits: 100, "Pull requests": 0, Issues: 0, "Code review": 0 }));
+  };
+  const publicSnapshot = await new GitHubClient({ fetchImpl: publicFetch, now: () => NOW })
+    .fetchPublicProfileContributions(" OcTo-Cat ", 1);
+  assert.equal(publicPath, "/users/OcTo-Cat/contributions");
+  assert.equal(publicSnapshot.login, "OcTo-Cat");
+});
+
+test("preserves valid repository casing and .git names while trimming project inputs", async () => {
+  const repositories = [" Atlas.git ", "MiXeD_Name", ".github", "repo-name", "x".repeat(100), ".git"];
+  const expectedNames = ["Atlas.git", "MiXeD_Name", ".github", "repo-name", "x".repeat(100), ".git"];
+  const paths: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const path = new URL(input.toString()).pathname;
+    paths.push(path);
+    if (path.endsWith("/releases/latest")) return json({}, 404);
+    return json({ stargazers_count: 0, forks_count: 0, open_issues_count: 0 });
+  };
+  const lifecycles = new Map(expectedNames.map((repo) => [repo.toLowerCase(), "active" as const]));
+  const board = await new GitHubClient({ fetchImpl, now: () => NOW }).fetchProjects(" OwNeR ", repositories, lifecycles);
+  assert.equal(board.owner, "OwNeR");
+  assert.deepEqual(board.projects.map(({ repo }) => repo), expectedNames.map((name) => `OwNeR/${name}`));
+  assert.deepEqual(board.projects.map(({ name }) => name), expectedNames);
+  assert.deepEqual(paths.sort(), expectedNames.flatMap((name) => [
+    `/repos/OwNeR/${name}`, `/repos/OwNeR/${name}/releases/latest`,
+  ]).sort());
+});
 
 test("normalizes a public profile without inventing contribution data", async () => {
   const calls: URL[] = [];
