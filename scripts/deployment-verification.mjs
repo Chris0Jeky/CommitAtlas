@@ -11,6 +11,25 @@ export const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 
 const REQUEST_HEADERS = { "user-agent": "CommitAtlas-deployment-check" };
 
+function validateExpectedSha(value) {
+  if (value === undefined) return undefined;
+  assert(typeof value === "string" && value.length === 40 && /^[a-f\d]+$/i.test(value),
+    "expected build SHA must be a full 40-character Git commit SHA");
+  return value.toLowerCase();
+}
+
+/** Keep URL-only status checks compatible; requesting identity always requires a valid SHA. */
+export function parseVerificationArgs(args) {
+  const [baseUrl, mode, value] = args;
+  if (baseUrl && (args.length === 1 || (args.length === 2 && mode === "--status-only"))) {
+    return { baseUrl, expectedSha: undefined };
+  }
+  if (baseUrl && args.length === 3 && mode === "--expected-sha" && value !== undefined) {
+    return { baseUrl, expectedSha: validateExpectedSha(value) };
+  }
+  throw new Error("usage: node scripts/verify-deployment.mjs <base-url> [--expected-sha <commit-sha> | --status-only]");
+}
+
 /**
  * Fetch a deployment route with one shared attempt budget.
  *
@@ -86,7 +105,8 @@ function decodeXmlText(value) {
 }
 
 /** Build the ordered deployment checks for one verifier run. */
-export function createDeploymentChecks() {
+export function createDeploymentChecks({ expectedSha } = {}) {
+  expectedSha = validateExpectedSha(expectedSha);
   // Each route declares its own allowed parameters (lib/svg-routes.ts), so a
   // single shared query string would be rejected as an unknown parameter. Probe
   // every card with a query its own contract actually accepts.
@@ -111,12 +131,18 @@ export function createDeploymentChecks() {
 
   return [
     {
-      name: "health endpoint reports ok",
+      name: expectedSha ? "health endpoint reports ok with the expected build SHA" : "health endpoint reports ok",
       async run(get) {
         const response = await get("/api/v1/health");
         assert(response.status === 200, `expected 200, got ${response.status}`);
         const body = await response.json();
         assert(body.status === "ok", `expected status "ok", got ${JSON.stringify(body.status)}`);
+        if (expectedSha !== undefined) {
+          assert(typeof body.buildSha === "string" && body.buildSha.length === 40 && /^[a-f\d]+$/i.test(body.buildSha),
+            "health response has missing or malformed build SHA");
+          assert(body.buildSha.toLowerCase() === expectedSha,
+            `expected build SHA ${expectedSha}, got ${body.buildSha}`);
+        }
       },
     },
     {
@@ -332,7 +358,7 @@ function assert(condition, message) {
 /** Run all checks against one HTTPS origin. */
 export async function verifyDeployment(
   baseUrl,
-  { fetchImpl = globalThis.fetch, sleep, report = () => {}, onPass = () => {}, onFailure = () => {} } = {},
+  { expectedSha, fetchImpl = globalThis.fetch, sleep, report = () => {}, onPass = () => {}, onFailure = () => {} } = {},
 ) {
   const base = new URL(baseUrl);
   if (base.protocol !== "https:") {
@@ -341,7 +367,7 @@ export async function verifyDeployment(
 
   const get = (path, { retryNotFound = false } = {}) =>
     fetchWithBoundedRetry(new URL(path, base), { fetchImpl, sleep, report, retryNotFound });
-  const checks = createDeploymentChecks();
+  const checks = createDeploymentChecks({ expectedSha });
   let failed = 0;
 
   for (const check of checks) {

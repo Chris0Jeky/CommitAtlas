@@ -1,16 +1,12 @@
 #!/usr/bin/env node
-import { verifyDeployment } from "./deployment-verification.mjs";
-
-const baseUrl = process.argv[2];
-if (!baseUrl) {
-  console.error("usage: node scripts/verify-deployment.mjs <base-url>");
-  process.exit(2);
-}
-
-console.log(`Verifying ${new URL(baseUrl).origin}\n`);
+import { parseVerificationArgs, verifyDeployment } from "./deployment-verification.mjs";
 
 try {
+  const { baseUrl, expectedSha } = parseVerificationArgs(process.argv.slice(2));
+  console.log(`Verifying ${new URL(baseUrl).origin}`);
+  console.log(expectedSha ? `Expected build SHA: ${expectedSha}\n` : "Status-only checks: build identity is not verified.\n");
   const { total, failed } = await verifyDeployment(baseUrl, {
+    expectedSha,
     report: (message) => console.log(`  RETRY ${message}`),
     onPass: (name) => console.log(`  PASS  ${name}`),
     onFailure: (name, error) => console.log(`  FAIL  ${name}\n        ${error instanceof Error ? error.message : String(error)}`),

@@ -45,10 +45,20 @@ differs per Cloudflare account — the maintainer's is
 the origin cannot be read the script says so and exits non-zero rather than verifying someone
 else's site.
 
-The deploy log and, when `GITHUB_STEP_SUMMARY` is set, the Actions step summary record the checked-out
-commit SHA (`git rev-parse HEAD`, falling back to `GITHUB_SHA`) and Wrangler's `Current Version ID`;
-missing values are explicitly `unknown`. Follow-up: inject the build SHA into the health response
-and compare it in the deployment probe; the current probe does not verify commit identity.
+The build embeds the checked-out commit SHA in the Worker. `/api/v1/health` exposes it as `buildSha`
+with `Cache-Control: no-store` (or `private, no-store` when a GitHub token is configured). Runtime
+bindings and `GITHUB_SHA` cannot change that compiled value. A source archive or source-only test
+without a checkout identity reports `null`; deployment requires an identifiable Git checkout.
+The resolver ignores inherited Git repository/config overrides and accepts linked worktrees.
+For manual deployments, commit source changes first: the SHA records HEAD and does not attest
+to uncommitted edits.
+
+The deploy log and, when `GITHUB_STEP_SUMMARY` is set, the Actions step summary record that checkout
+SHA and Wrangler's `Current Version ID`; an unavailable Worker version is explicitly `unknown`.
+The deployment probe requires the served `buildSha` to match the expected checkout SHA exactly.
+Missing, malformed, or different identity fails verification, including an older bundle deployed
+with `--skip-build`. This comparison runs after upload; it does not automatically roll back a failed
+verification. Use the recorded Worker version and the rollback procedure below.
 
 The bundle is well under the 3 MiB gzipped script limit. Confirm current Workers and KV quotas for
 your account before deploying sustained traffic; CommitAtlas does not assume a paid plan.
@@ -134,11 +144,17 @@ mode and the scheduled static snapshot never need it.
 
 ```bash
 node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev
+# Require a particular build (replace the placeholder with the full commit SHA):
+node scripts/verify-deployment.mjs https://commit-atlas.commit-atlas.workers.dev --expected-sha "<commit-sha>"
 ```
 
-Eighteen deterministic probes:
+The URL-only invocation remains available for standalone status checks and explicitly prints that
+build identity is not verified. `--status-only` selects the same mode. `npm run deploy` always passes
+the expected SHA; a missing value after `--expected-sha`, malformed SHA, or conflicting mode is an error.
 
-- health, the landing page, and the Studio (matched on the title only `/studio` sets, so serving the
+Twenty-one deterministic probes:
+
+- health (including exact build identity when requested), the landing page, and the Studio (matched on the title only `/studio` sets, so serving the
   landing page for that route fails rather than passes);
 - all eight synthetic SVG cards, each asserted to be an SVG containing no `<script>`,
   `<foreignObject>`, `<iframe>`, inline event handler, or plaintext-`http://` reference;
