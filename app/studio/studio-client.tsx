@@ -53,6 +53,7 @@ import {
 import { fetchJson } from "./studio-fetch";
 import { StudioCardPreview } from "./studio-card-preview-image";
 import { StudioScenePreview } from "./studio-scene-preview-image";
+import { StudioPreviewButtons } from "./studio-svg-preview";
 import { scenePreviewToken, sceneReceiptMatches, type SceneImageReceipt, type ScenePreviewView } from "./studio-scene-preview";
 
 type Lifecycle = "planned" | "active" | "maintenance" | "paused" | "archived";
@@ -279,6 +280,8 @@ export default function StudioClient() {
     availability: galleryAvailability,
     projectCount: previewConfiguration.projects.length,
   });
+  const galleryScenes = STUDIO_SCENE_IDS.filter((id) => previewConfiguration.scenes.includes(id));
+  const previewCount = galleryCards.length + galleryScenes.length;
   const previewUrls = useMemo(() => Object.fromEntries(STUDIO_CARD_KINDS.map((kind) => [kind, buildStudioRouteUrl(kind, {
     owner: previewConfiguration.owner,
     projects: previewConfiguration.projects,
@@ -564,10 +567,7 @@ export default function StudioClient() {
           <fieldset className="preview-tools">
             <legend>Preview tools</legend>
             <p>Apply to all card and scene previews. Each image also has its own controls.</p>
-            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "profile"}>Profile view</button>
-            <button type="button" onClick={() => changeSceneView("profile")} disabled={selectedScenes.size === 0 && selectedCards.size === 0}>Replay</button>
-            <button type="button" onClick={() => changeSceneView("reduced")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "reduced"}>Reduced-motion view</button>
-            <button type="button" onClick={() => changeSceneView("frame-zero")} disabled={selectedScenes.size === 0 && selectedCards.size === 0} aria-pressed={sceneView === "frame-zero"}>Frame zero</button>
+            <StudioPreviewButtons view={sceneView} choose={changeSceneView} disabled={selectedScenes.size === 0 && selectedCards.size === 0} />
           </fieldset>
 
           <fieldset className="card-picker">
@@ -627,7 +627,7 @@ export default function StudioClient() {
           <p className={`studio-notice ${phase}`} role="status" aria-live="polite">{visibleNotice}</p>
 
           <div className="gallery-heading">
-            <div><p>Selected card gallery</p><h3>{galleryCards.length} preview{galleryCards.length === 1 ? "" : "s"}</h3></div>
+            <div><p>Selected cards &amp; scenes</p><h3>{previewCount} preview{previewCount === 1 ? "" : "s"}</h3></div>
             <fieldset className="preview-canvas-control">
               <legend>Preview canvas</legend>
               {(["auto", "dark", "light"] as const).map((canvas) => (
@@ -658,13 +658,13 @@ export default function StudioClient() {
                 retained={previewIsRetained}
               />
             ))}
-            {!galleryCards.length && (
+            {previewCount === 0 && (
               <div className="empty-gallery">
-                <strong>No card previews selected</strong>
-                <span>Select an available card in Configuration to show it here and include it in Markdown.</span>
+                <strong>No previews selected</strong>
+                <span>Select an available card or scene in Configuration, then run Preview to validate it for Markdown.</span>
               </div>
             )}
-            {STUDIO_SCENE_IDS.filter((id) => previewConfiguration.scenes.includes(id)).map((id) => (
+            {galleryScenes.map((id) => (
               <StudioScenePreview
                 key={scenePreviewToken(previewConfigurationKey, id, sceneView, sceneReplay)}
                 id={id}

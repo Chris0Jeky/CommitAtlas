@@ -1059,7 +1059,6 @@ test("the gallery lists every registered output without calling GitHub", async (
   for (const heading of ["Instruments", "Maps", "Signatures", "Scenes", "Findings"]) {
     assert.match(html, new RegExp(`<h2[^>]*>${heading}</h2>`));
   }
-  assert.match(html, /None registered\./);
   assert.equal([...html.matchAll(/<h2\b/g)].length, 5);
   const articles = [...html.matchAll(/<article\b[\s\S]*?<\/article>/g)].map((match) => match[0]);
   const count = Number(/data-gallery-count="(\d+)"/.exec(html)?.[1]);
@@ -1067,6 +1066,18 @@ test("the gallery lists every registered output without calling GitHub", async (
   assert.equal(count, await registeredGalleryCount());
   assert.equal((html.match(/data-marker="synthetic-demo"/g) ?? []).length, count);
   assert.match(html.replaceAll("<!-- -->", ""), new RegExp(`>${count} outputs<`));
+  const familyIndex = /<nav\b[^>]*aria-label="Gallery families"[\s\S]*?<\/nav>/.exec(html)?.[0];
+  assert.ok(familyIndex, "readers can jump directly to each family");
+  const sections = [...html.matchAll(/<section\b[^>]*data-gallery-section="([a-z]+)"[\s\S]*?<\/section>/g)];
+  assert.equal(sections.length, 5);
+  for (const [section, id] of sections) {
+    const familyCount = [...section.matchAll(/<article\b/g)].length;
+    assert.match(section, new RegExp(`id="gallery-${id}"`));
+    const indexLink = new RegExp(`<a\\b[^>]*href="#gallery-${id}"[^>]*>[\\s\\S]*?<\\/a>`).exec(familyIndex)?.[0];
+    assert.ok(indexLink, `family index links to ${id}`);
+    assert.match(indexLink.replaceAll("<!-- -->", ""), new RegExp(`>${familyCount}<`));
+    if (familyCount === 0) assert.match(section, /None registered\./);
+  }
   const beacon = articles.find((article) => article.includes('data-gallery-id="identity-beacon"'));
   assert.ok(beacon);
   assert.match(beacon, /data-rung="unavailable"/);
@@ -1084,12 +1095,21 @@ test("the gallery lists every registered output without calling GitHub", async (
     assert.match(text, /data-rung="(?:observed|derived|hypothesis|C0|declared|partial|stale|unavailable)"/);
     assert.match(text, /data-pack="\S+"/);
     assert.match(text, /data-motion="\S+"/);
-    assert.match(text, /<p>Family (?:Instruments|Maps|Signatures|Scenes|Findings)<\/p>/);
-    assert.match(text, /<p>Evidence (?:observed|derived|hypothesis|C0|declared|partial|stale|unavailable)<\/p>/);
-    assert.match(text, /<p>Pack \S+<\/p>/);
-    assert.match(text, /<p>Motion \S+<\/p>/);
+    assert.match(text, /<dt>Family<\/dt><dd>(?:Instruments|Maps|Signatures|Scenes|Findings)<\/dd>/);
+    assert.match(text, /<dt>Evidence<\/dt><dd>(?:observed|derived|hypothesis|C0|declared|partial|stale|unavailable)<\/dd>/);
+    assert.match(text, /<dt>Pack<\/dt><dd>\S+<\/dd>/);
+    assert.match(text, /<dt>Motion<\/dt><dd>\S+<\/dd>/);
+    assert.ok(text.indexOf("<svg") < text.indexOf("<dl"), "specimen precedes its supporting metadata");
+    const headingId = /<h3 id="([^"]+)"/.exec(text)?.[1];
+    assert.ok(headingId);
+    assert.match(text, new RegExp(`aria-labelledby="${headingId}"`));
     assert.doesNotMatch(article, /<style/i);
   }
+  assert.match(beacon, /href="\/studio"[^>]*>Explore Studio/);
+  assert.match(finding, /href="\/#research-bridge-title"[^>]*>Read research note/);
+  const atlas = articles.find((article) => article.includes('data-gallery-id="atlas"'));
+  assert.ok(atlas);
+  assert.match(atlas, /href="\/studio\?card=atlas"[^>]*>Customize in Studio/);
   const lifecycle = articles.find((article) => article.includes('data-gallery-id="lifecycle-map"'));
   assert.ok(lifecycle);
   assert.match(lifecycle, /data-rung="declared"/);

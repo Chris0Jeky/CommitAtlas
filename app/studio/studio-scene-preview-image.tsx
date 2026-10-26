@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { ScenePack } from "@/packages/svg/src/index";
 import { isHostedSceneId, HOSTED_SCENE_PACKS } from "@/lib/hosted-scene-catalog";
 import { readStudioScenePreview, type SceneImageReceipt, type ScenePreviewView } from "./studio-scene-preview";
@@ -18,10 +18,14 @@ export function StudioScenePreview(props: Props) {
     props.onRendered(props.id, props.token, null);
     setView(next); setAttempt(current => current + 1);
   }
-  const tools = <StudioImageTools title={props.title} view={view} choose={choose} />;
-  return <SceneImage {...props} view={view} key={JSON.stringify([props.token, view, attempt])} tools={tools} />;
+  return <article className="studio-card-preview span-full card-scene" data-scene-preview={props.id}>
+    <header><div><h4>{props.title}</h4><p>{view === "profile" ? "Profile view" : view === "reduced" ? "Reduced-motion still twin" : "Frame-zero still twin"}</p></div></header>
+    <StudioImageTools title={props.title} view={view} choose={choose} />
+    {/* Keep the controls mounted while a new keyed response invalidates and reloads its receipt. */}
+    <SceneImage {...props} view={view} key={JSON.stringify([props.token, view, attempt])} />
+  </article>;
 }
-function SceneImage({ id, title, pack, url, stillUrl, view, token, onRendered, tools }: Props & { tools: ReactNode }) {
+function SceneImage({ id, title, pack, url, stillUrl, view, token, onRendered }: Props) {
   const supported = isHostedSceneId(id) && (HOSTED_SCENE_PACKS[id] as readonly string[]).includes(pack);
   const { resource, decoded, failed } = useStudioSvgPreview({ id, url, stillUrl, view, token, onRendered }, readStudioScenePreview, supported);
   const counters = decoded && !failed ? resource?.metadata : null;
@@ -34,10 +38,9 @@ function SceneImage({ id, title, pack, url, stillUrl, view, token, onRendered, t
             : view === "profile" ? "Image loaded. Compiler counters are not browser playback measurements."
               : "Still twin loaded. Return to Profile view to validate and copy the selected motion profile.";
   return (
-    <article className="studio-card-preview span-full card-scene" data-scene-preview={id}>
-      <header><div><h4>{title}</h4><p>{view === "profile" ? "Profile view" : view === "reduced" ? "Reduced-motion still twin" : "Frame-zero still twin"}</p></div></header>
-      {tools}
-      <div className="card-preview-media">
+    <div className="studio-preview-resource">
+      <div className="card-preview-media" aria-busy={supported && !decoded && !failed}>
+        {supported && !decoded && <div className="preview-media-placeholder" aria-hidden="true"><span>{failed ? "Preview unavailable" : "Preparing preview"}</span></div>}
         {!supported ? <p>UNAVAILABLE. This scene does not support the {pack} pack.</p>
           : resource && !failed ? (
             // Display precisely the response that supplied the counters, not a second live request.
@@ -46,12 +49,14 @@ function SceneImage({ id, title, pack, url, stillUrl, view, token, onRendered, t
               onLoad={resource.onLoad} onError={resource.onError} />
           ) : null}
       </div>
-      {supported && <p className="scene-preview-status" role="status">{note}</p>}
-      <dl className="scene-motion-counters" aria-label="Renderer counters for the loaded image">
-        <div><dt>Bytes</dt><dd>{reading(counters?.bytes)}</dd></div>
-        <div><dt>Animated elements</dt><dd>{reading(counters?.animatedElements)}</dd></div>
-        <div><dt>Looping groups</dt><dd>{reading(counters?.loopingGroups)}</dd></div>
-      </dl>
-    </article>
+      <div className="preview-readout">
+        {supported && <p className="scene-preview-status" role="status">{note}</p>}
+        <dl className="scene-motion-counters" aria-label="Renderer counters for the loaded image">
+          <div><dt>Bytes</dt><dd>{reading(counters?.bytes)}</dd></div>
+          <div><dt>Animated elements</dt><dd>{reading(counters?.animatedElements)}</dd></div>
+          <div><dt>Looping groups</dt><dd>{reading(counters?.loopingGroups)}</dd></div>
+        </dl>
+      </div>
+    </div>
   );
 }

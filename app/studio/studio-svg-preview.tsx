@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type SyntheticEvent } from "react";
+import { useEffect, useId, useState, type SyntheticEvent } from "react";
 import type { SceneImageReceipt, ScenePreviewState, ScenePreviewView } from "./studio-scene-preview";
 
 interface Loaded<T> { readonly blob: Blob; readonly metadata: T | null; readonly state: ScenePreviewState }
@@ -62,13 +62,25 @@ export function useStudioSvgPreview<T>(identity: PreviewIdentity, loader: (respo
   return { resource, decoded, failed };
 }
 
-export function StudioImageTools({ title, view, choose }: {
-  title: string; view: ScenePreviewView; choose: (view: ScenePreviewView) => void;
-}) {
-  return <div className="scene-image-tools" role="group" aria-label={`${title} preview tools`}>
-    <button type="button" onClick={() => choose("profile")} aria-pressed={view === "profile"}>Profile view</button>
-    <button type="button" onClick={() => choose("profile")}>Replay</button>
-    <button type="button" onClick={() => choose("reduced")} aria-pressed={view === "reduced"}>Reduced-motion view</button>
-    <button type="button" onClick={() => choose("frame-zero")} aria-pressed={view === "frame-zero"}>Frame zero</button>
+interface PreviewToolsProps {
+  view: ScenePreviewView;
+  choose: (view: ScenePreviewView) => void;
+  disabled?: boolean;
+}
+export function StudioPreviewButtons({ view, choose, disabled = false }: PreviewToolsProps) {
+  return <>
+    <button type="button" onClick={() => choose("profile")} disabled={disabled} aria-pressed={view === "profile"}>Profile view</button>
+    <button type="button" onClick={() => choose("reduced")} disabled={disabled} aria-pressed={view === "reduced"}>Reduced-motion view</button>
+    <button type="button" onClick={() => choose("frame-zero")} disabled={disabled} aria-pressed={view === "frame-zero"}>Frame zero</button>
+    <button type="button" className="preview-replay" onClick={() => choose("profile")} disabled={disabled}>Replay</button>
+  </>;
+}
+export function StudioImageTools({ title, ...props }: PreviewToolsProps & { title: string }) {
+  const descriptionId = useId();
+  return <div className="preview-toolset">
+    <div className="scene-image-tools" role="group" aria-label={`${title} preview tools`} aria-describedby={descriptionId}>
+      <StudioPreviewButtons {...props} />
+    </div>
+    <p id={descriptionId} className="preview-tools-note">Reduced-motion and Frame zero show a still twin. Replay restarts the selected profile.</p>
   </div>;
 }
