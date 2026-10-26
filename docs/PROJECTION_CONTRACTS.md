@@ -112,7 +112,9 @@ the process clock: `age <= maxAgeDays` is fresh, `maxAgeDays < age <= 2 * maxAge
 and greater is expired. The scene context preserves the full validated producer projection and
 adds consumer `freshness`. Signature models must preserve coverage, privacy and freshness; the
 engine adds a separately allocated `STALE PROJECTION` header and requires accessible age, while
-expired signatures take their unavailable composition before model building.
+expired signatures take their unavailable composition before model building. Evidence Coverage
+may retain the expired context's neutral historical score, age/state and registry warnings to
+explain the missing current evidence; those rows never become observed counts or scan targets.
 
 **Current publication boundary:** the schema/parser validates both C0 and C1 transport semantics,
 but static and hosted scene adapters accept C0 only (`LENS_C1_PUBLICATION_DISABLED` otherwise).
@@ -225,7 +227,7 @@ EXPANSION_PLAN D-08):
 | Producer | privacy scan on the written file; denied-content fixtures are rejected | invented |
 | Consumer | golden: vendored fixture parses and renders byte-identically (snapshot test) | C0 |
 | Consumer | rejection: unknown field, unknown code, out-of-range value, over-size file, untracked or escaping path | invented |
-| Consumer (lens) | freshness: stale `generatedAt` follows the age policy and is rejected after the hard limit | invented |
+| Consumer (lens) | freshness: stale signatures receive the age disclosure; expired signatures render unavailable before model construction; Evidence Coverage retains only neutral historical score/state/warning rows | invented |
 | Consumer (finding) | `generated_at` is immutable pinned evidence and is not rejected for age; replacement requires deliberate re-vendoring | C0 |
 | Both | contract canary: the consumer's vendored fixture hash equals the producer's published fixture hash at the pinned commit | C0 |
 

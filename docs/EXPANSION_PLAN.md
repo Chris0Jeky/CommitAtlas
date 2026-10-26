@@ -377,9 +377,11 @@ Ownership follows the two sibling repositories' own boundaries, not this reposit
 | `ResearchFindingProjection.v1` | Developer Lens (product owns presentation contracts) | Developer Lens Lab `dllab export finding <run-id>` | CommitAtlas vendors pinned C0 fixtures under `research-contracts/research-finding/v1/` and validates them at build/test time | Same path as the existing `DeveloperLensMethodTrialSummary.v1` bridge, which it generalizes |
 
 Freshness is a first-class part of the lens seam: a projection carries `generatedAt`; older than
-`lens.maxAgeDays` (default 45) renders every lens scene with a `STALE PROJECTION` strip and the age
-in the description; older than twice that refuses the lens scenes and renders their explicit
-unavailable composition. The GitHub-only cards are never affected by a projection in any state.
+`lens.maxAgeDays` (default 45) gives signature scenes a `STALE PROJECTION` strip and the age in
+the description; older than twice that renders their explicit unavailable composition before
+model construction. Evidence Coverage instead retains neutral historical score/state/warning
+rows labelled STALE or EXPIRED, so it can explain why a projection is no longer current. Its
+independent GitHub readings and the GitHub-only cards retain their own validity.
 Findings are the opposite kind of artifact — immutable pinned evidence that prints its
 `generatedAt` and producer commit and never ages; it is replaced only by vendoring a new one.
 
@@ -473,7 +475,7 @@ repository. The Action never commits.
 | --- | --- | --- |
 | P0 · Ground truth | [P0](https://github.com/Chris0Jeky/CommitAtlas/milestone/1) | `docs/MOTION_COMPATIBILITY.md` records the measured matrix and reconciles the PR #77 probe; budgets are measured; the §14 decisions are recorded as taken or declined |
 | P1 · Alive | [P1](https://github.com/Chris0Jeky/CommitAtlas/milestone/2) | `ambient` ships on the hosted Atlas and on the profile; the scene engine, primitives, and at least Identity Beacon, Evidence Coverage, and Activity Terrain render from static config; the capture harness proves motion in three engines |
-| P2 · Lens projections | [P2](https://github.com/Chris0Jeky/CommitAtlas/milestone/3) | `PublicLensProjection.v1` is produced by Developer Lens, validated here, and Constellation plus Signature are live on the profile from an owner-reviewed export |
+| P2 · Lens projections | [P2](https://github.com/Chris0Jeky/CommitAtlas/milestone/3) | `PublicLensProjection.v1` is produced and validated, the C0 Constellation/Signature path is qualified, and the Q-9 disposition is recorded; real-profile adoption requires a separately authorized Yes, as specified in #170 |
 | P3 · Scenes, findings, packs | [P3](https://github.com/Chris0Jeky/CommitAtlas/milestone/4) | `ResearchFindingProjection.v1` replaces the pinned method-trial bridge; the four packs and the aesthetic scene family exist; a gallery shows them; gated extras have a recorded decision |
 
 The complete dependency-ordered issue list is maintained in the tracking issue #111 (the issues
