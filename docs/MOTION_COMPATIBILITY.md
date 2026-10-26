@@ -74,6 +74,36 @@ and post-check overhead, combine same-node and clock reads, and retain structure
 timing. Keep the 250/440 ms policy and source, body, geometry and node guards unchanged before
 considering another separately reviewed bounded run.
 
+### Separate source-only timing follow-up
+
+The timing follow-up returns screenshot bytes in memory before writing a PNG. It reads the
+same-node marker, viewport geometry and browser clock together immediately before the screenshot
+and at the first check after screenshot bytes return. The latter observation remains a
+conservative upper bound on capture completion: it includes the outbound and scheduling delay
+until that first browser check executes, and excludes the response's return to Node. It is not an
+exact compositor timestamp. Node-clock durations separately record the screenshot call, the
+full post-capture check round trip (including response return), and file writing. The unchanged 250 ms sample is rejected if the unrounded
+post-screenshot browser observation exceeds 440 ms. A later file write does not alter that
+observation, although earlier I/O can still delay the next sample and cause it to fail.
+
+Rejected rows remain outside `rows` and now retain a structured `failedRow`: exact planned identity,
+engine/version, request gate, completed frames, active failed-frame timing, before/after node and
+geometry observations, file-save state and the rejection phase. Discovery and final body checks,
+hydration readiness, positive viewport bounds and same-node guards remain in force. A late PNG
+may be saved as diagnostic evidence, without accepting its row.
+
+The same diagnostic boundary covers directory/context/gate/page setup, context teardown and video
+path/rename/inspection. Cleanup failures are recorded separately and cannot replace an earlier
+capture error. Available completed frames and video metadata remain attached to the failed row;
+the row enters `rows` only after teardown and video finalization succeed.
+
+The local synthetic-browser timing regression injects a 250 ms file write after screenshot bytes
+return, exercises an actually late browser-clock observation, and replaces the target immediately
+after a real screenshot. It verifies separate I/O timing, unchanged deadline rejection, retained
+failure metadata and continued node-replacement rejection. This is Chromium source verification;
+the follow-up has not run another WebKit/GitHub capture and does not change the rejected 447 ms
+result or unlock #113.
+
 ## Answer first — 2026-08-29 checkpoint
 
 - Direct Worker evidence is complete for this checkpoint: all 48 normal-motion rows and all three
