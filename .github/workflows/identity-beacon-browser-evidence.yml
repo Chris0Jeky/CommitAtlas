@@ -1,0 +1,44 @@
+name: Identity Beacon browser evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/identity-beacon-browser]
+    paths:
+      - packages/svg/src/scenes/identity-beacon.ts
+      - tests/identity-beacon-browser.mjs
+      - .github/workflows/identity-beacon-browser-evidence.yml
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=@commit-atlas/svg
+      - name: Install external pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/identity-beacon-playwright" --ignore-scripts playwright@1.57.0
+          node "$RUNNER_TEMP/identity-beacon-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Measure bounds and capture CSS/SMIL playback with static controls
+        env:
+          PLAYWRIGHT_PREFIX: ${{ runner.temp }}/identity-beacon-playwright
+          IDENTITY_BEACON_QA_OUTPUT: ${{ runner.temp }}/identity-beacon-evidence
+        run: node tests/identity-beacon-browser.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: identity-beacon-browser-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/identity-beacon-evidence
+          if-no-files-found: error
+          retention-days: 14
