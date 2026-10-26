@@ -23,7 +23,7 @@ await mkdir(out, { recursive: true });
 const browserExecutable = process.env.CHROME_BIN ?? chromium.executablePath();
 const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-const errors = [], requests = [], scenarios = [], layoutMeasurements = [], focusChecks = [], toolMeasurements = [];
+const errors = [], requests = [], scenarios = [], layoutMeasurements = [], focusChecks = [], toolMeasurements = [], groupMeasurements = [];
 let fault = "none", cardFault = "none", releaseDelayed, releaseCard;
 let cardDelay = Promise.resolve();
 let delayed = Promise.resolve();
@@ -84,6 +84,17 @@ try {
   const markdown = page.getByRole("textbox", { name: "Generated README Markdown" });
   const loaded = () => scene.getByText("Image loaded. Compiler counters", { exact: false }).waitFor({ timeout: 30_000 });
   const assertLayout = async () => {
+    const groups = await page.locator("fieldset.segmented-field, fieldset.card-picker").evaluateAll(elements => elements.map(element => {
+      const legend = element.querySelector("legend").getBoundingClientRect();
+      return { label: element.querySelector("legend").textContent,
+        gapFromPrevious: legend.top - element.previousElementSibling.getBoundingClientRect().bottom,
+        gapToChoices: element.querySelector("label").getBoundingClientRect().top - legend.bottom };
+    }));
+    for (const group of groups) {
+      assert.ok(group.gapFromPrevious >= 16, `${group.label} visually attaches to the previous control`);
+      assert.ok(group.gapToChoices >= 8, `${group.label} overlaps its choices`);
+    }
+    groupMeasurements.push({ viewport: page.viewportSize(), groups });
     const boxes = await page.locator("[data-scene-preview], [data-card-preview]").evaluateAll(elements => elements.map(element => {
       const rect = element.getBoundingClientRect();
       const gallery = element.parentElement;
@@ -320,7 +331,7 @@ try {
     sourceWorkingTreeDirty: Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }).trim()), sourceFiles,
     browser: browser.version(), browserExecutable, driver: require("playwright/package.json").version,
     origin, mode: production ? "production-synthetic" : "built-worker-synthetic-https-proxy",
-    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements, toolMeasurements,
+    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements, toolMeasurements, groupMeasurements,
     keyboard: { expectedControls, reachedControls: visited.size, tabPresses, focusChecks },
     reducedMotionChrome,
     timedMotionOrCamoQualification: false };

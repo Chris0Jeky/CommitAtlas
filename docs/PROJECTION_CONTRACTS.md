@@ -1,9 +1,12 @@
 # Cross-project projection contracts
 
-**Lens reader implemented for C0; finding projection remains proposed.** Developer Lens owns
+**Lens reader and first Signature consumer implemented for C0; finding projection remains proposed.** Developer Lens owns
 both canonical producer contracts. The Lens consumer is pinned to the published schema/runtime
-revision below; this document no longer defines its transport shape. No signature scene is
-registered, and owner C1 publication remains disabled under the operative Q-9 No policy (#170).
+revision below; this document no longer defines its transport shape. The registered
+[`signature` scene](./SIGNATURE_SCENE.md) consumes the complete context through the static generator and bundled Action,
+with `survey` and `none | ambient`. Its [browser evidence](./evidence/appearance-2026-10-26/README.md)
+covers synthetic direct-image layout and playback. It has no hosted endpoint or selectable Studio scene. Owner C1/profile publication remains
+disabled under the operative Q-9 No policy (#170).
 
 The existing seam it generalizes — `DeveloperLensMethodTrialSummary.v1`, vendored under
 `research-contracts/method-trial-summary/v1/` and validated by `lib/research-bridge.ts` — is the

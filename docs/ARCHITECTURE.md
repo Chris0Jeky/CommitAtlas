@@ -213,7 +213,9 @@ the vendored fixture under explicit `demo=true` with a synthetic snapshot.
 
 The scene context carries complete validated C0 data and snapshot-clock freshness. Signature scenes
 receive an engine-owned stale strip plus accessible age; expired signatures render unavailable
-before model construction. No Lens scene is registered by this reader. The transport parser accepts
+before model construction. The registered `signature` scene consumes this complete context from
+the static source, with exact axes and archetype, a neutral derived coverage track, and all warnings,
+privacy and freshness. It has no hosted endpoint or Studio selection. The transport parser accepts
 C1 contract semantics, but all publication adapters currently reject C1 under the operative Q-9 No policy recorded in #170. No real
 projection or private input is a fixture, log message or CommitAtlas tracked file. See
 [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) for the pin, limitations and integration boundary.
@@ -241,7 +243,7 @@ capability declaration. Existing cards retain their compatibility motion; compil
 the Atlas and standalone cards remains #126/#127. Scene profiles already select different motion
 primitives. Renderer metadata determines whether SVG CSP permits inline presentation styles.
 
-The [registry](../packages/svg/src/scene.ts) contains six built-ins. The
+The [registry](../packages/svg/src/scene.ts) contains seven built-ins. The
 [hosted catalogue](../lib/hosted-scene-catalog.ts) exposes the first four through
 `/api/v1/scenes/<id>.svg`:
 
@@ -253,6 +255,7 @@ The [registry](../packages/svg/src/scene.ts) contains six built-ins. The
 | `lifecycle-map` | Hosted + static/Action | `none`, `subtle`, `ambient` |
 | `identity-beacon` | Static/Action; validated `identity` required | `none`, `ambient`, `cinematic` |
 | `nebula` | Static/Action | `none`, `ambient` |
+| `signature` | Static/Action; complete validated C0 `lens` required | `none`, `ambient` |
 
 Every built-in currently supports only `survey`. The
 [pack implementation](../packages/svg/src/packs.ts) defines `survey`, `orbital`, `spectral`, and
@@ -261,6 +264,11 @@ scene/pack or scene/motion combinations are rejected. Static configuration selec
 the [static renderer](../packages/static/src/render.ts) produces `scene-<id>.svg` artifacts for
 inclusion in each theme's manifest, and the Action reports generated paths through its `scenes`
 output.
+
+The [Signature guide](./SIGNATURE_SCENE.md) records its static-first composition, rebuilt Action delivery and
+[direct-browser evidence scope](./evidence/appearance-2026-10-26/README.md). Its Gallery evidence stays derived for historical
+output, with a separate stale state. Its source registration does not widen the four-scene hosted
+catalogue or authorize C1/profile publication under Q-9 No.
 
 Studio card and scene previews share [bounded SVG loading](../app/studio/studio-svg-preview.tsx),
 approval tied to the actual decoded image, and reversible global/per-image Replay, Reduced-motion

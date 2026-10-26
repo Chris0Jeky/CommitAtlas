@@ -166,10 +166,20 @@ otherwise. Partial bytes/percentage mixtures are rejected because their basis is
 
 ## Scene contract and registry
 
-The additive scene API implements EXPANSION_PLAN §6. The lazy built-in registry includes
-`evidence-coverage`; the `example` composition lives only in tests. Existing card defaults,
-routes, renderer metadata, and backend policies keep their current behavior. See
-[the evidence coverage guide](../../docs/EVIDENCE_COVERAGE_SCENE.md) for its opt-in contract.
+The additive scene API implements EXPANSION_PLAN §6. The lazy built-in registry contains seven
+scenes: `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`, `identity-beacon`,
+`nebula`, and `signature`; the `example` composition lives only in tests. Every built-in currently
+supports `survey`. The first four accept `none | subtle | ambient`, Identity Beacon accepts
+`none | ambient | cinematic`, and Nebula and Signature accept `none | ambient`. The hosted catalogue
+still exposes only the first four; the other three are static source compositions.
+
+Signature is the first registered scene in the `signature` family. It requires a complete validated
+C0 Lens context, prints exact six-axis readings and the supplied archetype, and retains complete
+coverage, warnings, privacy and freshness. Its neutral score track preserves the producer's derived
+score; two decorative motion groups run only when fresh. Gallery evidence remains derived while
+historical output has a separate stale state. The rebuilt Action delivers the same renderer;
+[visual references](../../docs/evidence/appearance-2026-10-26/README.md) retain the measured browser scope. See [the Signature guide](../../docs/SIGNATURE_SCENE.md) and
+[the evidence coverage guide](../../docs/EVIDENCE_COVERAGE_SCENE.md) for their opt-in contracts.
 
 `SceneDefinition.renderUnavailable` is optional. It receives the validated unavailable record,
 context and engine-owned accessible text, not unchecked source inputs. Final naming, markup,
@@ -271,5 +281,6 @@ reader. `SceneInputs.lens` accepts either authentic context, never a raw object 
 The engine rechecks full contexts against the render snapshot. Signature models preserve coverage,
 privacy and freshness and render `sceneLensDescription(model.lens)` visibly and accessibly. A stale
 signature receives a separate 28-unit header strip, extending its viewBox to avoid covering content.
-An expired signature uses its unavailable composition before `buildModel`. No Lens scene is
-registered by the reader; scene implementation and owner publication remain separate work.
+An expired signature uses its unavailable composition before `buildModel`. The registered
+`signature` scene consumes this full context; the legacy common-context helper yields unavailable
+for that scene. The reader and synthetic scene do not authorize owner C1/profile publication.

@@ -36,14 +36,15 @@ The product direction is a deterministic, privacy-aware generative profile graph
 - This checkout provides eight hosted card routes, four hosted scene routes, the Studio, and a synthetic `/gallery`. Source availability here does not establish deployment or profile adoption of the newer scenes.
 - Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`, subject to each scene's supported profiles. Existing cards still map every non-`none` profile to the same subtle load motion; registered scenes use the motion compiler for their own textures.
 - The source CLI and bundled Node 24 Action support eleven card types: the hosted eight plus static Cadence, Releases, and opt-in Delivery. The ten ordinary types share one public portfolio snapshot; Delivery requires a GitHub token and separate public PR-flow evidence.
-- The exported CSS/SMIL motion compiler, deterministic scene engine, and six registered scenes ship in source. All six support the `survey` pack; four pack geometries exist, but built-in scenes do not yet opt into the other three.
+- The current source exports the CSS/SMIL motion compiler, deterministic scene engine, and seven registered scenes, including the first Developer Signature. All seven support the `survey` pack; four pack geometries exist, but built-in scenes do not yet opt into the other three.
+- [Developer Signature](docs/SIGNATURE_SCENE.md) renders the complete validated synthetic C0 Lens projection through the static generator. It supports `none | ambient`, prints every exact axis reading and the complete coverage/privacy/freshness context, and stays still when stale. Its Gallery evidence is Derived with a separate Stale state. The rebuilt Action delivers the same paired artifacts. Signature has no hosted endpoint or selectable Studio scene. See the [visual references and browser scope](docs/evidence/appearance-2026-10-26/README.md).
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
 - The Studio and landing pages load the Pulseboard SDK 3.2.0 with a visible **Beta** bar and a choice of categories; SVG cards and JSON routes never load it. See [Usage measurement](#usage-measurement).
 - npm registry publication and a GitHub Marketplace listing are not claimed. Packages are built and pack-verified from source only.
 
-**Open:** differentiated ambient motion for existing cards (#126 and the remaining card work under #111), the complete GitHub/browser motion matrix (#113) and measured budgets (#114), the full projection reader (#145) and owner-reviewed Developer Lens publication (#170 / Q-9), and research-finding scenes and further visual families under #111. Chronograph timing and release labels are implemented; timed browser acceptance remains open under #344. The implementation programme and source status are in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md).
+**Open:** differentiated ambient motion for existing cards (#126 and the remaining card work under #111), the complete GitHub/browser motion matrix (#113) and measured budgets (#114), further Lens scenes, research-finding scenes and the remaining catalogue under #111. The C0 projection reader (#145) and Chronograph's scoped browser acceptance (#344) are complete. Owner C1/profile publication remains disabled under #170 / Q-9 No. The implementation programme and source status are in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md).
 
 Every push to `main` that passes CI deploys to Cloudflare Workers and is checked against the origin produced by that deployment.
 
@@ -60,7 +61,7 @@ The rhythm score summarizes consistency and breadth inside the displayed window.
 
 Registered scenes use their canonical model as a deterministic visual seed, but spectacle must never carry an unstated claim. Everything remains readable at frame zero; unavailable never animates as healthy; identical inputs must produce byte-identical output.
 
-## Shipped surfaces
+## Surfaces in source
 
 | Surface | What it shows | Hosted route / static file |
 | --- | --- | --- |
@@ -78,6 +79,7 @@ Registered scenes use their canonical model as a deterministic visual seed, but 
 | Lifecycle map | Declared project lifecycle with independent CI, release, and freshness signals | `/api/v1/scenes/lifecycle-map.svg` / `scene-lifecycle-map.svg` |
 | Identity beacon | Bounded configured identity and project bodies sized by observed open issues/PRs | static-only `scene-identity-beacon.svg` |
 | Nebula | Deterministic aesthetic field seeded by public observations, labelled as a scene | static-only `scene-nebula.svg` |
+| Developer Signature | Synthetic Lens DNA and archetype, exact readings, derived coverage, warnings, privacy and age | static-only `scene-signature.svg`; [scene guide](docs/SIGNATURE_SCENE.md) |
 | Cadence | Contribution share by UTC weekday, window-scoped | static-only `cadence.svg` |
 | Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
 | Delivery | Scoped public PR-flow evidence with unavailable benchmarks stated | static-only `delivery.svg`, `delivery.json` |
@@ -140,7 +142,7 @@ See [STATIC_GENERATOR_PLAN.md](docs/STATIC_GENERATOR_PLAN.md) and [DEPLOYMENT.md
 
 ## Deploy your own
 
-CommitAtlas serves all documented surfaces without credentials. Hosted last-good resilience additionally uses a Workers KV namespace.
+The hosted cards and scene routes work without credentials. Hosted last-good resilience additionally uses a Workers KV namespace.
 
 ```bash
 npx wrangler login
@@ -177,7 +179,7 @@ Near-term work is evidence-gated:
 
 1. finish proving which SVG motion backend works through GitHub README `<img>` rendering before differentiating the compatibility motion profiles;
 2. extend adoption of the shipped CSS/SMIL compiler while preserving frame-zero and reduced-motion invariants (#126 and remaining card work under #111);
-3. extend the six registered maps and scenes without letting aesthetics imply facts (#111);
+3. qualify and extend the seven registered instruments, maps, signatures and scenes without letting aesthetics imply facts (#111);
 4. keep Developer Lens C1 publication blocked on owner decision Q-9; when authorized, accept only product-owned schemas with visible coverage, privacy class, limitations, and freshness or expiry;
 5. accept Lab research findings only through product-owned schemas with pinned provenance, decision vocabulary, limitations, and unsupported claims; do not invent coverage or expiry fields that the finding contract does not define;
 6. keep hosted data public-only, keep usage measurement to the Pulseboard SDK's disclosed categories on the HTML pages only, and never send typed handles, repository names or URLs;
@@ -192,6 +194,7 @@ Read [PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) for the concise map and [
 - [Live project state](docs/PROJECT_STATE.md)
 - [Expansion programme](docs/EXPANSION_PLAN.md)
 - [Projection contracts](docs/PROJECTION_CONTRACTS.md)
+- [Developer Signature scene](docs/SIGNATURE_SCENE.md)
 - [Design chassis and evidence ladder](docs/DESIGN_CHASSIS.md)
 - [Competitive research and product gap](docs/RESEARCH.md)
 - [Demonstration guide](docs/DEMO_GUIDE.md)
@@ -204,15 +207,19 @@ CommitAtlas does not invent a global developer rank, language proficiency, CI re
 Static config v1 accepts `scenes: []`, `scenePack: "survey"`, and optional
 bounded `identity` text. Defaults preserve existing card artifacts. The registered
 scenes are `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`,
-`identity-beacon`, and `nebula`. All currently require `scenePack: "survey"`.
+`identity-beacon`, `nebula`, and `signature`. All currently require `scenePack: "survey"`.
 The first four accept `none | subtle | ambient`; Identity Beacon accepts
-`none | ambient | cinematic` and requires `identity`; Nebula accepts `none | ambient`.
+`none | ambient | cinematic` and requires `identity`; Nebula and Signature accept `none | ambient`.
+Signature requires a complete validated C0 projection through a tracked `lens.path`; missing or
+expired input yields an explicit unavailable composition. C1 input remains rejected under Q-9 No.
 Beacon focus entries match configured project labels exactly; an ambiguous selected label is
 rejected, and unmatched focus stays plain text.
 Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
 The Action's `scenes` output is a JSON array of generated paths (`[]` when
 disabled), including during dry-run.
+The Signature path is implemented in the shared static/Action source; its bundled Action delivery
+still requires the separate rebuild and integration receipts.
 
 ```json
 { "scenes": ["evidence-coverage"], "scenePack": "survey" }
@@ -223,7 +230,8 @@ artifact allowlist with selected `scene-<id>.svg` names before enabling them.
 See [the scene delivery contract](docs/STATIC_GENERATOR_PLAN.md#registered-scene-delivery)
 for identity limits, ownership rules and paired-theme behavior. The
 [evidence coverage guide](docs/EVIDENCE_COVERAGE_SCENE.md) documents the input-to-row
-mapping, unavailable states and opt-in requirements.
+mapping, unavailable states and opt-in requirements. The [Signature guide](docs/SIGNATURE_SCENE.md)
+documents its C0 input, truthful historical state, bounded layouts and qualification scope.
 
 ## License
 

@@ -173,6 +173,11 @@ introducing a built-in numeric reference.
 
 ## Optional synthetic Lens projection
 
+The source registry contains seven scenes: `evidence-coverage`, `activity-terrain`, `chronograph`,
+`lifecycle-map`, `identity-beacon`, `nebula`, and `signature`. All require `scenePack: "survey"`.
+The first four accept `none | subtle | ambient`; Identity Beacon accepts `none | ambient | cinematic`
+and requires `identity`; Nebula and Signature accept `none | ambient`.
+
 Add `"lens": { "path": ".commitatlas/lens-profile.v1.json", "maxAgeDays": 45 }` to a v1 config
 to validate a Developer Lens `PublicLensProjection.v1` export before any output write. The path
 must be a contained Git-tracked regular file, with no symlink component, at most 256 KiB. URLs and
@@ -182,11 +187,23 @@ non-null optional delivery block, privacy rules and canonical content hash; it a
 
 The current publishing adapter permits C0 synthetic projections only. C1 local exports are rejected
 with `LENS_C1_PUBLICATION_DISABLED` under the operative Q-9 No policy recorded in #170.
-No personal projection belongs in CommitAtlas fixtures. This reader adds no Lens scene. A future
-signature scene receives the full validated projection plus freshness measured against the fetched
-snapshot: through day 45 fresh, beyond 45 through 90 stale with a visible strip and accessible age,
-and beyond 90 unavailable before model building. Existing configs without `lens` keep their outputs.
+No personal projection belongs in CommitAtlas fixtures. Select `"scenes": ["signature"]` with
+`"scenePack": "survey"` and `"motion": "none"` or `"ambient"` to render the first registered
+Signature scene from the complete validated projection. It prints six exact readings, the supplied
+archetype and top-two dimensions, plus all derived coverage, warnings, privacy and freshness.
+With the default age limit, through day 45 is fresh, beyond 45 through 90 is stale with a visible
+strip and accessible age, and beyond 90 is unavailable before model building. Historical output
+stays still. Missing Lens input also produces an explicit unavailable Signature; existing configs
+without a selected Signature keep their output behavior.
 All projection/file failures expose bounded `LENS_*` codes; never log the body or Zod diagnostics.
+
+Each selected theme receives `scene-signature.svg` with actual bytes and SHA-256 in its manifest.
+The shared static/Action source implements that delivery and the Gallery shows derived evidence
+with a separate stale state. Signature has no hosted endpoint or selectable Studio scene.
+Executed-bundle tests verify fresh ambient, stale, expired and dry-run outputs in both themes,
+including actual file bytes and SHA-256 manifests. The
+[visual references](../../docs/evidence/appearance-2026-10-26/README.md) state the direct-browser scope. See
+[SIGNATURE_SCENE.md](../../docs/SIGNATURE_SCENE.md) for layout, motion and capture details.
 
 The pinned producer contract and fixture receipt are documented in
 [`research-contracts/lens-projection/v1/README.md`](../../research-contracts/lens-projection/v1/README.md).
