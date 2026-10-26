@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -718,4 +719,118 @@ test("capture clips reject replaced timed nodes and geometry outside the viewpor
   for (const delta of [{ x: -1 }, { y: 400 }, { width: 0 }, { height: Infinity }]) {
     assert.throws(() => githubCapture.validateCaptureTargetClip("target", { ...valid, ...delta }), /viewport|dimensions/);
   }
+});
+
+test("CSS-enter retains the 250 ms sample and 440 ms completion boundary", () => {
+  assert.equal(typeof githubCapture.validateFrameDeadline, "function");
+  assert.doesNotThrow(() => githubCapture.validateFrameDeadline("css-enter", 250, 440));
+  assert.throws(() => githubCapture.validateFrameDeadline("css-enter", 250, 440.1), /440 ms observation window/);
+  assert.doesNotThrow(() => githubCapture.validateFrameDeadline("css-enter", 500, 900));
+  assert.doesNotThrow(() => githubCapture.validateFrameDeadline("css-breathe", 250, 900));
+});
+
+test("row setup diagnostics retain the primary gate error when context cleanup also fails", async (t) => {
+  assert.equal(typeof githubCapture.captureRow, "function");
+  const outputDirectory = await mkdtemp(path.join(tmpdir(), "commitatlas-row-setup-"));
+  t.after(() => rm(outputDirectory, { recursive: true, force: true }));
+  const primary = new Error("gate setup failed");
+  const browser = { newContext: async () => ({
+    route: async () => { throw primary; },
+    close: async () => { throw new Error("context cleanup failed"); },
+  }) };
+  const [row] = buildGithubCapturePlan({ probes: ["css-enter"], includeReducedControls: false, includePositiveControl: false });
+  const discovery = { currentSrc: "https://example.test/probe.svg", canonical: "https://example.test/probe.svg", expectedBodySha256: "a".repeat(64) };
+  await assert.rejects(githubCapture.captureRow(browser, "webkit", "26.0", row, discovery, outputDirectory), (error) => {
+    assert.equal(error, primary);
+    assert.equal(error.captureFailure.phase, "request-gate-setup");
+    assert.equal(error.captureFailure.accepted, false);
+    assert.deepEqual(error.captureFailure.completedFrames, []);
+    assert.deepEqual(error.captureFailure.cleanupFailures, [{ phase: "context-close", failure: "context cleanup failed" }]);
+    return true;
+  });
+  const contextFailure = new Error("context creation failed");
+  await assert.rejects(githubCapture.captureRow({ newContext: async () => { throw contextFailure; } }, "webkit", "26.0", row, discovery, outputDirectory), (error) => {
+    assert.equal(error, contextFailure);
+    assert.equal(error.captureFailure.phase, "context-creation");
+    assert.deepEqual(error.captureFailure.completedFrames, []);
+    assert.deepEqual(error.captureFailure.cleanupFailures, []);
+    return true;
+  });
+});
+
+test("video finalization diagnostics retain completed frames through path, rename and inspection failures", async (t) => {
+  assert.equal(typeof githubCapture.settleCaptureRow, "function");
+  const outputDirectory = await mkdtemp(path.join(tmpdir(), "commitatlas-row-video-"));
+  t.after(() => rm(outputDirectory, { recursive: true, force: true }));
+  const row = { host: "github-raw-relative", probe: "css-enter", embed: "img", media: "no-preference", selector: 'img[alt="css-enter"]' };
+  const frames = [{ targetTimeMs: 0, actualTimeMs: 10, completedTimeMs: 20, path: "0.png", sha256: "a".repeat(64) }];
+  const base = {
+    row, engine: "webkit", browserVersion: "26.0", discovery: { currentSrc: "https://example.test/probe.svg", canonical: "https://example.test/probe.svg", expectedBodySha256: "b".repeat(64) },
+    directory: outputDirectory, outputDirectory, frames, phase: "final-identity-validation",
+    result: { frames, video: { measuredVisibleDurationMs: 5_001 } },
+  };
+  await assert.rejects(githubCapture.settleCaptureRow({ ...base, videoHandle: { path: async () => { throw new Error("video path failed"); } } }), (error) => {
+    assert.equal(error.captureFailure.phase, "video-path");
+    assert.deepEqual(error.captureFailure.completedFrames, frames);
+    assert.equal(error.captureFailure.accepted, false);
+    return true;
+  });
+  await assert.rejects(githubCapture.settleCaptureRow({ ...base, videoHandle: { path: async () => path.join(outputDirectory, "missing.webm") } }), (error) => {
+    assert.equal(error.captureFailure.phase, "video-rename");
+    assert.deepEqual(error.captureFailure.completedFrames, frames);
+    return true;
+  });
+  const invalidVideo = path.join(outputDirectory, "invalid.webm");
+  await writeFile(invalidVideo, "not WebM");
+  await assert.rejects(githubCapture.settleCaptureRow({ ...base, videoHandle: { path: async () => invalidVideo } }), (error) => {
+    assert.equal(error.captureFailure.phase, "video-inspection");
+    assert.deepEqual(error.captureFailure.completedFrames, frames);
+    assert.equal(error.captureFailure.video.path, "motion.webm");
+    return true;
+  });
+  const validVideo = path.join(outputDirectory, "valid-marker.webm");
+  await writeFile(validVideo, Buffer.from("1a45dfa300010203", "hex"));
+  const completed = await githubCapture.settleCaptureRow({ ...base, videoHandle: { path: async () => validVideo } });
+  assert.equal(completed, base.result);
+  assert.equal(completed.video.path, "motion.webm");
+  assert.equal(completed.video.magicHex, "1a45dfa3");
+  assert.equal(completed.video.actualDurationVerified, false);
+  assert.deepEqual(completed.frames, frames);
+});
+
+test("a teardown failure rejects a previously collected row without discarding its frames", async () => {
+  assert.equal(typeof githubCapture.settleCaptureRow, "function");
+  const frames = [{ targetTimeMs: 0, path: "0.png" }];
+  const primary = new Error("context close failed");
+  await assert.rejects(githubCapture.settleCaptureRow({
+    row: { selector: "target" }, engine: "webkit", browserVersion: "26.0", discovery: {},
+    context: { close: async () => { throw primary; } }, result: { frames }, frames, phase: "final-identity-validation",
+  }), (error) => {
+    assert.equal(error, primary);
+    assert.equal(error.captureFailure.phase, "context-close");
+    assert.deepEqual(error.captureFailure.completedFrames, frames);
+    assert.equal(error.captureFailure.accepted, false);
+    return true;
+  });
+});
+
+test("cleanup failures preserve a rejected frame's primary error, phase and available timing", async () => {
+  const primary = Object.assign(new Error("capture deadline failed"), { frameObservation: { targetTimeMs: 250, completedTimeMs: 447, failurePhase: "frame-deadline" } });
+  const frames = [{ targetTimeMs: 0, path: "0.png" }];
+  await assert.rejects(githubCapture.settleCaptureRow({
+    row: { selector: "target" }, engine: "webkit", browserVersion: "26.0", discovery: {},
+    gate: { release: () => { throw new Error("gate release failed"); }, count: () => 1 },
+    context: { close: async () => { throw new Error("context close failed"); } },
+    frames, phase: "timed-frames", failure: primary,
+  }), (error) => {
+    assert.equal(error, primary);
+    assert.equal(error.captureFailure.phase, "timed-frames");
+    assert.equal(error.captureFailure.failedFrame, primary.frameObservation);
+    assert.deepEqual(error.captureFailure.completedFrames, frames);
+    assert.deepEqual(error.captureFailure.cleanupFailures, [
+      { phase: "request-gate-release", failure: "gate release failed" },
+      { phase: "context-close", failure: "context close failed" },
+    ]);
+    return true;
+  });
 });

@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { performance as nodePerformance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   classifyMotion,
@@ -421,6 +422,66 @@ export function readCaptureTargetClip(image) {
   };
 }
 
+export function readTimedCaptureState(image, anchor) {
+  const bounds = image.getBoundingClientRect();
+  return {
+    sameTarget: image.__commitAtlasCaptureTarget === true && image.isConnected,
+    x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+    observedTimeMs: performance.now() - anchor,
+  };
+}
+
+export function validateFrameDeadline(probe, targetTimeMs, completedTimeMs) {
+  if (probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
+    throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
+  }
+}
+
+export async function captureTimedFrame({ page, locator, row, loadedAt, targetTimeMs, file, relativePath, writeImage = writeFile }) {
+  const observation = {
+    targetTimeMs,
+    path: relativePath,
+    timingBoundary: "completedTimeMs is the browser-clock reading when the first post-screenshot same-node check executes, including outbound and queue delay but excluding response return and file I/O; not an exact compositor timestamp",
+    fileSaved: false,
+  };
+  let phase = "before-screenshot";
+  try {
+    const before = await locator.evaluate(readTimedCaptureState, loadedAt);
+    observation.beforeScreenshot = before;
+    observation.actualTimeMs = Math.round(before.observedTimeMs * 10) / 10;
+    validateCaptureTargetClip(row.selector, before);
+    const { x, y, width, height } = before;
+    phase = "screenshot";
+    const screenshotStarted = nodePerformance.now();
+    // No path: Playwright must return the capture bytes before any filesystem work.
+    const bytes = await page.screenshot({ clip: { x, y, width, height }, animations: "allow" });
+    const screenshotReturned = nodePerformance.now();
+    observation.screenshotDurationMs = Math.round((screenshotReturned - screenshotStarted) * 10) / 10;
+    phase = "after-screenshot-node-check";
+    const after = await locator.evaluate(readTimedCaptureState, loadedAt);
+    observation.afterScreenshot = after;
+    observation.completedTimeMs = Math.round(after.observedTimeMs * 10) / 10;
+    observation.postCaptureCheckDurationMs = Math.round((nodePerformance.now() - screenshotReturned) * 10) / 10;
+    validateCaptureTargetClip(row.selector, after);
+    const missedDeadline = row.probe === "css-enter" && targetTimeMs === 250 && after.observedTimeMs > 440;
+    if (row.probe === "css-enter" && targetTimeMs === 250) observation.deadline = { maximumCompletionTimeMs: 440, missed: missedDeadline };
+    phase = "write-screenshot";
+    const fileWriteStarted = nodePerformance.now();
+    await writeImage(file, bytes);
+    observation.fileWriteDurationMs = Math.round((nodePerformance.now() - fileWriteStarted) * 10) / 10;
+    observation.fileSaved = true;
+    observation.sha256 = await sha256File(file);
+    phase = "frame-deadline";
+    // Compare the unrounded observation, as the original protocol did.
+    validateFrameDeadline(row.probe, targetTimeMs, after.observedTimeMs);
+    return observation;
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    failure.frameObservation = { ...observation, failurePhase: phase };
+    throw failure;
+  }
+}
+
 // The public GitHub React app replaces its server-rendered Markdown nodes during hydration.
 // Selecting an image at DOMContentLoaded alone can bind a node that will be detached before load.
 export function githubTargetIsReady(selector) {
@@ -578,31 +639,95 @@ async function createRequestGate(context, targetUrl) {
   };
 }
 
-async function captureRow(browser, engine, browserVersion, row, discovery, outputDirectory) {
-  const directory = path.join(outputDirectory, engine, `${row.host}--${row.embed}--${row.probe}--${row.media}`);
-  await mkdir(directory, { recursive: true });
-  const context = await browser.newContext({
-    viewport: videoViewport,
-    colorScheme: "dark",
-    reducedMotion: row.media === "reduce" ? "reduce" : "no-preference",
-    serviceWorkers: "block",
-    recordVideo: { dir: directory, size: videoViewport },
-  });
-  const gate = await createRequestGate(context, discovery.currentSrc);
-  const page = await context.newPage();
-  const videoHandle = page.video();
-  const responseByUrl = new Map();
-  page.on("response", (response) => {
-    if (response.request().resourceType() === "image") responseByUrl.set(response.url(), response);
-  });
+export async function settleCaptureRow({ row, engine, browserVersion, discovery, outputDirectory, directory, context, gate, videoHandle, result, frames, phase, failure = null }) {
+  const cleanupFailures = [];
+  for (const [cleanupPhase, cleanup] of [
+    ["request-gate-release", () => gate?.release()],
+    ["context-close", () => context?.close()],
+  ]) {
+    try {
+      await cleanup();
+    } catch (error) {
+      const cleanupFailure = error instanceof Error ? error : new Error(String(error));
+      cleanupFailures.push({ phase: cleanupPhase, failure: cleanupFailure.message });
+      if (!failure) {
+        failure = cleanupFailure;
+        phase = cleanupPhase;
+      }
+    }
+  }
+  if (!failure) {
+    try {
+      phase = "video-path";
+      const generatedVideo = await videoHandle.path();
+      const videoFile = path.join(directory, "motion.webm");
+      phase = "video-rename";
+      await rename(generatedVideo, videoFile);
+      result.video.path = relativeFile(outputDirectory, videoFile);
+      phase = "video-inspection";
+      Object.assign(result.video, await inspectWebmFile(videoFile));
+    } catch (error) {
+      failure = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  if (failure) {
+    failure.captureFailure = {
+      ...row, engine, version: browserVersion, page: githubPageUrl, commit: githubCommit,
+      currentSrc: discovery.currentSrc, canonical: discovery.canonical,
+      expectedBodySha256: discovery.expectedBodySha256,
+      phase,
+      requestGate: { targetUrl: gate?.targetUrl ?? discovery.currentSrc, interceptionCount: gate?.count() ?? 0 },
+      completedFrames: frames,
+      failedFrame: failure.frameObservation ?? null,
+      video: result?.video ?? null,
+      cleanupFailures,
+      failure: failure.message,
+      accepted: false,
+    };
+    throw failure;
+  }
+  return result;
+}
 
+export async function captureRow(browser, engine, browserVersion, row, discovery, outputDirectory) {
+  const directory = path.join(outputDirectory, engine, `${row.host}--${row.embed}--${row.probe}--${row.media}`);
+  let context;
+  let gate;
+  let videoHandle;
   let result;
+  let failure = null;
+  let phase = "output-directory";
+  const frames = [];
   try {
+    await mkdir(directory, { recursive: true });
+    phase = "context-creation";
+    context = await browser.newContext({
+      viewport: videoViewport,
+      colorScheme: "dark",
+      reducedMotion: row.media === "reduce" ? "reduce" : "no-preference",
+      serviceWorkers: "block",
+      recordVideo: { dir: directory, size: videoViewport },
+    });
+    phase = "request-gate-setup";
+    gate = await createRequestGate(context, discovery.currentSrc);
+    phase = "page-creation";
+    const page = await context.newPage();
+    phase = "video-handle";
+    videoHandle = page.video();
+    assert.ok(videoHandle, "recorded context must provide a video handle");
+    const responseByUrl = new Map();
+    phase = "response-observation";
+    page.on("response", (response) => {
+      if (response.request().resourceType() === "image") responseByUrl.set(response.url(), response);
+    });
+    phase = "navigation";
     await page.goto(githubPageUrl, { waitUntil: "domcontentloaded" });
     validatePinnedPage(page.url());
+    phase = "target-readiness";
     const locator = await prepareGithubTarget(page, row.selector);
     await gate.waitForInterception();
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once before release`);
+    phase = "gated-image-load";
     const wasComplete = await locator.evaluate((image) => {
       image.__commitAtlasCaptureTarget = true;
       if (image.complete) return true;
@@ -620,6 +745,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     const loadResult = await withTimeout(loadResultPromise, responseWaitMs, `${row.selector} image load`);
     assert.ok(loadResult && typeof loadResult === "object", `${row.selector} load observation must return structured timing evidence`);
     assert.equal(loadResult.error, null, `${row.selector} must load successfully after gate release`);
+    phase = "timed-image-decode";
     const decodedTimedTarget = await locator.evaluate(async (image, selector) => {
       if (image.__commitAtlasCaptureTarget !== true) return false;
       await image.decode();
@@ -629,34 +755,15 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     await locator.evaluate((image) => image.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }));
 
     const loadedAt = loadResult.loadedAt;
-    const frames = [];
+    phase = "timed-frames";
     for (const targetTimeMs of frameTimes) {
       const beforeWait = await page.evaluate(() => performance.now());
       await page.waitForTimeout(Math.max(0, targetTimeMs - (beforeWait - loadedAt)));
-      const actualTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       const file = path.join(directory, `${targetTimeMs}.png`);
-      const clip = await locator.evaluate(readCaptureTargetClip);
-      validateCaptureTargetClip(row.selector, clip);
-      const { x, y, width, height } = clip;
-      await page.screenshot({ path: file, clip: { x, y, width, height }, animations: "allow" });
-      assert.equal(
-        await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true),
-        true,
-        `${row.selector} timed target must remain the same DOM node through the ${targetTimeMs} ms capture`,
-      );
-      const completedTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
-      if (row.probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
-        throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
-      }
-      frames.push({
-        targetTimeMs,
-        actualTimeMs: Math.round(actualTimeMs * 10) / 10,
-        completedTimeMs: Math.round(completedTimeMs * 10) / 10,
-        path: relativeFile(outputDirectory, file),
-        sha256: await sha256File(file),
-      });
+      frames.push(await captureTimedFrame({ page, locator, row, loadedAt, targetTimeMs, file, relativePath: relativeFile(outputDirectory, file) }));
     }
     const measuredVisibleDurationMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
+    phase = "frame-and-verdict-validation";
     assert.ok(measuredVisibleDurationMs >= minimumVideoDurationMs, `continuous video must observe at least ${minimumVideoDurationMs} ms`);
     const images = await Promise.all(frames.map(async (frame) => decodePng(await readFile(path.join(outputDirectory, frame.path)))));
     const differences = images.slice(1).map((image, index) => ({
@@ -677,6 +784,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       true,
       `${row.selector} timed target must remain the same DOM node through final validation`,
     );
+    phase = "final-identity-validation";
     const { metadata } = await readRowMetadata(page, row, locator);
     assert.equal(await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true), true, `${row.selector} timed target must remain the same DOM node after metadata validation`);
     assert.equal(metadata.currentSrc, discovery.currentSrc, `${row.selector} measured currentSrc must match engine/media discovery`);
@@ -716,18 +824,12 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       verdict,
       video: { measuredVisibleDurationMs: Math.round(measuredVisibleDurationMs * 10) / 10 },
     };
-  } finally {
-    gate.release();
-    await context.close();
+  } catch (error) {
+    failure = error instanceof Error ? error : new Error(String(error));
   }
-
-  const generatedVideo = await videoHandle.path();
-  const videoFile = path.join(directory, "motion.webm");
-  await rename(generatedVideo, videoFile);
-  result.video.path = relativeFile(outputDirectory, videoFile);
-  Object.assign(result.video, await inspectWebmFile(videoFile));
-  return result;
+  return settleCaptureRow({ row, engine, browserVersion, discovery, outputDirectory, directory, context, gate, videoHandle, result, frames, phase, failure });
 }
+
 export async function captureGithub(options) {
   await createFreshOutputDirectory(options.outputDirectory);
   await access(options.playwrightCli);
@@ -755,6 +857,7 @@ export async function captureGithub(options) {
   try {
     for (const engine of options.selectedEngines) {
       const browser = await playwright[engine].launch();
+      let engineFailure = null;
       try {
         const browserVersion = browser.version();
         report.browserObservations.push({ engine, version: browserVersion });
@@ -771,9 +874,21 @@ export async function captureGithub(options) {
           report.rows.push(await captureRow(browser, engine, browserVersion, row, discovery, options.outputDirectory));
           await writeJsonAtomic(partialFile, report);
         }
-      } finally {
-        await browser.close();
+      } catch (error) {
+        engineFailure = error instanceof Error ? error : new Error(String(error));
       }
+      try {
+        await browser.close();
+      } catch (error) {
+        const cleanupError = error instanceof Error ? error : new Error(String(error));
+        if (!engineFailure) engineFailure = cleanupError;
+        else {
+          const cleanupFailure = { phase: "browser-close", failure: cleanupError.message };
+          if (engineFailure.captureFailure) engineFailure.captureFailure.cleanupFailures.push(cleanupFailure);
+          else engineFailure.cleanupFailures = [cleanupFailure];
+        }
+      }
+      if (engineFailure) throw engineFailure;
     }
     validateCompletedReport(report);
     report.status = "complete";
@@ -781,6 +896,8 @@ export async function captureGithub(options) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } catch (error) {
     report.failure = error instanceof Error ? error.message : String(error);
+    if (error instanceof Error && error.captureFailure) report.failedRow = error.captureFailure;
+    if (error instanceof Error && error.cleanupFailures) report.cleanupFailures = error.cleanupFailures;
     await writeJsonAtomic(partialFile, report);
     throw error;
   }
