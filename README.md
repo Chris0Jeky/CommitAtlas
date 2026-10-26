@@ -37,7 +37,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 - Hosted URLs and the Studio accept `none | subtle | ambient`; the package and static generator also accept `cinematic`, subject to each scene's supported profiles. Existing cards still map every non-`none` profile to the same subtle load motion; registered scenes use the motion compiler for their own textures.
 - The source CLI and bundled Node 24 Action support eleven card types: the hosted eight plus static Cadence, Releases, and opt-in Delivery. The ten ordinary types share one public portfolio snapshot; Delivery requires a GitHub token and separate public PR-flow evidence.
 - The current source exports the CSS/SMIL motion compiler, deterministic scene engine, and seven registered scenes, including the first Developer Signature. All seven support the `survey` pack; four pack geometries exist, but built-in scenes do not yet opt into the other three.
-- [Developer Signature](docs/SIGNATURE_SCENE.md) renders the complete validated synthetic C0 Lens projection through the static generator. It supports `none | ambient`, prints every exact axis reading and the complete coverage/privacy/freshness context, and stays still when stale. Its Gallery evidence is Derived with a separate Stale state. The rebuilt Action delivers the same paired artifacts. Signature has no hosted endpoint or selectable Studio scene. See the [visual references and browser scope](docs/evidence/appearance-2026-10-26/README.md).
+- [Developer Signature](docs/SIGNATURE_SCENE.md) renders the complete validated synthetic C0 Lens projection through the static generator. It supports `none | ambient`, prints every exact axis reading and the complete coverage/privacy/freshness context, and stays still when stale. Its Gallery evidence is Derived with a separate Stale state. The rebuilt Action delivers the same paired artifacts. Signature has no hosted endpoint or selectable Studio scene. The [CI receipt](docs/SIGNATURE_EVIDENCE.md) records its merged source, 312 geometry cases, 14 playback/control rows and verified delivery.
 - Dark and light bundles can be rendered from one fetch, with exact artifact validation and SHA-256 manifests.
 - The optional design fascia, rack, and evidence ladder explain the visual system; they are not additional cards or a monitoring service.
 - A bounded, pinned Developer Lens C0 method-trial summary can appear on the landing page. It is invented research evidence with explicit limitations, not a person-level signal.
@@ -218,8 +218,8 @@ Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
 The Action's `scenes` output is a JSON array of generated paths (`[]` when
 disabled), including during dry-run.
-The Signature path is implemented in the shared static/Action source; its bundled Action delivery
-still requires the separate rebuild and integration receipts.
+The Signature path is implemented in the shared static/Action source; its
+[integration receipt](docs/SIGNATURE_EVIDENCE.md) includes the rebuilt bundle and executed paired-output checks.
 
 ```json
 { "scenes": ["evidence-coverage"], "scenePack": "survey" }
