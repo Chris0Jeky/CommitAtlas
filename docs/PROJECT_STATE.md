@@ -7,6 +7,17 @@ deployment state, and the live profile outrank this file after any ref or deploy
 
 ## Maintenance integration proof — 2026-10-26
 
+**WebKit selector/layout gate (#180).** A read-only [metadata observation](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40264555209)
+at `907e38f` observed Playwright 1.57.0 / WebKit 26.0 and byte-identical pinned raw, fixture and
+Worker SVGs, with natural `400x133` and rendered `400x133.328125` geometry. It did not reproduce the
+September zero-width failure. It did observe GitHub replacing the selected server-rendered image
+before the containing React app acquired `loaded`. The bounded harness repair synchronizes target
+selection to that marker, retains exact URL/MIME/body and positive bounded geometry checks, and
+binds load timing through every frame to the same DOM node. The compact receipt and explicit limits
+are in [MOTION_COMPATIBILITY.md](./MOTION_COMPATIBILITY.md). No new WebKit capture row or animation
+verdict is established by metadata or local regressions; #180 and #113 remain open pending the one
+seven-row hosted diagnostic.
+
 The integrated follow-ups in [#434](https://github.com/Chris0Jeky/CommitAtlas/pull/434) and
 [#435](https://github.com/Chris0Jeky/CommitAtlas/pull/435), together with the #423/#427 repairs below,
 pass the complete `npm run check` using hosted CI's exact Node 22.13.0 and npm 10.9.2. The gate

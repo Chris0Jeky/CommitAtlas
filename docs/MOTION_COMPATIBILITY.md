@@ -1,7 +1,8 @@
 # Motion compatibility evidence
 
-Status: Phase 0 issue #113 is parked at the three-attempt ceiling on the WebKit hosted-discovery
-blocker tracked in [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). This ledger records
+Status: Phase 0 issue #113 remains parked behind the WebKit hosted-capture gate in
+[#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). The latest metadata observation and
+bounded harness repair below do not establish any completed WebKit capture row. This ledger records
 measured outcomes only; an unfilled cell is **not tested**, never a compatibility claim. The fixture
 set and local capture tool live in
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
@@ -9,6 +10,41 @@ repository for the GitHub/Camo part of the protocol is
 [Chris0Jeky/commitatlas-motion-probes](https://github.com/Chris0Jeky/commitatlas-motion-probes),
 currently pinned for the complete hosted capture at
 `039a0370b1a52fb6135e4414e04a11bff7ba21d0`.
+
+## WebKit layout observation and bounded repair — 2026-10-26
+
+The read-only [metadata run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40264555209)
+at `907e38f96182acabb447cd2944f7da8bea3fc450` used Playwright 1.57.0 and observed WebKit 26.0.
+The exact first selector, `img[alt="css-enter"]`, retained its full raw commit pin and followed a
+302 redirect to a 200 SVG. The browser-selected final body, tracked fixture and matching Worker
+body all had SHA-256 `85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945`.
+All three snapshots showed natural `400x133` and rendered `400x133.328125` dimensions. None of
+the 20 recorded ancestors was hidden or zero-sized. **The September 25 zero-width failure was
+not reproduced, and its cause remains unproven.**
+
+The observation did expose a separate lifecycle seam: the initial selector resolved one DOM node
+before the containing `react-app` had class `loaded`; after document completion and two animation
+frames, the same selector resolved a replacement node and the app had acquired `loaded`.
+The compact [layout receipt](../tests/fixtures/motion-probes/evidence/2026-10-26-webkit-layout.json)
+retains node identities, timings, source identity, geometry and artifact hashes. This run made no
+screenshots, recordings or motion judgments.
+
+The bounded repair waits for that containing app marker before selecting and scrolling the target.
+It does not wait for window load, since the measured image remains request-gated. Discovery checks
+the final browser response against the exact local fixture SHA-256 before any recording row. The
+synthetic natural and rendered sizes must be finite, positive, at most the `720x480` viewport, and
+satisfy `abs(width - 3 * height) <= 1`; the one-pixel allowance records the observed integer sizing,
+while the SVG body's exact hash retains fixture identity. Wrong URLs, wrong probes, non-SVG bodies
+and different fixture bytes still fail. Each recording row repeats body hashing after its
+timing-critical frames and must match the same discovery fixture hash before the row is accepted;
+that final check does not add work inside the early motion observation window. Captures retain the timed-node guard through decode,
+each screenshot and final metadata, and each finite positive clip must fit inside the viewport.
+
+Focused local tests cover the sizing/hash/clip boundaries and use an existing Chromium executable
+with synthetic HTML to reproduce replacement during hydration, reject hidden ancestors and later
+timed-node replacement, and prove that readiness can complete while the image request is held.
+These tests do not verify WebKit playback. The next gate is one seven-row WebKit diagnostic at the
+reviewed repair head; only a complete result can unlock #113's unfiltered three-engine matrix.
 
 ## Answer first — 2026-08-29 checkpoint
 
@@ -94,7 +130,7 @@ The pinned GitHub-page harness measures both repository-relative GitHub-raw imag
 Worker images rewritten through Camo. It first discovers the exact selected URL for each
 engine/media/selector. Every measured row then gets a fresh context with service workers blocked;
 the harness gates that exact request until the target load timestamp is armed, records a continuous
-WebM, and takes element PNGs at absolute 0, 250, 500, 2,000, and 5,000 ms deadlines from image load.
+WebM, and takes viewport-clipped PNGs at absolute 0, 250, 500, 2,000, and 5,000 ms deadlines from image load.
 Response body hashing happens after those timing-critical frames. It writes
 `report.partial.json` after every completed row and creates `report.json` only after the entire
 selected-engine plan succeeds:

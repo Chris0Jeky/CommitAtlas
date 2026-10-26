@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   classifyMotion,
   createFreshOutputDirectory,
@@ -32,6 +32,8 @@ const embeds = ["img", "picture"];
 const videoViewport = { width: 720, height: 480 };
 const minimumVideoDurationMs = 3_000;
 const responseWaitMs = 15_000;
+const fixtureDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "motion-probes");
+const fixtureHashes = new Map();
 
 const hosts = {
   "github-raw-relative": {
@@ -194,8 +196,20 @@ export function validateTargetMetadata(row, metadata, reducedControl = null) {
   assert.ok(metadata.currentSrc, `${row.selector} must resolve currentSrc`);
   assert.ok(metadata.canonical, `${row.selector} must expose a canonical source`);
   assert.ok(metadata.naturalWidth > 0 && metadata.naturalHeight > 0, `${row.selector} must decode non-zero image dimensions`);
+  for (const [name, value, limit] of [
+    ["natural width", metadata.naturalWidth, videoViewport.width],
+    ["natural height", metadata.naturalHeight, videoViewport.height],
+    ["rendered width", metadata.renderedWidth, videoViewport.width],
+    ["rendered height", metadata.renderedHeight, videoViewport.height],
+  ]) assert.ok(
+    Number.isFinite(value) && value > 0 && value <= limit,
+    `${row.selector} ${name} must be positive and bounded (observed ${value}, limit ${limit})`,
+  );
   if (row.kind !== "positive-control") {
-    assert.deepEqual([metadata.naturalWidth, metadata.naturalHeight], [360, 120], `${row.selector} must decode the synthetic 360x120 fixture`);
+    // WebKit reports 400x133 for this byte-identical 3:1 SVG; preserve at most one
+    // pixel of integer presentation rounding, not a different fixture identity.
+    assert.ok(Math.abs(metadata.naturalWidth - metadata.naturalHeight * 3) <= 1, `${row.selector} natural dimensions must retain the declared 3:1 aspect within one decoded pixel`);
+    assert.ok(Math.abs(metadata.renderedWidth - metadata.renderedHeight * 3) <= 1, `${row.selector} rendered dimensions must retain the declared 3:1 aspect within one rendered pixel`);
   }
 
   if (row.host === "github-raw-relative") {
@@ -261,6 +275,17 @@ export function validateCompletedReport(report) {
   )));
   assert.equal(report.discoveries.length, expectedIdentities.size, "complete report must retain one discovery per planned engine/media/selector");
   assert.deepEqual(discoveryIdentities, expectedIdentities, "complete report discoveries must match the declared plan exactly");
+  for (const discovery of report.discoveries) {
+    assert.ok(discovery.version, `${discovery.engine}/${discovery.selector} discovery must identify the browser version`);
+    assert.ok(discovery.currentSrc && discovery.canonical, `${discovery.engine}/${discovery.selector} discovery must retain exact source identity`);
+    if (discovery.kind !== "positive-control") assert.match(discovery.expectedBodySha256 ?? "", /^[a-f0-9]{64}$/u, "synthetic discovery must retain its pinned fixture hash");
+    validateResponseChain(
+      discovery,
+      discovery.currentSrc,
+      discovery.responseObservation.chain,
+      discovery.expectedBodySha256,
+    );
+  }
   const identities = new Set();
   for (const row of report.rows) {
     assert.ok(report.selectedEngines.includes(row.engine), `report row has unselected engine ${row.engine}`);
@@ -276,7 +301,8 @@ export function validateCompletedReport(report) {
     assert.equal(row.requestGate.targetUrl, row.currentSrc, `${identity} request gate must use discovered currentSrc`);
     assert.ok(Number.isFinite(row.requestGate.loadTimestampMs), `${identity} must retain the browser load timestamp`);
     assert.ok(Number.isFinite(row.requestGate.loadToFirstFrameMs), `${identity} must record image-load-to-first-frame timing`);
-    validateResponseChain(row, row.currentSrc, row.responseObservation.chain);
+    if (row.kind !== "positive-control") assert.match(row.expectedBodySha256 ?? "", /^[a-f0-9]{64}$/u, `${identity} must retain its pinned fixture hash`);
+    validateResponseChain(row, row.currentSrc, row.responseObservation.chain, row.expectedBodySha256);
     assert.deepEqual(row.frames.map((frame) => frame.targetTimeMs), frameTimes, `${identity} must retain every target frame`);
     for (const frame of row.frames) {
       assert.ok(frame.path, `${identity} frame must retain its relative path`);
@@ -362,7 +388,7 @@ export async function responseChain(responseByUrl, currentSrc) {
   return chain;
 }
 
-export function validateResponseChain(row, currentSrc, chain) {
+export function validateResponseChain(row, currentSrc, chain, expectedBodySha256 = null) {
   assert.ok(chain.length > 0, `${row.selector} must retain an image response`);
   assert.equal(chain[0].url, currentSrc, `${row.selector} response chain must start at currentSrc`);
   if (row.host === "github-raw-relative") {
@@ -378,6 +404,50 @@ export function validateResponseChain(row, currentSrc, chain) {
   assert.match(contentType ?? "", /^image\/svg\+xml(?:;|$)/iu, `${row.selector} final response must be SVG`);
   assert.match(finalResponse.bodySha256 ?? "", /^[a-f0-9]{64}$/u, `${row.selector} final SVG body must have a SHA-256`);
   assert.equal(finalResponse.bodyError, null, `${row.selector} final SVG body hashing must succeed`);
+  if (expectedBodySha256) assert.equal(finalResponse.bodySha256, expectedBodySha256, `${row.selector} final SVG body must match the pinned synthetic fixture`);
+}
+
+export function validateCaptureTargetClip(selector, clip) {
+  assert.equal(clip.sameTarget, true, `${selector} timed target must remain the same DOM node`);
+  assert.ok([clip.x, clip.y, clip.width, clip.height].every(Number.isFinite) && clip.width > 0 && clip.height > 0, `${selector} screenshot clip must have finite positive dimensions`);
+  assert.ok(clip.x >= 0 && clip.y >= 0 && clip.x + clip.width <= videoViewport.width && clip.y + clip.height <= videoViewport.height, `${selector} screenshot clip must fit inside the viewport`);
+}
+
+export function readCaptureTargetClip(image) {
+  const bounds = image.getBoundingClientRect();
+  return {
+    sameTarget: image.__commitAtlasCaptureTarget === true && image.isConnected,
+    x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+  };
+}
+
+// The public GitHub React app replaces its server-rendered Markdown nodes during hydration.
+// Selecting an image at DOMContentLoaded alone can bind a node that will be detached before load.
+export function githubTargetIsReady(selector) {
+  const matches = document.querySelectorAll(selector);
+  if (matches.length !== 1) return false;
+  const image = matches[0];
+  const app = image.closest("react-app");
+  const style = getComputedStyle(image);
+  const bounds = image.getBoundingClientRect();
+  return image.isConnected && app?.classList.contains("loaded") === true
+    && style.visibility === "visible" && bounds.width > 0 && Number.isFinite(bounds.width);
+}
+
+export async function prepareGithubTarget(page, selector) {
+  await page.waitForFunction(githubTargetIsReady, selector, { timeout: responseWaitMs });
+  const locator = page.locator(selector);
+  assert.equal(await locator.count(), 1, `${selector} must match one hydrated target`);
+  // Do not wait for window load: the measured image is still held by its request gate.
+  await locator.evaluate((image) => image.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }));
+  return locator;
+}
+
+async function expectedBodySha256(row) {
+  if (row.kind === "positive-control") return null;
+  const asset = expectedAssetName(row);
+  if (!fixtureHashes.has(asset)) fixtureHashes.set(asset, sha256(await readFile(path.join(fixtureDirectory, asset))));
+  return fixtureHashes.get(asset);
 }
 
 async function writeJsonAtomic(file, value) {
@@ -424,7 +494,7 @@ async function readRowMetadata(page, row, locator) {
   return { metadata, reducedControl };
 }
 
-async function discoverTargets(browser, engine, browserVersion, plan) {
+export async function discoverTargets(browser, engine, browserVersion, plan) {
   const discoveries = [];
   for (const media of new Set(plan.map((row) => row.media))) {
     const context = await browser.newContext({
@@ -435,14 +505,19 @@ async function discoverTargets(browser, engine, browserVersion, plan) {
     });
     try {
       const page = await context.newPage();
+      const responseByUrl = new Map();
+      page.on("response", (response) => {
+        if (response.request().resourceType() === "image") responseByUrl.set(response.url(), response);
+      });
       await page.goto(githubPageUrl, { waitUntil: "domcontentloaded" });
       validatePinnedPage(page.url());
       for (const row of plan.filter((candidate) => candidate.media === media)) {
-        const locator = page.locator(row.selector);
-        assert.equal(await locator.count(), 1, `${row.selector} must match exactly one image during discovery`);
-        await locator.scrollIntoViewIfNeeded();
+        const locator = await prepareGithubTarget(page, row.selector);
         await locator.evaluate((image) => image.decode());
         const { metadata } = await readRowMetadata(page, row, locator);
+        const responses = await responseChain(responseByUrl, metadata.currentSrc);
+        const expectedHash = await expectedBodySha256(row);
+        validateResponseChain(row, metadata.currentSrc, responses, expectedHash);
         discoveries.push({
           engine,
           version: browserVersion,
@@ -455,6 +530,15 @@ async function discoverTargets(browser, engine, browserVersion, plan) {
           currentSrc: metadata.currentSrc,
           canonical: metadata.canonical,
           sources: metadata.sources,
+          dimensions: {
+            natural: { width: metadata.naturalWidth, height: metadata.naturalHeight },
+            rendered: { width: metadata.renderedWidth, height: metadata.renderedHeight },
+          },
+          expectedBodySha256: expectedHash,
+          responseObservation: {
+            kind: "discovery-time Playwright browser-observed headersArray and body hash",
+            chain: responses,
+          },
         });
       }
     } finally {
@@ -516,13 +600,11 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
   try {
     await page.goto(githubPageUrl, { waitUntil: "domcontentloaded" });
     validatePinnedPage(page.url());
-    const locator = page.locator(row.selector);
-    assert.equal(await locator.count(), 1, `${row.selector} must match exactly one image`);
-    await locator.scrollIntoViewIfNeeded();
-    await locator.evaluate((image) => image.scrollIntoView({ block: "center", inline: "center" }));
+    const locator = await prepareGithubTarget(page, row.selector);
     await gate.waitForInterception();
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once before release`);
     const wasComplete = await locator.evaluate((image) => {
+      image.__commitAtlasCaptureTarget = true;
       if (image.complete) return true;
       image.__commitAtlasLoad = new Promise((resolve) => {
         image.addEventListener("load", () => resolve({ loadedAt: performance.now(), error: null }), { once: true });
@@ -531,11 +613,20 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       return false;
     });
     assert.equal(wasComplete, false, `${row.selector} must remain unloaded while its exact request is gated`);
-    const loadResultPromise = locator.evaluate((image) => image.__commitAtlasLoad);
+    const loadResultPromise = locator.evaluate((image) => (
+      image.__commitAtlasCaptureTarget === true ? image.__commitAtlasLoad : null
+    ));
     gate.release();
     const loadResult = await withTimeout(loadResultPromise, responseWaitMs, `${row.selector} image load`);
+    assert.ok(loadResult && typeof loadResult === "object", `${row.selector} load observation must return structured timing evidence`);
     assert.equal(loadResult.error, null, `${row.selector} must load successfully after gate release`);
-    await locator.evaluate((image) => image.decode());
+    const decodedTimedTarget = await locator.evaluate(async (image, selector) => {
+      if (image.__commitAtlasCaptureTarget !== true) return false;
+      await image.decode();
+      return image.isConnected && document.querySelector(selector) === image;
+    }, row.selector);
+    assert.equal(decodedTimedTarget, true, `${row.selector} timed target must remain the same DOM node after load`);
+    await locator.evaluate((image) => image.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }));
 
     const loadedAt = loadResult.loadedAt;
     const frames = [];
@@ -544,7 +635,15 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       await page.waitForTimeout(Math.max(0, targetTimeMs - (beforeWait - loadedAt)));
       const actualTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       const file = path.join(directory, `${targetTimeMs}.png`);
-      await locator.screenshot({ path: file, animations: "allow" });
+      const clip = await locator.evaluate(readCaptureTargetClip);
+      validateCaptureTargetClip(row.selector, clip);
+      const { x, y, width, height } = clip;
+      await page.screenshot({ path: file, clip: { x, y, width, height }, animations: "allow" });
+      assert.equal(
+        await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true),
+        true,
+        `${row.selector} timed target must remain the same DOM node through the ${targetTimeMs} ms capture`,
+      );
       const completedTimeMs = await page.evaluate((anchor) => performance.now() - anchor, loadedAt);
       if (row.probe === "css-enter" && targetTimeMs === 250 && completedTimeMs > 440) {
         throw new Error(`css-enter 250 ms capture missed its 440 ms observation window (${completedTimeMs.toFixed(1)} ms at completion)`);
@@ -573,10 +672,16 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
     if (row.kind === "positive-control") assert.equal(verdict, "animates", "known public positive control must animate");
     if (row.kind === "reduced-motion-control") assert.equal(verdict, "frozen at frame zero", "reduced-motion static source must remain frozen");
     assert.ok(verdicts.includes(verdict), `unexpected verdict ${verdict}`);
+    assert.equal(
+      await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true),
+      true,
+      `${row.selector} timed target must remain the same DOM node through final validation`,
+    );
     const { metadata } = await readRowMetadata(page, row, locator);
+    assert.equal(await locator.evaluate((image) => image.__commitAtlasCaptureTarget === true), true, `${row.selector} timed target must remain the same DOM node after metadata validation`);
     assert.equal(metadata.currentSrc, discovery.currentSrc, `${row.selector} measured currentSrc must match engine/media discovery`);
     const responses = await responseChain(responseByUrl, metadata.currentSrc);
-    validateResponseChain(row, metadata.currentSrc, responses);
+    validateResponseChain(row, metadata.currentSrc, responses, discovery.expectedBodySha256);
     assert.equal(gate.count(), 1, `${row.selector} target request gate must intercept exactly once`);
     result = {
       ...row,
@@ -590,6 +695,7 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
       currentSrc: metadata.currentSrc,
       canonical: metadata.canonical,
       sources: metadata.sources,
+      expectedBodySha256: discovery.expectedBodySha256,
       dimensions: {
         natural: { width: metadata.naturalWidth, height: metadata.naturalHeight },
         rendered: { width: metadata.renderedWidth, height: metadata.renderedHeight },
@@ -622,7 +728,6 @@ async function captureRow(browser, engine, browserVersion, row, discovery, outpu
   Object.assign(result.video, await inspectWebmFile(videoFile));
   return result;
 }
-
 export async function captureGithub(options) {
   await createFreshOutputDirectory(options.outputDirectory);
   await access(options.playwrightCli);
@@ -632,7 +737,8 @@ export async function captureGithub(options) {
   const partialFile = path.join(options.outputDirectory, "report.partial.json");
   const report = {
     status: "partial",
-    protocol: "engine/media discovery followed by an exact request-gated fresh recorded context per row; decoded element PNGs compared as RGBA at image-load-relative deadlines",
+    protocol: "hydrated engine/media discovery followed by an exact request-gated fresh recorded context per row; same-node viewport clips compared as RGBA at image-load-relative deadlines",
+    sourceCommit: process.env.GITHUB_SHA ?? null,
     page: githubPageUrl,
     commit: githubCommit,
     frameTimesMs: frameTimes,
@@ -642,6 +748,7 @@ export async function captureGithub(options) {
     diagnostic: options.diagnostic ?? false,
     plan,
     discoveries: [],
+    browserObservations: [],
     rows: [],
   };
   await writeJsonAtomic(partialFile, report);
@@ -650,6 +757,8 @@ export async function captureGithub(options) {
       const browser = await playwright[engine].launch();
       try {
         const browserVersion = browser.version();
+        report.browserObservations.push({ engine, version: browserVersion });
+        await writeJsonAtomic(partialFile, report);
         const discoveries = await discoverTargets(browser, engine, browserVersion, plan);
         report.discoveries.push(...discoveries);
         await writeJsonAtomic(partialFile, report);
