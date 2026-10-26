@@ -42,7 +42,7 @@ export async function GET(
       lifecycles: query.states,
       workflows: query.workflows,
     });
-    const rendered = renderSceneDefinition(scene, toSceneInputs(snapshot), {
+    const rendered = renderSceneDefinition(scene, toSceneInputs(snapshot, { demo: query.demo }), {
       theme: query.theme,
       pack: query.pack,
       motion: query.motion,

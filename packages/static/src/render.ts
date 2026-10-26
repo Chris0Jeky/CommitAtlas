@@ -23,6 +23,7 @@ import {
   type CardDataState,
   type CardSource,
   type ProjectSignal,
+  type SceneLensProjection,
 } from "@commit-atlas/svg";
 import type { StaticCardName, StaticConfig } from "./config.js";
 import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
@@ -91,7 +92,7 @@ export function assembleStaticPortfolio(
   };
 }
 
-export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: StaticConfig): StaticSvgArtifacts {
+export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: StaticConfig, lens?: SceneLensProjection): StaticSvgArtifacts {
   const scenes = staticSceneOptions(config);
   const selected = new Set(config.cards);
   const width = config.layout === "compact" ? 480 : 720;
@@ -206,7 +207,7 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   }
   for (const definition of scenes.definitions) {
     const rendered = renderSceneDefinition(definition, {
-      snapshot, ...(scenes.identity ? { identity: scenes.identity } : {}),
+      snapshot, ...(lens ? { lens } : {}), ...(scenes.identity ? { identity: scenes.identity } : {}),
     }, {
       theme: config.theme, pack: scenes.pack, motion: config.motion, backend: MOTION_BACKEND_DEFAULTS["github-readme"],
       layout: config.layout, instanceNamespace: "static", seed: "",

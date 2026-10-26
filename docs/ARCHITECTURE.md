@@ -199,6 +199,25 @@ real-repository validation, or production monitoring. A future method trial must
 versioned producer artifact and update the pinned consumer deliberately; silent semantic drift
 fails closed.
 
+## Optional Developer Lens projection reader
+
+The separate `PublicLensProjection.v1` reader pins Developer Lens's published strict runtime and
+C0 showcase fixture at `bae3bddf7295b767d57196887bd648ba1cfe2ab3`; the fixture-file hash is checked
+independently of its canonical projection hash and its synthetic input-generator commit. The core
+parser validates exact producer fields, warning text, count-consistent percent scores, delivery,
+privacy and canonical hash, then rejects future timestamps and snapshot-name alias collisions.
+The optional static `lens: { path, maxAgeDays }` config reads only a Git-tracked, contained regular
+file with no symlink component and a 256 KiB cap. A configured invalid artifact fails before writes;
+legacy configs preserve their output. Hosted adapters accept no projection input and expose only
+the vendored fixture under explicit `demo=true` with a synthetic snapshot.
+
+The scene context carries complete validated C0 data and snapshot-clock freshness. Signature scenes
+receive an engine-owned stale strip plus accessible age; expired signatures render unavailable
+before model construction. No Lens scene is registered by this reader. The transport parser accepts
+C1 contract semantics, but all publication adapters currently reject C1 under the operative Q-9 No policy recorded in #170. No real
+projection or private input is a fixture, log message or CommitAtlas tracked file. See
+[PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) for the pin, limitations and integration boundary.
+
 ## Motion and scene delivery
 
 `@commit-atlas/svg` exports the `MotionPlan` compiler with CSS and SMIL backends and the
@@ -249,10 +268,9 @@ measured render-cost budgets (#114) remain open. Identity Beacon (#134) and Chro
 still need their timed visual acceptance; #141 retains production and README round-trip
 qualification. This source inventory does not establish a current deployment or complete Phase 1.
 
-The full `PublicLensProjection.v1` consumer (#145) and `ResearchFindingProjection.v1` consumer
-(#154) are still planned. The engine's branded synthetic C0 lens context is not a projection file
-reader; its finding adapter remains unavailable. The gallery continues to use the WB-C1 method-trial
-bridge. [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) records the consumer boundaries;
+The C0 `PublicLensProjection.v1` reader is implemented as described above; C1 publication remains
+disabled. The `ResearchFindingProjection.v1` consumer (#154) remains planned and its scene adapter
+is unavailable. The gallery continues to use the WB-C1 method-trial bridge. [PROJECTION_CONTRACTS.md](./PROJECTION_CONTRACTS.md) records the consumer boundaries;
 implementations must pin the published producer schemas and fixtures. Remaining scenes, broader
 pack support, and unanswered owner decisions stay in
 [EXPANSION_PLAN.md](./EXPANSION_PLAN.md) and #111. C1 profile publication remains gated by #170.

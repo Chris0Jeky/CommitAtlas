@@ -1,0 +1,676 @@
+{
+  "$comment": "Structural validation is necessary but not sufficient. Consumers must also run the PublicLensProjectionSchema semantic, projectionHash and privacy checks stated in README.md.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "archetype": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 40,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description"
+      ],
+      "type": "object"
+    },
+    "coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "partial": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scorePercent": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unavailable": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "synthetic_showcase",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Synthetic showcase data; these statistics do not describe a person.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "commit_detail_partial",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Commit detail was incomplete or reconstructed for some repositories.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "search_detail_capped",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Pull-request or issue detail was capped; totals keep the larger count.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "review_detail_partial",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Review detail was capped, so review coverage may be partial.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "line_changes_partial",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Authored line statistics were unavailable for some repositories.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "private_activity_aggregated",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Some restricted private contributions are counted only in aggregate.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "local_git_partial",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Local Git enrichment was unavailable or excluded some repositories.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "const": "unrecognized_warning",
+                    "type": "string"
+                  },
+                  "displayText": {
+                    "const": "Another collection warning was recorded; its detail stays local.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "displayText"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "complete",
+        "partial",
+        "unavailable",
+        "total",
+        "scorePercent",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "dataClass": {
+      "enum": [
+        "C0",
+        "C1"
+      ],
+      "type": "string"
+    },
+    "delivery": {
+      "additionalProperties": false,
+      "properties": {
+        "censored": {
+          "type": "boolean"
+        },
+        "medianMergeHours": {
+          "maximum": 100000,
+          "minimum": 0,
+          "type": "number"
+        },
+        "mergedSamples": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "openAtRangeEnd": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mergedSamples",
+        "medianMergeHours",
+        "openAtRangeEnd",
+        "censored"
+      ],
+      "type": "object"
+    },
+    "dna": {
+      "items": false,
+      "maxItems": 6,
+      "minItems": 6,
+      "prefixItems": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "focus",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "shipping",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "collaboration",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "consistency",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "breadth",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "stewardship",
+              "type": "string"
+            },
+            "value": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        }
+      ],
+      "type": "array"
+    },
+    "generatedAt": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+      "type": "string"
+    },
+    "narratives": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 280,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "limitation": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "const": 1,
+                "type": "number"
+              },
+              {
+                "const": 2,
+                "type": "number"
+              },
+              {
+                "const": 3,
+                "type": "number"
+              }
+            ]
+          },
+          "title": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order",
+          "title",
+          "body",
+          "limitation"
+        ],
+        "type": "object"
+      },
+      "maxItems": 3,
+      "type": "array"
+    },
+    "privacyNote": {
+      "maxLength": 240,
+      "minLength": 1,
+      "pattern": "\\S",
+      "type": "string"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "inputHash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "producer": {
+          "const": "developer-lens",
+          "type": "string"
+        },
+        "producerCommit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "producerVersion": {
+          "maxLength": 32,
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "type": "string"
+        },
+        "projectionHash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "showcaseUrl": {
+          "const": "https://chris0jeky.github.io/developer-lens/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "producer",
+        "producerVersion",
+        "producerCommit",
+        "inputHash",
+        "projectionHash"
+      ],
+      "type": "object"
+    },
+    "range": {
+      "enum": [
+        "6m",
+        "12m"
+      ],
+      "type": "string"
+    },
+    "rangeLabel": {
+      "maxLength": 40,
+      "minLength": 1,
+      "pattern": "\\S",
+      "type": "string"
+    },
+    "repositories": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "activeWeeks": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "attentionShare": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "disclosure": {
+            "enum": [
+              "synthetic",
+              "public-name",
+              "private-alias",
+              "masked-alias"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "mergedPullRequests": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "momentum": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          },
+          "primaryLanguage": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "reviews": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "disclosure",
+          "attentionShare",
+          "activeWeeks",
+          "momentum",
+          "mergedPullRequests",
+          "reviews"
+        ],
+        "type": "object"
+      },
+      "maxItems": 12,
+      "type": "array"
+    },
+    "repositoryRedaction": {
+      "enum": [
+        "synthetic",
+        "private-aliases",
+        "all-aliases"
+      ],
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "PublicLensProjection.v1",
+      "type": "string"
+    },
+    "scope": {
+      "enum": [
+        "public-demo",
+        "redacted-local"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "activeDays": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "activeWeeks": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "commits": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "issues": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mergedPullRequests": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "repositories": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reviews": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "commits",
+        "mergedPullRequests",
+        "reviews",
+        "issues",
+        "activeDays",
+        "activeWeeks",
+        "repositories"
+      ],
+      "type": "object"
+    },
+    "themes": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "enum": [
+              "feat",
+              "fix",
+              "docs",
+              "test",
+              "refactor",
+              "chore",
+              "perf",
+              "revert",
+              "other"
+            ],
+            "type": "string"
+          },
+          "share": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "share"
+        ],
+        "type": "object"
+      },
+      "maxItems": 9,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "dataClass",
+    "scope",
+    "generatedAt",
+    "range",
+    "rangeLabel",
+    "repositoryRedaction",
+    "privacyNote",
+    "summary",
+    "dna",
+    "archetype",
+    "repositories",
+    "themes",
+    "narratives",
+    "coverage",
+    "provenance"
+  ],
+  "type": "object"
+}

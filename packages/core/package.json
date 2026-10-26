@@ -12,6 +12,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./lens": {
+      "types": "./dist/lens-projection.d.ts",
+      "import": "./dist/lens-projection.js",
+      "default": "./dist/lens-projection.js"
     }
   },
   "scripts": {

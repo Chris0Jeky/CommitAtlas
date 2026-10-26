@@ -273,7 +273,7 @@ function renderScenes(snapshot: PortfolioSnapshot): GalleryTile[] {
     const pack = definition.supportedPacks.includes("survey") ? "survey" : definition.supportedPacks[0] ?? "survey";
     const motion = definition.supportedMotion.includes("none") ? "none" : definition.supportedMotion[0] ?? "none";
     try {
-      const rendered = renderSceneDefinition(definition, toSceneInputs(snapshot), {
+      const rendered = renderSceneDefinition(definition, toSceneInputs(snapshot, { demo: true }), {
         ...sceneContext(pack),
         motion,
       });

@@ -7,6 +7,7 @@ import test from "node:test";
 // Suites run by a config file rather than an npm script argument.
 const RUN_ELSEWHERE = new Map([
   ["packages/core/core.test.ts", "packages/core/vitest.config.ts include"],
+  ["packages/core/lens.test.ts", "packages/core/vitest.config.ts include"],
 ]);
 
 const root = new URL("..", import.meta.url);

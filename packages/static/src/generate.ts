@@ -21,6 +21,7 @@ import {
 import { renderDeliveryCard, renderDeliveryEvidence } from "./delivery.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
+import { loadStaticLensProjection } from "./lens.js";
 import { isSceneArtifactName } from "./scene-config.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
@@ -122,6 +123,7 @@ export async function generateStaticFromSnapshot(options: {
   readonly delivery?: DeliverySnapshot;
   readonly dryRun?: boolean;
 }): Promise<GenerateStaticResult> {
+  const lens = options.config.lens ? await loadStaticLensProjection(options.root, options.config.lens, options.snapshot) : undefined;
   const delivery = options.config.cards.includes("delivery")
     ? validateDeliverySnapshot(options.config, options.snapshot, options.delivery)
     : null;
@@ -142,7 +144,7 @@ export async function generateStaticFromSnapshot(options: {
       label: "output",
     });
     const rendered = {
-      ...renderStaticArtifacts(options.snapshot, config),
+      ...renderStaticArtifacts(options.snapshot, config, lens),
       ...(config.cards.includes("projects") ? renderProjectCatalogArtifacts(options.snapshot, config) : {}),
       ...(config.cards.includes("delivery") && delivery ? {
         "delivery.svg": renderDeliveryCard(delivery, {
