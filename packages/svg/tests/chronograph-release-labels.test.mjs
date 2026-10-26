@@ -224,3 +224,28 @@ test('stale and unavailable plates do not paint release tags as a live signal', 
   assert.doesNotMatch(hidden.svg, /RELEASE SIGNAL BLOCKED|>OBSERVED</u);
   assert.match(hidden.svg, /UNAVAILABLE/u);
 });
+
+test('wide fallback glyphs have a bounded legend advance and retain all six release identities', () => {
+  const tags = ['😀'.repeat(39) + '1', '界'.repeat(39) + '2', 'W'.repeat(39) + '3',
+    '😀'.repeat(39) + '4', '界'.repeat(39) + '5', 'W'.repeat(39) + '6'];
+  const projects = tags.map((tag, index) => release(tag, `2026-01-08T00:0${index % 2}:00Z`, `wide-${index}`));
+  for (const theme of Object.keys(svg.themes)) for (const layout of ['compact', 'wide']) {
+    const width = layout === 'compact' ? 480 : 720;
+    const result = render(inputs(projects), { theme, layout });
+    assert.equal(result.unavailable, false);
+    const { doc } = layoutOf(result);
+    const description = sceneXmlText(doc.nodes.find(node => node.name === 'desc'));
+    for (const tag of tags) assert.ok(description.includes(tag), 'bounded full tag remains accessible');
+    const rows = doc.nodes.filter(node => node.name === 'text' && /^\d\. /u.test(sceneXmlText(node)));
+    assert.equal(rows.length, 6);
+    const right = width / 2 - 95 * 0.94 - 4;
+    for (const row of rows) {
+      const extent = Number(row.attrs.textLength);
+      assert.ok(extent > 0 && Number(row.attrs.x) + extent <= right - 1, 'fallback font cannot cross the legend edge');
+      assert.equal(row.attrs.lengthAdjust, 'spacingAndGlyphs');
+      assert.match(sceneXmlText(row), /…$/u, 'long painted tags disclose truncation');
+    }
+    assert.deepEqual(doc.nodes.filter(node => node.name === 'text' && /^[1-6]$/u.test(sceneXmlText(node)))
+      .map(sceneXmlText).sort(), ['1', '2', '3', '4', '5', '6']);
+  }
+});

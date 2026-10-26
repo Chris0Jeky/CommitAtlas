@@ -51,9 +51,10 @@ interface ChronographModel {
 function num(value: number): string {
   return String(Number(value.toFixed(3)));
 }
-function plateText(x: number, y: number, content: string, ink: string, size: number, anchor = 'start'): string {
+function plateText(x: number, y: number, content: string, ink: string, size: number, anchor = 'start', advance?: number): string {
   const aligned = anchor === 'start' ? '' : ` text-anchor="${anchor}"`;
-  return `<text x="${x}" y="${y}" fill="${ink}" font-family="${MONO}" font-size="${size}"${aligned}>${escapeXml(content)}</text>`;
+  const bounded = advance === undefined ? '' : ` textLength="${num(advance)}" lengthAdjust="spacingAndGlyphs"`;
+  return `<text x="${x}" y="${y}" fill="${ink}" font-family="${MONO}" font-size="${size}"${aligned}${bounded}>${escapeXml(content)}</text>`;
 }
 function xmlChars(value: string): string {
   return [...value].filter(character => {
@@ -230,10 +231,25 @@ function arc(cx: number, cy: number, radius: number, coverage: number, ink: stri
 interface MarkerPoint { readonly x: number; readonly y: number }
 interface LegendBox { readonly left: number; readonly right: number; readonly top: number; readonly bottom: number }
 
-function legendLabel(index: number, tag: string, charLimit: number): string {
+function legendLabel(index: number, tag: string, cellLimit: number): { text: string; advance: number } {
   const prefix = `${index + 1}. `;
-  const tagChars = Math.max(1, Math.min(LEGEND_CAP, charLimit - [...prefix].length));
-  return truncateText(`${prefix}${truncateText(tag, tagChars)}`, Math.max(1, charLimit));
+  const characters = [...truncateText(tag, LEGEND_CAP)];
+  let text = prefix;
+  let cells = prefix.length;
+  for (const [position, character] of characters.entries()) {
+    // Fallback fonts can paint emoji/CJK wider than a monospace Latin cell. Reserve two
+    // cells for non-ASCII text; textLength also bounds fonts with different actual metrics.
+    const cost = /^[\x20-\x7e]$/u.test(character) || character === '…' ? 1 : 2;
+    const reserve = position < characters.length - 1 ? 1 : 0;
+    if (cells + cost + reserve > cellLimit) {
+      text += '…';
+      cells += 1;
+      break;
+    }
+    text += character;
+    cells += cost;
+  }
+  return { text, advance: cells * LEGEND_SIZE * LEGEND_CHAR };
 }
 
 function markerFits(x: number, y: number, originX: number, originY: number, width: number, height: number, legend: LegendBox): boolean {
@@ -345,7 +361,8 @@ function renderChronograph(model: ChronographModel, context: RenderContext, text
   output += `</g>`;
   const legendChars = Math.max(4, Math.floor((legendRight - originX - 2) / (LEGEND_SIZE * LEGEND_CHAR)));
   model.releases.forEach((mark, index) => {
-    output += plateText(originX, legendTop + index * LEGEND_LINE, legendLabel(index, mark.tag, legendChars), theme.text, LEGEND_SIZE);
+    const label = legendLabel(index, mark.tag, legendChars);
+    output += plateText(originX, legendTop + index * LEGEND_LINE, label.text, theme.text, LEGEND_SIZE, 'start', label.advance);
   });
   const streak = model.current === 0 ? 'NO CURRENT STREAK' : `CURRENT STREAK ${model.current}`;
   output += `<text x="24" y="${height - 84}" fill="${theme.text}" font-family="${MONO}" font-size="12">${escapeXml(streak)}</text>`;
