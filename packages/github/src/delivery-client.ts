@@ -1,4 +1,5 @@
 import { GitHubApiError } from "./client.js";
+import { hasDirectRateLimitEvidence, rateLimitMessage, rateLimitRetryAfterValue } from "./rate-limit.js";
 import {
   buildDeliveryQueryPlan,
   deriveDeliverySnapshot,
@@ -67,6 +68,7 @@ export async function fetchDeliverySnapshot(
     variables,
     fetchImpl: options.fetchImpl ?? fetch,
     deadlineMs: options.deadlineMs ?? DEFAULT_DEADLINE_MS,
+    now: options.now ?? (() => new Date()),
   });
   if (Array.isArray(response.errors) && response.errors.length > 0) {
     throw new GitHubApiError(
@@ -117,6 +119,7 @@ async function requestGraphql(input: {
   readonly variables: Readonly<Record<string, string>>;
   readonly fetchImpl: typeof fetch;
   readonly deadlineMs: number;
+  readonly now: () => Date;
 }): Promise<Record<string, unknown>> {
   if (!Number.isSafeInteger(input.deadlineMs) || input.deadlineMs <= 0 || input.deadlineMs > 60_000) {
     throw new GitHubApiError("invalid_response", "Delivery request deadline is invalid", 400);
@@ -145,16 +148,21 @@ async function requestGraphql(input: {
     );
   }
   if (!response.ok) {
-    const rateLimited = response.status === 429
-      || (response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0");
-    await response.body?.cancel();
+    let rateLimited = response.status === 429
+      || (response.status === 403 && hasDirectRateLimitEvidence(response.headers, input.now()));
+    if (response.status === 403 && !rateLimited) {
+      try {
+        const body = await readBoundedText(response);
+        rateLimited = rateLimitMessage(body) || hasRateLimitErrors(JSON.parse(body));
+      } catch {
+        // Unreadable or malformed bodies are not affirmative quota evidence.
+      }
+    } else {
+      // Discard failures must not replace an already classified upstream refusal.
+      await response.body?.cancel().catch(() => undefined);
+    }
     if (rateLimited) {
-      throw new GitHubApiError(
-        "github_rate_limited",
-        "GitHub rate limit reached while collecting delivery evidence",
-        429,
-        response.headers.get("retry-after"),
-      );
+      throw rateLimitError(response.headers, input.now());
     }
     throw new GitHubApiError(
       "github_unavailable",
@@ -182,7 +190,21 @@ async function requestGraphql(input: {
   if (!isRecord(payload)) {
     throw new GitHubApiError("invalid_response", "GitHub returned an invalid delivery response");
   }
+  if (hasRateLimitErrors(payload)) throw rateLimitError(response.headers, input.now());
   return payload;
+}
+
+function hasRateLimitErrors(payload: unknown): boolean {
+  return isRecord(payload) && Array.isArray(payload.errors) && payload.errors.some((error: unknown) => (
+    isRecord(error) && (error.type === "RATE_LIMITED"
+      || (isRecord(error.extensions) && error.extensions.code === "RATE_LIMITED")
+      || (typeof error.message === "string" && rateLimitMessage(error.message)))
+  ));
+}
+
+function rateLimitError(headers: Headers, now: Date): GitHubApiError {
+  return new GitHubApiError("github_rate_limited", "GitHub rate limit reached while collecting delivery evidence",
+    429, rateLimitRetryAfterValue(headers, now));
 }
 
 async function readBoundedText(response: Response): Promise<string> {

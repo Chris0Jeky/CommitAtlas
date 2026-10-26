@@ -45,6 +45,27 @@ statements in those receipts are historical, not the current source boundary.
 Exports, registry metadata, hosted routes, static/Action entry points and existing test assertions
 were inspected for this reconciliation. No test pass or new runtime evidence is claimed here.
 
+## Issue #427 slice: Delivery quota refusals, 2026-10-25
+
+Delivery collection preserves primary and secondary quota refusals as `github_rate_limited`
+(429), including bounded HTTP 403 messages and HTTP 200 GraphQL errors. It shares the general
+client's validated retry guidance and keeps upstream bodies out of returned errors. Successful
+counts with an exhausted-quota header remain valid; non-quota refusals keep their existing behavior.
+The focused Delivery tests cover HTTP and GraphQL refusal forms (20/20 pass). Review reproduced
+raw stream-cancellation errors replacing HTTP 403/429 quota refusals; discarding a failed body
+now preserves the bounded quota error. Both new cancellation regressions failed before that guard.
+The prebuilt Action bundle is rebuilt from this source.
+
+`npm run typecheck:worker`, `npm run typecheck`, `npm run lint`, `npm run test:github` and `npm test`
+pass locally. The GitHub gate passes 41 package, one discovery and 348 source/route tests; the
+built product passes 74/74. Full `npm run check` is not claimed: two static tests and two executed
+Action tests require Git-writing fixtures, excluded under this session's no-Git-writes constraint.
+All other permitted gate stages pass, including 265 static tests (one existing Windows skip)
+and three Action metadata checks.
+The Action bundle freshness check against committed content also awaits the permitted commit.
+No live token-backed quota exhaustion, hosted CI or deployment is claimed.
+No human-action file is declared. The remaining client identifier-validation claim stays open under #427.
+
 ## Issue #427 image failure boundary, local proof 2026-10-25
 
 The Worker awaits image optimization inside its error boundary. Escaping asset-binding
