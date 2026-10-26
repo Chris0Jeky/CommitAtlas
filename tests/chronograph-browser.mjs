@@ -1,6 +1,7 @@
 /** Synthetic, local-browser evidence for #344. This is not GitHub raw/Camo qualification.
- * Supply Playwright externally with PLAYWRIGHT_PREFIX; CHROME_BIN optionally selects an
- * existing Chromium executable. CHRONOGRAPH_QA_OUTPUT must name a fresh absolute directory.
+ * Supply Playwright externally with PLAYWRIGHT_PREFIX; CHRONOGRAPH_BROWSER_EXECUTABLE optionally
+ * selects an existing Chromium executable. Otherwise use that driver's exact installed binary.
+ * CHRONOGRAPH_QA_OUTPUT must name a fresh absolute directory.
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -17,6 +18,7 @@ import { createFreshOutputDirectory, decodePng, pixelDifference } from './motion
 const require = createRequire(path.resolve(process.env.PLAYWRIGHT_PREFIX ?? '.', 'driver.cjs'));
 const { chromium } = require('playwright');
 const playwrightVersion = require('playwright/package.json').version;
+const browserExecutable = process.env.CHRONOGRAPH_BROWSER_EXECUTABLE ?? chromium.executablePath();
 const out = process.env.CHRONOGRAPH_QA_OUTPUT;
 assert.ok(out && path.isAbsolute(out), 'CHRONOGRAPH_QA_OUTPUT must be an absolute fresh directory');
 await createFreshOutputDirectory(out);
@@ -31,7 +33,7 @@ const report = {
   scope: 'actual inline text geometry and direct SVG image playback; no GitHub transport or backend-default qualification',
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   sourceWorkingTreeDirty: execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim().length > 0,
-  sourceFiles, observedAt: new Date().toISOString(), playwrightVersion,
+  sourceFiles, observedAt: new Date().toISOString(), playwrightVersion, browserExecutable,
   browserVersion: null, layout: [], playback: [], complete: false,
 };
 
@@ -60,7 +62,7 @@ function render(input, overrides = {}) {
   return result;
 }
 
-const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
+const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
 report.browserVersion = browser.version();
 const contexts = [];
 try {
