@@ -1,0 +1,38 @@
+name: WebKit layout metadata
+
+# Bounded #180 observation only. This workflow never invokes capture-github.mjs.
+on:
+  workflow_dispatch:
+  push:
+    branches: [diagnostic/issue-180-layout]
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the observation source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up the existing Node pin
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+      - name: Install ephemeral pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/commitatlas-playwright" --no-audit --no-fund --ignore-scripts playwright@1.57.0
+          node "$RUNNER_TEMP/commitatlas-playwright/node_modules/playwright/cli.js" install --with-deps webkit
+      - name: Observe the exact selector and ancestor layout once
+        run: node tests/motion-probes/diagnose-github-layout.mjs --playwright-cli "$RUNNER_TEMP/commitatlas-playwright/node_modules/playwright/cli.js" --out "$RUNNER_TEMP/commitatlas-webkit-layout"
+      - name: Preserve metadata even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: webkit-layout-metadata-${{ github.sha }}
+          path: ${{ runner.temp }}/commitatlas-webkit-layout
+          if-no-files-found: error
+          retention-days: 14

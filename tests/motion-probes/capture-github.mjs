@@ -294,7 +294,7 @@ export function validateCompletedReport(report) {
   assert.deepEqual(identities, expectedIdentities, "complete report must match its declared plan exactly");
 }
 
-async function targetMetadata(locator) {
+export async function targetMetadata(locator) {
   return locator.evaluate((image) => {
     const picture = image.closest("picture");
     const sources = [...(picture?.querySelectorAll("source") ?? [])].map((source) => ({
@@ -349,7 +349,7 @@ async function responseMetadata(response) {
   };
 }
 
-async function responseChain(responseByUrl, currentSrc) {
+export async function responseChain(responseByUrl, currentSrc) {
   const chain = [];
   let response = await waitForResponse(responseByUrl, currentSrc);
   const seen = new Set();
