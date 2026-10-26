@@ -1,0 +1,535 @@
+{
+  "kind": "chronograph-browser-qualification",
+  "sourceCommit": "0745d42c7be872453f9d5cdc0d8a0ce6350e5b13",
+  "sourceWorkingTreeDirty": false,
+  "sourceFiles": {
+    "packages/svg/src/scenes/chronograph.ts": "5fd28eb0cf4dad715b8b3a9b03de7cf712dbad802f7773b40778b5a29d043a91",
+    "tests/chronograph-browser.mjs": "8d3effcf54a03957dcfafece575c284cca3f696adaa466c1bb67597aa362d4bd",
+    "packages/svg/src/motion/profile.ts": "39a8da3bab865805de19cf272bb8d775c8cc59539d3eaf887b507aaddcf408e7",
+    "packages/svg/src/motion/css.ts": "272fcd17f8aa6f671cd16487284af0ea4850e5c04741ac9ad5fd16573ef192a0",
+    "packages/svg/src/motion/smil.ts": "2839709e9c0c6b2649aad288aa59941756df27ccd5f8e5ccdc8ad95379d9ecc4"
+  },
+  "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40266669682",
+  "qualityRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40266674256",
+  "artifactId": 12626334315,
+  "artifactZipSha256": "afcef3e0e04bd2b3b8ace4712a458d5011261ea435a35a320814d508f36e6add",
+  "rawReportSha256": "ab2a5d2fb03de4943069a45c031c72d9be2bda93d9b4325bdece0a7d0eda2a1f",
+  "browserVersion": "143.0.7499.4",
+  "playwrightVersion": "1.57.0",
+  "browserExecutable": "/home/runner/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome",
+  "layout": {
+    "cases": 576,
+    "themes": [
+      "aurora",
+      "midnight",
+      "paper",
+      "ember"
+    ],
+    "layouts": [
+      "compact",
+      "wide"
+    ],
+    "glyphs": [
+      "W",
+      "界",
+      "😀"
+    ],
+    "arrangements": [
+      "coincident",
+      "near"
+    ],
+    "angles": [
+      -90,
+      -60,
+      -30,
+      0,
+      30,
+      60,
+      90,
+      120,
+      150,
+      180,
+      210,
+      240
+    ],
+    "overflowCases": 0,
+    "collisionCases": 0,
+    "minimumLegendGapPx": 4.930712890624989,
+    "allSixRows": true,
+    "allSixMarkers": true
+  },
+  "playback": [
+    {
+      "key": "css-ambient",
+      "backend": "css",
+      "state": "ambient",
+      "svgSha256": "892898f8b60ffc19a99e781f1e93ed66463b042651a266d6a2e43c363d882e0a",
+      "counters": {
+        "bytes": 9639,
+        "animatedElements": 3,
+        "loopingGroups": 3
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "css-ambient-0.png",
+          "requestedMs": 0,
+          "beforeMs": 80.39999999999418,
+          "afterMs": 252.6999999999971,
+          "sha256": "ad89b5cba7075374356800867a7ba567752339fa1f09a6c7953b64707b995d8c"
+        },
+        {
+          "file": "css-ambient-250.png",
+          "requestedMs": 250,
+          "beforeMs": 285.1999999999971,
+          "afterMs": 379,
+          "sha256": "778ab0012206241e5150067b29a3684650f02cdbdf05feb60117cb455acf8291"
+        },
+        {
+          "file": "css-ambient-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1006.8000000000029,
+          "afterMs": 1111.8999999999942,
+          "sha256": "290ecf0cb3e83c30dfca94d9701131845db33ced5f69cff5dd02671c56507ed4"
+        },
+        {
+          "file": "css-ambient-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5013.300000000003,
+          "afterMs": 5169.300000000003,
+          "sha256": "619dd8ef588089a611c43037916e6253441cc1479178b4ad9144332c6b5f1900"
+        },
+        {
+          "file": "css-ambient-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46008.7,
+          "afterMs": 46140,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 231,
+          "totalChannelDelta": 67844
+        },
+        {
+          "changedPixels": 245,
+          "totalChannelDelta": 72013
+        },
+        {
+          "changedPixels": 245,
+          "totalChannelDelta": 72576
+        },
+        {
+          "changedPixels": 238,
+          "totalChannelDelta": 71491
+        }
+      ],
+      "video": "videos/2f8cf5029186aa1de0a249f326b05a8d.webm",
+      "stoppedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      },
+      "videoSha256": "2730e40912f16404b3d403c71e3d9982e88ff03e6809f292f1da738ec589180a"
+    },
+    {
+      "key": "css-none",
+      "backend": "css",
+      "state": "none",
+      "svgSha256": "e6efbbf77460aa958fa44d18534e1fc1d3e22ad322afd782c6870c1f8dfd9045",
+      "counters": {
+        "bytes": 8223,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "css-none-0.png",
+          "requestedMs": 0,
+          "beforeMs": 96,
+          "afterMs": 204.59999999999127,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "css-none-250.png",
+          "requestedMs": 250,
+          "beforeMs": 287.3999999999942,
+          "afterMs": 351.6999999999971,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "css-none-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1008,
+          "afterMs": 1113.2999999999884,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "css-none-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5012.799999999988,
+          "afterMs": 5168.599999999991,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "css-none-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46009.5,
+          "afterMs": 46135.2,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": "videos/39fce4ec9a45e4d56d800903a82d1851.webm",
+      "videoSha256": "af2ef042f1b8c9b491e936b89a2759619b5502aa564c0f967db03a3f361a5da3"
+    },
+    {
+      "key": "css-stale",
+      "backend": "css",
+      "state": "stale",
+      "svgSha256": "c3cbb9207cf24e9e54be442af591d1fc390ea1ec13d3eac4ef3869b037c52193",
+      "counters": {
+        "bytes": 8297,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "css-stale-0.png",
+          "requestedMs": 0,
+          "beforeMs": 97.69999999999709,
+          "afterMs": 252.1999999999971,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "css-stale-250.png",
+          "requestedMs": 250,
+          "beforeMs": 285.3000000000029,
+          "afterMs": 368.3999999999942,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "css-stale-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1006.8000000000029,
+          "afterMs": 1126.3999999999942,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "css-stale-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5008.899999999994,
+          "afterMs": 5167,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "css-stale-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46007.399999999994,
+          "afterMs": 46128.8,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": "videos/2a2fa691ca36950004cd7962a3a15b7d.webm",
+      "videoSha256": "890af15dd2ce85c42f535c17501f3ec31cb13cb0da3225749e1a759dbaac7b11"
+    },
+    {
+      "key": "smil-ambient",
+      "backend": "smil",
+      "state": "ambient",
+      "svgSha256": "702f74e938eb86c85c0396b3bcc5c54ea211c11c420cbd202e1f2ebb88283a4d",
+      "counters": {
+        "bytes": 8859,
+        "animatedElements": 3,
+        "loopingGroups": 3
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "smil-ambient-0.png",
+          "requestedMs": 0,
+          "beforeMs": 97.30000000000291,
+          "afterMs": 252.89999999999418,
+          "sha256": "80f26b048434e5c50509fd849a576638d6dee17f022fa852a8b8decd94a2bcac"
+        },
+        {
+          "file": "smil-ambient-250.png",
+          "requestedMs": 250,
+          "beforeMs": 288.5,
+          "afterMs": 387.3999999999942,
+          "sha256": "0afeff3c89279c7d0de5904b79b3d4dba7db351e20111f787dc4735241b90419"
+        },
+        {
+          "file": "smil-ambient-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1008.5,
+          "afterMs": 1148.800000000003,
+          "sha256": "4ec5e8003b76abdf3cbb957c5d03cf5c0601f41fd520b61f4cd56e976d1d55fa"
+        },
+        {
+          "file": "smil-ambient-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5014.199999999997,
+          "afterMs": 5171.5,
+          "sha256": "aa4e7c71f181f66fa40d08a4974c44a16795bd2c558e187be8064feb610522b6"
+        },
+        {
+          "file": "smil-ambient-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46011,
+          "afterMs": 46131.7,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 232,
+          "totalChannelDelta": 70272
+        },
+        {
+          "changedPixels": 243,
+          "totalChannelDelta": 72718
+        },
+        {
+          "changedPixels": 243,
+          "totalChannelDelta": 71955
+        },
+        {
+          "changedPixels": 235,
+          "totalChannelDelta": 71590
+        }
+      ],
+      "video": "videos/07843f09da3ef35515bec1f8c6f7ae97.webm",
+      "stoppedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      },
+      "videoSha256": "155d7abf39d322d197d7d1b96fecffc577aa7c200e75688c4f34fd60752da82b"
+    },
+    {
+      "key": "smil-none",
+      "backend": "smil",
+      "state": "none",
+      "svgSha256": "e6efbbf77460aa958fa44d18534e1fc1d3e22ad322afd782c6870c1f8dfd9045",
+      "counters": {
+        "bytes": 8223,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "smil-none-0.png",
+          "requestedMs": 0,
+          "beforeMs": 95.89999999999418,
+          "afterMs": 247.8000000000029,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "smil-none-250.png",
+          "requestedMs": 250,
+          "beforeMs": 283.6999999999971,
+          "afterMs": 353.1999999999971,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "smil-none-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1004.5,
+          "afterMs": 1102.3999999999942,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "smil-none-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5009.5,
+          "afterMs": 5167.399999999994,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        },
+        {
+          "file": "smil-none-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46018.2,
+          "afterMs": 46250.399999999994,
+          "sha256": "66a661cb93cf7cdfb57d5e2ec2ebc6b65642589f587acef3e9a0b349d1757fd8"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": "videos/3ebd42708263f797ce66768a6aa2896d.webm",
+      "videoSha256": "521000ee644c1c166d22dfcb5c498a0b9b68f476c20ef1dc09613e3eec2f2993"
+    },
+    {
+      "key": "smil-stale",
+      "backend": "smil",
+      "state": "stale",
+      "svgSha256": "c3cbb9207cf24e9e54be442af591d1fc390ea1ec13d3eac4ef3869b037c52193",
+      "counters": {
+        "bytes": 8297,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "frameTimes": [
+        0,
+        250,
+        1000,
+        5000,
+        46000
+      ],
+      "frames": [
+        {
+          "file": "smil-stale-0.png",
+          "requestedMs": 0,
+          "beforeMs": 85,
+          "afterMs": 240.3000000000029,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "smil-stale-250.png",
+          "requestedMs": 250,
+          "beforeMs": 273.5,
+          "afterMs": 356,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "smil-stale-1000.png",
+          "requestedMs": 1000,
+          "beforeMs": 1008.6999999999971,
+          "afterMs": 1151.5999999999913,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "smil-stale-5000.png",
+          "requestedMs": 5000,
+          "beforeMs": 5015.699999999997,
+          "afterMs": 5070.099999999991,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        },
+        {
+          "file": "smil-stale-46000.png",
+          "requestedMs": 46000,
+          "beforeMs": 46007.8,
+          "afterMs": 46240.09999999999,
+          "sha256": "8364d770ccb348f9a1895830c33176dca2539e576939104b6fa8739866bae9b1"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": "videos/68003842ca9d5b3954fc2862644ef8e7.webm",
+      "videoSha256": "3b1abe007394e3e09f7b2fb60267afc0272a90fd3e51072ba71619e235299040"
+    }
+  ],
+  "verification": {
+    "pngHashes": 30,
+    "decodedPixelComparisons": 26,
+    "webmHashesAndMagic": 6,
+    "sourceFileHashes": 5
+  },
+  "boundary": "Synthetic direct SVG images in pinned Chromium; not GitHub raw/Camo, not cross-engine qualification. Requested zero is first observation, not exact frame zero; each frame retains actual start/end. Browser time does not parse WebM container duration.",
+  "priorHostedObservation": {
+    "sourceCommit": "85aa2847f2241dc4c9e87c9b9e5fb1ecff7e37cc",
+    "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40265910931",
+    "browserVersion": "155.0.8059.39",
+    "passed": true,
+    "scope": "576 layouts and six playback/control rows passed, but ambient executable selection was not the installed143 binary. Superseded for pinned-browser qualification."
+  }
+}

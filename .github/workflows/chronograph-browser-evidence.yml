@@ -1,0 +1,44 @@
+name: Chronograph browser evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/chronograph-release-bounds]
+    paths:
+      - packages/svg/src/scenes/chronograph.ts
+      - tests/chronograph-browser.mjs
+      - .github/workflows/chronograph-browser-evidence.yml
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=@commit-atlas/svg
+      - name: Install external pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/chronograph-playwright" --ignore-scripts playwright@1.57.0
+          node "$RUNNER_TEMP/chronograph-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Measure text and capture CSS/SMIL playback with still controls
+        env:
+          PLAYWRIGHT_PREFIX: ${{ runner.temp }}/chronograph-playwright
+          CHRONOGRAPH_QA_OUTPUT: ${{ runner.temp }}/chronograph-evidence
+        run: node tests/chronograph-browser.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: chronograph-browser-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/chronograph-evidence
+          if-no-files-found: error
+          retention-days: 14
