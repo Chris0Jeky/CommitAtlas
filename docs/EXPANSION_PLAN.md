@@ -309,13 +309,13 @@ its browser behavior verified.
 | `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / matched project bodies breathing | Implemented #134, static-only; bounded identity is required; `none`, `ambient`, `cinematic` |
 | `evidence-coverage` | instrument | contribution source and basis, per-project CI state, `releaseState`, freshness mode | scan illuminates available rows and leaves unavailable rows dark | Implemented #133, hosted + static; observed coverage and neutral unavailable rows |
 | `activity-terrain` | map | contribution days, releases, streaks | survey line traverses the contours | Implemented #135, hosted + static; weekly activity → elevation, latest-release markers; no complete release-history claim |
-| `chronograph` | map | contribution days, releases, streak | decorative rings turn at different rates; needle stays at the true streak angle | Implemented #136 scene, hosted + static. Timing and label code for #344 ships (666/4662/19980 ms; separate numbered release markers/legend); timed browser acceptance remains open. Needle settle is deliberately absent to preserve frame zero |
+| `chronograph` | map | contribution days, releases, streak | decorative rings turn at different rates; needle stays at the true streak angle | Implemented #136 scene, hosted + static. #344 is qualified by 576 measured layouts and six timed CSS/SMIL playback/control rows; see [receipt](./CHRONOGRAPH_EVIDENCE.md). Periods are 666/4662/19980 ms; each release keeps a numbered marker/legend row. Needle settle is deliberately absent to preserve the true reading; #113 transport qualification remains separate |
 | `lifecycle-map` | map | configured lifecycle, CI, release, freshness | markers breathe; pending pulses | Implemented #137, hosted + static; lifecycle is labelled as an owner declaration |
 | `release-train` | map | bounded release history per project (new fetch) | a packet moves along the track between stations | Open under #111, gated on Q-2/release-history fetch; prereleases are sidings; unavailable history is a blocked signal, not an empty track |
 
 ### Phase 2 — Developer Lens projection
 
-All scene rows in this phase remain open under #111; no signature scene is registered. The C0 reader supplies full producer-validated Lens contexts to static and demo-only hosted adapters. Owner C1 publication remains disabled and separately gated by #170 / Q-9.
+Signature scene rows remain open under #111; no signature scene is registered. The C0 reader supplies full producer-validated Lens contexts to static and demo-only hosted adapters, and the existing Evidence Coverage instrument displays their derived coverage, warnings and age. Owner C1 publication remains disabled and separately gated by #170 / Q-9.
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
@@ -324,7 +324,7 @@ All scene rows in this phase remain open under #111; no signature scene is regis
 | `craft-ring` | signature | `lens.themes` | segmented iris; segment glint | building / repairing / explaining / proving / refining / maintaining / optimising / reverting, plus an explicit `other` segment so a supplied share is never discarded or redistributed |
 | `delivery-loop` | signature | `lens.delivery`, `lens.summary` | particles show the observed merged sample and its open/censored state; proposal, review, revision, and release are unobserved sockets | Censored and open work stay visibly incomplete; no stage or release evidence is inferred |
 | `narrative` | signature | `lens.narratives` | plotter underline; nothing else | Up to three bounded, evidence-bearing statements with their limitation line |
-| *(coverage, lens extension)* | instrument | `lens.coverage.warnings` | as Phase 1 | Adds the projection's own warnings and age to `evidence-coverage` |
+| *(coverage, lens extension)* | instrument | `lens.coverage` and validated projection freshness | independent GitHub rows keep Phase 1 behavior; Lens rows are still | Implemented #151: visible SYNTHETIC label, derived score, age/state and complete registry warnings. Stale/expired scores are historical and neutral; absent Lens input adds no rows. See [display contract](./EVIDENCE_COVERAGE_SCENE.md) |
 
 ### Phase 3 — findings, aesthetic scenes, packs
 
@@ -481,8 +481,9 @@ are the source of truth for scope; this document is the source of truth for inte
 
 Current source does not establish any phase's full definition of done. P0 still has #113/#114
 evidence gates. P1 has the compiler, engine and initial scenes, but existing-card ambient adoption
-(#126 and remaining card work under #111) and browser/profile acceptance remain open. P2 still
-needs #145 and owner publication #170 / Q-9. P3 has Nebula, frame-pack geometry and the synthetic
+(#126 and remaining card work under #111) and browser/profile acceptance remain open. P2 has the
+C0 reader (#145); signature scenes remain open, and owner C1 publication is disabled by the
+operative Q-9 No policy recorded in #170. P3 has Nebula, frame-pack geometry and the synthetic
 gallery; the finding projection reader and remaining scenes are open under #111.
 
 ## 14. Decisions and open questions

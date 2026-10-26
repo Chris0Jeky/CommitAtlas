@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { COVERAGE_WARNINGS, computeLensProjectionHash } from '@commit-atlas/core/lens';
 import * as svg from '../dist/index.js';
-import { sceneXmlText } from '../dist/scene-svg.js';
+import { sceneXmlText, sceneVisibleText } from '../dist/scene-svg.js';
 import { assertSceneContract, assertWellFormedXml, stripSceneMotion, SCENE_INJECTION } from './scene-harness.mjs';
 import { exampleScene, sceneContext } from './scene.fixture.mjs';
 import { coverageInputs, unavailableCoverageInputs } from './evidence-coverage.fixture.mjs';
@@ -412,4 +415,146 @@ test('distinct canonical project identities retain coverage at manifest name bou
   });
   assert.deepEqual(row('ci', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
   assert.deepEqual(row('releases', inputs).coverage, { state: 'complete', observed: 6, total: 6 });
+});
+
+
+const projectionFixture = JSON.parse(readFileSync(new URL('../../../research-contracts/lens-projection/v1/showcase.fixture.json', import.meta.url), 'utf8'));
+function lensInputs(days = 44, warningCodes = ['synthetic_showcase']) {
+  const inputs = coverageInputs();
+  inputs.snapshot.freshness.generatedAt = new Date(Date.parse(projectionFixture.generatedAt) + days * 86_400_000).toISOString();
+  const projection = structuredClone(projectionFixture);
+  Object.assign(projection.coverage, { complete: 1, partial: 1, unavailable: 1, total: 3, scorePercent: 83,
+    warnings: warningCodes.map(code => ({ code, displayText: COVERAGE_WARNINGS[code] })) });
+  projection.provenance.projectionHash = computeLensProjectionHash(projection);
+  inputs.lens = svg.createLensProjectionContext(projection, inputs.snapshot);
+  return inputs;
+}
+const lensIds = codes => [...ROWS, 'lens', ...codes.map(code => `lens-warning-${code}`)];
+const paintedRows = output => assertWellFormedXml(output.svg).nodes.filter(node => node.attrs.id?.includes('-row-'));
+
+test('complete Lens contexts add exactly one derived score/age/state row and one registry row per warning', () => {
+  const codes = ['synthetic_showcase', 'commit_detail_partial', 'unrecognized_warning'];
+  const inputs = lensInputs(44, codes), value = model(inputs);
+  assert.deepEqual(value.rows.map(row => row.id), lensIds(codes));
+  assert.deepEqual(value.rows.slice(0, 7), model().rows);
+  const summary = value.rows[7];
+  assert.equal(summary.label, 'DEVELOPER LENS · SYNTHETIC');
+  assert.equal(summary.detail, 'DERIVED COVERAGE 83% · 44 DAYS · FRESH');
+  assert.deepEqual(value.rows.slice(8).map(row => row.detail), codes.map(code => COVERAGE_WARNINGS[code]));
+  for (const row of value.rows.slice(7)) assert.equal('observed' in row.coverage, false, 'derived rows never manufacture GitHub observation counts');
+  const output = render(inputs), doc = assertWellFormedXml(output.svg);
+  const description = sceneXmlText(doc.root.children.find(node => node.name === 'desc'));
+  assert.match(description, /derived.*synthetic C0/i);
+  for (const code of codes) assert.ok(description.includes(COVERAGE_WARNINGS[code]));
+  for (const node of paintedRows(output).slice(7)) assert.doesNotMatch(node.raw, /COMPLETE|PARTIAL|OBSERVED|NO SIGNAL|NOT OBSERVED|<animate|target-scan/);
+});
+
+test('Lens state transitions preserve historical score wording without healthy ink or scan targets', () => {
+  for (const [days, state] of [[44, 'FRESH'], [45, 'FRESH'], [46, 'STALE'], [89, 'STALE'], [90, 'STALE'], [91, 'EXPIRED']]) {
+    const inputs = lensInputs(days), value = model(inputs), summary = value.rows.find(row => row.id === 'lens');
+    assert.ok(summary, 'configured projection requires a summary row');
+    assert.equal(summary.detail, `${state === 'FRESH' ? '' : 'LAST '}DERIVED COVERAGE 83% · ${days} DAYS · ${state}`);
+    const output = render(inputs, { motion: 'ambient', backend: 'smil' });
+    assert.equal(output.unavailable, false, 'an aged Lens source must not erase independent GitHub rows');
+    const row = paintedRows(output).find(node => node.attrs.id.endsWith('-row-lens'));
+    assert.doesNotMatch(row.raw, /OBSERVED|COMPLETE|<animate|target-scan/);
+    assert.ok(row.raw.includes(svg.themes.aurora.muted));
+  }
+});
+
+test('absent Lens and legacy common contexts keep exact existing rows and rendered bytes', () => {
+  const absent = coverageInputs(), legacy = coverageInputs();
+  legacy.lens = svg.createPublicDemoLensContext({ dataClass: 'C0', scope: 'public-demo',
+    coverage: { complete: 1, partial: 0, unavailable: 0, total: 1, warnings: ['Legacy warning text'] }, privacyNote: 'Invented context only.' });
+  assert.deepEqual(model(absent).rows.map(row => row.id), ROWS);
+  assert.equal(createHash('sha256').update(render(absent).svg).digest('hex'), 'e42a0c0c7f68d51f09b04ee3af9febab8691232f304b142f5f144d691bb0a25e');
+  assert.deepEqual(model(legacy), model(absent));
+  for (const layout of ['wide', 'compact']) for (const theme of Object.keys(svg.themes)) {
+    assert.equal(render(legacy, { theme, layout }).svg, render(absent, { theme, layout }).svg);
+  }
+  const noWarnings = lensInputs(0, []);
+  assert.deepEqual(model(noWarnings).rows.map(row => row.id), [...ROWS, 'lens']);
+});
+
+test('forged or unknown Lens warning contexts never reach the coverage instrument', () => {
+  const inputs = lensInputs(), forged = structuredClone(inputs.lens);
+  forged.coverage.warnings[0] = { code: 'unknown_invented', displayText: 'invented-private-warning' };
+  const output = render({ ...inputs, lens: forged });
+  assert.equal(output.unavailable, true);
+  assert.deepEqual(paintedRows(output).map(node => node.attrs.id.split('-row-')[1]), ROWS);
+  assert.doesNotMatch(output.svg, /invented-private-warning|COVERAGE 83%/);
+  const raw = structuredClone(projectionFixture);
+  raw.coverage.warnings[0].code = 'unknown_invented';
+  raw.provenance.projectionHash = computeLensProjectionHash(raw);
+  assert.throws(() => svg.createLensProjectionContext(raw, inputs.snapshot), /LENS_INVALID_PROJECTION/);
+});
+
+test('unavailable root snapshots suppress configured Lens rows and retain the seven neutral rows', () => {
+  const inputs = lensInputs(44, Object.keys(COVERAGE_WARNINGS));
+  inputs.snapshot.freshness.mode = 'unavailable';
+  const output = render(inputs, { motion: 'ambient', backend: 'smil' });
+  assert.equal(output.unavailable, true);
+  assert.deepEqual(paintedRows(output).map(node => node.attrs.id.split('-row-')[1]), ROWS);
+  assert.match(output.svg, /Developer Lens rows withheld with unavailable snapshot/);
+  assert.doesNotMatch(output.svg, /COVERAGE 83%|STALE PROJECTION|<animate|target-scan/);
+  assert.equal(output.counters.animatedElements, 0);
+});
+
+test('the engine rechecks projection age against the render clock before deriving coverage rows', () => {
+  const inputs = lensInputs(44);
+  inputs.snapshot.freshness.generatedAt = new Date(Date.parse(projectionFixture.generatedAt) + 91 * 86_400_000).toISOString();
+  const output = render(inputs);
+  assert.match(output.svg, /LAST DERIVED COVERAGE 83%/);
+  assert.match(output.svg, /91 DAYS/);
+  assert.match(output.svg, /EXPIRED/);
+  assert.doesNotMatch(output.svg, /44 DAYS/);
+});
+
+test('maximum registry inventory preserves every warning within existing frame and instrument budgets', () => {
+  const codes = Object.keys(COVERAGE_WARNINGS), inputs = lensInputs(91, codes);
+  inputs.snapshot.contributions.freshness.mode = 'unavailable';
+  inputs.snapshot.projects.projects.forEach((project, index) => {
+    project.ci.state = ['passing', 'failing', 'pending', 'stale', 'unconfigured', 'unavailable'][index];
+  });
+  assert.deepEqual(model(inputs).rows.map(row => row.id), lensIds(codes));
+  for (const theme of Object.keys(svg.themes)) for (const layout of ['compact', 'wide']) for (const backend of ['css', 'smil']) {
+    const still = render(inputs, { theme, layout, backend }), moving = render(inputs, { theme, layout, backend, motion: 'ambient' });
+    const doc = assertWellFormedXml(moving.svg), rows = paintedRows(moving);
+    assert.equal(rows.length, 16);
+    assert.ok(Number(doc.root.attrs.viewBox.split(' ')[3]) <= 1000, 'preserve frame bounds without dropping warnings');
+    assert.ok(moving.counters.bytes < 30_000);
+    assert.ok(moving.counters.animatedElements <= 24);
+    assert.ok(moving.counters.loopingGroups <= 3);
+    assert.equal(stripSceneMotion(moving.svg), still.svg);
+    for (const code of codes) {
+      const row = rows.find(node => node.attrs.id.endsWith(`-row-lens-warning-${code}`));
+      const text = sceneXmlText(row);
+      assert.equal(text.includes(COVERAGE_WARNINGS[code]), true, 'complete registry text stays accessible');
+      assert.equal(sceneVisibleText(row).includes(COVERAGE_WARNINGS[code]), true, 'complete registry text stays visible');
+      assert.doesNotMatch(row.raw, /target-scan|<animate|COMPLETE|OBSERVED/);
+      assert.ok(row.children.filter(node => node.name === 'text').every(node => Number(node.attrs['font-size']) >= 11), 'warnings stay readable');
+    }
+  }
+});
+
+test('Lens rows cannot grant an observation badge or animation when GitHub sources are stale', () => {
+  const inputs = lensInputs(91);
+  inputs.snapshot.freshness.mode = 'stale';
+  const output = render(inputs, { motion: 'ambient', backend: 'smil' });
+  assert.match(output.svg, /LAST DERIVED COVERAGE 83%/);
+  assert.match(output.svg, /EXPIRED/);
+  assert.doesNotMatch(output.svg, />OBSERVED</);
+  assert.equal(output.counters.animatedElements, 0);
+  assert.equal(output.counters.loopingGroups, 0);
+});
+
+test('a mutable exported registry cannot replace schema-validated warning display text', () => {
+  const inputs = lensInputs(), expected = COVERAGE_WARNINGS.synthetic_showcase;
+  try {
+    COVERAGE_WARNINGS.synthetic_showcase = 'invented-private-warning';
+    const output = render(inputs);
+    const warning = paintedRows(output).find(node => node.attrs.id.endsWith('-row-lens-warning-synthetic_showcase'));
+    assert.equal(sceneVisibleText(warning), expected);
+    assert.doesNotMatch(output.svg, /invented-private-warning/);
+  } finally { COVERAGE_WARNINGS.synthetic_showcase = expected; }
 });

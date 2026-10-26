@@ -2,7 +2,7 @@ import { isRecord, safeHttpsUrl } from '@commit-atlas/github';
 import type { ContributionSnapshot, DataMode, PortfolioSnapshot, ProjectSnapshot } from '@commit-atlas/github';
 import { escapeXml, themes } from '../index.js';
 import { compileSceneMotion, sceneClassName, sceneElementId, sceneUnavailable } from '../scene.js';
-import type { RenderContext, SceneDefinition, SceneUnavailable } from '../scene.js';
+import type { RenderContext, SceneDefinition, SceneInputs, SceneLensProjection, SceneUnavailable } from '../scene.js';
 import { badge, coverageBar, evidenceLabel, frame } from '../primitives/index.js';
 import type { CoverageState } from '../primitives/index.js';
 import type { MotionApplication } from '../motion/types.js';
@@ -12,6 +12,7 @@ interface CoverageRow {
   readonly label: string;
   readonly detail: string;
   readonly coverage: CoverageState;
+  readonly projection?: 'summary' | 'warning';
 }
 interface CoverageModel { readonly synthetic: boolean; readonly rows: readonly CoverageRow[] }
 const MODES: readonly string[] = ['live', 'demo', 'partial', 'stale', 'unavailable'];
@@ -110,9 +111,22 @@ function summary<T extends string>(states: readonly T[], vocabulary: readonly T[
     .filter(item => item.n > 0).map(item => `${item.n} ${item.state.toUpperCase()}`).join(' · ');
 }
 
-function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavailable {
+/** Derived projection readings never become observed GitHub fractions or scan targets. */
+function lensRows(lens: SceneLensProjection): CoverageRow[] {
+  const { status, ageDays } = lens.freshness;
+  return [{ id: 'lens', label: 'DEVELOPER LENS · SYNTHETIC',
+    detail: `${status === 'fresh' ? '' : 'LAST '}DERIVED COVERAGE ${lens.coverage.scorePercent}% · ${ageDays} DAYS · ${status.toUpperCase()}`,
+    coverage: NOT_OBSERVED, projection: 'summary' },
+  ...lens.coverage.warnings.map(warning => ({ id: `lens-warning-${warning.code}`, label: 'DEVELOPER LENS WARNING',
+    // The engine revalidates this against the schema's closed code/text literals, not a mutable export.
+    detail: warning.displayText, coverage: NOT_OBSERVED, projection: 'warning' as const }))];
+}
+function buildCoverage(snapshot: PortfolioSnapshot, lens?: SceneInputs['lens']): CoverageModel | SceneUnavailable {
+  // The earlier branded common context has no producer score, clock or closed warning records.
+  const projection = lens && 'schemaVersion' in lens ? lens : undefined;
   const overall = mode(snapshot.freshness?.mode);
-  if (overall === 'unavailable' || !knownSource(snapshot.freshness?.source)) return sceneUnavailable(UNAVAILABLE_REASON);
+  if (overall === 'unavailable' || !knownSource(snapshot.freshness?.source)) return sceneUnavailable(UNAVAILABLE_REASON +
+    (projection ? ' Developer Lens rows withheld with unavailable snapshot.' : ''));
   const rows = unavailableRows();
   const contributions = snapshot.contributions;
   const contributionMode = overall === 'stale' ? 'stale' : mode(contributions?.freshness?.mode);
@@ -171,17 +185,20 @@ function buildCoverage(snapshot: PortfolioSnapshot): CoverageModel | SceneUnavai
   rows[6] = { id: 'snapshot', label: 'SNAPSHOT', detail: overall.toUpperCase(), coverage: NOT_OBSERVED };
   const synthetic = [snapshot.freshness, contributions?.freshness, board?.freshness]
     .some(value => value?.mode === 'demo' || value?.source === 'synthetic-demo');
+  if (projection) rows.push(...lensRows(projection));
   return { rows, synthetic };
 }
 function accessibility(model: CoverageModel): { title: string; description: string } {
   const readings = model.rows.map(row => `${row.label}: ${row.detail}${'observed' in row.coverage ? `; ${row.coverage.observed}/${row.coverage.total} observed` : ''}.`).join(' ');
-  return { title: 'Evidence coverage', description: `${model.synthetic ? 'Synthetic preview. ' : ''}${readings} Bar length records coverage, not performance: observed calendar days, four supplied activity-mix fields, or current project observations. Neutral ink marks unobserved or stale sources. Row order follows calendar, mix, CI, releases and collection scope. Dashed tracks mark partial or not-observed coverage. The scan is decorative, illuminates only observed rows, and carries no reading.` };
+  return { title: 'Evidence coverage', description: `${model.synthetic ? 'Synthetic preview. ' : ''}${readings} Bar length records coverage, not performance: observed calendar days, four supplied activity-mix fields, or current project observations. Neutral ink marks unobserved or stale sources. Row order follows calendar, mix, CI, releases and collection scope. Dashed tracks mark partial or not-observed coverage. The scan is decorative, illuminates only observed rows, and carries no reading.` +
+    (model.rows.some(row => row.projection) ? ' Lens coverage is derived from the configured synthetic C0 projection, not GitHub observation counts or a productivity score. Stale and expired scores are historical. Warning text comes from the closed producer registry.' : '') };
 }
-function text(x: number, y: number, content: string, ink: string, size: number): string {
-  return `<text x="${x}" y="${y}" fill="${ink}" font-family="${MONO}" font-size="${size}">${escapeXml(content)}</text>`;
+function text(x: number, y: number, content: string, ink: string, size: number, advance?: number): string {
+  const bounded = advance === undefined ? '' : ` textLength="${advance}" lengthAdjust="spacingAndGlyphs"`;
+  return `<text x="${x}" y="${y}" fill="${ink}" font-family="${MONO}" font-size="${size}"${bounded}>${escapeXml(content)}</text>`;
 }
-function lines(value: string, width: number): string[] {
-  const maximum = Math.floor(width / 12), result: string[] = [];
+function lines(value: string, width: number, advance = 12): string[] {
+  const maximum = Math.floor(width / advance), result: string[] = [];
   let line = '';
   for (const word of value.split(' ')) {
     if (line && line.length + word.length + 1 > maximum) { result.push(line); line = ''; }
@@ -194,10 +211,14 @@ function renderRows(model: CoverageModel, context: RenderContext, a: { title: st
   const theme = themes[context.theme], width = context.layout === 'compact' ? 480 : 720;
   const barWidth = Math.min(640, width - 48);
   let y = 126;
+  const hasLens = model.rows.some(row => row.projection);
   const placed = model.rows.map(row => {
-    const detail = lines(row.detail, width - 48), barY = 34 + (detail.length - 1) * 14;
+    const detail = lines(row.detail, width - 48, row.projection ? 11 * 0.62 : 12);
+    const barY = 34 + (detail.length - 1) * 14;
     const result = { row, detail, barY, y };
-    y += barY + 50;
+    // Keep existing fonts/bars. Only configured Lens plates use the otherwise empty row padding.
+    y += row.projection === 'warning' ? detail.length * 13 + 2 : row.projection === 'summary'
+      ? 44 + (detail.length - 1) * 13 : barY + (hasLens ? 38 : 50);
     return result;
   });
   const height = y + 42;
@@ -217,6 +238,15 @@ function renderRows(model: CoverageModel, context: RenderContext, a: { title: st
   for (const { row, detail, barY, y: top } of placed) {
     const known = 'observed' in row.coverage, ink = known ? theme.text : theme.muted;
     output += `<g id="${sceneElementId(context, `row-${row.id}`)}" transform="translate(24 ${top})"><title>${escapeXml(`${row.label}: ${row.detail}`)}</title>`;
+    if (row.projection) {
+      if (row.projection === 'summary') output += text(0, 14, row.label, theme.muted, 13);
+      detail.forEach((line, i) => {
+        const baseline = (row.projection === 'warning' ? 11 : 30) + 13 * i;
+        output += text(0, baseline, line, theme.muted, 11, Number((line.length * 11 * 0.62).toFixed(3)));
+      });
+      output += '</g>';
+      continue;
+    }
     output += text(0, 14, row.label, ink, 13);
     detail.forEach((line, i) => { output += text(0, 30 + 14 * i, line, ink, 12); });
     output += row.id === 'snapshot'
@@ -237,7 +267,7 @@ function renderRows(model: CoverageModel, context: RenderContext, a: { title: st
 export const evidenceCoverageScene: SceneDefinition<CoverageModel> = {
   id: 'evidence-coverage', family: 'instrument', budget: 'instrument',
   supportedPacks: ['survey'], supportedMotion: ['none', 'subtle', 'ambient'],
-  buildModel: ({ snapshot }) => buildCoverage(snapshot),
+  buildModel: ({ snapshot, lens }) => buildCoverage(snapshot, lens),
   accessibility,
   render: (model, context) => renderRows(model, context, accessibility(model)),
   renderUnavailable: (_state, context, a) => renderRows({ synthetic: false, rows: unavailableRows() }, context, a, true),
