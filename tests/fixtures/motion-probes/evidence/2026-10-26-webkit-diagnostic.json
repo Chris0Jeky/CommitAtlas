@@ -1,0 +1,506 @@
+{
+  "kind": "bounded-webkit-seven-row-diagnostic",
+  "status": "partial",
+  "executionCommit": "662097de1cf7d581055de0e39286c483df76e76a",
+  "workflowRun": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40265885569",
+  "artifactId": 12626018547,
+  "artifactZipSha256": "3a615edd6047a0062b3864dc0de9dae36cff5379a1971d416639d6d2bf0f84f3",
+  "partialReportSha256": "91fcc8a2dcb2bb14428c0c00b81679db5f33e45882f75b06739c01f8e56ad7cf",
+  "browser": {
+    "engine": "webkit",
+    "version": "26.0",
+    "playwright": "1.57.0"
+  },
+  "scratchCommit": "039a0370b1a52fb6135e4414e04a11bff7ba21d0",
+  "plannedRows": 7,
+  "acceptedDiscoveries": 7,
+  "completedRows": 3,
+  "unfilteredMatrixUnlocked": false,
+  "retryPerformed": false,
+  "failure": {
+    "message": "css-enter 250 ms capture missed its 440 ms observation window (447.0 ms at completion)",
+    "targetTimeMs": 250,
+    "maximumCompletionTimeMs": 440,
+    "reportedCompletionTimeMs": 447,
+    "rowIdentity": "webkit|worker-camo|css-enter|img|no-preference",
+    "rowIdentityBasis": "plan order and rejected-row artifact directory; the raw partial report did not persist a structured failed-row record",
+    "timingBoundary": "reported browser completion includes screenshot(path) file writing, a same-node check and a later separate clock read; exact screenshot completion was not isolated"
+  },
+  "discoveries": [
+    {
+      "identity": "webkit|github-raw-relative|css-enter|img|no-preference",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "expectedBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+    },
+    {
+      "identity": "webkit|github-raw-relative|css-enter|picture|no-preference",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "expectedBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+    },
+    {
+      "identity": "webkit|worker-camo|css-enter|img|no-preference",
+      "currentSrc": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonical": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "expectedBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+    },
+    {
+      "identity": "webkit|worker-camo|css-enter|picture|no-preference",
+      "currentSrc": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+      "canonical": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/43f235d11ec032c33ea15558f4bfe949c7c65e099171a92db370c4a7ad3ee547/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f6373732d656e7465722e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+      },
+      "expectedBodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945"
+    },
+    {
+      "identity": "webkit|known-positive-control|positive-control|img|no-preference",
+      "currentSrc": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+      "canonical": "https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2500&pause=500&color=22C55E&width=435&lines=CommitAtlas%20motion%20probe%20control",
+      "dimensions": {
+        "natural": {
+          "width": 435,
+          "height": 50
+        },
+        "rendered": {
+          "width": 435,
+          "height": 50
+        }
+      },
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/336a96813c6f3c22b6a3d577fd7a50526a2d1f447601e0a67f4780926f0c2c8d/68747470733a2f2f726561646d652d747970696e672d7376672e64656d6f6c61622e636f6d3f666f6e743d466972612b436f64652673697a653d3230266475726174696f6e3d323530302670617573653d35303026636f6c6f723d3232433535452677696474683d343335266c696e65733d436f6d6d697441746c61732532306d6f74696f6e25323070726f6265253230636f6e74726f6c",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "0c6e59bee5ca903605129934236aa54eb1e147fff8ab38f23abf86d00dea1146"
+      },
+      "expectedBodySha256": null
+    },
+    {
+      "identity": "webkit|github-raw-relative|css-breathe|picture|reduce",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://raw.githubusercontent.com/Chris0Jeky/commitatlas-motion-probes/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+        "status": 200,
+        "contentType": "image/svg+xml",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "expectedBodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+    },
+    {
+      "identity": "webkit|worker-camo|css-breathe|picture|reduce",
+      "currentSrc": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+      "canonical": "https://commit-atlas.commit-atlas.workers.dev/api/v1/probes/motion/reduced-motion-control.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "finalResponse": {
+        "url": "https://camo.githubusercontent.com/768dedcb0c782152b633f1c70ecdfa5d3a1340493a715ebf1ac083f0a725804a/68747470733a2f2f636f6d6d69742d61746c61732e636f6d6d69742d61746c61732e776f726b6572732e6465762f6170692f76312f70726f6265732f6d6f74696f6e2f726564756365642d6d6f74696f6e2d636f6e74726f6c2e737667",
+        "status": 200,
+        "contentType": "image/svg+xml; charset=utf-8",
+        "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+      },
+      "expectedBodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55"
+    }
+  ],
+  "rows": [
+    {
+      "identity": "webkit|github-raw-relative|css-enter|img|no-preference",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+      "requestGate": {
+        "targetUrl": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "interceptionCount": 1,
+        "loadTimestampMs": 2510,
+        "loadToFirstFrameMs": 48,
+        "loadToFirstFrameCompleteMs": 202
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 48,
+          "completedTimeMs": 202,
+          "path": "webkit/github-raw-relative--img--css-enter--no-preference/0.png",
+          "sha256": "8a158bca9f2666bda84c287c38a87a2fbd4952aec12dd6a77992eafad11ee404"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 251,
+          "completedTimeMs": 392,
+          "path": "webkit/github-raw-relative--img--css-enter--no-preference/250.png",
+          "sha256": "f894db30c77b593342a8ff015953425cd86e90b54038d86edddd5d7670509321"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 502,
+          "completedTimeMs": 647,
+          "path": "webkit/github-raw-relative--img--css-enter--no-preference/500.png",
+          "sha256": "3a8df306434383b33bc27feee535f5992f7be42142a80c26da7c1f86ed9a7e9e"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2002,
+          "completedTimeMs": 2149,
+          "path": "webkit/github-raw-relative--img--css-enter--no-preference/2000.png",
+          "sha256": "3a8df306434383b33bc27feee535f5992f7be42142a80c26da7c1f86ed9a7e9e"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5002,
+          "completedTimeMs": 5148,
+          "path": "webkit/github-raw-relative--img--css-enter--no-preference/5000.png",
+          "sha256": "3a8df306434383b33bc27feee535f5992f7be42142a80c26da7c1f86ed9a7e9e"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 48,
+          "toActualMs": 251,
+          "changedPixels": 4859,
+          "totalChannelDelta": 1937160
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 251,
+          "toActualMs": 502,
+          "changedPixels": 1368,
+          "totalChannelDelta": 340444
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 502,
+          "toActualMs": 2002,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2002,
+          "toActualMs": 5002,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5149,
+        "path": "webkit/github-raw-relative--img--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 203926,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "dc820770e74d04f868a29544ab4e2877884bf129b57cd3d5eae382deb92ec269"
+      }
+    },
+    {
+      "identity": "webkit|github-raw-relative|css-enter|picture|no-preference",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "bodySha256": "85547254f52197d041123066c90d5df84d259dde67c9502473ce247a71c03945",
+      "requestGate": {
+        "targetUrl": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/css-enter.svg",
+        "interceptionCount": 1,
+        "loadTimestampMs": 2391,
+        "loadToFirstFrameMs": 44,
+        "loadToFirstFrameCompleteMs": 191
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 44,
+          "completedTimeMs": 191,
+          "path": "webkit/github-raw-relative--picture--css-enter--no-preference/0.png",
+          "sha256": "c8a40cbd1697a58131afaa5b18052526cc5ee675675d24e501098d9d0f39dfd5"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 252,
+          "completedTimeMs": 392,
+          "path": "webkit/github-raw-relative--picture--css-enter--no-preference/250.png",
+          "sha256": "46ba143e44ee24082e10dcf0e01404beb39c96dab0aa380cc2af08c45f55d176"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 502,
+          "completedTimeMs": 641,
+          "path": "webkit/github-raw-relative--picture--css-enter--no-preference/500.png",
+          "sha256": "a2fbce3aa13a7a432147cf1749b4ce25868c925669c2887e0db0f29898695b07"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 1999,
+          "completedTimeMs": 2149,
+          "path": "webkit/github-raw-relative--picture--css-enter--no-preference/2000.png",
+          "sha256": "a2fbce3aa13a7a432147cf1749b4ce25868c925669c2887e0db0f29898695b07"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5001,
+          "completedTimeMs": 5136,
+          "path": "webkit/github-raw-relative--picture--css-enter--no-preference/5000.png",
+          "sha256": "a2fbce3aa13a7a432147cf1749b4ce25868c925669c2887e0db0f29898695b07"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 44,
+          "toActualMs": 252,
+          "changedPixels": 5394,
+          "totalChannelDelta": 2141585
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 252,
+          "toActualMs": 502,
+          "changedPixels": 1370,
+          "totalChannelDelta": 340535
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 502,
+          "toActualMs": 1999,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 1999,
+          "toActualMs": 5001,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "animates",
+      "video": {
+        "measuredVisibleDurationMs": 5139,
+        "path": "webkit/github-raw-relative--picture--css-enter--no-preference/motion.webm",
+        "fileSizeBytes": 201406,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "e3465635c2a2bd9cd6b68692cf9bdd03269c494681be1f742b94b953a99cb25d"
+      }
+    },
+    {
+      "identity": "webkit|github-raw-relative|css-breathe|picture|reduce",
+      "currentSrc": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "canonical": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+      "dimensions": {
+        "natural": {
+          "width": 400,
+          "height": 133
+        },
+        "rendered": {
+          "width": 400,
+          "height": 133.328125
+        }
+      },
+      "bodySha256": "b8f50223b290a601dd04ab87c4620bedfadea238c748401cf46400aa3ab28d55",
+      "requestGate": {
+        "targetUrl": "https://github.com/Chris0Jeky/commitatlas-motion-probes/raw/039a0370b1a52fb6135e4414e04a11bff7ba21d0/tests/fixtures/motion-probes/reduced-motion-control.svg",
+        "interceptionCount": 1,
+        "loadTimestampMs": 2158,
+        "loadToFirstFrameMs": 56,
+        "loadToFirstFrameCompleteMs": 215
+      },
+      "frames": [
+        {
+          "targetTimeMs": 0,
+          "actualTimeMs": 56,
+          "completedTimeMs": 215,
+          "path": "webkit/github-raw-relative--picture--css-breathe--reduce/0.png",
+          "sha256": "c7f285d79e858a1966d2b0fd43b219fa9f573534d8c40a6eaf0592a45ddcb58c"
+        },
+        {
+          "targetTimeMs": 250,
+          "actualTimeMs": 252,
+          "completedTimeMs": 392,
+          "path": "webkit/github-raw-relative--picture--css-breathe--reduce/250.png",
+          "sha256": "c7f285d79e858a1966d2b0fd43b219fa9f573534d8c40a6eaf0592a45ddcb58c"
+        },
+        {
+          "targetTimeMs": 500,
+          "actualTimeMs": 501,
+          "completedTimeMs": 653,
+          "path": "webkit/github-raw-relative--picture--css-breathe--reduce/500.png",
+          "sha256": "c7f285d79e858a1966d2b0fd43b219fa9f573534d8c40a6eaf0592a45ddcb58c"
+        },
+        {
+          "targetTimeMs": 2000,
+          "actualTimeMs": 2002,
+          "completedTimeMs": 2148,
+          "path": "webkit/github-raw-relative--picture--css-breathe--reduce/2000.png",
+          "sha256": "c7f285d79e858a1966d2b0fd43b219fa9f573534d8c40a6eaf0592a45ddcb58c"
+        },
+        {
+          "targetTimeMs": 5000,
+          "actualTimeMs": 5002,
+          "completedTimeMs": 5151,
+          "path": "webkit/github-raw-relative--picture--css-breathe--reduce/5000.png",
+          "sha256": "c7f285d79e858a1966d2b0fd43b219fa9f573534d8c40a6eaf0592a45ddcb58c"
+        }
+      ],
+      "differences": [
+        {
+          "fromTargetMs": 0,
+          "toTargetMs": 250,
+          "fromActualMs": 56,
+          "toActualMs": 252,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 250,
+          "toTargetMs": 500,
+          "fromActualMs": 252,
+          "toActualMs": 501,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 500,
+          "toTargetMs": 2000,
+          "fromActualMs": 501,
+          "toActualMs": 2002,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "fromTargetMs": 2000,
+          "toTargetMs": 5000,
+          "fromActualMs": 2002,
+          "toActualMs": 5002,
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "verdict": "frozen at frame zero",
+      "video": {
+        "measuredVisibleDurationMs": 5152,
+        "path": "webkit/github-raw-relative--picture--css-breathe--reduce/motion.webm",
+        "fileSizeBytes": 186353,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "fb2996f2eebcf7560b937f34575bb4411e152463fd2cc05b35dfafa31161d779"
+      }
+    }
+  ],
+  "limits": [
+    "Only three GitHub-raw rows completed; no Camo or positive-control recording verdict was accepted.",
+    "The original full seven-row completion validator rejects this partial report.",
+    "No unfiltered matrix or backend decision is authorized by this partial receipt.",
+    "WebM magic, bytes and hashes were verified; media-container duration was not parsed."
+  ],
+  "acceptedArtifactAggregateSha256": "f801f8fdcacc5fc10eb9d875b0d75515a6704208d5e76fd9efefd4e55699a95f"
+}
