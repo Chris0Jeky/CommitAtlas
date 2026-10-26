@@ -62,6 +62,32 @@ test("the harness does not swallow another cloudflare protocol import", async ()
   );
 });
 
+test("the image optimizer rejects remote and recursive targets before the asset binding", async () => {
+  const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url).href);
+  const targets = [
+    "https://example.invalid/pixel.png",
+    "//example.invalid/pixel.png",
+    "/\\example.invalid/pixel.png",
+    "\\\\example.invalid/pixel.png",
+    "/local/..//example.invalid/pixel.png",
+    "data:image/png;base64,AAAA",
+    "/_vinext/image?url=/opengraph.png",
+    "/_next/image?url=/opengraph.png",
+    "/%5Fnext/image?url=/opengraph.png",
+  ];
+  const assetRequests = [];
+  for (const target of targets) {
+    const query = new URLSearchParams({ url: target, w: "640", q: "75" });
+    const response = await worker.fetch(
+      new Request(`http://localhost/_vinext/image?${query}`),
+      { ASSETS: { async fetch(request) { assetRequests.push(request.url); return new Response("unexpected"); } } },
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(response.status, 400, target);
+  }
+  assert.deepEqual(assetRequests, [], "invalid image targets must never reach ASSETS");
+});
+
 for (const failure of ["synchronous fetch", "rejected fetch", "fallback refetch"]) {
   test(`the image optimizer bounds a ${failure} failure`, async () => {
     const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url).href);

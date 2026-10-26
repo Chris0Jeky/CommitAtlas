@@ -9,6 +9,14 @@ const client = new GitHubClient();
 const contributions = await client.fetchPublicProfileContributions("octocat", 365);
 ```
 
+Every public `GitHubClient` fetch method validates identifiers before sending any request, including token
+scope checks. Invalid identifiers reject with `InputError` (`code: "invalid_input"`), which hosted
+routes return as HTTP 400. Handles and repository names are trimmed while preserving their casing;
+valid `.git` suffixes remain part of the repository name. A nonempty project list accepts up to six
+distinct repository names, compared case-insensitively. An empty list still returns an empty board
+for a valid owner. The exported `parseRepositoryNames` accepts either CSV or an array; array entries
+are individual names, so an embedded comma is invalid.
+
 The logged-out public-profile path sends no credential, requires a complete daily window, and labels
 GitHub's public activity mix as percentages. Token-backed request-time routes are a separate API and
 require positive public-only classic OAuth scope evidence before resource lookup.

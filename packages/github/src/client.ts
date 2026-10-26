@@ -23,7 +23,10 @@ import type {
   ProjectWorkflow,
 } from "./types.js";
 import {
+  InputError,
   isRecord,
+  parseGitHubHandle,
+  parseRepositoryNames,
   safeHttpsUrl,
   stringField as rawStringField,
 } from "./validation.js";
@@ -90,6 +93,7 @@ export class GitHubClient {
   }
 
   async fetchProfile(login: string): Promise<ProfileSnapshot> {
+    login = parseGitHubHandle(login);
     const [user, repositories] = await Promise.all([
       this.getJson(`/users/${encodeURIComponent(login)}`),
       this.getJson(`/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100`),
@@ -159,6 +163,7 @@ export class GitHubClient {
   }
 
   async fetchContributions(login: string, days: number | "auto" = 365): Promise<ContributionSnapshot> {
+    login = parseGitHubHandle(login);
     if (!this.token) {
       throw new GitHubApiError(
         "token_required",
@@ -280,6 +285,7 @@ export class GitHubClient {
    * percentage mix published by that view, not a fabricated exact count.
    */
   async fetchPublicProfileContributions(login: string, days: number | "auto" = 365): Promise<ContributionSnapshot> {
+    login = parseGitHubHandle(login);
     const requestedDays = days === "auto" ? AUTO_WINDOW_DAYS : Math.min(Math.max(days, 1), 730);
     const to = this.now();
     const toDate = to.toISOString().slice(0, 10);
@@ -370,6 +376,9 @@ export class GitHubClient {
     lifecycles: ReadonlyMap<string, ProjectLifecycle>,
     workflows: ReadonlyMap<string, ProjectWorkflow> = new Map(),
   ): Promise<ProjectBoardSnapshot> {
+    owner = parseGitHubHandle(owner, "owner");
+    if (!Array.isArray(repositories)) throw new InputError("repos must be an array of repository names");
+    repositories = repositories.length > 0 ? parseRepositoryNames(repositories) : [];
     for (const repository of repositories) {
       const lifecycle = lifecycles.get(repository.toLowerCase());
       if (!lifecycle) {
