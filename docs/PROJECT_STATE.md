@@ -210,6 +210,17 @@ boundary.
   rows. The needle remains fixed at its true reading. The structural regressions and actual
   browser receipt in [CHRONOGRAPH_EVIDENCE.md](./CHRONOGRAPH_EVIDENCE.md) complete #344. The separate
   GitHub raw/Camo matrix remains open.
+- **Identity Beacon text bounds and direct-image playback are qualified.** Its complete bounded
+  identity text, matched bodies and unmatched focus labels fit both widths under the measured
+  native/serif/monospace substitutions. Static focus labels are associated with the complete
+  configured repository identity without renaming shared card/scene inputs. The
+  [receipt](./IDENTITY_BEACON_EVIDENCE.md) records 864
+  geometry cases and 20 CSS/SMIL playback/control rows at requested 0/2/6-second offsets, with
+  actual observation times. Cinematic acquisition and body entry run once, followed by a delayed
+  12-second beam cycle; the whole introduction does not restart each cycle. Reduced controls use
+  explicit picture/none twins, not a claimed direct-CSS image media-query result. This completes
+  the clarified #134 scene acceptance without qualifying profile adoption or the #113 transport
+  matrix.
 - **Signature scenes remain open; the C0 projection reader is implemented.** The engine accepts
   immutable producer-validated C0 projections with snapshot-clock freshness, as well as its legacy
   synthetic common context. Evidence Coverage consumes the full context's synthetic derived score,

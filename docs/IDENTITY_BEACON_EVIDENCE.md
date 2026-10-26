@@ -1,9 +1,41 @@
 # Identity Beacon browser qualification
 
-This receipt advances [#134](https://github.com/Chris0Jeky/CommitAtlas/issues/134) with synthetic
-local-browser geometry and direct SVG image playback. It does not qualify GitHub raw/Camo,
-profile adoption, hosted identity inputs or a final motion backend. The clean-source hosted
-repeat and repository integration gate remain the publication checks for this patch.
+The clarified static-scene acceptance for [#134](https://github.com/Chris0Jeky/CommitAtlas/issues/134)
+is qualified by the clean-source browser receipt below and the static configuration regressions.
+The scope is synthetic text geometry and direct SVG-image playback. GitHub raw/Camo, profile
+adoption, hosted identity inputs and a final motion backend remain separate decisions and checks.
+
+## Clean-source hosted receipt
+
+[Run 40272735298](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40272735298) at
+`9f44d15c66ea50dc9a7629fc7a4f0a90aad40434` passed with Playwright 1.57.0 and its explicitly selected
+Chromium 143.0.7499.4 binary. The source checkout was clean and no private fontconfig override
+was active. All **864 geometry cases** passed, including 288 adaptive wide-layout cases; the
+maximum frame height was 974px. All **20 playback rows** passed: eight ambient/cinematic rows
+changed pixels, while twelve none/stale/picture-none controls stayed unchanged. The wide timed
+rows include the mixed emoji/Latin label that exposed the earlier body-slot defect.
+
+The [tracked receipt](../tests/fixtures/identity-beacon/evidence/2026-10-26-browser.json) retains
+all 14 recorded source hashes, frame times, pixel differences and media hashes. Independent
+verification rechecked the complete geometry matrix, all 60 PNG hashes and dimensions, 44 decoded
+pixel comparisons, and all 20 WebM hashes, sizes and magic bytes. The source and still SVG hashes
+also match the independently reviewed controlled local run. Actual frame-completion lateness
+was at most 292.1ms; requested zero is still not an exact animation-frame-zero observation.
+WebM container duration was not parsed, so only the recorded capture interval and file integrity
+are claimed.
+
+The [quality gate on the same code head](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40272741155)
+passed 2,029 tests with no failures or skips, including 671 SVG and 356 static tests, and verified
+the rebuilt Action against its committed bundle. Production dependency auditing found zero
+vulnerabilities. Its actual tested merge `edf1d504de6aee3b62d71c4a89be00ce3f0d7336` has parents
+`20bb165bc10bd3a707ab1f3e6370036a049df724` and the code head above, with the same
+`830a414b2360b6821da704b4570ff0a406e9befe` tree.
+
+The raw artifact is `12628053870`, ZIP SHA-256
+`6c85bc09153de1efa767b10545bbb67a142de51d992b7a348f62a2f62a6b4dde`; its report SHA-256 is
+`35bc0d070ecfd93bf158fbfb85688ef69279f9ee19a47d52157a04a6c99ee703`.
+Actions retains raw captures until November 9, 2026; the compact receipt is committed. The earlier
+failed clean run remains recorded below and is not relabelled as passing.
 
 ## Measured defects and bounded repair
 

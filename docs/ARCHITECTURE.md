@@ -272,8 +272,13 @@ twin cannot approve an unseen animated configuration for Markdown.
 
 The [backend defaults and budget classes](../packages/svg/src/motion/profile.ts) remain explicitly
 provisional. The complete browser/host/embed matrix (#113, with #180's WebKit diagnostic) and
-measured render-cost budgets (#114) remain open. Identity Beacon (#134) still needs its timed visual
-acceptance; #141 retains production and README round-trip qualification. Chronograph's Unicode
+measured render-cost budgets (#114) remain open. #141 retains production and README round-trip
+qualification. Identity Beacon's bounded text layout and direct-image playback (#134) are qualified
+by [864 geometry cases and 20 CSS/SMIL rows](./IDENTITY_BEACON_EVIDENCE.md), including explicit
+picture/none reduced-motion twins. Its one-shot introduction and delayed 12-second beam cycle
+remain distinct from the original proposal to repeat the complete introduction. The 0/2/6-second
+observations do not qualify a 45-second termination boundary or direct-CSS reduced-motion image
+behavior. Chronograph's Unicode
 layout and CSS/SMIL playback acceptance (#344) is complete: the
 [source-bound receipt](./CHRONOGRAPH_EVIDENCE.md) records 576 browser-measured layouts, six
 playback/control rows and the 46-second return to the canonical still reading. That qualification

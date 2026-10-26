@@ -151,11 +151,17 @@ and budgets are explicitly provisional pending #113/#114, not proof of browser p
 | `none` | No keyframes, no `<animate*>`, no `<style>` | everywhere | The reduced-motion twin of every other profile; byte-for-byte the geometry of frame zero |
 | `subtle` | One-shot entrance only, ≤ 0.6s, transform-only | everywhere | Today's behaviour, kept for compatibility, unchanged: the whole-render guard from commit `16bc4e0` (no `both`/`backwards`, no opacity or scale `from` states) stays exactly as it is for this profile |
 | `ambient` | Indefinitely repeating slow textures: breathe, scan, orbit, plotter glint, particle drift, pending pulse | hosted + static | Web and Studio may loop indefinitely; the `github-readme` target uses the bounded interval in D-15 |
-| `cinematic` | A 10–20s repeating sequence: acquisition → nodes appear → scan → plot → rest → reset | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments; the `github-readme` target uses the bounded interval in D-15 |
+| `cinematic` | Scene-defined acquisition/entry followed by decorative motion; Identity Beacon uses one-shot entry and a delayed 12-second beam cycle | static only in Phase 1; hosted after budgets are measured | Hero scenes only, never small instruments; the `github-readme` target uses the bounded interval in D-15 |
 
 Hosted card/scene queries already accept `none|subtle|ambient`; static config accepts all four
 profiles. A scene must also support the selected profile. Current hosted scenes use SMIL through
 the provisional `github-readme` default; their CSP uses the renderer's actual inline-style flag.
+
+The October 26 Identity Beacon scope clarification (#134) retains a completed, readable identity
+after its one-shot introduction. It deliberately does not implement the original proposal to
+restart the complete acquisition/entry sequence every 10–20 seconds. Only the decorative beam
+repeats, within the existing 45-second README policy. The scene's 0/2/6-second browser receipt
+qualifies those sampled intervals, not the 45-second termination boundary.
 
 ### 5.2 Two backends, one primitive API
 
@@ -306,7 +312,7 @@ its browser behavior verified.
 | --- | --- | --- | --- | --- |
 | *(atlas, ambient)* | instrument | existing `AtlasCardData` | M3 density scan / M6 survey beam, M4 reticle breathe | Open #126; current cards retain compatibility motion |
 | *(standalone cards, ambient)* | instrument | existing card data | one texture each: plotter head (activity), needle settle (rhythm), pending pulse (projects), beam (profile) | Open under #111; each card keeps its exact geometry |
-| `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / matched project bodies breathing | Implemented #134, static-only; bounded identity is required; `none`, `ambient`, `cinematic` |
+| `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / matched project bodies breathing | Qualified #134, static-only; bounded identity and up to three matched bodies; `none`, `ambient`, `cinematic`. [Receipt](./IDENTITY_BEACON_EVIDENCE.md): 864 measured layouts and 20 CSS/SMIL playback/control rows; one-shot cinematic introduction with a delayed 12-second beam cycle; #113 transport remains separate |
 | `evidence-coverage` | instrument | contribution source and basis, per-project CI state, `releaseState`, freshness mode | scan illuminates available rows and leaves unavailable rows dark | Implemented #133, hosted + static; observed coverage and neutral unavailable rows |
 | `activity-terrain` | map | contribution days, releases, streaks | survey line traverses the contours | Implemented #135, hosted + static; weekly activity → elevation, latest-release markers; no complete release-history claim |
 | `chronograph` | map | contribution days, releases, streak | decorative rings turn at different rates; needle stays at the true streak angle | Implemented #136 scene, hosted + static. #344 is qualified by 576 measured layouts and six timed CSS/SMIL playback/control rows; see [receipt](./CHRONOGRAPH_EVIDENCE.md). Periods are 666/4662/19980 ms; each release keeps a numbered marker/legend row. Needle settle is deliberately absent to preserve the true reading; #113 transport qualification remains separate |
