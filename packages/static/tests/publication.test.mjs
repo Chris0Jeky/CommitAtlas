@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { symlinkSync } from "node:fs";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { link, lstat, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -174,6 +174,133 @@ test("keeps previous payload bytes with the ownership record when cleanup is int
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("modified stale fixed cards and scenes block publication before either theme changes", async t => {
+  for (const name of ["projects.svg", "scene-evidence-coverage.svg"]) {
+    for (const change of ["same-size", "appended"]) await t.test(`${name}: ${change}`, async t => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-content-"));
+      t.after(() => rm(root, { recursive: true, force: true }));
+      const themes = [{ theme: "paper", outputDir: "assets/commitatlas/light" }];
+      const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(), config: staticConfig({
+        cards: ["atlas", "projects"], scenes: ["evidence-coverage"], themes,
+      }) });
+      const outputs = [first.outputDir, first.variants[0].outputDir];
+      const before = new Map();
+      for (const output of outputs) {
+        for (const entry of await readdir(output)) {
+          const file = path.join(output, entry);
+          if ((await lstat(file)).isFile()) before.set(file, await readFile(file));
+        }
+      }
+      const changedFile = path.join(outputs[1], name);
+      const original = before.get(changedFile);
+      const changed = change === "appended" ? Buffer.concat([original, Buffer.from("caller changes")]) : Buffer.from(original);
+      if (change === "same-size") changed[0] ^= 1;
+      await writeFile(changedFile, changed);
+      before.set(changedFile, changed);
+
+      await assert.rejects(generateStaticFromSnapshot({ root, snapshot: portfolio("A changed Octocat"),
+        config: staticConfig({ cards: ["atlas"], themes }),
+      }), /stale artifact.*changed|no longer matches/i);
+      for (const [file, body] of before) assert.deepEqual(await readFile(file), body, file);
+      for (const output of outputs) await assertNoStagedFiles(output);
+    });
+  }
+});
+
+test("stale cleanup preserves caller replacements that are links instead of owned files", async t => {
+  for (const kind of ["symlink", "hardlink"]) await t.test(kind, async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-link-"));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(),
+      config: staticConfig({ cards: ["atlas", "projects"] }),
+    });
+    const stale = path.join(first.outputDir, "projects.svg");
+    const body = await readFile(stale);
+    const manifest = await readFile(path.join(first.outputDir, "manifest.json"));
+    const atlas = await readFile(path.join(first.outputDir, "atlas.svg"));
+    const caller = path.join(root, "caller-owned.svg");
+    await writeFile(caller, body); // Matching content must not authorize deleting a substituted link.
+    await rm(stale);
+    if (kind === "hardlink") await link(caller, stale);
+    else {
+      try { await symlink(caller, stale, "file"); }
+      catch (error) {
+        if (process.platform === "win32" && error.code === "EPERM") {
+          t.skip("Creating file symlinks requires Windows developer mode or elevation");
+          return;
+        }
+        throw error;
+      }
+    }
+    await assert.rejects(generateStaticFromSnapshot({ root, snapshot: portfolio("A changed Octocat"),
+      config: staticConfig({ cards: ["atlas"] }),
+    }), /regular|link|stale artifact/i);
+    assert.deepEqual(await readFile(caller), body);
+    assert.deepEqual(await readFile(stale), body);
+    assert.equal((await lstat(stale)).isSymbolicLink(), kind === "symlink");
+    assert.deepEqual(await readFile(path.join(first.outputDir, "manifest.json")), manifest);
+    assert.deepEqual(await readFile(path.join(first.outputDir, "atlas.svg")), atlas);
+    await assertNoStagedFiles(first.outputDir);
+  });
+});
+
+test("legacy or malformed fixed-artifact integrity never authorizes stale deletion", async t => {
+  for (const proof of [{}, { bytes: 5 }, { sha256: "a".repeat(64) },
+    { bytes: -1, sha256: "a".repeat(64) }, { bytes: 5, sha256: "invalid" },
+    { bytes: 1024 * 1024, sha256: "a".repeat(64) }]) await t.test(JSON.stringify(proof), async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-legacy-"));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(), config: staticConfig({ cards: ["atlas"] }) });
+    const stale = path.join(first.outputDir, "projects.svg");
+    await writeFile(stale, "caller-owned legacy contents");
+    await writeFile(path.join(first.outputDir, "manifest.json"), JSON.stringify({
+      ...first.manifest, artifacts: [...first.manifest.artifacts, { path: "projects.svg", ...proof }],
+    }));
+    const next = await generateStaticFromSnapshot({ root, snapshot: portfolio("A changed Octocat"),
+      config: staticConfig({ cards: ["atlas"] }),
+    });
+    assert.equal(await readFile(stale, "utf8"), "caller-owned legacy contents");
+    assert.ok(!next.manifest.artifacts.some(artifact => artifact.path === "projects.svg"));
+    assert.match(await readFile(path.join(first.outputDir, "atlas.svg"), "utf8"), /A changed Octocat/);
+    await assertNoStagedFiles(first.outputDir);
+  });
+});
+
+test("duplicate ownership claims disable cleanup instead of selecting a convenient proof", async t => {
+  for (const kind of ["conflicting", "name-only"]) await t.test(kind, async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-duplicate-"));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(),
+      config: staticConfig({ cards: ["atlas", "projects"] }),
+    });
+    const proof = first.manifest.artifacts.find(artifact => artifact.path === "projects.svg");
+    const duplicate = kind === "conflicting" ? { ...proof, sha256: "a".repeat(64) } : { path: proof.path };
+    await writeFile(path.join(first.outputDir, "manifest.json"), JSON.stringify({
+      ...first.manifest, artifacts: [duplicate, ...first.manifest.artifacts],
+    }));
+    const before = new Map();
+    for (const name of ["projects.svg", "projects.json", "projects.md"]) {
+      before.set(name, await readFile(path.join(first.outputDir, name)));
+    }
+    await generateStaticFromSnapshot({ root, snapshot: portfolio("A changed Octocat"),
+      config: staticConfig({ cards: ["atlas"] }),
+    });
+    for (const [name, body] of before) assert.deepEqual(await readFile(path.join(first.outputDir, name)), body);
+    await assertNoStagedFiles(first.outputDir);
+  });
+});
+
+test("missing stale files do not prevent cleanup of unchanged managed artifacts", async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-missing-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(), config: staticConfig({
+    cards: ["atlas", "projects"], scenes: ["evidence-coverage"],
+  }) });
+  await rm(path.join(first.outputDir, "projects.svg"));
+  await generateStaticFromSnapshot({ root, snapshot: portfolio("A changed Octocat"), config: staticConfig({ cards: ["atlas"] }) });
+  assert.deepEqual((await readdir(first.outputDir)).sort(), ["atlas.svg", "manifest.json"]);
 });
 
 async function assertNoStagedFiles(outputDir) {

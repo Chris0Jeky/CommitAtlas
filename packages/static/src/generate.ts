@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { SCENE_MOTION_BUDGET } from "@commit-atlas/svg";
 import {
@@ -31,8 +32,8 @@ const MANIFEST_NAME = "manifest.json";
  *
  * Reserving a name is not on its own a licence to delete it. Membership here only makes a file
  * *eligible* for stale-artifact cleanup; a file is actually removed only when the previous
- * `manifest.json` in the same directory records CommitAtlas as its writer (see `previouslyWritten`),
- * so an unrelated pre-existing file a caller had before ever running CommitAtlas survives.
+ * `manifest.json` in the same directory records CommitAtlas as its writer and its integrity
+ * entry matches the current file (see `previouslyWritten` and `verifyStaleArtifacts`).
  */
 const MANAGED_ARTIFACT_NAMES = [
   ...STATIC_CARD_NAMES.map((card) => `${card}.svg`),
@@ -313,7 +314,7 @@ interface PreparedArtifacts {
   readonly outputDir: string;
   readonly payloads: readonly StagedFile[];
   readonly manifest: StagedFile;
-  readonly stale: readonly string[];
+  readonly stale: readonly GeneratedArtifact[];
 }
 
 async function publishArtifacts(root: string, targets: readonly StaticWriteTarget[]): Promise<void> {
@@ -329,16 +330,14 @@ async function publishArtifacts(root: string, targets: readonly StaticWriteTarge
     // theme had already committed, so reject the whole publication while only temp files exist.
     for (const target of prepared) await verifyCurrentDestinations(target);
 
-    // Detect a caller-replaced directory before deleting any stale file in any theme. Missing files
-    // are fine (the previous manifest can outlive a manual deletion), while directories are not a
-    // valid CommitAtlas artifact and make non-recursive cleanup fail.
-    for (const target of prepared) await verifyStaleArtifacts(target);
+    // Verify every stale file's kind and current contents before deleting anything in any theme.
+    // Missing files are harmless and are not queued for deletion if a new entry later appears.
+    const staleFiles: string[][] = [];
+    for (const target of prepared) staleFiles.push(await verifyStaleArtifacts(target));
 
     // Cleanup precedes payload installation. The previous manifest therefore remains an honest
     // ownership record if cleanup fails, and no new bytes are exposed under that old manifest.
-    for (const target of prepared) {
-      await Promise.all(target.stale.map((name) => rm(path.join(target.outputDir, name), { force: true })));
-    }
+    for (const files of staleFiles) await Promise.all(files.map((file) => rm(file, { force: true })));
 
     // Each manifest is still the final rename in its directory. All target directories and bytes
     // were successfully staged before this commit phase began, so predictable storage and path
@@ -370,9 +369,9 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
   const owned = await previouslyWritten(target.outputDir);
   const current = new Set(target.payloads.map(({ name }) => name));
   const candidates = new Set<string>([
-    ...MANAGED_ARTIFACT_NAMES, ...[...owned].filter(isSceneArtifactName),
+    ...MANAGED_ARTIFACT_NAMES, ...[...owned.keys()].filter(isSceneArtifactName),
   ]);
-  const stale = [...candidates].filter((name) => !current.has(name) && owned.has(name));
+  const stale = [...candidates].filter((name) => !current.has(name) && owned.has(name)).map((name) => owned.get(name)!);
   const staged: StagedFile[] = [];
   try {
     for (const payload of target.payloads) staged.push(await stage(target.outputDir, payload));
@@ -430,15 +429,45 @@ async function verifyCurrentDestinations(target: PreparedArtifacts): Promise<voi
   }
 }
 
-async function verifyStaleArtifacts(target: PreparedArtifacts): Promise<void> {
-  for (const name of target.stale) {
+async function verifyStaleArtifacts(target: PreparedArtifacts): Promise<string[]> {
+  const verified: string[] = [];
+  for (const artifact of target.stale) {
+    const file = path.join(target.outputDir, artifact.path);
     try {
-      const metadata = await lstat(path.join(target.outputDir, name));
-      if (metadata.isDirectory()) throw new Error(`${name} is a directory, not a managed artifact`);
+      const metadata = await lstat(file);
+      if (metadata.isDirectory()) throw new Error(`${artifact.path} is a directory, not a managed artifact`);
+      if (!metadata.isFile() || metadata.nlink !== 1) throw new Error(`${artifact.path} is not a regular single-link stale artifact`);
+      if (metadata.size !== artifact.bytes) throw new Error(`stale artifact ${artifact.path} no longer matches its prior manifest`);
+      const handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+      try {
+        const opened = await handle.stat();
+        if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== metadata.dev || opened.ino !== metadata.ino || opened.size !== artifact.bytes) {
+          throw new Error(`stale artifact ${artifact.path} changed while opening`);
+        }
+        // Bound reads even if the file grows after stat; one extra byte detects that growth.
+        const body = Buffer.alloc(artifact.bytes + 1);
+        let length = 0;
+        while (length < body.length) {
+          const { bytesRead } = await handle.read(body, length, body.length - length, length);
+          if (bytesRead === 0) break;
+          length += bytesRead;
+        }
+        if (length !== artifact.bytes || createHash("sha256").update(body.subarray(0, length)).digest("hex") !== artifact.sha256) {
+          throw new Error(`stale artifact ${artifact.path} no longer matches its prior manifest`);
+        }
+        const current = await lstat(file);
+        if (!current.isFile() || current.nlink !== 1 || current.dev !== opened.dev || current.ino !== opened.ino || current.size !== artifact.bytes) {
+          throw new Error(`stale artifact ${artifact.path} changed while reading`);
+        }
+      } finally {
+        await handle.close();
+      }
+      verified.push(file);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }
+  return verified;
 }
 
 async function cleanupStaged(files: readonly StagedFile[]): Promise<void> {
@@ -455,38 +484,39 @@ async function stage(
 }
 
 /**
- * Names the previous CommitAtlas manifest in this directory claims to have written.
+ * Integrity-bearing files the previous CommitAtlas manifest claims to have written.
  *
  * Read before the new manifest replaces it, and that replacement is deliberately held back until
  * cleanup has finished, so this record stays recoverable for the whole deletion window.
  * Anything unreadable, non-CommitAtlas, or malformed yields
- * an empty set, so cleanup does nothing rather than guessing — deleting a caller's file is the worse
- * failure than leaving a stale artifact behind. Callers intersect the result with
- * the fixed managed names or canonical, integrity-bearing scene names, never arbitrary paths.
+ * an empty map, so cleanup does nothing rather than guessing. Legacy name-only or invalid
+ * integrity entries cannot prove current contents and are preserved; duplicate paths disable
+ * cleanup entirely. Callers intersect the result with fixed managed or canonical scene names.
  */
-async function previouslyWritten(outputDir: string): Promise<ReadonlySet<string>> {
+async function previouslyWritten(outputDir: string): Promise<ReadonlyMap<string, GeneratedArtifact>> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(path.join(outputDir, MANIFEST_NAME), "utf8"));
   } catch {
-    return new Set();
+    return new Map();
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return new Set();
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return new Map();
   const record = parsed as Partial<StaticManifest>;
-  if (record.version !== 1 || record.generator !== "CommitAtlas" || !Array.isArray(record.artifacts)) return new Set();
-  const names = new Set<string>();
+  if (record.version !== 1 || record.generator !== "CommitAtlas" || !Array.isArray(record.artifacts)) return new Map();
+  const owned = new Map<string, GeneratedArtifact>();
+  const seen = new Set<string>();
   for (const artifact of record.artifacts) {
     const artifactPath: unknown = (artifact as { path?: unknown } | null)?.path;
     if (typeof artifactPath !== "string") continue;
-    // Dynamic scene names require a complete integrity-bearing ownership entry. Existing fixed
-    // card ownership records retain their historical compatibility. Never infer ownership by glob.
-    if (isSceneArtifactName(artifactPath)) {
-      if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > SCENE_MOTION_BUDGET.bytes ||
-        typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;
-    }
-    names.add(artifactPath);
+    if (seen.has(artifactPath)) return new Map();
+    seen.add(artifactPath);
+    const limit = isSceneArtifactName(artifactPath) ? SCENE_MOTION_BUDGET.bytes
+      : artifactPath.endsWith(".svg") ? MAX_ARTIFACT_BYTES : MAX_TEXT_ARTIFACT_BYTES;
+    if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > limit ||
+      typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;
+    owned.set(artifactPath, { path: artifactPath, bytes: artifact.bytes, sha256: artifact.sha256 });
   }
-  return names;
+  return owned;
 }
 
 function resolveAsOf(value: string | undefined): Date {

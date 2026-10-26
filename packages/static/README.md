@@ -77,10 +77,21 @@ equivalent headcount, code quality, effort, or delivered user value.
 `projects.json`, `projects.md`, and `delivery.json` are reserved CommitAtlas-managed names inside
 `outputDir`: a run that selects the corresponding card overwrites whatever sits at those paths, so
 do not keep hand-written files there. Reserving the names does not license deleting them.
-Stale-artifact cleanup removes a known CommitAtlas filename only when the previous `manifest.json`
-in the same directory recorded CommitAtlas as its writer, so a reserved file that predates the first
-run — or any file left by a generator whose manifest CommitAtlas cannot read — is never removed. A
-missing, foreign, or malformed `manifest.json` disables cleanup entirely rather than guessing.
+Stale-artifact cleanup requires the previous v1 `manifest.json` in that directory to identify
+CommitAtlas as the writer and record a valid byte size and SHA-256 for the artifact. The current
+path must be a regular file with one link, and its actual size and digest must match that entry.
+Every theme passes this preflight before any stale deletion or selected-output replacement. Changed
+contents, directories, symlinks, hard links, or other special entries stop publication and preserve
+the previous visible payloads and manifests. A stale file already missing from disk is harmless.
+
+Legacy name-only records and entries with missing or invalid integrity metadata do not authorize
+deletion. Their files stay in place for manual review and cleanup; a new manifest records only the
+newly selected outputs. Missing, foreign, or unreadable manifests and duplicate artifact paths
+disable cleanup entirely. Regenerating a selected artifact still uses the existing overwrite
+contract and records its new size and digest; this cleanup policy does not protect edits to an
+artifact that remains selected. The v1 writer still uses a path-based rename/unlink sequence, so
+changes after preflight can race publication. It does not provide concurrent-writer isolation or
+crash-atomic publication, and it does not activate the test-only v2 store.
 
 Untrusted upstream text — release tags, workflow names, and benchmark presentation text — is escaped
 for its target format. Project Markdown uses delimiter-safe CommonMark code spans: backslash escapes
@@ -119,11 +130,9 @@ smaller manifest.
 
 Config and output paths must remain inside the repository and may not traverse symlinks. Every input,
 metric, render, and output size is validated before staged per-file replacement; unrelated siblings
-remain untouched. After successful replacement, known CommitAtlas filenames that the previous
-manifest recorded and the new manifest no longer lists are removed, so a disabled card or prior
-responsive layout cannot remain stale while an unowned file of the same name survives. The caller
-owns commits and deployment. The package has no private-data mode, hidden token fallback, fixture
-publication mode, or publication side effect.
+remain untouched. Cleanup of disabled cards, scenes, and prior responsive layouts follows the
+manifest and content checks above. The caller owns commits and deployment. The package has no
+private-data mode, hidden token fallback, fixture publication mode, or publication side effect.
 
 ### Test-only v2 control-store lock lifecycle
 
