@@ -1,11 +1,51 @@
 # CommitAtlas project state
 
-Release/deployment receipt last verified: 2026-08-30 (v0.4.0 released, production and profile evidence current at that checkpoint)
+Release/profile receipt last verified: 2026-08-30 (v0.4.0 released, production and profile evidence current at that checkpoint)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Maintenance integration proof — 2026-10-26
+
+The integrated follow-ups in [#434](https://github.com/Chris0Jeky/CommitAtlas/pull/434) and
+[#435](https://github.com/Chris0Jeky/CommitAtlas/pull/435), together with the #423/#427 repairs below,
+pass the complete `npm run check` using hosted CI's exact Node 22.13.0 and npm 10.9.2. The gate
+includes 42 deployment checks, 365 GitHub source/route tests, 651 SVG tests, 313 static tests,
+five Action tests with a clean rebuilt-bundle comparison, 26 packaging checks, and 100 built-product
+tests. Type generation, typecheck, lint and the remaining gate stages also pass.
+
+**Served build identity (#345).** The Worker embeds the validated source checkout SHA and exposes
+`buildSha` from uncached health. The resolver ignores inherited Git repository/config overrides,
+rejects archives and enclosing repositories as identity sources, and supports linked worktrees.
+Runtime SHA claims cannot replace the compiled value. Deployment verification requires the served
+identity to match the expected checkout; standalone status-only checks remain explicit. Comparison
+occurs after upload and does not automatically roll back. HEAD identifies a commit, not uncommitted
+edits. The exact-head hosted [#434 gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40251103221)
+also passes, including 100 product tests, bundle freshness and a zero-vulnerability production audit.
+This source/CI receipt does not establish a live deployment identity or refresh profile adoption.
+
+**Production stale-file protection (#256).** The v1 writer retains the previous manifest's size
+and SHA-256 and checks each stale file's current contents and single-link file identity before any
+theme deletes or replaces published output. Changed bytes or substituted links stop publication.
+Missing files are skipped. Legacy name-only, invalid-integrity and duplicate ownership records
+preserve files; selected current outputs retain their overwrite contract. Fourteen individual
+regressions failed before repair; the repaired publication suite passes 24/24 in both implementation
+and independent review. The Action bundle includes this production repair. The v2 store remains
+test-only; concurrent-writer isolation, path-based race windows, crash atomicity and native Windows
+qualification remain outside this receipt and #256 stays open.
+
+**Studio status correction (#141).** [#336](https://github.com/Chris0Jeky/CommitAtlas/pull/336) already
+extended #334's bounded SVG response and decoded-image approval lifecycle to all eight cards.
+Cards and scenes share reversible global/per-image Replay, Reduced-motion and Frame-zero tools
+and renderer-owned counters. Still views use `motion=none` twins and cannot approve an unseen
+animated configuration. #336 records built-Worker browser evidence at its reviewed head; current
+production qualification and the actual GitHub README round-trip remain under #141. The separate
+#113 raw/Camo matrix remains incomplete. The October 7 receipt below describes its earlier scope.
+
 ## Issue #427 remaining boundaries, verified 2026-10-26
+
+The remaining slice merged in [#433](https://github.com/Chris0Jeky/CommitAtlas/pull/433) (`e32b50e`),
+closing #427 after the full [exact-head hosted gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40250393731).
 
 All four public `GitHubClient` operations validate handles before credential proof or transport.
 Project batches validate their entire dense array before scheduling any request. Valid identifiers
@@ -36,6 +76,10 @@ Its subsequent main-branch CI [40249703863](https://github.com/Chris0Jeky/Commit
 also passes. The dated Delivery receipt below retains its earlier local-only scope.
 
 ## Issue #423 lock-release recovery, local proof 2026-10-26
+
+The repair merged in [#432](https://github.com/Chris0Jeky/CommitAtlas/pull/432), closing #423 after
+the full [exact-head hosted gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40249961044).
+Its subsequent [main CI](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40250522112) also passes.
 
 The test-only publication control store can finish releasing an owned lock when an unlink
 persisted before reporting failure. A missing original and quarantine path permit only the
