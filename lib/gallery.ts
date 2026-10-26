@@ -47,7 +47,7 @@ export const GALLERY_CARD_IDS = [
 export type GalleryCardId = (typeof GALLERY_CARD_IDS)[number];
 export type GalleryFamily = "instrument" | "map" | "signature" | "scene" | "finding";
 export type GalleryRung = "observed" | "derived" | "hypothesis" | "C0" | "declared" | "partial" | "stale" | "unavailable";
-export type GalleryState = "ready" | "unavailable";
+export type GalleryState = "ready" | "stale" | "unavailable";
 
 export interface GalleryTile {
   readonly id: string;
@@ -184,7 +184,7 @@ function cardTile(
     rung,
     pack: "card",
     motion: "none",
-    state: unavailable ? "unavailable" : "ready",
+    state: unavailable ? "unavailable" : dataState === "stale" ? "stale" : "ready",
     note: unavailable ? "Unavailable" : "",
     studioHref: studioHref(id, CARD_FAMILY[id]),
     svg,
@@ -265,8 +265,9 @@ function sceneContext(pack: ScenePack): RenderContext {
   };
 }
 
-function sceneRung(id: string, unavailable: boolean): GalleryRung {
+function sceneRung(id: string, family: GalleryFamily, unavailable: boolean): GalleryRung {
   if (unavailable) return "unavailable";
+  if (family === "signature") return "derived";
   if (id === "lifecycle-map") return "declared";
   if (id === "nebula") return "derived";
   return "observed";
@@ -278,19 +279,22 @@ function renderScenes(snapshot: PortfolioSnapshot): GalleryTile[] {
     const pack = definition.supportedPacks.includes("survey") ? "survey" : definition.supportedPacks[0] ?? "survey";
     const motion = definition.supportedMotion.includes("none") ? "none" : definition.supportedMotion[0] ?? "none";
     try {
-      const rendered = renderSceneDefinition(definition, toSceneInputs(snapshot, { demo: true }), {
+      const inputs = toSceneInputs(snapshot, { demo: true });
+      const rendered = renderSceneDefinition(definition, inputs, {
         ...sceneContext(pack),
         motion,
       });
       const unavailable = rendered.unavailable;
+      const projectionStale = definition.family === "signature" && !!inputs.lens &&
+        "freshness" in inputs.lens && inputs.lens.freshness.status === "stale";
       return tile({
         id: definition.id,
         label,
         family: definition.family,
-        rung: sceneRung(definition.id, unavailable),
+        rung: sceneRung(definition.id, definition.family, unavailable),
         pack,
         motion,
-        state: unavailable ? "unavailable" : "ready",
+        state: unavailable ? "unavailable" : projectionStale ? "stale" : "ready",
         note: unavailable ? "Unavailable" : "",
         studioHref: studioHref(definition.id, definition.family),
         svg: rendered.svg,

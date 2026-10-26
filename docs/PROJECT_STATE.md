@@ -5,6 +5,42 @@ Release/profile receipt last verified: 2026-08-30 (v0.4.0 released, production a
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Appearance integration and Developer Signature — 2026-10-26
+
+**Gallery and Studio appearance.** [#448](https://github.com/Chris0Jeky/CommitAtlas/pull/448)
+merged as `c72c3b2`. Its [quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40400659828)
+passes 2030 tests. The separate [browser run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40400659546)
+passes six Gallery layouts, 14 Studio scenarios, 48 control checks and 16 keyboard cases. These
+receipts qualify that appearance change; they do not establish Signature playback, a completed
+GitHub/Camo matrix or profile adoption. The merged build then passed all 21 deployed-origin checks
+in [Deploy 40401782765](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40401782765).
+Live inspection confirmed the redesigned Gallery and Replay retaining focus through image decode.
+
+**Developer Signature source (#147).** Feature commit `13492df` registers the first `signature`
+family scene. It consumes the complete validated synthetic C0 Lens projection, with a six-axis
+radar, exact readings, producer archetype, top-two dimensions, and complete derived coverage,
+warnings, privacy and freshness. Both widths and all themes support `survey` with `none | ambient`.
+Historical projections stay still; expired inputs become unavailable before model construction.
+Gallery evidence stays Derived while freshness is separately Ready, Stale or Unavailable.
+The [scene guide](./SIGNATURE_SCENE.md) records the layout, interpretation and capture contract.
+The initial feature tree passed typecheck, lint, 685 SVG tests, 361 static tests, 107 chassis tests,
+100 built-product tests and 23 discovery tests. The range-spacing follow-up `1dd7339` clears measured
+emoji ink boxes and passes all 686 SVG tests, typecheck and lint. Static paired artifacts carry
+verified bytes and SHA-256 manifests. The rebuilt Action is independently exercised for fresh
+ambient, stale, expired and dry-run paired outputs. Its 950189-byte bundle has SHA-256
+`0531a45effe483dfe656760015ed688503465448b2b53ab1714473c741e6b889`.
+The integrated local repository gate passed; five additional bundled-Action/Gallery regressions
+also pass and are registered in that gate. The [visual references](./evidence/appearance-2026-10-26/README.md)
+record 312 measured layouts and 14 CSS/SMIL playback/control rows, including exact rest at 46s.
+Final PR-head CI supplies its own fresh-build, source/module hashes and artifact receipts.
+No hosted Signature route or Studio selection is enabled. C1/profile
+publication remains disabled under #170 / Q-9 No.
+
+**Appearance follow-up.** Studio configuration legends now receive their intended 20px separation
+from preceding controls; the deployed baseline measured zero. Browser checks measure the actual
+gaps at desktop and mobile widths. Gallery captures wait for finite theme transitions to settle,
+and historical cards now carry a Stale badge consistent with their stale evidence.
+
 ## Projection reader, browser evidence and publication planning — 2026-10-26
 
 **Chronograph acceptance (#344).** [#441](https://github.com/Chris0Jeky/CommitAtlas/pull/441)
@@ -182,7 +218,8 @@ are not claimed. The v1 writer remains the production path and #256's v2 activat
 
 ## Current source inventory, reconciled 2026-10-26
 
-This inventory reflects the source and qualification changes linked above. Deployment and profile
+This inventory includes the Signature integration, rebuilt Action and the merged appearance
+change in #448; the verification scope is stated above. Deployment and profile
 adoption require their own dated receipts. The older receipts below retain their original scope;
 branch-only and "not shipped" statements in those receipts are historical, not the current source
 boundary.
@@ -193,18 +230,20 @@ boundary.
   `tests/motion.test.mjs` and `tests/scene.test.mjs` in the SVG package cover its structural contracts.
   Existing cards retain compatibility motion. Atlas adoption (#126), the complete compatibility
   matrix (#113, with #180's WebKit diagnostic), and measured budgets (#114) remain open.
-- **Six built-ins are registered** in `packages/svg/src/scene.ts`: `evidence-coverage` (#133),
+- **Seven built-ins are registered** in `packages/svg/src/scene.ts`: `evidence-coverage` (#133),
   `activity-terrain` (#135), `chronograph` (#136), `lifecycle-map` (#137), `identity-beacon` (#134),
-  and `nebula` (#157). The hosted catalogue and `app/api/v1/scenes/[id]/route.ts` expose only the
-  first four. Identity Beacon and Nebula are static scenes, not hosted SVG endpoints. All six
+  `nebula` (#157), and `signature` (#147). The hosted catalogue and `app/api/v1/scenes/[id]/route.ts` expose only the
+  first four. Identity Beacon, Nebula and Signature are static scenes with no hosted SVG endpoints. All seven
   currently support only `survey`; `packs.ts` implements the four frame geometries (#156), not
   four selectable variants of every built-in.
-- **Static/Action delivery is implemented.** The CLI calls `generateStatic`; the static renderer
+- **Static/Action source delivery is implemented.** The CLI calls `generateStatic`; the static renderer
   selects registered scenes and writes `scene-<id>.svg` artifacts with per-theme manifests.
   The Action calls the same generator and reports generated paths through its `scenes` output.
   Identity Beacon requires validated static identity and accepts `none | ambient | cinematic`;
-  Nebula accepts `none | ambient`; the hosted four accept `none | subtle | ambient`.
-  SVG scene tests, static scene/identity tests, and `action/action.test.mjs` cover these seams.
+  Nebula and Signature accept `none | ambient`; the hosted four accept `none | subtle | ambient`.
+  Signature requires a full validated C0 Lens projection; both static paired-output tests and
+  executed-bundle tests verify fresh, stale, expired and dry-run delivery.
+  SVG scene tests, static scene/identity tests, and `action/action.test.mjs` cover the existing seams.
 - **Chronograph layout and local-browser playback are qualified.** Its decorative rings encode
   666/4662/19980 ms periods; coincident releases keep separate numbered markers and bounded legend
   rows. The needle remains fixed at its true reading. The structural regressions and actual
@@ -221,17 +260,20 @@ boundary.
   explicit picture/none twins, not a claimed direct-CSS image media-query result. This completes
   the clarified #134 scene acceptance without qualifying profile adoption or the #113 transport
   matrix.
-- **Signature scenes remain open; the C0 projection reader is implemented.** The engine accepts
-  immutable producer-validated C0 projections with snapshot-clock freshness, as well as its legacy
-  synthetic common context. Evidence Coverage consumes the full context's synthetic derived score,
-  warnings and age; it does not reinterpret them as GitHub observations. C1 publication stays
+- **The first Signature consumer is implemented in source.** The registered `signature` requires
+  an immutable producer-validated C0 projection with snapshot-clock freshness; the legacy common
+  context cannot supply its six readings. The [scene](./SIGNATURE_SCENE.md) retains all supplied
+  text and exact values, with two decorative motion groups only when fresh. Its Gallery evidence
+  is derived even when historical; the separate stale state remains visible. Evidence Coverage
+  also consumes the full context's synthetic derived score, warnings and age without reinterpreting
+  them as GitHub observations. Further Signature scenes remain under #111. C1 publication stays
   disabled by #170 / Q-9 No. Findings inputs
   still produce explicit unavailable output. The gallery's WB-C1 tile uses the existing pinned
   method-trial summary, not a `research-instrument` scene or a shipped finding projection reader.
   Those scenes and the remaining catalogue are tracked under #111. Studio preview tooling exists,
   but #141's README round-trip and remaining acceptance are not established by source inspection.
 
-Exports, registry metadata, hosted routes and static/Action entry points match this inventory.
+Exports, registry metadata, hosted routes and static/Action source entry points match this inventory.
 The linked receipts above distinguish source checks, timed browser evidence and remaining gates.
 
 ## Issue #427 slice: Delivery quota refusals, 2026-10-25

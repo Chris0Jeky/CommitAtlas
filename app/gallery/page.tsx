@@ -83,7 +83,7 @@ export default async function GalleryPage() {
                   >
                     <header className="gallery-specimen-heading">
                       <div><span className="gallery-specimen-number" aria-hidden="true">{String(familyIndex + 1).padStart(2, "0")}.{String(index + 1).padStart(2, "0")}</span><h3 id={`gallery-title-${item.id}`}>{item.label}</h3></div>
-                      <span className="gallery-specimen-state">{item.state === "unavailable" ? "Unavailable" : "Ready"}</span>
+                      <span className="gallery-specimen-state">{item.state === "unavailable" ? "Unavailable" : item.state === "stale" ? "Stale" : "Ready"}</span>
                     </header>
                     <div className="gallery-specimen-stage" dangerouslySetInnerHTML={{ __html: item.svg }} />
                     <div className="gallery-specimen-details">

@@ -4,6 +4,7 @@ import { chronographScene } from "./scenes/chronograph.js";
 import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import { nebulaScene } from "./scenes/nebula.js";
 import { identityBeaconScene } from "./scenes/identity-beacon.js";
+import { signatureScene } from "./scenes/signature.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
 import { COVERAGE_WARNINGS, coverageScorePercentCandidates, LensProjectionError, parseLensProjection, lensProjectionFreshness, type PublicLensProjection as LensProjectionArtifact, type LensProjectionFreshness } from "@commit-atlas/core/lens";
 import type { ThemeName } from "./index.js";
@@ -188,6 +189,8 @@ function loadBuiltins(): void {
   registry.set(beacon.id, beacon);
   const chronograph = definitionSnapshot(chronographScene) as SceneDefinition<unknown>;
   registry.set(chronograph.id, chronograph);
+  const signature = definitionSnapshot(signatureScene) as SceneDefinition<unknown>;
+  registry.set(signature.id, signature);
   builtinsLoaded = true;
 }
 export function registerScene<Model>(definition: SceneDefinition<Model>): void {

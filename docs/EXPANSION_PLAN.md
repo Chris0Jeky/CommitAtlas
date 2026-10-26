@@ -1,10 +1,12 @@
 # CommitAtlas expansion programme
 
-**Status: partially implemented; source status reconciled 2026-10-22 at `6d122c8`.** Originally
+**Status: partially implemented; source status reconciled 2026-10-26 with Signature source `1dd7339`
+and merged appearance PR #448 (`c72c3b2`).** Originally
 written 2026-08-29 from an owner brief and verified against the code at `2969032`.
-The compiler, scene engine, six built-in scenes, static/Action scene delivery, four pack
-geometries and synthetic gallery now exist. Browser/README motion acceptance, full projection
-readers and the remaining catalogue are still open. Shipped state stays in
+The compiler, scene engine, seven built-in scenes, static/Action source delivery, four pack
+geometries and synthetic gallery now exist. The C0 Lens reader and first Signature consumer are
+implemented; Signature browser/bundle/integration qualification, the full README motion matrix,
+the finding projection reader and the remaining catalogue are still open. Shipped state stays in
 [PROJECT_STATE.md](./PROJECT_STATE.md); this document says where the product is going and why,
 in enough detail that an agent can pick any seeded issue and start. Tracking issue:
 [#111](https://github.com/Chris0Jeky/CommitAtlas/issues/111). Cross-project seams are specified in
@@ -98,7 +100,7 @@ Invariants carried forward unchanged, because they are what make the product wor
 
 ## 4. Target architecture
 
-This remains the target architecture. The GitHub-only scene path and the C0 Lens projection reader exist. The static config accepts a tracked Lens file; hosted adapters use only the vendored C0 fixture under explicit `demo=true`. No Lens scene is registered. Finding projection consumption remains open under #111. Owner C1 publication remains disabled under Q-9 No / #170.
+This remains the target architecture. The GitHub-only scene path and the C0 Lens projection reader exist. The static config accepts a tracked Lens file; hosted adapters use only the vendored C0 fixture under explicit `demo=true`. The first Lens consumer, `signature`, is registered for static source generation and the Gallery; it has no hosted endpoint or Studio selection. Finding projection consumption remains open under #111. Owner C1 publication remains disabled under Q-9 No / #170.
 
 ```text
 GitHub public evidence ─────► @commit-atlas/github ─────► PortfolioSnapshot ─────────────┐
@@ -292,17 +294,17 @@ Contract tests every scene must pass, written once in a shared harness and run p
 7. No `Date.now`, `Math.random`, or `crypto.randomUUID` in `packages/svg/src` — an ESLint
    restriction, not a review convention.
 
-The #128 implementation introduced the additive engine and shared contract harness. Six built-ins
+The #128 implementation introduced the additive engine and shared contract harness. Seven built-ins
 are now registered: `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`,
-`identity-beacon`, and `nebula`. Renderers compile one scoped motion plan with an explicit backend/target; final
-SVG bytes and trusted emitted targets/groups enforce the provisional classes. Signature fixtures retain their validated C0 common context; the full C0 Lens adapter additionally validates the pinned producer contract, canonical hash and snapshot-clock freshness. C1 publication remains disabled. The finding
+`identity-beacon`, `nebula`, and `signature`. Renderers compile one scoped motion plan with an explicit backend/target; final
+SVG bytes and trusted emitted targets/groups enforce the provisional classes. The Signature scene requires the complete C0 Lens context, validated against the pinned producer contract, canonical hash and snapshot-clock freshness; legacy common context is insufficient for its six readings. C1 publication remains disabled. The finding
 schema adapter remains reserved; #132 adds the bounded static identity adapter. See `packages/svg/README.md` for the public API and strict SVG subset.
 
 ## 7. Scene catalogue
 
 Each row is one seeded issue. Data basis names the *only* inputs the scene may read.
 The motion column records design intent, not completed acceptance. Source status in Notes comes
-from the registry and scene tests: all six built-ins currently support only `survey`. "Open under
+from the registry and scene tests: all seven built-ins currently support only `survey`. "Open under
 #111" identifies remaining programme work without implying that its issue has been closed or
 its browser behavior verified.
 
@@ -321,12 +323,18 @@ its browser behavior verified.
 
 ### Phase 2 — Developer Lens projection
 
-Signature scene rows remain open under #111; no signature scene is registered. The C0 reader supplies full producer-validated Lens contexts to static and demo-only hosted adapters, and the existing Evidence Coverage instrument displays their derived coverage, warnings and age. Owner C1 publication remains disabled and separately gated by #170 / Q-9.
+The first `signature` scene is implemented in the static generator and bundled Action with
+`none | ambient`; its [browser evidence](./evidence/appearance-2026-10-26/README.md) covers
+synthetic layout and direct-image playback. Other Signature
+rows remain open under #111. The C0 reader supplies full producer-validated Lens contexts to static
+and demo-only hosted adapters, and Evidence Coverage displays their derived coverage, warnings and
+age. The Signature scene itself has no hosted endpoint or Studio selection. Owner C1 publication
+remains disabled under #170 / Q-9 No.
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
 | `constellation` | signature | `lens.repositories` (attention, activeWeeks, momentum, disclosure, language) | slow orbital rotation; a survey beam crosses the selected body | One lens per render (`attention`, `flow`, `continuity`), top 8–12 bodies; private aliases are dashed bodies; "attention ≠ impact" is printed |
-| `signature` | signature | `lens.dna`, `lens.archetype`, `lens.coverage` | radar draws itself; calibration ring turns | `DERIVED SIGNATURE · not a productivity score · coverage NN%` |
+| `signature` | signature | `lens.dna`, `lens.archetype`, `lens.coverage`, privacy and freshness | decorative radar overdraw / calibration ring; readings and base shape stay still | Implemented #147 in static source; `survey`, `none \| ambient`, two decorative groups, fresh only. Exact readings and top-two dimensions; neutral derived coverage; all warnings/privacy/age remain visible. Gallery evidence stays derived with separate stale state. [Guide and verification scope](./SIGNATURE_SCENE.md) |
 | `craft-ring` | signature | `lens.themes` | segmented iris; segment glint | building / repairing / explaining / proving / refining / maintaining / optimising / reverting, plus an explicit `other` segment so a supplied share is never discarded or redistributed |
 | `delivery-loop` | signature | `lens.delivery`, `lens.summary` | particles show the observed merged sample and its open/censored state; proposal, review, revision, and release are unobserved sockets | Censored and open work stay visibly incomplete; no stage or release evidence is inferred |
 | `narrative` | signature | `lens.narratives` | plotter underline; nothing else | Up to three bounded, evidence-bearing statements with their limitation line |
@@ -373,7 +381,7 @@ only `survey`. Broader scene/pack adoption remains open under #111.
 
 ## 8. Cross-project projections
 
-**Lens C0 reader implemented; scenes remain open and C1 adoption remains disabled.** The reader pins the published Developer Lens contract and unchanged synthetic fixture, including coverage semantics, privacy and canonical hash. Static and hosted adapters reject C1 under the operative Q-9 No policy recorded in #170. No signature/finding scene is registered. The finding projection remains a target seam; the pinned method-trial bridge is the current research input.
+**Lens C0 reader and first Signature source implemented; C1 adoption remains disabled.** The reader pins the published Developer Lens contract and unchanged synthetic fixture, including coverage semantics, privacy and canonical hash. The registered `signature` consumes that complete context through the static source; its remaining qualification is separate from implementation. Static and hosted adapters reject C1 under the operative Q-9 No policy recorded in #170. No finding scene is registered. The finding projection remains a target seam; the pinned method-trial bridge is the current research input.
 
 Ownership follows the two sibling repositories' own boundaries, not this repository's convenience:
 
@@ -401,6 +409,9 @@ Field shapes, bounds, denied content, fixtures, tests, and the required merge or
 and report per-theme artifacts and manifests; the Action exposes the `scenes` output. Hosted
 delivery currently allows only Evidence Coverage, Activity Terrain, Chronograph and Lifecycle
 Map. The target model below does not establish profile adoption or hosted Lens support (#111).
+Signature joins the shared static/Action source with its complete C0 projection requirement;
+its rebuilt Action delivery is exercised with fresh, stale, expired and dry-run fixtures. Gallery marks it Derived
+with a separate Stale state when historical, and does not invent a hosted Studio selection.
 
 | Model | Use | Constraint |
 | --- | --- | --- |
@@ -420,6 +431,13 @@ open for remaining acceptance, including README round-trip qualification. `/gall
 synthetic registered outputs and the existing finding tile. The complete scene playback harness
 described below remains programme work under #111; the retained #113 probe matrix is incomplete.
 These target lists are not claims that every control or browser/embedding combination ships.
+
+The Gallery/Studio appearance change merged in [#448](https://github.com/Chris0Jeky/CommitAtlas/pull/448)
+at `c72c3b2`. Its [quality gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40400659828)
+passes 2030 tests, and its [browser receipt](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40400659546)
+covers six Gallery layouts, 14 Studio scenarios, 48 control checks and 16 keyboard cases.
+Signature is outside that receipt and has its own
+[direct-browser evidence scope](./evidence/appearance-2026-10-26/README.md).
 
 **Studio (a person's tool):** motion profile and pack selectors; replay (re-mount the preview);
 pause/resume when the selected preview backend and embedding surface support it;
@@ -490,8 +508,9 @@ are the source of truth for scope; this document is the source of truth for inte
 Current source does not establish any phase's full definition of done. P0 still has #113/#114
 evidence gates. P1 has the compiler, engine and initial scenes, but existing-card ambient adoption
 (#126 and remaining card work under #111) and browser/profile acceptance remain open. P2 has the
-C0 reader (#145); signature scenes remain open, and owner C1 publication is disabled by the
-operative Q-9 No policy recorded in #170. P3 has Nebula, frame-pack geometry and the synthetic
+C0 reader (#145), coverage display (#151) and first Signature (#147), including bundled delivery
+and direct-browser verification. Further signature scenes remain open, and owner C1
+publication is disabled by the operative Q-9 No policy recorded in #170. P3 has Nebula, frame-pack geometry and the synthetic
 gallery; the finding projection reader and remaining scenes are open under #111.
 
 ## 14. Decisions and open questions

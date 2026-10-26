@@ -1078,6 +1078,15 @@ test("the gallery lists every registered output without calling GitHub", async (
     assert.match(indexLink.replaceAll("<!-- -->", ""), new RegExp(`>${familyCount}<`));
     if (familyCount === 0) assert.match(section, /None registered\./);
   }
+  const signature = articles.find((article) => article.includes('data-gallery-id="signature"'));
+  assert.ok(signature);
+  assert.match(signature, /data-gallery-family="signature"/);
+  assert.match(signature, /data-rung="(?:derived|unavailable)"/);
+  assert.doesNotMatch(signature, /data-rung="observed"/);
+  if (signature.includes('data-state="stale"')) {
+    assert.match(signature, /data-rung="derived"/);
+    assert.match(signature, /class="gallery-specimen-state">Stale<\/span>/);
+  }
   const beacon = articles.find((article) => article.includes('data-gallery-id="identity-beacon"'));
   assert.ok(beacon);
   assert.match(beacon, /data-rung="unavailable"/);

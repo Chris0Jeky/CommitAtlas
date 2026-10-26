@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import * as svg from "../dist/index.js";
+import { computeLensProjectionHash } from "../../core/dist/lens-projection.js";
 import { parseSceneXml, sceneXmlText, sceneVisibleText } from "../dist/scene-svg.js";
 
 export const SCENE_INJECTION = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
@@ -22,14 +23,19 @@ export function stripSceneMotion(output) {
     .replace(/<animate(?:Transform|Motion)?\b[^>]*\/>/gu, "");
 }
 
-function injectedInputs(inputs, path) {
+function injectedInputs(inputs, path, injectedText = SCENE_INJECTION) {
   const copy = structuredClone(inputs);
   const keys = path.split(".");
   let parent = copy;
   for (const key of keys.slice(0, -1)) parent = parent[key];
   assert.equal(typeof parent[keys.at(-1)], "string", `text fixture path ${path} must be a string`);
-  parent[keys.at(-1)] = SCENE_INJECTION;
-  if (copy.lens) copy.lens = svg.createPublicDemoLensContext(copy.lens);
+  parent[keys.at(-1)] = injectedText;
+  if (copy.lens && 'schemaVersion' in copy.lens) {
+    const { freshness, ...projection } = copy.lens;
+    // Rehash the modified body so rejection proves the schema/privacy boundary, not a stale hash.
+    projection.provenance.projectionHash = computeLensProjectionHash(projection);
+    copy.lens = svg.createLensProjectionContext(projection, copy.snapshot, freshness.maxAgeDays);
+  } else if (copy.lens) copy.lens = svg.createPublicDemoLensContext(copy.lens);
   return copy;
 }
 
@@ -98,6 +104,13 @@ export function assertSceneContract(definition, fixtures) {
   for (const identity of identities(slotB.svg)) assert.ok(!firstIdentities.has(identity), `instance collision ${identity}`);
   checkAccessibility(render(fixtures.unavailable), { ...fixtures.unavailable, unavailable: true });
   for (const path of fixtures.ready.textFields) {
+    if (path.startsWith('lens.') && fixtures.ready.inputs.lens && 'schemaVersion' in fixtures.ready.inputs.lens) {
+      assert.throws(() => injectedInputs(fixtures.ready.inputs, path), /LENS_|JCS rejects lone surrogates/u,
+        `the full producer projection must reject the shared malicious text at ${path}`);
+      assert.throws(() => injectedInputs(fixtures.ready.inputs, path, SCENE_INJECTION.replaceAll('\u0000', '').replaceAll('\u0008', '').replaceAll('\ud800', '')), /LENS_INVALID_PROJECTION/u,
+        `valid Unicode malicious text must fail schema/privacy validation at ${path}`);
+      continue;
+    }
     const injected = render({ inputs: injectedInputs(fixtures.ready.inputs, path) });
     const document = assertWellFormedXml(injected.svg);
     for (const node of document.nodes) {

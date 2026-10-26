@@ -44,6 +44,17 @@ test("gallery actions distinguish a selected preview from a general Studio visit
   }
 });
 
+test("a historical card's availability badge agrees with its stale evidence", async () => {
+  const snapshot = await landingSnapshot();
+  const gallery = buildGallery({ ...snapshot, profile: { ...snapshot.profile,
+    freshness: { ...snapshot.profile.freshness, mode: "stale" },
+  } });
+  const profile = gallery.tiles.find(tile => tile.id === "profile");
+  assert.ok(profile);
+  assert.equal(profile.rung, "stale");
+  assert.equal(profile.state, "stale");
+});
+
 test("an unavailable beacon is not labelled observed, and the finding stays C0", () => {
   const beacon = first.tiles.find((tile) => tile.id === "identity-beacon");
   assert.ok(beacon);

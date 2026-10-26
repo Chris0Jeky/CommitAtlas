@@ -68,6 +68,9 @@ try {
       await page.getByRole("radio", { name: theme, exact: true }).check();
       await page.waitForFunction(expected => document.documentElement.getAttribute("data-chassis") === expected, theme.toLowerCase());
       await page.evaluate(() => document.fonts.ready);
+      // Theme changes include finite color transitions. Capture the settled palette.
+      await page.waitForFunction(() => [...document.querySelectorAll(".gallery-index a")]
+        .every(element => element.getAnimations().every(animation => animation.playState !== "running")));
       const measurements = await page.locator(tileSelector).evaluateAll(elements => elements.map(element => {
         const rect = element.getBoundingClientRect();
         const svg = element.querySelector("svg");
