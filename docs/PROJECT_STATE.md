@@ -14,9 +14,13 @@ September zero-width failure. It did observe GitHub replacing the selected serve
 before the containing React app acquired `loaded`. The bounded harness repair synchronizes target
 selection to that marker, retains exact URL/MIME/body and positive bounded geometry checks, and
 binds load timing through every frame to the same DOM node. The compact receipt and explicit limits
-are in [MOTION_COMPATIBILITY.md](./MOTION_COMPATIBILITY.md). No new WebKit capture row or animation
-verdict is established by metadata or local regressions; #180 and #113 remain open pending the one
-seven-row hosted diagnostic.
+are in [MOTION_COMPATIBILITY.md](./MOTION_COMPATIBILITY.md). The one authorized [seven-row run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40265885569)
+at reviewed head `662097d` accepted seven discoveries and completed three raw rows: `css-enter`
+animates in img/picture, and the reduced picture is static. The first Camo row then failed closed
+at 447 ms against the 250 ms sample's unchanged 440 ms completion limit. All completed artifacts
+were independently rehashed and their pixel differences recomputed. No Camo or positive-control
+recording verdict, seven-row completion, retry, or unfiltered matrix is claimed. #180 and #113
+remain open; screenshot timing instrumentation is the next separate source-only follow-up.
 
 The integrated follow-ups in [#434](https://github.com/Chris0Jeky/CommitAtlas/pull/434) and
 [#435](https://github.com/Chris0Jeky/CommitAtlas/pull/435), together with the #423/#427 repairs below,

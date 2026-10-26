@@ -2,7 +2,8 @@
 
 Status: Phase 0 issue #113 remains parked behind the WebKit hosted-capture gate in
 [#180](https://github.com/Chris0Jeky/CommitAtlas/issues/180). The latest metadata observation and
-bounded harness repair below do not establish any completed WebKit capture row. This ledger records
+bounded seven-row run below establish three completed raw rows, followed by a Camo timing failure.
+The seven-row gate is incomplete. This ledger records
 measured outcomes only; an unfilled cell is **not tested**, never a compatibility claim. The fixture
 set and local capture tool live in
 [`tests/fixtures/motion-probes/`](../tests/fixtures/motion-probes/). The public synthetic scratch
@@ -43,8 +44,35 @@ each screenshot and final metadata, and each finite positive clip must fit insid
 Focused local tests cover the sizing/hash/clip boundaries and use an existing Chromium executable
 with synthetic HTML to reproduce replacement during hydration, reject hidden ancestors and later
 timed-node replacement, and prove that readiness can complete while the image request is held.
-These tests do not verify WebKit playback. The next gate is one seven-row WebKit diagnostic at the
-reviewed repair head; only a complete result can unlock #113's unfiltered three-engine matrix.
+These local tests do not verify WebKit playback. The hosted result below is the runtime evidence.
+
+## Bounded seven-row WebKit result — 2026-10-26
+
+The one authorized [seven-row run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40265885569)
+at reviewed head `662097de1cf7d581055de0e39286c483df76e76a` accepted all seven discovery identities
+and completed three GitHub-raw rows in WebKit 26.0 / Playwright 1.57.0. Both `css-enter` embeds
+animated; the reduced-motion picture selected the pinned static control and all four pixel pairs
+were `0/0`. Each completed row retained five load-relative frames, the exact fixture body and
+request gate, and a hashed WebM with more than five seconds of browser-visible time. All 15 PNG
+hashes and pixel differences and all three WebM hashes/sizes/magic were independently recomputed
+from the downloaded artifact. WebM container duration was not parsed.
+
+The run then failed closed on the first Camo row: the 250 ms CSS-enter sample reported completion
+at `447.0 ms`, beyond the unchanged `440 ms` limit. No Camo row or positive-control recording
+verdict was accepted, and no retry ran. The report's completion timestamp includes the screenshot
+API's file write, a same-node check, and a separate browser clock read; it does not isolate the
+instant at which raster capture finished. This observation does not justify relaxing the deadline
+or accepting the rejected frame.
+
+The compact [partial diagnostic receipt](../tests/fixtures/motion-probes/evidence/2026-10-26-webkit-diagnostic.json)
+records all seven discovery identities, all three completed rows, actual frame timing and pixel
+pairs, artifact hashes and the rejected-row limit. The original full-plan completion validator
+correctly rejects the partial report. The sizing and hydration repairs now have raw-path runtime
+evidence, but **#180 and #113 remain open**. The unfiltered three-engine matrix stays locked.
+The next source-only follow-up should separate screenshot completion observations from file I/O
+and post-check overhead, combine same-node and clock reads, and retain structured failed-row
+timing. Keep the 250/440 ms policy and source, body, geometry and node guards unchanged before
+considering another separately reviewed bounded run.
 
 ## Answer first — 2026-08-29 checkpoint
 
@@ -270,12 +298,14 @@ above.
 | --- | --- | --- | --- | --- | --- | --- |
 | Direct hosted Worker SVG with production SVG CSP | all probes measured | all probes measured | static control frozen | complete | complete | complete |
 | Worker SVG in GitHub README through Camo | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | **not tested** |
-| Relative scratch SVG through GitHub raw | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | **not tested** |
+| Relative scratch SVG through GitHub raw | `css-enter` animates | `css-enter` animates | static control frozen | diagnostic complete | diagnostic complete | three diagnostic rows complete; seven-row gate incomplete |
 
 The full hosted plan is still 35 rows per engine (105 total): every probe under both hosted paths
-and embed forms, two reduced-motion controls, and the positive control. After #180 proves identity
-independently of WebKit intrinsic sizing, rerun only its seven-row diagnostic once. If green, resume
-#113 at that unfiltered three-engine raw/Camo plan. The direct Worker matrix does not need rerunning.
+and embed forms, two reduced-motion controls, and the positive control. The October 26 WebKit run
+completed all seven discoveries and three raw recordings, then failed closed on the Camo 250 ms
+sample's completion limit. No retry ran. Complete the separate timing-instrumentation follow-up
+and review a new bounded run before resuming #113's unfiltered plan. The direct Worker matrix does
+not need rerunning.
 
 ## PR #77 reconciliation and provisional selection
 
