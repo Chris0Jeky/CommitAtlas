@@ -19,8 +19,131 @@ import {
 const TARGET = new URL("https://example.test/api/v1/probes/motion/css-enter.svg");
 const EXPECTED_SHA = "a".repeat(40);
 
+async function verifyHealthResponses(sequence, { expectedSha } = { expectedSha: EXPECTED_SHA }) {
+  const calls = [];
+  const delays = [];
+  const reports = [];
+  let healthPassed = false;
+  let healthError;
+  const fetchHealth = sequenceFetch(sequence, calls);
+  const result = await verifyDeployment("https://example.test", {
+    expectedSha,
+    fetchImpl: (target, init) => target.pathname === "/api/v1/health"
+      ? fetchHealth(target, init)
+      : Promise.resolve(new Response("unavailable fixture", { status: 500 })),
+    sleep: async (milliseconds) => delays.push(milliseconds),
+    report: (message) => reports.push(message),
+    onPass: (name) => { if (name.startsWith("health endpoint")) healthPassed = true; },
+    onFailure: (name, error) => { if (name.startsWith("health endpoint")) healthError = error; },
+  });
+  return { ...result, calls, delays, reports, healthPassed, healthError };
+}
+
+for (const [label, buildSha] of [
+  ["old", "b".repeat(40)], ["missing", undefined], ["unknown", null],
+  ["malformed", "not-a-sha"], ["overlong", "b".repeat(1_000)],
+]) {
+  test(`health ${label} identity can propagate to the exact expected build`, async () => {
+    const result = await verifyHealthResponses([
+      Response.json({ status: "ok", buildSha }),
+      Response.json({ status: "ok", buildSha: EXPECTED_SHA }),
+    ]);
+    assert.equal(result.healthPassed, true, result.healthError?.message);
+    assert.equal(result.healthError, undefined);
+    assert.equal(result.calls.length, 2);
+    assert.deepEqual(result.delays, [5_000]);
+    assert.equal(result.reports.length, 1);
+    assert.match(result.reports[0], /build SHA.*attempt 2\/5 in 5s/);
+    assert.ok(result.reports[0].length < 300, "malformed identity must not enter retry output");
+    assert.equal(result.calls.every(({ target }) => new URL(target).search === ""), true);
+  });
+
+  test(`permanent ${label} identity never passes and exhausts only the shared five attempts`, async () => {
+    const result = await verifyHealthResponses(Array.from({ length: MAX_ATTEMPTS },
+      () => Response.json({ status: "ok", buildSha })));
+    assert.equal(result.healthPassed, false);
+    assert.match(result.healthError.message, /build SHA.*after 5 attempts/);
+    assert.equal(result.calls.length, MAX_ATTEMPTS);
+    assert.deepEqual(result.delays, RETRY_DELAYS_MS);
+    assert.equal(result.reports.length, MAX_ATTEMPTS - 1);
+    assert.ok(result.healthError.message.length < 300, "malformed identity must not enter failure output");
+  });
+}
+
+test("transport failures and health identity propagation share one five-attempt budget", async () => {
+  const result = await verifyHealthResponses([
+    new TypeError("connection reset"),
+    Response.json({ status: "ok", buildSha: "b".repeat(40) }),
+    new TypeError("DNS lookup failed"),
+    Response.json({ status: "ok" }),
+    Response.json({ status: "ok", buildSha: EXPECTED_SHA }),
+  ]);
+  assert.equal(result.healthPassed, true, result.healthError?.message);
+  assert.equal(result.calls.length, MAX_ATTEMPTS);
+  assert.deepEqual(result.delays, RETRY_DELAYS_MS);
+  assert.equal(result.reports.filter((message) => message.includes("transport error")).length, 2);
+  assert.equal(result.reports.filter((message) => message.includes("build SHA")).length, 2);
+});
+
+test("transport failures cannot grant a stale build a fresh identity retry budget", async () => {
+  const result = await verifyHealthResponses([
+    new TypeError("connection reset"),
+    Response.json({ status: "ok", buildSha: "b".repeat(40) }),
+    new TypeError("DNS lookup failed"),
+    Response.json({ status: "ok" }),
+    Response.json({ status: "ok", buildSha: "b".repeat(40) }),
+  ]);
+  assert.equal(result.healthPassed, false);
+  assert.match(result.healthError.message, /after 5 attempts/);
+  assert.equal(result.calls.length, MAX_ATTEMPTS);
+  assert.deepEqual(result.delays, RETRY_DELAYS_MS);
+});
+
+test("health HTTP, status, JSON and body-read failures remain immediate", async () => {
+  for (const response of [
+    new Response("unavailable", { status: 503 }),
+    Response.json({ status: "error", buildSha: EXPECTED_SHA }),
+    new Response("not JSON"),
+    new Response(new ReadableStream({ start(controller) { controller.error(new Error("body read failed")); } })),
+  ]) {
+    const result = await verifyHealthResponses([response]);
+    assert.equal(result.healthPassed, false);
+    assert.ok(result.healthError);
+    assert.equal(result.calls.length, 1);
+    assert.deepEqual(result.delays, []);
+  }
+});
+
+test("health identity retries consume each response once without cloning its body", async () => {
+  const reads = [0, 0];
+  const responses = ["b".repeat(40), EXPECTED_SHA].map((buildSha, index) => {
+    const response = Response.json({ status: "ok", buildSha });
+    const readJson = response.json.bind(response);
+    response.json = () => { reads[index] += 1; return readJson(); };
+    response.clone = () => { throw new Error("health must not clone its response stream"); };
+    return response;
+  });
+  const result = await verifyHealthResponses([...responses]);
+  assert.equal(result.healthPassed, true, result.healthError?.message);
+  assert.deepEqual(reads, [1, 1]);
+  assert.equal(responses.every((response) => response.bodyUsed), true);
+});
+
+test("status-only verification does not retry or require health identity", async () => {
+  const result = await verifyHealthResponses([Response.json({ status: "ok" })], { expectedSha: undefined });
+  assert.equal(result.healthPassed, true, result.healthError?.message);
+  assert.equal(result.calls.length, 1);
+  assert.deepEqual(result.delays, []);
+});
+
 function healthCheck(options) {
-  return createDeploymentChecks(options).find(({ name }) => name.startsWith("health endpoint"));
+  const check = createDeploymentChecks(options).find(({ name }) => name.startsWith("health endpoint"));
+  return {
+    ...check,
+    run: (fetchImpl) => check.run((path, requestOptions) => fetchWithBoundedRetry(new URL(path, TARGET), {
+      ...requestOptions, fetchImpl, sleep: async () => {}, report: () => {},
+    })),
+  };
 }
 
 test("the health probe verifies the exact expected build", async () => {
@@ -83,7 +206,9 @@ test("the verifier CLI forwards expected identity and labels standalone status c
   const directory = mkdtempSync(path.join(tmpdir(), "commitatlas-verifier-cli-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const preload = path.join(directory, "fetch-fixture.mjs");
-  writeFileSync(preload, `globalThis.fetch = async (input) => new URL(input).pathname === "/api/v1/health"
+  writeFileSync(preload, `const realSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (callback, _delay, ...args) => realSetTimeout(callback, 0, ...args);
+globalThis.fetch = async (input) => new URL(input).pathname === "/api/v1/health"
     ? Response.json({ status: "ok", buildSha: "${"b".repeat(40)}" })
     : new Response("unavailable fixture", { status: 500 });\n`);
   const invoke = (args) => spawnSync(process.execPath, ["--import", pathToFileURL(preload).href,

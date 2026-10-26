@@ -24,6 +24,19 @@ edits. The exact-head hosted [#434 gate](https://github.com/Chris0Jeky/CommitAtl
 also passes, including 100 product tests, bundle freshness and a zero-vulnerability production audit.
 This source/CI receipt does not establish a live deployment identity or refresh profile adoption.
 
+**Deployment convergence follow-up (#345).** The first strict live checks exposed two additional
+boundaries. [Deployment 40252357031](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40252357031)
+received a pre-identity response; [deployment 40252641422](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40252641422)
+expected `f9b533b` but initially received the preceding release `e1c4a65`. Each passed the other
+20 probes and correctly failed identity qualification. Health identity propagation now shares
+the existing five-attempt transport budget, with at most 50 seconds of scheduled backoff plus
+request time. A successful check still requires the exact expected SHA; unrelated HTTP, status,
+JSON and body-read failures remain immediate. The deploy script also drains stdout and stderr
+before synchronous verification and forced exits, preserving verbose Wrangler output and the
+commit/Worker-version receipt. Slow-pipe regressions cover successful and failing verification.
+These repairs do not turn the two failed deployments into passing receipts; the subsequent
+hosted deployment result is the live acceptance evidence recorded under #345.
+
 **Production stale-file protection (#256).** The v1 writer retains the previous manifest's size
 and SHA-256 and checks each stale file's current contents and single-link file identity before any
 theme deletes or replaces published output. Changed bytes or substituted links stop publication.
