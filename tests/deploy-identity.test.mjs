@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -118,3 +119,80 @@ test("reports missing identity as unknown rather than guessing from unrelated ou
     "Commit SHA: unknown\nWorker version ID: unknown\n",
   );
 });
+
+for (const verifierStatus of [0, 1]) {
+  test(`deploy drains its receipt before verification exits ${verifierStatus}`, { timeout: 10_000 }, async (t) => {
+    const directory = mkdtempSync(path.join(tmpdir(), "commitatlas-deploy-output-"));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const scripts = path.join(directory, "scripts");
+    const bin = path.join(directory, "bin");
+    mkdirSync(scripts);
+    mkdirSync(bin);
+    for (const file of ["deploy.mjs", "deploy-identity.mjs", "deployed-origin.mjs"]) {
+      copyFileSync(new URL(`../scripts/${file}`, import.meta.url), path.join(scripts, file));
+    }
+    const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
+    const pathKey = Object.keys(env).find((name) => name.toLowerCase() === "path") ?? "PATH";
+    const git = (...args) => {
+      const result = spawnSync("git", args, { cwd: directory, env, encoding: "utf8" });
+      assert.equal(result.status, 0, result.stderr);
+      return result.stdout.trim();
+    };
+    git("init", "--quiet");
+    git("-c", "user.name=CommitAtlas fixture", "-c", "user.email=fixture@example.test",
+      "commit", "--allow-empty", "--quiet", "-m", "deployment output fixture");
+    const sha = git("rev-parse", "HEAD");
+    const reportedOrigin = "https://new-worker.fixture.workers.dev";
+    const overrideOrigin = "https://custom.fixture.test";
+    const stdoutReport = "WRANGLER-STDOUT-START\n" + "table row\n".repeat(40_000) +
+      `Deployed fixture triggers (1.0 sec)\n  ${reportedOrigin}\nCurrent Version ID: ${VERSION}\nWRANGLER-STDOUT-END\n`;
+    const stderrReport = "WRANGLER-STDERR-START\n" + "diagnostic row\n".repeat(20_000) + "WRANGLER-STDERR-END\n";
+    const wrangler = path.join(directory, "wrangler-fixture.mjs");
+    writeFileSync(wrangler, `import { writeFileSync } from "node:fs";
+      writeFileSync(1, ${JSON.stringify(stdoutReport)});
+      writeFileSync(2, ${JSON.stringify(stderrReport)});\n`);
+    if (process.platform === "win32") {
+      writeFileSync(path.join(bin, "npx.cmd"), `@echo off\r\n"${process.execPath}" "${wrangler}" %*\r\n`);
+    } else {
+      const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+      writeFileSync(path.join(bin, "npx"), `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(wrangler)} "$@"\n`, { mode: 0o755 });
+    }
+    writeFileSync(path.join(scripts, "verify-deployment.mjs"), `import { writeFileSync } from "node:fs";
+      writeFileSync("verifier-argv.json", JSON.stringify(process.argv.slice(2)));
+      console.log("VERIFIER-START");
+      process.exit(${verifierStatus});\n`);
+    const summary = path.join(directory, "summary.txt");
+    const child = spawn(process.execPath, [path.join(scripts, "deploy.mjs"), "--skip-build"], {
+      cwd: directory,
+      env: { ...env, [pathKey]: `${bin}${path.delimiter}${env[pathKey] ?? ""}`, DEPLOY_BASE_URL: overrideOrigin,
+        GITHUB_STEP_SUMMARY: summary },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    t.after(() => { if (child.exitCode === null) child.kill(); });
+    const stdout = [];
+    const stderr = [];
+    for (const [stream, chunks] of [[child.stdout, stdout], [child.stderr, stderr]]) {
+      stream.on("data", (chunk) => {
+        chunks.push(chunk);
+        // A slow pipe models CI log collection and forces writes to queue.
+        stream.pause();
+        setTimeout(() => stream.resume(), 5);
+      });
+    }
+    const [code, signal] = await once(child, "close");
+    assert.equal(signal, null);
+    assert.equal(code, verifierStatus);
+    const output = Buffer.concat(stdout).toString("utf8");
+    const errors = Buffer.concat(stderr).toString("utf8");
+    assert.ok(output.includes(stdoutReport), "the complete Wrangler report must reach stdout");
+    assert.ok(errors.includes(stderrReport), "the complete Wrangler diagnostics must reach stderr");
+    const receipt = `Commit SHA: ${sha}\nWorker version ID: ${VERSION}\n`;
+    assert.ok(output.includes(receipt), "the deployment receipt must reach stdout");
+    assert.ok(output.includes(`note: verifying DEPLOY_BASE_URL (${overrideOrigin}) rather than the reported ${reportedOrigin}.`));
+    assert.ok(output.indexOf(receipt) < output.indexOf("VERIFIER-START"), "the receipt must precede verifier output");
+    assert.deepEqual(JSON.parse(readFileSync(path.join(directory, "verifier-argv.json"), "utf8")),
+      [overrideOrigin, "--expected-sha", sha]);
+    assert.equal(readFileSync(summary, "utf8"), `\n${receipt}\n`);
+    if (verifierStatus !== 0) assert.match(errors, /deployment verification failed with exit code 1/);
+  });
+}

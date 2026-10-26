@@ -47,9 +47,18 @@ function runNode(args) {
   return result;
 }
 
-function exitOnFailure(label, status) {
+// Pipes are asynchronous on POSIX. A synchronous child blocks queued writes,
+// and process.exit() discards them, so drain both streams at those boundaries.
+function flushOutput() {
+  return Promise.all([process.stdout, process.stderr].map((stream) => new Promise((resolve, reject) => {
+    stream.write("", (error) => error ? reject(error) : resolve());
+  })));
+}
+
+async function exitOnFailure(label, status) {
   if (status !== 0) {
     console.error(`\n${label} failed with exit code ${status}.`);
+    await flushOutput();
     process.exit(status ?? 1);
   }
 }
@@ -58,12 +67,13 @@ function exitOnFailure(label, status) {
 const sha = readCheckoutSha();
 if (!sha) {
   console.error("Deployment requires a valid commit SHA from this Git checkout.");
+  await flushOutput();
   process.exit(1);
 }
 
 if (!skipBuild) {
   console.log("> building the Worker and its assets\n");
-  exitOnFailure("npm run build", runShell("npm run build", { stdio: "inherit" }).status);
+  await exitOnFailure("npm run build", runShell("npm run build", { stdio: "inherit" }).status);
 }
 
 console.log("\n> deploying to Cloudflare Workers\n");
@@ -72,7 +82,7 @@ console.log("\n> deploying to Cloudflare Workers\n");
 const deploy = runShell("npx wrangler deploy");
 process.stdout.write(deploy.stdout ?? "");
 process.stderr.write(deploy.stderr ?? "");
-exitOnFailure("wrangler deploy", deploy.status);
+await exitOnFailure("wrangler deploy", deploy.status);
 
 const output = `${deploy.stdout ?? ""}\n${deploy.stderr ?? ""}`;
 const identity = formatDeploymentIdentity(sha, output);
@@ -97,6 +107,7 @@ if (!baseUrl) {
       `\n  node scripts/verify-deployment.mjs https://<your-worker>.<your-subdomain>.workers.dev --expected-sha ${sha}` +
       "\nor set DEPLOY_BASE_URL and re-run this script.",
   );
+  await flushOutput();
   process.exit(1);
 }
 
@@ -105,4 +116,5 @@ if (override && reported && override !== reported) {
 }
 
 console.log(`\n> verifying ${baseUrl}\n`);
-exitOnFailure("deployment verification", runNode(["scripts/verify-deployment.mjs", baseUrl, "--expected-sha", sha]).status);
+await flushOutput();
+await exitOnFailure("deployment verification", runNode(["scripts/verify-deployment.mjs", baseUrl, "--expected-sha", sha]).status);

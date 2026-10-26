@@ -11,6 +11,8 @@ export const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 
 const REQUEST_HEADERS = { "user-agent": "CommitAtlas-deployment-check" };
 
+class BuildIdentityError extends Error {}
+
 function validateExpectedSha(value) {
   if (value === undefined) return undefined;
   assert(typeof value === "string" && value.length === 40 && /^[a-f\d]+$/i.test(value),
@@ -34,11 +36,12 @@ export function parseVerificationArgs(args) {
  * Fetch a deployment route with one shared attempt budget.
  *
  * Transport errors are retryable for every route. A received 404 is retryable
- * only when the caller opts into the fixed motion-probe exception. Every
- * other response is returned to the route assertion immediately.
+ * only when the caller opts into the fixed motion-probe exception. The health
+ * assertion may also retry a missing or stale build identity. These failures
+ * share this loop's budget; other response/assertion failures are immediate.
  *
  * @param {URL} target
- * @param {{fetchImpl?: typeof fetch, sleep?: (milliseconds: number) => Promise<void>, report?: (message: string) => void, retryNotFound?: boolean}} [options]
+ * @param {{fetchImpl?: typeof fetch, sleep?: (milliseconds: number) => Promise<void>, report?: (message: string) => void, retryNotFound?: boolean, validateResponse?: (response: Response) => Promise<void>}} [options]
  */
 export async function fetchWithBoundedRetry(
   target,
@@ -47,6 +50,7 @@ export async function fetchWithBoundedRetry(
     sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
     report = (message) => console.log(`  RETRY ${message}`),
     retryNotFound = false,
+    validateResponse,
   } = {},
 ) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
@@ -68,20 +72,35 @@ export async function fetchWithBoundedRetry(
       continue;
     }
 
-    if (!(retryNotFound && response.status === 404)) return response;
-    if (attempt === MAX_ATTEMPTS) {
-      throw new Error(
-        `${target.href} returned HTTP 404 after ${MAX_ATTEMPTS} attempts (motion probe propagation did not complete)`,
-      );
+    if (retryNotFound && response.status === 404) {
+      if (attempt === MAX_ATTEMPTS) {
+        throw new Error(
+          `${target.href} returned HTTP 404 after ${MAX_ATTEMPTS} attempts (motion probe propagation did not complete)`,
+        );
+      }
+      await scheduleRetry({
+        target,
+        attempt,
+        reason: "HTTP 404 for the fixed motion probe",
+        sleep,
+        report,
+      });
+      continue;
     }
 
-    await scheduleRetry({
-      target,
-      attempt,
-      reason: "HTTP 404 for the fixed motion probe",
-      sleep,
-      report,
-    });
+    // Validate in this attempt so health consumes its body only once, without a
+    // cloned stream. JSON/body-read and non-identity errors must not be retried.
+    try {
+      await validateResponse?.(response);
+    } catch (cause) {
+      if (!(cause instanceof BuildIdentityError)) throw cause;
+      if (attempt === MAX_ATTEMPTS) {
+        throw new Error(`${cause.message} after ${MAX_ATTEMPTS} attempts (health build propagation did not complete)`);
+      }
+      await scheduleRetry({ target, attempt, reason: cause.message, sleep, report });
+      continue;
+    }
+    return response;
   }
 
   throw new Error("unreachable");
@@ -133,16 +152,21 @@ export function createDeploymentChecks({ expectedSha } = {}) {
     {
       name: expectedSha ? "health endpoint reports ok with the expected build SHA" : "health endpoint reports ok",
       async run(get) {
-        const response = await get("/api/v1/health");
-        assert(response.status === 200, `expected 200, got ${response.status}`);
-        const body = await response.json();
-        assert(body.status === "ok", `expected status "ok", got ${JSON.stringify(body.status)}`);
-        if (expectedSha !== undefined) {
-          assert(typeof body.buildSha === "string" && body.buildSha.length === 40 && /^[a-f\d]+$/i.test(body.buildSha),
-            "health response has missing or malformed build SHA");
-          assert(body.buildSha.toLowerCase() === expectedSha,
-            `expected build SHA ${expectedSha}, got ${body.buildSha}`);
-        }
+        await get("/api/v1/health", {
+          async validateResponse(response) {
+            assert(response.status === 200, `expected 200, got ${response.status}`);
+            const body = await response.json();
+            assert(body.status === "ok", `expected status "ok", got ${JSON.stringify(body.status)}`);
+            if (expectedSha !== undefined) {
+              if (!(typeof body.buildSha === "string" && body.buildSha.length === 40 && /^[a-f\d]+$/i.test(body.buildSha))) {
+                throw new BuildIdentityError("health response has missing or malformed build SHA");
+              }
+              if (body.buildSha.toLowerCase() !== expectedSha) {
+                throw new BuildIdentityError(`expected build SHA ${expectedSha}, got ${body.buildSha}`);
+              }
+            }
+          },
+        });
       },
     },
     {
@@ -365,8 +389,8 @@ export async function verifyDeployment(
     throw new Error(`refusing to verify a non-HTTPS origin: ${base.origin}`);
   }
 
-  const get = (path, { retryNotFound = false } = {}) =>
-    fetchWithBoundedRetry(new URL(path, base), { fetchImpl, sleep, report, retryNotFound });
+  const get = (path, { retryNotFound = false, validateResponse } = {}) =>
+    fetchWithBoundedRetry(new URL(path, base), { fetchImpl, sleep, report, retryNotFound, validateResponse });
   const checks = createDeploymentChecks({ expectedSha });
   let failed = 0;
 
