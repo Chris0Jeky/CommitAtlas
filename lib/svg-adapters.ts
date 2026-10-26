@@ -18,6 +18,7 @@ import type {
   SceneInputs,
   StreakCardData,
 } from "@/packages/svg/src/index";
+import { demoLensProjection } from "./lens-projection";
 import { toSvgCiState, toSvgLifecycle } from "./github/adapters";
 import { GitHubApiError } from "./github/client";
 import type {
@@ -190,9 +191,10 @@ export function toLanguagesCard(snapshot: ProfileSnapshot): LanguagesCardData {
   };
 }
 
-/** Hosted scenes receive the public snapshot only. Identity and lens stay off this path. */
-export function toSceneInputs(snapshot: PortfolioSnapshot): SceneInputs {
-  return { snapshot };
+/** Hosted projection input is the vendored C0 fixture, enabled only by an explicit demo flag. */
+export function toSceneInputs(snapshot: PortfolioSnapshot, options: { readonly demo?: boolean } = {}): SceneInputs {
+  const lens = options.demo === true ? demoLensProjection(snapshot) : undefined;
+  return { snapshot, ...(lens ? { lens } : {}) };
 }
 
 export function toProjectBoard(snapshot: ProjectBoardSnapshot): ProjectBoardData {

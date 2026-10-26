@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { devNull } from "node:os";
 import { promisify } from "node:util";
 import {
   parseHandle,
@@ -55,6 +56,7 @@ const RawStaticConfigSchema = z.object({
   scenes: z.array(z.string().max(48)).max(MAX_STATIC_SCENES).default([]),
   scenePack: z.enum(STATIC_SCENE_PACKS).default("survey"),
   identity: z.unknown().optional(),
+  lens: z.object({ path: RelativePathSchema, maxAgeDays: z.number().int().min(1).max(3650).default(45) }).strict().optional(),
 }).strict();
 
 export interface StaticConfig {
@@ -71,6 +73,7 @@ export interface StaticConfig {
   readonly projects: ProjectManifest["projects"];
   readonly scenes?: readonly string[];
   readonly scenePack?: ScenePack;
+  readonly lens?: { readonly path: string; readonly maxAgeDays: number };
   readonly identity?: Pick<IdentityConfig, "name" | "tagline"> & { readonly focus?: readonly string[] };
 }
 
@@ -128,6 +131,7 @@ export function parseStaticConfig(input: unknown): StaticConfig {
     projects: manifest.projects,
     scenes: sceneOptions.definitions.map(({ id }) => id),
     scenePack: sceneOptions.pack,
+    ...(raw.lens ? { lens: { path: raw.lens.path.replaceAll("\\", "/"), maxAgeDays: raw.lens.maxAgeDays } } : {}),
     ...(sceneOptions.identity ? { identity: sceneOptions.identity } : {}),
   };
 }
@@ -190,11 +194,16 @@ async function assertNoSymlinkComponents(root: string, target: string, mustExist
   }
 }
 
-async function assertTracked(root: string, file: string): Promise<void> {
+export async function assertTracked(root: string, file: string): Promise<void> {
   const relative = path.relative(root, file).replaceAll("\\", "/");
   try {
-    await promisify(execFile)("git", ["-C", root, "ls-files", "--error-unmatch", "--", relative], {
-      windowsHide: true,
+    // A caller's alternate index/repository/config cannot prove this worktree's tracking.
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    for (const key of Object.keys(env)) if (key.toUpperCase().startsWith("GIT_")) delete env[key];
+    env.GIT_CONFIG_NOSYSTEM = "1";
+    env.GIT_CONFIG_GLOBAL = devNull;
+    await promisify(execFile)("git", ["-C", root, "--literal-pathspecs", "ls-files", "--error-unmatch", "--", relative], {
+      windowsHide: true, env,
     });
   } catch {
     throw new Error("config must be tracked by the current Git repository");

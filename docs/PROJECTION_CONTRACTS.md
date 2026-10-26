@@ -1,11 +1,9 @@
 # Cross-project projection contracts
 
-**Status: proposal for the producers, nothing implemented.** This document is CommitAtlas's
-consumer-side specification of the two cross-repository seams the
-[expansion programme](./EXPANSION_PLAN.md) depends on. The canonical schemas will be owned by
-Developer Lens, as its own boundary documents require; this file states what CommitAtlas needs,
-what it refuses, and the merge order both repositories must follow. When a producer schema lands,
-this document is updated to point at it and stops being the shape of record.
+**Lens reader implemented for C0; finding projection remains proposed.** Developer Lens owns
+both canonical producer contracts. The Lens consumer is pinned to the published schema/runtime
+revision below; this document no longer defines its transport shape. No signature scene is
+registered, and owner C1 publication remains disabled under the operative Q-9 No policy (#170).
 
 The existing seam it generalizes — `DeveloperLensMethodTrialSummary.v1`, vendored under
 `research-contracts/method-trial-summary/v1/` and validated by `lib/research-bridge.ts` — is the
@@ -73,116 +71,69 @@ promotion authority (this mirrors the Lab's own CONTRACTS.md wording).
 
 ## `PublicLensProjection.v1`
 
-Derived from Developer Lens's existing `PortableExportPayload` (`src/lib/portableExportPayload.ts`),
-narrowed to what the Phase 2 scenes read. Field names follow the source so the producer is a
-projection, not a re-computation.
+The canonical producer schema, runtime validator, fixture and README are pinned to Developer Lens
+[`bae3bddf7295b767d57196887bd648ba1cfe2ab3`](https://github.com/Chris0Jeky/developer-lens/blob/bae3bddf7295b767d57196887bd648ba1cfe2ab3/research-contracts/lens-projection/v1/README.md).
+The vendored [contract receipt](../research-contracts/lens-projection/v1/README.md) records exact
+schema-file, fixture-file and canonical-body hashes. The artifact's `producerCommit` is its
+synthetic showcase-input anchor, **not** the publishing/schema revision.
 
-```ts
-interface PublicLensProjectionV1 {
-  schemaVersion: "PublicLensProjection.v1";
-  dataClass: "C0" | "C1";
-  scope: "public-demo" | "redacted-local";          // C0 ⇔ public-demo; C1 ⇔ redacted-local
-  generatedAt: string;                              // UTC, "Z"
-  range: "6m" | "12m";
-  rangeLabel: string;                               // ≤ 40, relative wording only ("last 12 months")
-  repositoryRedaction: "synthetic" | "private-aliases" | "all-aliases";
-  privacyNote: string;                              // ≤ 240
+`packages/core/src/lens-projection.ts` ports the producer's strict Zod validator, including all
+bounds, fixed-order DNA, disclosure/alias rules, descending shares, uniqueness, narrative/privacy
+screen, warning registry order/text, coverage-count consistency, optional delivery invariants,
+and RFC 8785 `projectionHash` verification. `parseLensProjection` additionally checks the snapshot
+clock and alias collisions with real repository names/display labels in that snapshot. Callers
+use this bounded-error wrapper; projection input and Zod diagnostics must never be logged.
 
-  summary: {                                        // integers, 0 ≤ n ≤ 1_000_000
-    commits: number; mergedPullRequests: number; reviews: number; issues: number;
-    activeDays: number; activeWeeks: number; repositories: number;
-  };
+The published producer resolves the old draft's differences:
 
-  dna: Array<{                                      // exactly 6, keys unique
-    key: "focus" | "shipping" | "collaboration" | "consistency" | "breadth" | "stewardship";
-    value: number;                                  // 0 ≤ v ≤ 1
-  }>;
+| Old consumer draft | Canonical v1 |
+| --- | --- |
+| `coverage.score` | `coverage.scorePercent`, integer 0..100; only the producer's count-consistent candidates are admitted |
+| `coverage.warnings[].display_text` | `displayText`, exactly the closed registry text |
+| nullable `delivery.medianMergeHours` | finite non-null 0..100,000; omit the entire block when unavailable |
+| DNA keys in any order | exactly six entries in producer tuple order |
 
-  archetype: { name: string; description: string }; // ≤ 40, ≤ 160
+No compatibility aliases, percent conversions or alternative hashes are accepted. The optional
+`delivery` block requires `mergedSamples === summary.mergedPullRequests` and
+`censored === (openAtRangeEnd > 0)`. The producer's complete registry, coverage vectors, alias
+pattern and privacy denials remain authoritative in the pinned README/runtime, rather than the
+historical examples in this document.
 
-  repositories: Array<{                             // ≤ 12, ordered by attentionShare desc
-    label: string;                                  // ≤ 40; must be an alias unless disclosure is public-name or synthetic
-    disclosure: "synthetic" | "public-name" | "private-alias" | "masked-alias";
-    primaryLanguage?: string;                       // ≤ 32
-    attentionShare: number;                         // 0..1, sum ≤ 1.0001
-    activeWeeks: number;                            // integer
-    momentum: number;                               // -1..1
-    mergedPullRequests: number;                     // integer
-    reviews: number;                                // integer
-  }>;
-
-  themes: Array<{                                   // ≤ 9, keys unique, each share 0..1, sum ≤ 1.0001
-    key: "feat" | "fix" | "docs" | "test" | "refactor" | "chore" | "perf" | "revert" | "other";
-    share: number;                                  // finite 0..1; the PRODUCER folds every other conventional-commit type
-  }>;                                               // (style, wip, deps, …) into "other" before export, because
-                                                    // ThemeMetric.key is an open string in Developer Lens
-
-  delivery?: {                                      // NEW producer-computed block, not in PortableExportPayload today;
-                                                    // observed aggregate only: no per-stage or release evidence
-    mergedSamples: number;                          // integer — absent block = not exported, never zeros
-    medianMergeHours: number | null;                // follows summary.medianMergeHours; null = unavailable, never 0
-    openAtRangeEnd: number;                         // integer
-    censored: boolean;                              // true when open work is excluded from the median
-  };
-
-  narratives: Array<{                               // ≤ 3, orders unique
-    order: 1 | 2 | 3;
-    title: string;                                  // ≤ 80
-    body: string;                                   // ≤ 280
-    limitation: string;                             // ≤ 200
-  }>;
-
-  coverage: {                                       // counts follow PortableExportPayload.coverage
-    complete: number; partial: number; unavailable: number; total: number;   // integers
-    score: number;                                  // producer-owned scale; current main serializes rounded 0..100
-    warnings: Array<{ code: CoverageWarningCode; display_text: string }>; // ≤ 8, closed registry; the producer
-  };                                                // maps its free-text DashboardMeta.warnings onto codes
-
-  provenance: {
-    producer: "developer-lens";
-    producerVersion: string;                        // semver
-    producerCommit: string;                         // 40 hex
-    inputHash: string;                              // "sha256:" + 64 hex
-    projectionHash: string;                         // "sha256:" + 64 hex, over the canonical body excluding this field
-    showcaseUrl?: "https://chris0jeky.github.io/developer-lens/";
-  };
-}
-```
-
-`CoverageWarningCode` is a closed v1 registry the producer publishes in its README beside the
-schema (for example `local_git_unavailable`, `private_activity_aggregated`, `line_changes_partial`,
-`range_truncated`); each code has exactly one display text and consumers render only that text.
-
-`coverage.score` is producer-owned. Developer Lens main currently serializes `coverageScore` as a
-rounded `0..100` value, while an earlier CommitAtlas draft described `0..1`; CommitAtlas must not
-invent a conversion or count formula. Developer Lens issue #304 must publish the canonical scale,
-semantics, and fixture vectors. Until that contract is pinned and resolved, CommitAtlas rejects the
-artifact rather than treating either scale as interchangeable.
-
-Consumer semantic checks beyond the schema: `dataClass`/`scope` agree; `dataClass: "C0"` implies
-`repositoryRedaction: "synthetic"` and every repository `disclosure` is `synthetic` (a C0 artifact
-may carry no real name and no alias of a real repository); a `private-alias` or `masked-alias`
-label matches Developer Lens's alias pattern and is not a real repository name the snapshot also
-lists; `dna` keys are exactly the six; every `themes[].share` is finite and in `0..1` and their
-sums are bounded; `narratives` contain no URL, `@handle`, or `#number`;
-`generatedAt` is not in the future relative to the snapshot's `generatedAt`.
-
-Producer command shape (Developer Lens decides the exact CLI; today's headless entry point is
-`npm run export:artifacts`, and a local export already requires `--source local` together with
-`--acknowledge-redaction`):
-
-```powershell
-npm run export:artifacts -- --source local --acknowledge-redaction --range 12m --repository-redaction private-aliases --artifact lens-projection --out .commitatlas
-```
-
-The producer runs the same post-write privacy scan its headless export runs today and refuses to
-write a file that fails it.
-
-Consumer configuration (`.commitatlas.json`, additive to version 1):
+Consumer configuration remains additive to version 1:
 
 ```json
 { "lens": { "path": ".commitatlas/lens-profile.v1.json", "maxAgeDays": 45 } }
 ```
+
+`path` is a contained relative Git-tracked regular file with no symlink component, at most
+256 KiB, read with a bounded allocation and fatal UTF-8 decoding. `maxAgeDays` defaults to 45
+and is an integer 1..3650. Age uses elapsed time against `snapshot.freshness.generatedAt`, never
+the process clock: `age <= maxAgeDays` is fresh, `maxAgeDays < age <= 2 * maxAgeDays` is stale,
+and greater is expired. The scene context preserves the full validated producer projection and
+adds consumer `freshness`. Signature models must preserve coverage, privacy and freshness; the
+engine adds a separately allocated `STALE PROJECTION` header and requires accessible age, while
+expired signatures take their unavailable composition before model building.
+
+**Current publication boundary:** the schema/parser validates both C0 and C1 transport semantics,
+but static and hosted scene adapters accept C0 only (`LENS_C1_PUBLICATION_DISABLED` otherwise).
+This implements the safe synthetic reader and does not complete owner C1 publication or establish
+approval of a real projection. Q-9 currently says No; #170 records that policy and #153 remains
+blocked. Static generation validates a configured
+file before any output write; an invalid file fails that generation with a bounded code.
+Hosted adapters accept no projection argument and add only the vendored C0 fixture under explicit
+`demo=true` with a synthetic snapshot. A historical demo snapshot earlier than the fixed fixture
+has no Lens context. Hosted query/body/URL input is never admitted.
+
+Producer commands (run in Developer Lens, not in the Action):
+
+```text
+npm run export:profile                                  # C0 showcase
+npm run export:profile -- --source local --acknowledge-redaction --range 12m --repository-redaction private-aliases --out .commitatlas
+```
+
+The second command documents the producer's local C1 export; the current CommitAtlas publishing
+adapters still reject its output pending the owner decision. A checksum proves content integrity,
+not data-class truth, anonymity or publication approval.
 
 ## `ResearchFindingProjection.v1`
 
@@ -309,5 +260,6 @@ fixture disagree, the producer's schema wins and the consumer re-vendors.
 - The owner's C1 projection is a public artifact once committed to the profile repository, and
   git history retains it after removal. Aliases reduce identification but are not anonymity; the
   `privacyNote` is rendered, not hidden. That publication is the one irreversible step in the
-  programme and is gated by the owner's answer to EXPANSION_PLAN Q-9; until then the lens scenes
-  render only from the C0 showcase fixture.
+  programme. The operative answer to EXPANSION_PLAN Q-9 is No; lens scenes render only from
+  the C0 showcase fixture. A different policy requires an explicit owner change and a reviewed
+  adapter change; the current code does not enable C1 when a decision record alone changes.

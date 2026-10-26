@@ -5,6 +5,7 @@ import { evidenceCoverageScene } from "./scenes/evidence-coverage.js";
 import { nebulaScene } from "./scenes/nebula.js";
 import { identityBeaconScene } from "./scenes/identity-beacon.js";
 import type { PortfolioSnapshot } from "@commit-atlas/github";
+import { COVERAGE_WARNINGS, coverageScorePercentCandidates, LensProjectionError, parseLensProjection, lensProjectionFreshness, type PublicLensProjection as LensProjectionArtifact, type LensProjectionFreshness } from "@commit-atlas/core/lens";
 import type { ThemeName } from "./index.js";
 import { createIdentityConfig, isIdentityConfig, type IdentityConfig } from "./identity.js";
 export type { IdentityConfig } from "./identity.js";
@@ -24,11 +25,18 @@ export interface PublicDemoCoverage {
   readonly warnings: readonly string[];
 }
 /** Consumer-only synthetic common context; not a PublicLensProjection.v1 artifact reader. */
-export interface PublicLensProjection {
+export interface PublicDemoLensContext {
   readonly [lensBrand]: true;
   readonly dataClass: "C0"; readonly scope: "public-demo";
   readonly coverage: PublicDemoCoverage; readonly privacyNote: string;
 }
+/** Complete producer artifact plus consumer-owned freshness; C1 cannot enter this renderer. */
+export interface SceneLensProjection extends Omit<LensProjectionArtifact, "dataClass" | "scope"> {
+  readonly [lensBrand]: true;
+  readonly dataClass: "C0"; readonly scope: "public-demo";
+  readonly freshness: LensProjectionFreshness;
+}
+export type PublicLensProjection = PublicDemoLensContext | SceneLensProjection;
 export interface ResearchFindingProjection { readonly [findingBrand]: true }
 export interface SceneInputs {
   readonly snapshot: PortfolioSnapshot;
@@ -104,7 +112,7 @@ function count(value: unknown): number {
 }
 export function createPublicDemoLensContext(input: {
   readonly dataClass: "C0"; readonly scope: "public-demo"; readonly coverage: PublicDemoCoverage; readonly privacyNote: string;
-}): PublicLensProjection {
+}): PublicDemoLensContext {
   const data = record(input, ["dataClass", "scope", "coverage", "privacyNote"], "public demo lens context");
   if (data.dataClass !== "C0" || data.scope !== "public-demo") throw new Error("only C0 public-demo consumer lens context is supported");
   const coverage = record(data.coverage, ["complete", "partial", "unavailable", "total", "warnings"], "coverage");
@@ -112,17 +120,41 @@ export function createPublicDemoLensContext(input: {
   if (complete + partial + unavailable !== total) throw new Error("coverage counts must sum to total");
   if (!Array.isArray(coverage.warnings) || coverage.warnings.length > 8) throw new Error("invalid coverage warnings");
   const warnings = own(coverage.warnings).map(item => text(item, 240, "coverage warning"));
-  const result = own({ dataClass: "C0", scope: "public-demo", coverage: { complete, partial, unavailable, total, warnings }, privacyNote: text(data.privacyNote, 240, "privacy note") }) as unknown as PublicLensProjection;
+  const result = own({ dataClass: "C0", scope: "public-demo", coverage: { complete, partial, unavailable, total, warnings }, privacyNote: text(data.privacyNote, 240, "privacy note") }) as unknown as PublicDemoLensContext;
   authenticLensContexts.add(result);
   return result;
 }
-export function sceneLensDescription(lens: Pick<PublicLensProjection, "coverage" | "privacyNote">): string {
-  const data = record(lens, ["coverage", "privacyNote", "dataClass", "scope"], "lens common context");
+export function createLensProjectionContext(input: unknown, snapshot: PortfolioSnapshot, maxAgeDays = 45): SceneLensProjection {
+  const repositoryNames = (snapshot.projects?.projects ?? []).flatMap(project => [project.repo, project.repo.split("/").at(-1)!, project.name]);
+  const projection = parseLensProjection(input, { generatedAt: snapshot.freshness.generatedAt, repositoryNames });
+  if (projection.dataClass !== "C0" || projection.scope !== "public-demo") throw new LensProjectionError("LENS_C1_PUBLICATION_DISABLED");
+  const freshness = lensProjectionFreshness(projection.generatedAt, snapshot.freshness.generatedAt, maxAgeDays);
+  const result = own({ ...projection, freshness }) as unknown as SceneLensProjection;
+  authenticLensContexts.add(result);
+  return result;
+}
+function projectionAgeText(freshness: LensProjectionFreshness): string {
+  return `${freshness.status === "stale" ? "STALE PROJECTION · " : freshness.status === "expired" ? "EXPIRED PROJECTION · " : "Projection age: "}${freshness.ageDays} days.`;
+}
+export function sceneLensDescription(lens: Pick<PublicLensProjection, "coverage" | "privacyNote"> & { readonly freshness?: LensProjectionFreshness }): string {
+  const data = record(lens, ["coverage", "privacyNote", "dataClass", "scope", "freshness", "schemaVersion", "generatedAt", "range", "rangeLabel", "repositoryRedaction", "summary", "dna", "archetype", "repositories", "themes", "delivery", "narratives", "provenance"], "lens common context");
   if (data.dataClass !== undefined && data.dataClass !== "C0" || data.scope !== undefined && data.scope !== "public-demo") throw new Error("only synthetic lens common context is supported");
-  const validated = createPublicDemoLensContext({ dataClass: "C0", scope: "public-demo", coverage: data.coverage as PublicDemoCoverage, privacyNote: data.privacyNote as string });
+  const coverage = record(data.coverage, ["complete", "partial", "unavailable", "total", "scorePercent", "warnings"], "coverage");
+  const warnings = coverage.warnings;
+  if (!Array.isArray(warnings) || warnings.length > 8) throw new Error("invalid coverage warnings");
+  const mappedWarnings = coverage.scorePercent === undefined ? warnings : warnings.map(item => {
+    const warning = record(item, ["code", "displayText"], "coverage warning");
+    if (typeof warning.code !== "string" || !Object.hasOwn(COVERAGE_WARNINGS, warning.code) || warning.displayText !== COVERAGE_WARNINGS[warning.code as keyof typeof COVERAGE_WARNINGS]) throw new Error("invalid coverage warning");
+    return warning.displayText;
+  });
+  const validated = createPublicDemoLensContext({ dataClass: "C0", scope: "public-demo", coverage: { complete: coverage.complete, partial: coverage.partial, unavailable: coverage.unavailable, total: coverage.total, warnings: mappedWarnings } as PublicDemoCoverage, privacyNote: data.privacyNote as string });
   const c = validated.coverage;
-  return `Coverage: ${c.complete} complete, ${c.partial} partial, ${c.unavailable} unavailable, ${c.total} total. Privacy: ${validated.privacyNote}` +
-    (c.warnings.length ? ` Warnings: ${c.warnings.join("; ")}.` : "");
+  if (coverage.scorePercent !== undefined && !coverageScorePercentCandidates(c).includes(coverage.scorePercent as number)) throw new Error("invalid coverage scorePercent");
+  const age = data.freshness as LensProjectionFreshness | undefined;
+  if (age && (!Number.isInteger(age.ageDays) || age.ageDays < 0 || !["fresh", "stale", "expired"].includes(age.status))) throw new Error("invalid lens freshness");
+  return `Coverage: ${c.complete} complete, ${c.partial} partial, ${c.unavailable} unavailable, ${c.total} total.` +
+    (coverage.scorePercent !== undefined ? ` Coverage ${coverage.scorePercent}%.` : "") + ` Privacy: ${validated.privacyNote}` +
+    (c.warnings.length ? ` Warnings: ${c.warnings.join("; ")}.` : "") + (age ? ` ${projectionAgeText(age)}` : "");
 }
 export function sceneUnavailable(reason: string): SceneUnavailable {
   return Object.freeze({ state: "unavailable", reason: text(reason, 240, "unavailable reason") });
@@ -215,6 +247,14 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
   if (data.identity !== undefined && !isIdentityConfig(data.identity)) unavailableReason = "Validated static identity is unavailable.";
   if (data.lens !== undefined && (!data.lens || typeof data.lens !== "object" || !authenticLensContexts.has(data.lens))) unavailableReason = "Validated synthetic lens context is unavailable.";
   if (definition.family === "signature" && data.lens === undefined) unavailableReason = "Validated lens coverage and privacy context is unavailable.";
+  if (!unavailableReason && data.lens && "schemaVersion" in (data.lens as object)) {
+    const { freshness, ...projection } = data.lens as SceneLensProjection;
+    try {
+      data.lens = createLensProjectionContext(projection, data.snapshot as PortfolioSnapshot, freshness.maxAgeDays);
+      const current = data.lens as SceneLensProjection;
+      if (definition.family === "signature" && current.freshness.status === "expired") unavailableReason = projectionAgeText(current.freshness);
+    } catch { unavailableReason = "LENS_INVALID_PROJECTION"; }
+  }
   // Optional fields are omitted rather than allowing undefined into canonical JSON.
   const supplied = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
   const copiedInputs = own(supplied) as unknown as SceneInputs;
@@ -242,13 +282,25 @@ export function renderSceneDefinition<Model>(source: SceneDefinition<Model>, inp
       record(accessibility, ["title", "description"], "scene accessibility");
       text(accessibility.title, 240, "scene title"); text(accessibility.description, 4000, "scene description");
       if (definition.family === "signature") {
-        const signature = model as { lens?: { coverage?: unknown; privacyNote?: unknown } };
+        const signature = model as { lens?: { coverage?: unknown; privacyNote?: unknown; freshness?: unknown } };
         if (!signature?.lens || canonicalJson(signature.lens.coverage) !== canonicalJson(ownedInputs.lens!.coverage) || signature.lens.privacyNote !== ownedInputs.lens!.privacyNote) throw new Error("signature model must preserve lens coverage and privacy context");
+        if ("freshness" in ownedInputs.lens! && canonicalJson(signature.lens.freshness) !== canonicalJson(ownedInputs.lens.freshness)) throw new Error("signature model must preserve lens freshness");
       }
       output = definition.render(model, context);
     }
   } finally { sessions.delete(context); }
   if (typeof output !== "string") throw new Error("scene renderer must return SVG string");
+  // Allocate a separate header row rather than covering a scene's existing geometry.
+  if (!unavailable && definition.family === "signature" && ownedInputs.lens && "freshness" in ownedInputs.lens && ownedInputs.lens.freshness.status === "stale") {
+    const parsed = parseSceneXml(output);
+    const box = parsed.root.attrs.viewBox?.split(/[ ,]+/u).map(Number);
+    if (!box || box.length !== 4 || box.some(value => !Number.isFinite(value)) || box[2]! <= 0 || box[3]! <= 0) throw new Error("stale signature requires a valid viewBox");
+    const [x, y, width, height] = box as [number, number, number, number];
+    const row = 28;
+    const header = `<g><rect x="${x}" y="${y - row}" width="${width}" height="${row}" fill="#3b2d12"/><text x="${x + 12}" y="${y - 9}" font-size="12" fill="#fff1c2">${sceneEscapeXml(projectionAgeText(ownedInputs.lens.freshness))}</text></g>`;
+    output = output.slice(0, parsed.root.openEnd) + header + output.slice(parsed.root.openEnd);
+    output = output.replace(/viewBox[ \t\r\n]*=[ \t\r\n]*"[^"]*"/u, `viewBox="${x} ${y - row} ${width} ${height + row}"`);
+  }
   let document = parseSceneXml(output);
   if (document.root.attrs["data-scene-seed"] !== undefined && document.root.attrs["data-scene-seed"] !== seed) throw new Error("scene seed marker does not match model");
   if (document.root.attrs["data-scene-seed"] === undefined) {

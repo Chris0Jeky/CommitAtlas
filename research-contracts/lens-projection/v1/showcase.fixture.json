@@ -1,0 +1,204 @@
+{
+  "archetype": {
+    "description": "The visible trace leans toward feedback, review, and work strengthened across project boundaries.",
+    "name": "The Force Multiplier"
+  },
+  "coverage": {
+    "complete": 2,
+    "partial": 0,
+    "scorePercent": 100,
+    "total": 2,
+    "unavailable": 0,
+    "warnings": [
+      {
+        "code": "synthetic_showcase",
+        "displayText": "Synthetic showcase data; these statistics do not describe a person."
+      }
+    ]
+  },
+  "dataClass": "C0",
+  "delivery": {
+    "censored": true,
+    "medianMergeHours": 96,
+    "mergedSamples": 41,
+    "openAtRangeEnd": 6
+  },
+  "dna": [
+    {
+      "key": "focus",
+      "value": 0.18
+    },
+    {
+      "key": "shipping",
+      "value": 0.91
+    },
+    {
+      "key": "collaboration",
+      "value": 0.72
+    },
+    {
+      "key": "consistency",
+      "value": 1
+    },
+    {
+      "key": "breadth",
+      "value": 0.99
+    },
+    {
+      "key": "stewardship",
+      "value": 0.83
+    }
+  ],
+  "generatedAt": "2026-09-01T12:00:00Z",
+  "narratives": [
+    {
+      "body": "Active weeks and streaks describe continuity in observable events, not time worked or effort.",
+      "limitation": "Small and large events count alike in cadence totals.",
+      "order": 1,
+      "title": "53 weeks carried visible activity."
+    },
+    {
+      "body": "The median observed creation-to-merge interval was 96 hours.",
+      "limitation": "Merge timing reflects system conventions, batch size, automation, queueing, and risk; speed is not quality.",
+      "order": 2,
+      "title": "41 authored changes were observed as merged."
+    },
+    {
+      "body": "Review activity outweighed authored pull-request volume, which is consistent with a period shaped by feedback as well as direct change.",
+      "limitation": "This is a deterministic hypothesis with strong source coverage, not a causal claim or performance judgment.",
+      "order": 3,
+      "title": "Feedback became a first-class part of the system."
+    }
+  ],
+  "privacyNote": "Synthetic showcase · no personal GitHub data",
+  "provenance": {
+    "inputHash": "sha256:ce1151426b16a1b99a2143662c4b383edf777b641fad9a12f36d4db397a228b2",
+    "producer": "developer-lens",
+    "producerCommit": "d05533bbe17b3db524f9d404ef6c4a95a482e4bd",
+    "producerVersion": "0.0.0",
+    "projectionHash": "sha256:a97f47a7c76ee3bf0c4c44ec6730a88c6a0e47b2de95155c3f358ec920e5a9b3",
+    "showcaseUrl": "https://chris0jeky.github.io/developer-lens/"
+  },
+  "range": "12m",
+  "rangeLabel": "One-year lens",
+  "repositories": [
+    {
+      "activeWeeks": 32,
+      "attentionShare": 0.14,
+      "disclosure": "synthetic",
+      "label": "relay-api",
+      "mergedPullRequests": 6,
+      "momentum": 0.065,
+      "primaryLanguage": "Kotlin",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 31,
+      "attentionShare": 0.137,
+      "disclosure": "synthetic",
+      "label": "docs-atlas",
+      "mergedPullRequests": 6,
+      "momentum": 0.015,
+      "primaryLanguage": "MDX",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 33,
+      "attentionShare": 0.132,
+      "disclosure": "synthetic",
+      "label": "quiet-infra",
+      "mergedPullRequests": 6,
+      "momentum": -0.075,
+      "primaryLanguage": "PowerShell",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 29,
+      "attentionShare": 0.131,
+      "disclosure": "synthetic",
+      "label": "sandbox-lab",
+      "mergedPullRequests": 5,
+      "momentum": 0.01,
+      "primaryLanguage": "JavaScript",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 28,
+      "attentionShare": 0.122,
+      "disclosure": "synthetic",
+      "label": "prism-core",
+      "mergedPullRequests": 0,
+      "momentum": -0.266,
+      "primaryLanguage": "TypeScript",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 29,
+      "attentionShare": 0.116,
+      "disclosure": "synthetic",
+      "label": "orbit-cli",
+      "mergedPullRequests": 6,
+      "momentum": -0.015,
+      "primaryLanguage": "Rust",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 28,
+      "attentionShare": 0.112,
+      "disclosure": "synthetic",
+      "label": "release-weaver",
+      "mergedPullRequests": 6,
+      "momentum": -0.124,
+      "primaryLanguage": "Go",
+      "reviews": 9
+    },
+    {
+      "activeWeeks": 25,
+      "attentionShare": 0.11,
+      "disclosure": "synthetic",
+      "label": "signal-garden",
+      "mergedPullRequests": 6,
+      "momentum": 0.038,
+      "primaryLanguage": "Python",
+      "reviews": 9
+    }
+  ],
+  "repositoryRedaction": "synthetic",
+  "schemaVersion": "PublicLensProjection.v1",
+  "scope": "public-demo",
+  "summary": {
+    "activeDays": 243,
+    "activeWeeks": 53,
+    "commits": 493,
+    "issues": 21,
+    "mergedPullRequests": 41,
+    "repositories": 8,
+    "reviews": 72
+  },
+  "themes": [
+    {
+      "key": "chore",
+      "share": 0.175
+    },
+    {
+      "key": "feat",
+      "share": 0.171
+    },
+    {
+      "key": "docs",
+      "share": 0.17
+    },
+    {
+      "key": "refactor",
+      "share": 0.166
+    },
+    {
+      "key": "fix",
+      "share": 0.162
+    },
+    {
+      "key": "test",
+      "share": 0.156
+    }
+  ]
+}

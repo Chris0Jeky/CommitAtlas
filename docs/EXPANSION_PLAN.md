@@ -98,9 +98,7 @@ Invariants carried forward unchanged, because they are what make the product wor
 
 ## 4. Target architecture
 
-This remains the target architecture. The GitHub-only scene path exists; the full Lens and
-finding projection paths remain open under #145 and #111. The current hosted allowlist contains
-no Lens scenes, and the static config has no Lens or finding projection input.
+This remains the target architecture. The GitHub-only scene path and the C0 Lens projection reader exist. The static config accepts a tracked Lens file; hosted adapters use only the vendored C0 fixture under explicit `demo=true`. No Lens scene is registered. Finding projection consumption remains open under #111. Owner C1 publication remains disabled under Q-9 No / #170.
 
 ```text
 GitHub public evidence ─────► @commit-atlas/github ─────► PortfolioSnapshot ─────────────┐
@@ -291,9 +289,7 @@ Contract tests every scene must pass, written once in a shared harness and run p
 The #128 implementation introduced the additive engine and shared contract harness. Six built-ins
 are now registered: `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-map`,
 `identity-beacon`, and `nebula`. Renderers compile one scoped motion plan with an explicit backend/target; final
-SVG bytes and trusted emitted targets/groups enforce the provisional classes. Signature fixtures
-use a validated C0 consumer-only common context. This is not the raw Lens projection reader:
-producer coverage semantics and freshness validation remain behind #145. The finding
+SVG bytes and trusted emitted targets/groups enforce the provisional classes. Signature fixtures retain their validated C0 common context; the full C0 Lens adapter additionally validates the pinned producer contract, canonical hash and snapshot-clock freshness. C1 publication remains disabled. The finding
 schema adapter remains reserved; #132 adds the bounded static identity adapter. See `packages/svg/README.md` for the public API and strict SVG subset.
 
 ## 7. Scene catalogue
@@ -319,9 +315,7 @@ its browser behavior verified.
 
 ### Phase 2 — Developer Lens projection
 
-All rows in this phase remain open under #111, dependent on the full projection reader #145;
-no signature scene is registered. The synthetic common lens context in engine tests does not
-implement this reader. Owner C1 publication remains separately gated by #170 / Q-9.
+All scene rows in this phase remain open under #111; no signature scene is registered. The C0 reader supplies full producer-validated Lens contexts to static and demo-only hosted adapters. Owner C1 publication remains disabled and separately gated by #170 / Q-9.
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
@@ -373,10 +367,7 @@ only `survey`. Broader scene/pack adoption remains open under #111.
 
 ## 8. Cross-project projections
 
-**Target contract, still open (#145 and #111):** no full projection reader or registered
-signature/finding scene exists in this checkout. Only the synthetic C0 common lens context and
-the pinned method-trial bridge are implemented. The table and freshness rules below specify the
-intended seam, not completed producer/consumer compatibility.
+**Lens C0 reader implemented; scenes remain open and C1 adoption remains disabled.** The reader pins the published Developer Lens contract and unchanged synthetic fixture, including coverage semantics, privacy and canonical hash. Static and hosted adapters reject C1 under the operative Q-9 No policy recorded in #170. No signature/finding scene is registered. The finding projection remains a target seam; the pinned method-trial bridge is the current research input.
 
 Ownership follows the two sibling repositories' own boundaries, not this repository's convenience:
 
@@ -529,6 +520,8 @@ Open questions for the owner (each has a `needs-decision` issue):
 | Q-7 | Fetch per-project weekly commit series (GitHub `stats/commit_activity`, public, cold responses return 202) for the spectrogram? | No; the scene stays parked |
 | Q-8 | Fetch the latest run's jobs for each declared workflow (`actions/runs/{id}/jobs`) for pipeline telemetry? | No; the scene stays parked and its fallback is the single observed state |
 | Q-9 | Publish an owner-reviewed, redacted C1 Developer Lens projection as a tracked file in the public profile repository? (Irreversible once pushed; aliases are not anonymity.) | No; lens scenes render only from the C0 showcase fixture, and the profile shows none of them |
+
+**Q-9 disposition:** its operative policy is **No**, as reconciled in [#170 comment 6132999075](https://github.com/Chris0Jeky/CommitAtlas/issues/170#issuecomment-6132999075). The open issue is a policy record, not an unanswered invitation to publish C1. The C0 reader can satisfy #145 while #153 remains blocked. A future policy change requires separate owner instructions and a reviewed adapter change; current code rejects C1 publication.
 
 ## 15. Agent operating notes
 

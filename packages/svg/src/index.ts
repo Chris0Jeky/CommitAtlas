@@ -9,11 +9,11 @@ export { canonicalJson, seededRandom, stableHash } from "./seed.js";
 export { createIdentityConfig } from "./identity.js";
 export {
   registerScene, getScene, listScenes, renderScene, renderSceneDefinition, sceneUnavailable,
-  compileSceneMotion, sceneElementId, sceneClassName, createPublicDemoLensContext, sceneLensDescription,
+  compileSceneMotion, sceneElementId, sceneClassName, createPublicDemoLensContext, createLensProjectionContext, sceneLensDescription,
 } from "./scene.js";
 export type {
   SceneInputs, RenderContext, SceneDefinition, SceneUnavailable, ScenePack, BudgetClass,
-  SceneRenderResult, PublicLensProjection, PublicDemoCoverage, ResearchFindingProjection, IdentityConfig,
+  SceneRenderResult, PublicLensProjection, PublicDemoLensContext, SceneLensProjection, PublicDemoCoverage, ResearchFindingProjection, IdentityConfig,
 } from "./scene.js";
 export { MotionPlan } from "./motion/compiler.js";
 export { MOTION_PRIMITIVES } from "./motion/types.js";

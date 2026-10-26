@@ -225,10 +225,10 @@ CSS color functions also cannot satisfy it; these remain structural checks, not 
 This C0 factory is scaffolding for public synthetic scenes, not a `PublicLensProjection.v1`
 artifact reader, producer schema validator, freshness check or export permission. Raw artifacts,
 C1 contexts, score fields and schema versions are rejected; a serialized copy must be validated
-through the factory again. No coverage score or conversion is inferred. The unresolved producer
-coverage scale remains behind #145 and PROJECTION_CONTRACTS. `ResearchFindingProjection` and
-`IdentityConfig` are opaque reserved types; supplying either currently yields explicit unavailable
-output until their dedicated schema adapters arrive. No real projection or private fixture is used.
+through the factory again. No coverage score or conversion is inferred by this common-context helper.
+The separate full-artifact adapter below validates the published producer score semantics.
+`ResearchFindingProjection` remains reserved; `IdentityConfig` has its own bounded static adapter.
+No real projection or private fixture is used.
 
 `tests/scene-harness.mjs` exports `assertSceneContract(definition, fixtures)`. Supply ready,
 one-field changed and unavailable input fixtures; declare each consumed text field path, printed
@@ -258,3 +258,18 @@ reported as time-weighted uptime. This package does not add a hosted route or re
 Delivery cards accept `benchmark: null`. An absent reference renders `BENCHMARK UNAVAILABLE`
 even when a direct caller supplies a retained numeric multiple. No publisher, reference rate,
 or comparison is invented; all independent flow readings remain visible.
+
+### Full C0 Lens contexts
+
+`createLensProjectionContext(input, snapshot, maxAgeDays = 45)` validates the pinned producer
+`PublicLensProjection.v1` schema, semantics, privacy, canonical hash and snapshot-relative clock,
+then returns a detached immutable C0 `SceneLensProjection` with the complete producer fields and
+consumer `freshness`. C1 publication is disabled under the operative Q-9 No policy recorded in #170. The legacy
+`createPublicDemoLensContext` remains a synthetic common-context test helper; it is not an artifact
+reader. `SceneInputs.lens` accepts either authentic context, never a raw object or clone.
+
+The engine rechecks full contexts against the render snapshot. Signature models preserve coverage,
+privacy and freshness and render `sceneLensDescription(model.lens)` visibly and accessibly. A stale
+signature receives a separate 28-unit header strip, extending its viewBox to avoid covering content.
+An expired signature uses its unavailable composition before `buildModel`. No Lens scene is
+registered by the reader; scene implementation and owner publication remain separate work.

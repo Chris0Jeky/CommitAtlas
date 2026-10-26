@@ -170,3 +170,23 @@ Ordinary generation does not enable an external benchmark. `delivery.json` carri
 `BENCHMARK UNAVAILABLE` while retaining the observed flow metrics. Explicit programmatic
 references require caller-verified provenance. No source URL is fetched; see #245 before
 introducing a built-in numeric reference.
+
+## Optional synthetic Lens projection
+
+Add `"lens": { "path": ".commitatlas/lens-profile.v1.json", "maxAgeDays": 45 }` to a v1 config
+to validate a Developer Lens `PublicLensProjection.v1` export before any output write. The path
+must be a contained Git-tracked regular file, with no symlink component, at most 256 KiB. URLs and
+hosted projection bodies are not supported. `maxAgeDays` is optional (45 by default), integer
+1..3650. The reader preserves the producer's exact `scorePercent` and `displayText` fields,
+non-null optional delivery block, privacy rules and canonical content hash; it accepts no aliases.
+
+The current publishing adapter permits C0 synthetic projections only. C1 local exports are rejected
+with `LENS_C1_PUBLICATION_DISABLED` under the operative Q-9 No policy recorded in #170.
+No personal projection belongs in CommitAtlas fixtures. This reader adds no Lens scene. A future
+signature scene receives the full validated projection plus freshness measured against the fetched
+snapshot: through day 45 fresh, beyond 45 through 90 stale with a visible strip and accessible age,
+and beyond 90 unavailable before model building. Existing configs without `lens` keep their outputs.
+All projection/file failures expose bounded `LENS_*` codes; never log the body or Zod diagnostics.
+
+The pinned producer contract and fixture receipt are documented in
+[`research-contracts/lens-projection/v1/README.md`](../../research-contracts/lens-projection/v1/README.md).
