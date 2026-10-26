@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import worker from "../dist/server/index.js";
 
 const root = await realpath(fileURLToPath(new URL("../dist/client/", import.meta.url)));
+const port = Number(process.env.STUDIO_QA_PORT ?? 3471);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("STUDIO_QA_PORT must be a valid TCP port");
 const mime = { ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".txt": "text/plain", ".woff2": "font/woff2" };
 async function asset(request) {
   if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405 });
@@ -27,4 +29,4 @@ const server = http.createServer(async (incoming, outgoing) => {
     outgoing.end(incoming.method === "HEAD" ? undefined : Buffer.from(await response.arrayBuffer()));
   } catch (error) { console.error(error); outgoing.writeHead(500); outgoing.end("QA adapter error"); }
 });
-server.listen(3471, "127.0.0.1", () => console.log("Built Worker QA adapter listening on 127.0.0.1:3471"));
+server.listen(port, "127.0.0.1", () => console.log(`Built Worker QA adapter listening on 127.0.0.1:${port}`));

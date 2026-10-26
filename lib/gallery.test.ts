@@ -19,13 +19,29 @@ test("gallery groups the registry under five families and stays byte-identical",
   ]);
   assert.equal(first.tiles.length, GALLERY_CARD_IDS.length + listScenes().length + 1);
   assert.equal(first.families.reduce((sum, family) => sum + family.tiles.length, 0), first.tiles.length);
-  assert.equal(first.families.find((family) => family.id === "signature")?.tiles.length, 0);
+  assert.equal(first.families.find((family) => family.id === "signature")?.tiles.length,
+    listScenes().filter((scene) => scene.family === "signature").length);
   for (const family of first.families) {
     const ids = family.tiles.map((tile) => tile.id);
     assert.deepEqual(ids, [...ids].sort());
   }
   assert.equal(JSON.stringify(first), JSON.stringify(second));
   assert.equal(first.tiles.filter((tile) => tile.marker === "SYNTHETIC DEMO").length, first.tiles.length);
+});
+
+test("gallery actions distinguish a selected preview from a general Studio visit or research note", () => {
+  for (const [id, href, label] of [
+    ["atlas", "/studio?card=atlas", "Customize in Studio"],
+    ["chronograph", "/studio?scene=chronograph", "Customize in Studio"],
+    ["cadence", "/studio", "Explore Studio"],
+    ["identity-beacon", "/studio", "Explore Studio"],
+    ["wbc1", "/#research-bridge-title", "Read research note"],
+  ]) {
+    const tile = first.tiles.find((item) => item.id === id);
+    assert.ok(tile, id);
+    assert.equal(tile.studioHref, href, id);
+    assert.equal(tile.destinationLabel, label, `${id} must describe its actual destination`);
+  }
 });
 
 test("an unavailable beacon is not labelled observed, and the finding stays C0", () => {

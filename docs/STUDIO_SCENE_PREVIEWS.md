@@ -1,7 +1,7 @@
 # Studio scene previews and evidence
 
 The hosted scene allowlist is a small browser-safe catalogue shared by the route and
-Studio. It currently contains evidence coverage, activity terrain, and lifecycle map.
+Studio. It currently contains evidence coverage, activity terrain, chronograph, and lifecycle map.
 Only registered instrument/map definitions with an explicit catalogue entry are hosted;
 registry and pack-capability parity is tested. Adding a map no longer implicitly widens
 the public endpoint. Other packs stay visibly unsupported until their implementations
@@ -23,6 +23,13 @@ is untouched. A late/aborted response, HTML-200, invalid SVG decode, unavailable
 wrong-size metadata, stale fallback, or unsupported pack cannot authorize scene copying.
 Read-only stale or legacy SVGs can remain visible without a current copy receipt.
 Failed or stalled loads have a bounded timeout. Object URLs are revoked on disposal.
+
+The article and its per-image toolbar stay mounted across local actions. Only the
+image/receipt subtree receives the new attempt key, so Enter or Space on Replay or a
+view choice keeps focus on the original button while the new image loads. Selected
+view uses a tinted surface; keyboard focus has a separate outline. Controls have a
+44px minimum height, and the preview stage reserves modest loading space without
+forcing adaptive cards into a fixed aspect ratio.
 
 Only the selected profile image can authorize its scene's Markdown. A still twin does
 not authorize an unseen animated profile. The explicit Profile button and Replay return
@@ -54,7 +61,7 @@ scrub, emulate a browser preference, or capture an actual animation frame. No un
 
 `test:studio` covers configuration/URL/Markdown emission, the closed receipt parser,
 bounded streaming, aborts and loaded-image receipt matching. The route suite binds
-metadata to all three scenes, still/ambient bodies, 304s and unavailable/error/redirect
+metadata to all four scenes, still/ambient bodies, 304s and unavailable/error/redirect
 responses. The deployment verifier now has 21 HTTP probes including the two new map
 routes and their body-matching metadata.
 
@@ -65,8 +72,15 @@ the repository gate. It runs against the loopback built-Worker adapter or the fi
 production origin, always with `demo=true`. The built-Worker mode proxies a synthetic HTTPS
 origin so the real copy restriction is exercised, rather than disabled. Fault injection
 is confined to that browser's responses. The retained receipt names source commit,
-driver, observed browser version, image/view/error cases and actual keyboard traversal.
+driver, observed browser version, image/view/error cases, actual keyboard traversal,
+and original-button focus retention through delayed loading and decoded completion.
 Screenshots and receipts are UI evidence, not #113's three-engine raw/Camo motion oracle.
+
+The `Appearance browser evidence` workflow runs this harness and the Gallery's
+responsive/theme checks on presentation changes. It checks out the exact PR head,
+uses external Playwright 1.57.0 with its installed Chromium, and uploads captures and
+receipts. `STUDIO_QA_PORT` can select a different loopback adapter port for parallel
+local review; the Studio harness retains its default port 3471.
 
 The initial local browser rejected navigation with ERR_BLOCKED_BY_ADMINISTRATOR. No
 browser policy was disabled or bypassed. Interactive verification is performed in the

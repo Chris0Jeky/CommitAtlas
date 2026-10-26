@@ -60,12 +60,14 @@ export interface GalleryTile {
   readonly marker: "SYNTHETIC DEMO";
   readonly note: string;
   readonly studioHref: string;
+  readonly destinationLabel: string;
   readonly svg: string;
 }
 
 export interface GalleryFamilySection {
   readonly id: GalleryFamily;
   readonly title: string;
+  readonly description: string;
   readonly tiles: readonly GalleryTile[];
 }
 
@@ -74,12 +76,12 @@ export interface GalleryModel {
   readonly families: readonly GalleryFamilySection[];
 }
 
-const FAMILIES: readonly { id: GalleryFamily; title: string }[] = [
-  { id: "instrument", title: "Instruments" },
-  { id: "map", title: "Maps" },
-  { id: "signature", title: "Signatures" },
-  { id: "scene", title: "Scenes" },
-  { id: "finding", title: "Findings" },
+const FAMILIES: readonly Omit<GalleryFamilySection, "tiles">[] = [
+  { id: "instrument", title: "Instruments", description: "Contribution history, project health, and the detail behind each reading." },
+  { id: "map", title: "Maps", description: "Patterns across activity, time, and the lifecycles you declare." },
+  { id: "signature", title: "Signatures", description: "Derived interpretations, paired with their coverage and privacy context." },
+  { id: "scene", title: "Scenes", description: "Aesthetic compositions shaped by data, with their basis kept in view." },
+  { id: "finding", title: "Findings", description: "Research records with the decision and its limits attached." },
 ];
 
 const CARD_FAMILY: Record<GalleryCardId, GalleryFamily> = {
@@ -139,8 +141,10 @@ function rungFor(planned: GalleryRung, dataState: CardDataState | undefined): Ga
   return planned;
 }
 
-function tile(input: Omit<GalleryTile, "marker">): GalleryTile {
-  return { ...input, marker: "SYNTHETIC DEMO" };
+function tile(input: Omit<GalleryTile, "marker" | "destinationLabel">): GalleryTile {
+  const destinationLabel = input.studioHref === "/studio" ? "Explore Studio"
+    : input.studioHref.startsWith("/studio?") ? "Customize in Studio" : "Read research note";
+  return { ...input, marker: "SYNTHETIC DEMO", destinationLabel };
 }
 
 function failed(id: string, label: string, family: GalleryFamily, pack: string, error: unknown): GalleryTile {
@@ -270,6 +274,7 @@ function sceneRung(id: string, unavailable: boolean): GalleryRung {
 
 function renderScenes(snapshot: PortfolioSnapshot): GalleryTile[] {
   return listScenes().map((definition) => {
+    const label = definition.id.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
     const pack = definition.supportedPacks.includes("survey") ? "survey" : definition.supportedPacks[0] ?? "survey";
     const motion = definition.supportedMotion.includes("none") ? "none" : definition.supportedMotion[0] ?? "none";
     try {
@@ -280,7 +285,7 @@ function renderScenes(snapshot: PortfolioSnapshot): GalleryTile[] {
       const unavailable = rendered.unavailable;
       return tile({
         id: definition.id,
-        label: definition.id,
+        label,
         family: definition.family,
         rung: sceneRung(definition.id, unavailable),
         pack,
@@ -291,7 +296,7 @@ function renderScenes(snapshot: PortfolioSnapshot): GalleryTile[] {
         svg: rendered.svg,
       });
     } catch (error) {
-      return failed(definition.id, definition.id, definition.family, pack, error);
+      return failed(definition.id, label, definition.family, pack, error);
     }
   });
 }

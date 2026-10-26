@@ -1,0 +1,77 @@
+name: Appearance browser evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - app/gallery/**
+      - app/studio/**
+      - app/chassis/**
+      - app/globals.css
+      - lib/gallery*
+      - tests/appearance-browser.mjs
+      - tests/studio-scene-browser.mjs
+      - tests/studio-browser-server.mjs
+      - .github/workflows/appearance-browser-evidence.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appearance-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_BROWSER_VERSION: 143.0.7499.4
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install external pinned browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/appearance-playwright" --ignore-scripts playwright@1.57.0
+          node "$RUNNER_TEMP/appearance-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+          APPEARANCE_CHROMIUM=$(node --input-type=commonjs -e 'console.log(require(process.argv[1]).chromium.executablePath())' "$RUNNER_TEMP/appearance-playwright/node_modules/playwright")
+          printf 'CHROME_BIN=%s\n' "$APPEARANCE_CHROMIUM" >> "$GITHUB_ENV"
+      - name: Start the synthetic built-Worker adapter
+        run: |
+          mkdir -p "$RUNNER_TEMP/appearance-evidence"
+          node --import=./tests/register-cloudflare-workers-loader.mjs tests/studio-browser-server.mjs > "$RUNNER_TEMP/appearance-evidence/server.log" 2>&1 &
+          node --input-type=module <<'JS'
+          let ready = false;
+          for (let attempt = 0; attempt < 60; attempt++) {
+            try { ready = (await fetch('http://127.0.0.1:3471/api/v1/health')).ok; } catch {}
+            if (ready) break;
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          if (!ready) throw new Error('Built Worker adapter did not become ready');
+          JS
+      - name: Verify keyboard focus, image approval and preview states
+        env:
+          PLAYWRIGHT_PREFIX: ${{ runner.temp }}/appearance-playwright
+          STUDIO_QA_OUTPUT: ${{ runner.temp }}/appearance-evidence/studio
+        run: node tests/studio-scene-browser.mjs
+      - name: Measure Gallery layouts and capture dark/light presentations
+        env:
+          PLAYWRIGHT_PREFIX: ${{ runner.temp }}/appearance-playwright
+          APPEARANCE_QA_OUTPUT: ${{ runner.temp }}/appearance-evidence/gallery
+        run: node tests/appearance-browser.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: appearance-browser-evidence-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/appearance-evidence
+          if-no-files-found: error
+          retention-days: 14

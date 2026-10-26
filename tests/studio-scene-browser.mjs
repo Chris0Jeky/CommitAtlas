@@ -1,30 +1,46 @@
 /** Optional synthetic browser QA. A pinned Playwright driver is supplied outside npm run check. */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const require = createRequire(path.resolve(process.env.PLAYWRIGHT_PREFIX ?? ".", "driver.cjs"));
 const { chromium } = require("playwright");
+assert.equal(require("playwright/package.json").version, "1.57.0", "use the pinned external browser driver");
+const sourceFiles = {};
+for (const file of ["app/studio/studio-card-preview-image.tsx", "app/studio/studio-scene-preview-image.tsx",
+  "app/studio/studio-svg-preview.tsx", "app/studio/studio-client.tsx", "app/globals.css",
+  "tests/studio-scene-browser.mjs", "tests/studio-browser-server.mjs"]) {
+  sourceFiles[file] = createHash("sha256").update(await readFile(file)).digest("hex");
+}
 const production = process.env.STUDIO_QA_MODE === "production";
 const origin = production ? "https://commit-atlas.commit-atlas.workers.dev" : "https://studio.example.test";
 const backend = "http://127.0.0.1:3471";
 const out = path.resolve(process.env.STUDIO_QA_OUTPUT ?? ".studio-qa");
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN, headless: true });
+const browserExecutable = process.env.CHROME_BIN ?? chromium.executablePath();
+const browser = await chromium.launch({ executablePath: browserExecutable, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-const errors = [], requests = [], scenarios = [], layoutMeasurements = [];
+const errors = [], requests = [], scenarios = [], layoutMeasurements = [], focusChecks = [], toolMeasurements = [];
 let fault = "none", cardFault = "none", releaseDelayed, releaseCard;
 let cardDelay = Promise.resolve();
 let delayed = Promise.resolve();
+let focusRequest;
 page.on("pageerror", error => errors.push(error.message));
 try {
+  if (process.env.EXPECTED_BROWSER_VERSION) assert.equal(browser.version(), process.env.EXPECTED_BROWSER_VERSION, "selected browser must match the qualification pin");
   await page.route("**/*", async route => {
     const url = new URL(route.request().url());
     if (url.origin !== origin) { await route.abort(); return; }
     if (url.pathname.startsWith("/api/v1/")) assert.equal(url.searchParams.get("demo"), "true", "QA must never request live GitHub evidence");
     const response = await route.fetch({ url: production ? url.href : `${backend}${url.pathname}${url.search}`, timeout: 30_000 });
+    if (focusRequest?.pathname === url.pathname) {
+      const pending = focusRequest;
+      pending.started();
+      await pending.response;
+    }
     if (url.pathname.startsWith("/api/v1/cards/") || url.pathname === "/api/v1/projects.svg") {
       if (url.pathname === "/api/v1/cards/profile.svg") {
         if (cardFault === "broken") {
@@ -87,12 +103,58 @@ try {
       assert.equal(box.overflow, false, `scene ${box.id} contents overflow`);
     }
     layoutMeasurements.push({ viewport: page.viewportSize(), boxes });
+    const buttons = await page.locator(".preview-tools button, .scene-image-tools button").evaluateAll(elements => elements.map(element => ({
+      name: element.textContent, height: element.getBoundingClientRect().height, border: getComputedStyle(element).borderTopStyle,
+    })));
+    for (const button of buttons) {
+      assert.ok(button.height >= 44, `${button.name} has a small interaction target`);
+      assert.notEqual(button.border, "none", `${button.name} has no visible button boundary`);
+    }
+    toolMeasurements.push({ viewport: page.viewportSize(), buttons });
   };
   const copiedScene = async () => (await markdown.inputValue()).includes("/scenes/evidence-coverage.svg");
+  const checkKeyboardFocus = async (panel, kind, pathname, copied) => {
+    // Keep the real SVG response pending so a fast local fetch cannot skip the loading assertion.
+    // Retaining the original DOM node catches a remount even if a replacement steals focus back.
+    for (const name of ["Replay", "Reduced-motion view", "Frame zero", "Profile view"]) {
+      for (const key of ["Enter", "Space"]) {
+        let started, release, requestTimeout;
+        const requested = new Promise((resolve, reject) => {
+          requestTimeout = setTimeout(() => reject(new Error(`${kind} ${name} did not request an image`)), 15_000);
+          started = () => { clearTimeout(requestTimeout); resolve(); };
+        });
+        const response = new Promise(resolve => { release = resolve; });
+        focusRequest = { pathname, response, started, release };
+        const button = await panel.getByRole("button", { name, exact: true }).elementHandle();
+        const before = await panel.locator("img").getAttribute("src");
+        try {
+          await button.focus();
+          await page.keyboard.press(key);
+          await requested;
+          await panel.getByText(`Loading the ${kind} image…`, { exact: true }).waitFor();
+          const loading = await button.evaluate(element => ({ connected: element.isConnected, focused: document.activeElement === element }));
+          assert.equal(await copied(), false, `${kind} copying remained approved during ${name}`);
+          if (name === "Replay" && key === "Enter") await panel.screenshot({ path: path.join(out, `${kind}-keyboard-loading.png`) });
+          release();
+          const profileView = name === "Replay" || name === "Profile view";
+          await panel.getByText(profileView ? "Image loaded." : "Still twin loaded.", { exact: false }).waitFor();
+          const complete = await button.evaluate(element => ({ connected: element.isConnected, focused: document.activeElement === element }));
+          assert.equal(await copied(), profileView, `${kind} copy approval does not match ${name}`);
+          assert.notEqual(await panel.locator("img").getAttribute("src"), before, `${kind} ${name} did not reload its image`);
+          focusChecks.push({ kind, name, key, loading, complete });
+        } finally {
+          clearTimeout(requestTimeout); release(); focusRequest = undefined;
+          await button.dispose();
+        }
+      }
+    }
+  };
   await loaded(); assert.equal(await copiedScene(), true);
+  assert.equal(await page.locator(".gallery-heading h3").innerText(), "3 previews", "preview count must include the selected scene");
   assert.match(await scene.locator("img").getAttribute("src"), /^blob:/);
   assert.doesNotMatch(await scene.locator("dl").innerText(), /Unavailable/);
   scenarios.push("one validated response supplies the decoded Blob and compiler counters");
+  await checkKeyboardFocus(scene, "scene", "/api/v1/scenes/evidence-coverage.svg", copiedScene);
   await allTools.getByRole("button", { name: "Reduced-motion view", exact: true }).click();
   await scene.getByText("Still twin loaded.", { exact: false }).waitFor();
   assert.equal(await copiedScene(), false);
@@ -167,6 +229,10 @@ try {
   scenarios.push("all eight cards require decoded profile images and display exact response counters");
   const profile = cardPanel("profile");
   const copyProfile = async () => (await markdown.inputValue()).includes("/cards/profile.svg");
+  await checkKeyboardFocus(profile, "card", "/api/v1/cards/profile.svg", copyProfile);
+  assert.deepEqual(focusChecks.filter(check => !check.loading.connected || !check.loading.focused || !check.complete.connected || !check.complete.focused), [],
+    "local preview controls must stay mounted and focused through loading and completion");
+  scenarios.push("Enter and Space retain the original card and scene tool buttons through loading and completion, with copy approval withheld until profile decode");
   const atlasSource = await cardPanel("atlas").locator("img").getAttribute("src");
   await profile.getByRole("button", { name: "Reduced-motion view", exact: true }).click();
   await profile.getByText("Still twin loaded.", { exact: false }).waitFor();
@@ -225,20 +291,43 @@ try {
   await page.screenshot({ path: path.join(out, "studio-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await assertLayout();
+  await cardPanel("atlas").screenshot({ path: path.join(out, "card-atlas-mobile.png") });
+  await scene.screenshot({ path: path.join(out, "scene-mobile.png") });
   await page.screenshot({ path: path.join(out, "studio-mobile.png"), fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   assert.equal(overflow, false, "mobile Studio has horizontal overflow");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await scene.getByRole("button", { name: "Replay", exact: true }).focus();
+  const reducedMotionChrome = await scene.evaluate(panel => {
+    const selected = panel.querySelector('button[aria-pressed="true"]');
+    const unselected = panel.querySelector('button[aria-pressed="false"]');
+    const focused = document.activeElement;
+    return {
+      transform: getComputedStyle(panel).transform,
+      transition: getComputedStyle(focused).transitionDuration,
+      focusOutline: getComputedStyle(focused).outlineStyle,
+      selectedBackground: getComputedStyle(selected).backgroundColor,
+      unselectedBackground: getComputedStyle(unselected).backgroundColor,
+    };
+  });
+  assert.equal(reducedMotionChrome.transform, "none", "keyboard focus should not move the preview panel");
+  assert.ok(reducedMotionChrome.transition.split(",").every(value => parseFloat(value) <= 0.001), "reduced-motion preview controls still animate");
+  assert.notEqual(reducedMotionChrome.focusOutline, "none", "keyboard focus has no visible outline");
+  assert.notEqual(reducedMotionChrome.selectedBackground, reducedMotionChrome.unselectedBackground, "selected view has no treatment separate from focus");
+  scenarios.push("44px preview tools stay bounded at desktop/mobile widths; reduced-motion UI keeps a stationary panel and distinct selected/focus treatments");
   assert.deepEqual(errors, []);
   const receipt = { source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
-    browser: browser.version(), driver: require("playwright/package.json").version,
+    sourceWorkingTreeDirty: Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }).trim()), sourceFiles,
+    browser: browser.version(), browserExecutable, driver: require("playwright/package.json").version,
     origin, mode: production ? "production-synthetic" : "built-worker-synthetic-https-proxy",
-    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements,
-    keyboard: { expectedControls, reachedControls: visited.size, tabPresses },
+    observedAt: new Date().toISOString(), scenarios, requests, pageErrors: errors, layoutMeasurements, toolMeasurements,
+    keyboard: { expectedControls, reachedControls: visited.size, tabPresses, focusChecks },
+    reducedMotionChrome,
     timedMotionOrCamoQualification: false };
   await writeFile(path.join(out, "receipt.json"), `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify(receipt, null, 2));
 } catch (error) {
   await page.screenshot({ path: path.join(out, "failure.png"), fullPage: true }).catch(() => {});
-  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), stack: error.stack, errors, scenarios, requests }, null, 2));
+  await writeFile(path.join(out, "failure.json"), JSON.stringify({ error: String(error), stack: error.stack, errors, scenarios, requests, focusChecks }, null, 2));
   throw error;
-} finally { releaseDelayed?.(); releaseCard?.(); await browser.close(); }
+} finally { releaseDelayed?.(); releaseCard?.(); focusRequest?.release(); await browser.close(); }
