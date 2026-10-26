@@ -227,7 +227,7 @@ export function planPublicationRecovery(
     throw new Error("publication observations do not cover the complete transaction");
   }
   for (const value of denseEntries(observations, "publication observations")) {
-    const observation = validateObservation(value);
+    const observation = validatePublicationObservation(value);
     const key = operationKey(observation.target, observation.name);
     if (observed.has(key)) throw new Error(`publication observation repeats ${key}`);
     observed.set(key, observation);
@@ -271,7 +271,7 @@ export function planPublicationRecovery(
 }
 
 /** Snapshot closed observation records without executing caller-owned field accessors. */
-function validateObservation(value: unknown): PublicationObservation {
+export function validatePublicationObservation(value: unknown): PublicationObservation {
   const fields = recordFields(value, ["target", "name", "kind", "sha256", "bytes"], "publication observation");
   const { target, name, kind, sha256, bytes } = fields;
   if (typeof target !== "number" || !Number.isSafeInteger(target) || target < 0) {

@@ -1,6 +1,6 @@
 # Crash-recoverable multi-theme static publication
 
-Status: proposed design for issue #256
+Status: proposed production design for issue #256; slices 1–3 have internal, test-only implementations
 
 Slice-2 control-store qualification: Node provides no handle-relative `openat`/`unlinkat`
 primitives. Ancestor kind, realpath and directory identity checks immediately before and
@@ -339,6 +339,68 @@ Implement contained transaction directories, exclusive writes, digest verificati
 
 Run the v2 planner in CI tests beside v1 and compare intended operations. Record no production journal and make no behavior change.
 
+#### Test-only implementation, 2026-10-26
+
+`packages/static/src/publication-shadow.ts` implements `planPublicationShadow(declaration,
+observations)` without filesystem I/O. The public package entry point, production v1 writer,
+CLI and Action do not import it. The helper returns either a complete validated journal or
+`{ kind: "blocked", conflicts }`, with no partial journal. Invalid structural input throws.
+This is a comparison snapshot, not permission to mutate a destination or proof that a journal
+has been persisted.
+
+Each of one to four target declarations supplies a repository-relative `outputDir`, a
+`previous` inventory of explicitly claimed owned versions, and a `next` inventory of rendered
+versions, including `manifest.json`. Entries contain `name`, `sha256` and `bytes`. The
+inventories and observations use dense indexed data entries; records accept only their own
+known data fields. Caller iterators, getters, inherited values, duplicate declarations and
+incomplete or duplicate observations cannot hide a destination.
+
+The observer must cover the exact union of previous and next names for every target, including
+retired files that are now absent. A future adapter must establish containment and regular,
+single-link file identity before calling an observation a `file`. The helper does not inspect
+paths, authenticate ownership declarations, parse a previous production manifest or infer
+ownership from matching next-generation bytes. A manifest's own previous version also needs
+a separate validated source. Legacy name-only or invalid ownership evidence must not be
+converted into a previous claim.
+
+| Current observation | Separate previous ownership claim | Next version | Shadow result |
+| --- | --- | --- | --- |
+| Missing | Either | Present | `create` |
+| Missing | Present | Absent | No operation |
+| Regular file matching the claim | Present | Present | `replace` |
+| Regular file matching the claim | Present | Absent | `remove` |
+| Regular file | Absent | Present | Whole publication blocked as `unowned-file` |
+| Regular file differing from the claim | Present | Either | Whole publication blocked as `ownership-drift` |
+| Unsafe entry kind | Either | Either | Whole publication blocked as `unsafe-entry` |
+
+A byte-identical selected owned artifact remains a `replace` in the existing journal
+vocabulary; the recovery planner already treats matching previous/next versions idempotently.
+Shadow planning does not introduce a new optimization or overwrite policy. Unknown siblings
+outside the union receive no operations. A conflict in one theme blocks the entire journal.
+
+Target order follows configuration order; payload names are sorted and each target's manifest
+is last. The existing recovery planner still groups manifests after payloads globally. The
+comparison tests assert v1's intended names/actions and final hashes; they do not claim that
+v1's existing per-directory commit order is globally atomic or manifest-last across themes.
+Case-colliding outputs, platform-unsafe output paths, control-root overlap, and destinations
+that collide with another target directory are rejected. The union remains bounded to 96
+operations per target; existing scene-byte and 128 KiB canonical journal limits still apply.
+Returned data is detached, but destination observations may immediately become stale. A
+future engine must revalidate after planning and at every mutation boundary.
+
+`publication-shadow.test.mjs` compares real v1 output across two themes, checks a fresh
+single-theme dry-run, preserves caller-owned siblings and substituted links, and records the
+intentional compatibility difference for selected unowned files. Production v1 still permits
+selected reserved-name overwrites; the shadow result blocks those files until migration is
+resolved. No production control root, lock or journal is created by these comparisons.
+
+Local qualification on Node 22.13.0/npm 10.9.2 passes all 16 shadow tests and all 329 static
+package tests, with no skips. Four restored safety mutations were detected: accepting an
+unowned selected file (four failures), accepting unsafe entries (two), trusting observation
+iterators (two), and losing manifest-last ordering (three). These are synthetic local planner
+and real temporary-directory v1 comparisons on Linux. They do not qualify native Windows,
+power-loss durability, destination execution or production recovery. #256 remains open.
+
 ### Slice 4: v2 single-theme opt-in
 
 Enable the protocol for one output directory behind an explicit config or CLI opt-in. Add migration documentation for ownership tightening.
@@ -364,11 +426,11 @@ After compatibility evidence, make v2 the default, keep a bounded escape hatch f
 | single-theme and dry-run compatibility | same protocol for one target; dry-run writes nothing |
 | rebuilt Action and exact-head CI | required in implementation slices that change production code |
 
-## Open decisions before implementation can merge
+## Open decisions before production enablement
 
 1. Approve the recommended ownership tightening, or define a different explicit migration for pre-existing reserved files.
 2. Decide whether incomplete-publication status is exposed only under `.commitatlas/` or also copied into each output directory for consumers that cannot inspect the repository root.
 3. Choose the stale-lock policy for hosts where process liveness cannot be proved.
 4. Decide whether directory flush capability is required for enabling v2 by default or reported as a documented durability downgrade.
 
-These decisions do not block the pure state-machine and failure-injection harness. They do block switching production publication to v2.
+These decisions do not block the internal state machine, control store, shadow comparisons or failure-injection harness. They do block switching production publication to v2.
