@@ -5,6 +5,21 @@ Release/deployment receipt last verified: 2026-08-30 (v0.4.0 released, productio
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Issue #423 lock-release recovery, local proof 2026-10-26
+
+The test-only publication control store can finish releasing an owned lock when an unlink
+persisted before reporting failure. A missing original and quarantine path permit only the
+final directory flush; replacement files still require ownership verification. Ownership state
+is retained until that flush succeeds. Windows sharing errors use the existing bounded retry
+deadline, rechecking containment and ownership on every attempt.
+
+The acquisition contract now documents release after a quarantine scan fails following lock
+creation. Regression fixtures also preserve foreign quarantines and replacement locks.
+The focused control-store suite passes 122 tests; `npm run test:static` passes 294/294 with no
+skips, and typecheck and lint pass. These are real temporary-directory tests on Linux, with
+synthetic Windows platform/error/clock faults; native Windows sharing and power-loss durability
+are not claimed. The v1 writer remains the production path and #256's v2 activation stays open.
+
 ## Current source inventory, reconciled 2026-10-22
 
 This inventory reflects checkout `6d122c8`, inspected without network access or installed

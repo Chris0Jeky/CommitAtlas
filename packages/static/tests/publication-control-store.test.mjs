@@ -16,6 +16,14 @@ const control = (root, ...parts) => path.join(root, ".commitatlas", ...parts);
 const transaction = (root, id, ...parts) => control(root, "transactions", id, ...parts);
 const artifact = (root, id, target, kind, name = "atlas.svg") => transaction(root, id, "targets", String(target).padStart(3, "0"), kind, name);
 
+function usePlatform(t, platform) {
+  const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", { ...descriptor, value: platform });
+  const restore = () => Object.defineProperty(process, "platform", descriptor);
+  t.after(restore);
+  return restore;
+}
+
 async function fixture(t, storage) {
   const temp = await fs.mkdtemp(path.join(tmpdir(), "commitatlas-control-"));
   t.after(() => fs.rm(temp, { recursive: true, force: true }));
@@ -349,13 +357,17 @@ test("stale, remote, unknown and malformed locks are preserved until explicit re
   }
 });
 
-test("failed lock acquisition retains safe release ownership after write, sync, close or directory flush failure", async t => {
-  for (const failure of ["write", "partial-write", "sync", "close", "directory-flush"]) await t.test(failure, async t => {
+test("failed lock acquisition retains safe release ownership after writing, flushing or scanning quarantine", async t => {
+  for (const failure of ["write", "partial-write", "sync", "close", "directory-flush", "quarantine-scan"]) await t.test(failure, async t => {
     const f = await fixture(t);
     await f.store.releaseLock();
     let armed = true;
     const fail = () => { armed = false; throw Object.assign(new Error(`injected lock ${failure}`), { code: "EIO" }); };
     const storage = { ...nodePublicationStorage,
+      async readdir(file, ...args) {
+        if (armed && failure === "quarantine-scan" && file === control(f.root)) fail();
+        return fs.readdir(file, ...args);
+      },
       async flushDirectory(file) {
         if (armed && failure === "directory-flush" && file === control(f.root)) fail();
         return nodePublicationStorage.flushDirectory(file);
@@ -384,6 +396,24 @@ test("failed lock acquisition retains safe release ownership after write, sync, 
     await second.acquireLock();
     await second.releaseLock();
   });
+});
+
+test("quarantine-blocked acquisition can release its own lock before explicit recovery", async t => {
+  const f = await fixture(t);
+  await f.store.releaseLock();
+  const quarantine = control(f.root, "publication.lock.foreign.quarantine");
+  await fs.writeFile(quarantine, "retained recovery evidence", { flag: "wx" });
+  await assert.rejects(f.store.acquireLock(), /quarantine is present/);
+  await assert.rejects(f.store.createTransaction(f.journal), /acquisition|exclusive lock/);
+  const second = await openPublicationControlStore(f.root, options());
+  await assert.rejects(second.acquireLock(), { code: "EEXIST" });
+  await f.store.releaseLock();
+  await assert.rejects(fs.lstat(control(f.root, "publication.lock")), { code: "ENOENT" });
+  assert.equal(await fs.readFile(quarantine, "utf8"), "retained recovery evidence");
+  await fs.unlink(quarantine); // Explicit fixture operator recovery, never automatic reclamation.
+  await f.store.acquireLock();
+  await f.store.releaseLock();
+  assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
 });
 
 test("partial lock release refuses replacement bytes", async t => {
@@ -426,6 +456,141 @@ test("owned removal retries from its own quarantine after a rename that persiste
   await assert.rejects(f.store.releaseLock(), /injected after rename/);
   await f.store.releaseLock();
   assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+});
+
+test("lock release can retry a persisted unlink or failed final flush and reacquire", async t => {
+  for (const operation of ["unlink", "directory-flush"]) await t.test(operation, async t => {
+    const fault = faultStorage(), f = await fixture(t, fault.storage);
+    fault.arm(event => event === operation);
+    await assert.rejects(f.store.releaseLock(), new RegExp(`injected after ${operation}`));
+    assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+    await f.store.releaseLock();
+    await f.store.acquireLock();
+    await f.store.releaseLock();
+    assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+  });
+});
+
+test("release retry preserves replacement bytes at either remembered pathname", async t => {
+  for (const location of ["lock", "quarantine"]) await t.test(location, async t => {
+    let quarantine, fail = true;
+    const storage = { ...nodePublicationStorage, async unlink(file) {
+      await fs.unlink(file);
+      if (fail) {
+        fail = false;
+        quarantine = file;
+        throw new Error("injected after lock unlink");
+      }
+    } };
+    const f = await fixture(t, storage);
+    await assert.rejects(f.store.releaseLock(), /injected after lock unlink/);
+    const replacement = location === "lock" ? control(f.root, "publication.lock") : quarantine;
+    await fs.writeFile(replacement, "replacement owner", { flag: "wx" });
+    await assert.rejects(f.store.releaseLock(), /owner changed/);
+    assert.equal(await fs.readFile(replacement, "utf8"), "replacement owner");
+    await assert.rejects(f.store.acquireLock(), /already held/);
+  });
+});
+
+test("Windows lock release retries transient sharing violations at rename and unlink", async t => {
+  for (const operation of ["rename", "unlink"]) {
+    for (const code of ["EACCES", "EPERM", "EBUSY"]) await t.test(`${operation} ${code}`, async t => {
+      let armed = false, attempts = 0;
+      const storage = { ...nodePublicationStorage, async [operation](...args) {
+        if (armed && ++attempts === 1) throw Object.assign(new Error("injected sharing violation"), { code });
+        return fs[operation](...args);
+      } };
+      const f = await fixture(t, storage);
+      usePlatform(t, "win32");
+      t.mock.method(Date, "now", () => 0); // Keep retry timing independent of filesystem speed.
+      armed = true;
+      await f.store.releaseLock();
+      assert.equal(attempts, 2);
+      assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+      armed = false;
+      await f.store.acquireLock();
+      await f.store.releaseLock();
+    });
+  }
+});
+
+test("Windows lock release resumes a mutation that persisted before its sharing error", async t => {
+  for (const operation of ["rename", "unlink"]) await t.test(operation, async t => {
+    let armed = false;
+    const storage = { ...nodePublicationStorage, async [operation](...args) {
+      await fs[operation](...args);
+      if (armed) {
+        armed = false;
+        throw Object.assign(new Error("injected persisted sharing failure"), { code: "EBUSY" });
+      }
+    } };
+    const f = await fixture(t, storage);
+    usePlatform(t, "win32");
+    t.mock.method(Date, "now", () => 0);
+    armed = true;
+    await f.store.releaseLock();
+    assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+    await f.store.acquireLock();
+    await f.store.releaseLock();
+  });
+});
+
+test("lock release bounds sharing retries and leaves failures retryable", async t => {
+  for (const [name, platform, code, budget, expectedAttempts] of [
+    ["Windows deadline", "win32", "EBUSY", 20, 2],
+    ["zero deadline", "win32", "EPERM", 0, 1],
+    ["non-sharing error", "win32", "EIO", 20, 1],
+    ["non-Windows sharing error", "linux", "EBUSY", 20, 1],
+  ]) await t.test(name, async t => {
+    let armed = false, attempts = 0, now = 0;
+    const storage = { ...nodePublicationStorage, async unlink(...args) {
+      if (armed) {
+        attempts++;
+        now += 10;
+        throw Object.assign(new Error("injected persistent release failure"), { code });
+      }
+      return fs.unlink(...args);
+    } };
+    const f = await fixture(t);
+    await f.store.releaseLock();
+    f.store = await openPublicationControlStore(f.root, { ...options(storage), sharingRetryMs: budget });
+    await f.store.acquireLock();
+    const restorePlatform = usePlatform(t, platform);
+    t.mock.method(Date, "now", () => now);
+    armed = true;
+    await assert.rejects(f.store.releaseLock(), /injected persistent release failure/);
+    assert.equal(attempts, expectedAttempts);
+    assert.equal((await fs.readdir(control(f.root))).filter(name => name.endsWith(".quarantine")).length, 1);
+    armed = false;
+    restorePlatform(); // Native directory flush must use the host's real capability rules.
+    await f.store.releaseLock();
+    await f.store.acquireLock();
+    await f.store.releaseLock();
+    assert.deepEqual(await fs.readdir(control(f.root)), ["transactions"]);
+  });
+});
+
+test("Windows release retry rechecks ownership before touching replacement bytes", async t => {
+  for (const operation of ["rename", "unlink"]) await t.test(operation, async t => {
+    let armed = false, replaced;
+    const storage = { ...nodePublicationStorage, async [operation](file, ...args) {
+      if (armed) {
+        armed = false;
+        replaced = file;
+        await fs.rename(file, `${file}.saved`);
+        await fs.writeFile(file, "replacement owner", { flag: "wx" });
+        throw Object.assign(new Error("injected sharing violation after replacement"), { code: "EPERM" });
+      }
+      return fs[operation](file, ...args);
+    } };
+    const f = await fixture(t, storage);
+    usePlatform(t, "win32");
+    t.mock.method(Date, "now", () => 0);
+    armed = true;
+    await assert.rejects(f.store.releaseLock(), /owner changed/);
+    assert.equal(await fs.readFile(replaced, "utf8"), "replacement owner");
+    await assert.rejects(f.store.acquireLock(), /already held/);
+  });
 });
 
 test("leftover status quarantine files block progress instead of being ignored", async t => {
