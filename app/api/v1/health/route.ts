@@ -1,6 +1,7 @@
 import { rejectUnknownParameters } from "@/lib/github/validation";
 import { apiErrorResponse, jsonResponse, optionsResponse } from "@/lib/http";
 import { getGitHubToken } from "@/lib/runtime-env";
+import { BUILD_SHA } from "@/lib/build-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,12 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
     rejectUnknownParameters(url.searchParams, []);
     const tokenConfigured = Boolean(getGitHubToken());
-    return jsonResponse(request,
+    const response = await jsonResponse(request,
       {
         version: 1,
         service: "CommitAtlas",
         status: "ok",
+        buildSha: BUILD_SHA,
         capabilities: {
           publicProfile: true,
           contributions: tokenConfigured
@@ -25,6 +27,8 @@ export async function GET(request: Request): Promise<Response> {
       },
       { edgeSeconds: 60, publicData: !tokenConfigured },
     );
+    response.headers.set("Cache-Control", tokenConfigured ? "private, no-store" : "no-store");
+    return response;
   } catch (error) {
     return apiErrorResponse(error);
   }

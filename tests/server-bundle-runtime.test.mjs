@@ -1,5 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+test("built health retains the checkout identity when runtime SHA claims change", async (t) => {
+  const root = new URL("../", import.meta.url);
+  const checkout = existsSync(new URL(".git", root))
+    ? spawnSync("git", ["rev-parse", "HEAD"], { cwd: fileURLToPath(root), encoding: "utf8" })
+    : null;
+  const expected = checkout?.status === 0 ? checkout.stdout.trim() : null;
+  const previous = process.env.GITHUB_SHA;
+  process.env.GITHUB_SHA = "f".repeat(40);
+  t.after(() => {
+    if (previous === undefined) delete process.env.GITHUB_SHA;
+    else process.env.GITHUB_SHA = previous;
+  });
+  const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url));
+  const response = await worker.fetch(new Request("http://localhost/api/v1/health"),
+    { GITHUB_TOKEN: "", BUILD_SHA: "e".repeat(40), GITHUB_SHA: "d".repeat(40) },
+    { waitUntil() {}, passThroughOnException() {} });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const payload = await response.json();
+  assert.equal(payload.status, "ok");
+  assert.equal(payload.service, "CommitAtlas");
+  assert.equal(payload.buildSha, expected);
+});
 
 test("the Node contract harness imports the production Worker bundle", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);

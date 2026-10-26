@@ -408,7 +408,7 @@ test("serves a versioned synthetic profile without a token", async () => {
 
 test("reports contribution capability without claiming an unverified credential works", async () => {
   for (const [token, expected, cacheControl] of [
-    ["", { status: "available", mode: "public-profile" }, "public, max-age=60, s-maxage=60"],
+    ["", { status: "available", mode: "public-profile" }, "no-store"],
     ["ghp_public-only", { status: "unverified", mode: "configured-credential" }, "private, no-store"],
     ["unknown-private-capable-token", { status: "unverified", mode: "configured-credential" }, "private, no-store"],
   ]) {

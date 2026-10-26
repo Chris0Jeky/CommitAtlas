@@ -19,7 +19,7 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
-import { formatDeploymentIdentity } from "./deploy-identity.mjs";
+import { formatDeploymentIdentity, readCheckoutSha } from "./deploy-identity.mjs";
 import { extractDeployedOrigin } from "./deployed-origin.mjs";
 
 const skipBuild = process.argv.includes("--skip-build");
@@ -54,14 +54,17 @@ function exitOnFailure(label, status) {
   }
 }
 
+// Pin the expected revision before building; workflow_run's GITHUB_SHA may name another head.
+const sha = readCheckoutSha();
+if (!sha) {
+  console.error("Deployment requires a valid commit SHA from this Git checkout.");
+  process.exit(1);
+}
+
 if (!skipBuild) {
   console.log("> building the Worker and its assets\n");
   exitOnFailure("npm run build", runShell("npm run build", { stdio: "inherit" }).status);
 }
-
-// Prefer the checked-out commit: workflow_run's GITHUB_SHA can name another head.
-const git = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
-const sha = git.status === 0 ? git.stdout.trim() : process.env.GITHUB_SHA;
 
 console.log("\n> deploying to Cloudflare Workers\n");
 // Captured rather than inherited because the deployed origin has to be read
@@ -91,7 +94,7 @@ if (!baseUrl) {
   console.error(
     "\nDeployment succeeded, but no origin could be read from Wrangler's output, so it was NOT verified." +
       "\nRe-run the check yourself against the correct origin:" +
-      "\n  node scripts/verify-deployment.mjs https://<your-worker>.<your-subdomain>.workers.dev" +
+      `\n  node scripts/verify-deployment.mjs https://<your-worker>.<your-subdomain>.workers.dev --expected-sha ${sha}` +
       "\nor set DEPLOY_BASE_URL and re-run this script.",
   );
   process.exit(1);
@@ -102,4 +105,4 @@ if (override && reported && override !== reported) {
 }
 
 console.log(`\n> verifying ${baseUrl}\n`);
-exitOnFailure("deployment verification", runNode(["scripts/verify-deployment.mjs", baseUrl]).status);
+exitOnFailure("deployment verification", runNode(["scripts/verify-deployment.mjs", baseUrl, "--expected-sha", sha]).status);

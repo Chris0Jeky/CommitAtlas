@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   createDeploymentChecks,
@@ -8,9 +12,94 @@ import {
   fetchWithBoundedRetry,
   MAX_ATTEMPTS,
   RETRY_DELAYS_MS,
+  parseVerificationArgs,
+  verifyDeployment,
 } from "../scripts/deployment-verification.mjs";
 
 const TARGET = new URL("https://example.test/api/v1/probes/motion/css-enter.svg");
+const EXPECTED_SHA = "a".repeat(40);
+
+function healthCheck(options) {
+  return createDeploymentChecks(options).find(({ name }) => name.startsWith("health endpoint"));
+}
+
+test("the health probe verifies the exact expected build", async () => {
+  await healthCheck({ expectedSha: EXPECTED_SHA }).run(async () => new Response(JSON.stringify({
+    status: "ok", buildSha: EXPECTED_SHA,
+  })));
+});
+
+for (const [label, buildSha] of [
+  ["missing", undefined], ["unknown", null], ["malformed", "not-a-sha"],
+  ["overlong", `${EXPECTED_SHA}a`], ["another build", "b".repeat(40)],
+]) {
+  test(`the health probe rejects ${label} build identity despite status ok`, async () => {
+    await assert.rejects(healthCheck({ expectedSha: EXPECTED_SHA }).run(async () => new Response(JSON.stringify({
+      status: "ok", buildSha,
+    }))), /build (?:SHA|identity)/i);
+  });
+}
+
+test("status-only health checks preserve standalone verification without an expected SHA", async () => {
+  await healthCheck().run(async () => new Response(JSON.stringify({ status: "ok" })));
+});
+
+test("invalid expected build identity fails before any network request", async () => {
+  for (const expectedSha of [null, "", "unknown", "a".repeat(39), `${EXPECTED_SHA}\n`]) {
+    let calls = 0;
+    await assert.rejects(verifyDeployment("https://example.test", {
+      expectedSha,
+      fetchImpl: async () => { calls++; return new Response('{}'); },
+      sleep: async () => {},
+    }), /expected build SHA/i);
+    assert.equal(calls, 0);
+  }
+});
+
+test("verification arguments retain explicit status-only and expected-SHA modes", () => {
+  assert.deepEqual(parseVerificationArgs(["https://example.test"]), {
+    baseUrl: "https://example.test", expectedSha: undefined,
+  });
+  assert.deepEqual(parseVerificationArgs(["https://example.test", "--status-only"]), {
+    baseUrl: "https://example.test", expectedSha: undefined,
+  });
+  assert.deepEqual(parseVerificationArgs(["https://example.test", "--expected-sha", EXPECTED_SHA]), {
+    baseUrl: "https://example.test", expectedSha: EXPECTED_SHA,
+  });
+});
+
+test("verification arguments reject missing or malformed identity and conflicting modes", () => {
+  for (const args of [
+    [], ["https://example.test", "--expected-sha"],
+    ["https://example.test", "--expected-sha", "invalid"],
+    ["https://example.test", "--expected-sha", EXPECTED_SHA, "--status-only"],
+    ["https://example.test", "--unknown"],
+  ]) {
+    assert.throws(() => parseVerificationArgs(args), /usage:|expected build SHA/i);
+  }
+});
+
+test("the verifier CLI forwards expected identity and labels standalone status checks", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "commitatlas-verifier-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const preload = path.join(directory, "fetch-fixture.mjs");
+  writeFileSync(preload, `globalThis.fetch = async (input) => new URL(input).pathname === "/api/v1/health"
+    ? Response.json({ status: "ok", buildSha: "${"b".repeat(40)}" })
+    : new Response("unavailable fixture", { status: 500 });\n`);
+  const invoke = (args) => spawnSync(process.execPath, ["--import", pathToFileURL(preload).href,
+    fileURLToPath(new URL("../scripts/verify-deployment.mjs", import.meta.url)), "https://example.test", ...args],
+  { encoding: "utf8", timeout: 10_000 });
+
+  const strict = invoke(["--expected-sha", EXPECTED_SHA]);
+  assert.equal(strict.status, 1, strict.stderr);
+  assert.match(strict.stdout, /FAIL\s+health endpoint/);
+  assert.match(strict.stdout, new RegExp(`expected build SHA ${EXPECTED_SHA}, got ${"b".repeat(40)}`));
+  assert.doesNotMatch(strict.stdout, /Status-only/);
+
+  const standalone = invoke([]);
+  assert.match(standalone.stdout, /Status-only checks: build identity is not verified/);
+  assert.match(standalone.stdout, /PASS\s+health endpoint/);
+});
 
 function svgResponse(body = '<svg><title id="title">CSS enter probe</title></svg>', headers = {}) {
   return new Response(body, {

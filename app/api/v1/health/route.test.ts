@@ -4,6 +4,7 @@ import { withWorkerEnv } from "@/lib/runtime-env";
 import { GET } from "./route";
 
 interface HealthPayload {
+  buildSha: string | null;
   capabilities: {
     contributions: {
       status: string;
@@ -16,11 +17,24 @@ test("reports tokenless public contributions as available", async () => {
   const response = await healthWithToken("");
   const payload = await response.json() as HealthPayload;
 
-  assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=60");
+  assert.equal(response.headers.get("cache-control"), "no-store");
   assert.deepEqual(payload.capabilities.contributions, {
     status: "available",
     mode: "public-profile",
   });
+});
+
+test("unbuilt health reports no build identity and ignores runtime SHA claims", async (t) => {
+  const previous = process.env.GITHUB_SHA;
+  process.env.GITHUB_SHA = "a".repeat(40);
+  t.after(() => {
+    if (previous === undefined) delete process.env.GITHUB_SHA;
+    else process.env.GITHUB_SHA = previous;
+  });
+  const response = await healthWithToken("");
+  const payload = await response.json() as HealthPayload;
+  assert.equal(payload.buildSha, null);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
 test("reports every configured contribution credential as unverified", async () => {
