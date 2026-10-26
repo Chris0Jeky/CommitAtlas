@@ -207,6 +207,8 @@ scenes are `evidence-coverage`, `activity-terrain`, `chronograph`, `lifecycle-ma
 `identity-beacon`, and `nebula`. All currently require `scenePack: "survey"`.
 The first four accept `none | subtle | ambient`; Identity Beacon accepts
 `none | ambient | cinematic` and requires `identity`; Nebula accepts `none | ambient`.
+Beacon focus entries match configured project labels exactly; an ambiguous selected label is
+rejected, and unmatched focus stays plain text.
 Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
 The Action's `scenes` output is a JSON array of generated paths (`[]` when

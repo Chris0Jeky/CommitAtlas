@@ -78,9 +78,21 @@ function position(options: PrimitivePosition): string {
 function text(x: number, y: number, value: string, ink: string, size = 11, mono = true, anchor = "start"): string {
   return `<text x="${x}" y="${y}" fill="${ink}" font-family="${mono ? MONO : SANS}" font-size="${size}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
 }
-function clipped(value: string, width: number, size: number): string {
-  // A full em per code point remains conservative when system-font fallback widens glyphs.
-  return truncateText(value, Math.max(1, Math.floor(width / size)));
+function clipped(value: string, width: number, size: number, frameFallback = false): string {
+  const limit = Math.max(1, Math.floor(width / size));
+  if (!frameFallback) return truncateText(value, limit);
+  // Frame titles/ref labels can use wider emoji fallback. Keep ASCII byte-identical,
+  // reserve two cells for other code points, and retain the full accessible title.
+  const characters = [...value.trim()];
+  const cells = (character: string) => /^[\x20-\x7e]$/u.test(character) || character === '…' ? 1 : 2;
+  if (characters.reduce((total, character) => total + cells(character), 0) <= limit) return characters.join('');
+  let output = '', used = 0;
+  for (const character of characters) {
+    if (used + cells(character) > limit - 1) break;
+    output += character;
+    used += cells(character);
+  }
+  return `${output}…`;
 }
 
 /** An opaque corner-cut plate, family stamp, reference, and optional frozen stale strip. */
@@ -97,8 +109,8 @@ export function frame(context: PrimitiveContext, options: FrameOptions): string 
   output += packMarks(context.pack ?? "survey", width, height, theme.chrome);
   output += `<path d="M1 1H${width - (corner + 1)}L${width - 1} ${corner + 1}V${height - 1}H1Z" fill="none" stroke="${theme.border}"/>`;
   output += text(20, 25, FAMILY_LABELS[options.family], theme.chrome);
-  output += text(width - Math.max(20, corner), 25, clipped(ref, width / 3, 10), theme.muted, 10, true, "end");
-  output += text(20, 57, clipped(title, width - 40, 22), theme.text, 22, false);
+  output += text(width - Math.max(20, corner), 25, clipped(ref, width / 3, 10, true), theme.muted, 10, true, "end");
+  output += text(20, 57, clipped(title, width - 40, 22, true), theme.text, 22, false);
   output += `<path d="M20 74H${width - 20}" fill="none" stroke="${theme.border}"/>`;
   if (options.stale) {
     output += `<path d="M20 ${height - 36}H${width - 20}" fill="none" stroke="${theme.muted}" stroke-dasharray="3 3"/>`;

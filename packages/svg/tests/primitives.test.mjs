@@ -39,6 +39,17 @@ test("structural primitives have an additive public package entrypoint", () => {
   assert.equal(pkg.exports["./primitives"].types, "./dist/primitives/index.d.ts");
 });
 
+test("shared frame titles reserve two cells for non-ASCII fallback while retaining accessible text", () => {
+  for (const glyph of ["😀", "⌚", "界"]) {
+    const title = glyph.repeat(20);
+    const fragment = primitives.frame({ ...context, layout: "compact" }, { title, ref: "BEACON / 04", family: "scene", width: 480, height: 520 });
+    assert.ok(fragment.includes(`<title>${escapeXml(title)} (BEACON / 04)</title>`));
+    assert.ok(fragment.includes(`font-size="22" text-anchor="start">${glyph.repeat(9)}…</text>`));
+  }
+  const ascii = primitives.frame(context, { title: "W".repeat(40), ref: "BEACON / 04", family: "scene", width: 480, height: 520 });
+  assert.ok(ascii.includes(`font-size="22" text-anchor="start">${"W".repeat(19)}…</text>`), "ASCII clipping remains unchanged");
+});
+
 test("every primitive is valid scene XML in all four themes with escaped injected text", () => {
   for (const theme of Object.keys(themes)) {
     for (const fragment of fragments({ ...context, theme }, SCENE_INJECTION)) {

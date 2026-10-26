@@ -1,0 +1,1329 @@
+{
+  "kind": "identity-beacon-controlled-fallback-local-receipt",
+  "status": "complete-local-development-evidence",
+  "observedAt": "2026-10-26T05:01:26.709Z",
+  "sourceCommit": "55e8c1b0925565335aa422a885a19f5fe8159269",
+  "sourceWorkingTreeDirty": true,
+  "sourceFiles": {
+    "packages/svg/src/scenes/identity-beacon.ts": "6bc028b389d4098dcf1b3a37cce35dfff74aabea320ecffc10f9a39327d1b717",
+    "packages/svg/src/identity.ts": "f930aa498b1cf2c5fce635aaa448db586a55914f4b15b767cf27d2fa6762bd81",
+    "packages/svg/src/primitives/index.ts": "ffaf953b918a10e9a0bbef8a936211ec236ff0f76ea7e53f9670cc5c4ee562fc",
+    "packages/svg/src/primitives/common.ts": "50578a568db7fb496d61f720bc382998eb7fe5b476130310d4e2214303b90b58",
+    "packages/svg/src/primitives/geometric.ts": "24df9a48449380fbe2876f101f67b2305b9df11c41094dad51f6a1610b9ad2c9",
+    "packages/svg/src/motion/compiler.ts": "e9c49abc1bb2ad94195bf87a8f706b8ac549fddcefc3870664e82364ae1a9ba0",
+    "packages/svg/src/motion/css.ts": "272fcd17f8aa6f671cd16487284af0ea4850e5c04741ac9ad5fd16573ef192a0",
+    "packages/svg/src/motion/smil.ts": "2839709e9c0c6b2649aad288aa59941756df27ccd5f8e5ccdc8ad95379d9ecc4",
+    "packages/svg/src/motion/profile.ts": "39a8da3bab865805de19cf272bb8d775c8cc59539d3eaf887b507aaddcf408e7",
+    "packages/svg/src/scene.ts": "b0f008195fdbabbc9259e2557162401aed1a15ee72df8ab8ce2ea0389b88b777",
+    "packages/svg/tests/scene.fixture.mjs": "55540ff2c41319ee37bf451d78914a3d91af86676cb35c391ffb4d04aa598358",
+    "packages/svg/tests/scene-harness.mjs": "0deee79a3a5abe98796cf0506edefa160c9133382633caa5f25c312d775a50db",
+    "tests/motion-probes/capture.mjs": "7fb27ecded71b6680ca7babdbce0ee920d630b78985ed270f9ae8d27c5c6cd08",
+    "tests/identity-beacon-browser.mjs": "63bc39a50077512ab116e7d2eb65446c8c9eadad14f6c10dab43f3a57046089a"
+  },
+  "reportSha256": "086f1d2ac1e45957016b7b629bd72f94ad706f833b3b7b1f3381a751bb5a00b3",
+  "environment": {
+    "playwright": "1.57.0",
+    "browser": "141.0.7390.37",
+    "fontconfigOverride": true,
+    "font": {
+      "packageUrl": "https://archive.ubuntu.com/ubuntu/pool/main/f/fonts-noto-color-emoji/fonts-noto-color-emoji_2.047-0ubuntu0.24.04.1_all.deb",
+      "packageSha256": "b102b62ce6a7313315223cff5e052bdf8fc0ad162c9e961ce0dc2202bc139ce2",
+      "fontFamily": "Noto Color Emoji",
+      "packageVersion": "2.047-0ubuntu0.24.04.1",
+      "fontSha256": "93cdc4ee9aa40e2afceecc63da0ca05ec7aab4bec991ece51a6b52389f48a477",
+      "fontconfigSha256": "284d8d06ed4f163f87b5f4b464bc66b6f33d1b4611721e8bc9ba648dfcaf1435",
+      "scope": "private charset-specific fontconfig preferences for1f600/231a/263a/2615/260e; system fonts unchanged; no webfont in generated SVG",
+      "oldSourceBounds": {
+        "sharedHeaderRight": 569.541259765625,
+        "mainNameRight": 513.1651000976562,
+        "taglineRight": 523.1192626953125
+      },
+      "fontVersionFixedPoint": 134152
+    }
+  },
+  "layout": {
+    "cases": 864,
+    "failures": 0,
+    "maximumHeight": 974,
+    "glyphs": [
+      "W",
+      "\u754c",
+      "\ud83d\ude00",
+      "\u231a",
+      "mixed-emoji",
+      "emoji-words",
+      "words-low",
+      "words",
+      "words-high"
+    ],
+    "fonts": [
+      "native",
+      "serif",
+      "monospace"
+    ],
+    "arrangements": [
+      "matched",
+      "mixed",
+      "unmatched",
+      "zero"
+    ],
+    "wideSlotWidths": [
+      260,
+      398
+    ],
+    "twoColumnCases": 288
+  },
+  "playback": [
+    {
+      "key": "compact-css-ambient",
+      "layout": "compact",
+      "backend": "css",
+      "state": "ambient",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "b836711a8d235a353795f93652cb2384f774cf1c25b1ac0d65197767b39aa4d8",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 6681,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-css-ambient/0.png",
+          "requestedMs": 0,
+          "beforeMs": 25.5,
+          "afterMs": 129.59999999403954,
+          "sha256": "7a738efa4d5fe004ee7ec686519688e1e1a462a43b402a6b1f2ed279ca8c476e"
+        },
+        {
+          "file": "compact-css-ambient/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2007,
+          "afterMs": 2079.2999999970198,
+          "sha256": "fa89a32d2bcdb0b5a0008fb35c29a2d1476d8d0381739ba62132d74d7f0ba9d4"
+        },
+        {
+          "file": "compact-css-ambient/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6007.39999999851,
+          "afterMs": 6090,
+          "sha256": "e2fb48a2306c45caf8a649372a0479326e76cab3599b773161f1fa802aed7121"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 3222,
+          "totalChannelDelta": 770374
+        },
+        {
+          "changedPixels": 3148,
+          "totalChannelDelta": 729294
+        }
+      ],
+      "video": {
+        "file": "compact-css-ambient/motion.webm",
+        "measuredVisibleDurationMs": 6090,
+        "fileSizeBytes": 261026,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "248e917bd60527489211fd29df682214412af9d3904d6d7da0e9ac04dc9b43f8"
+      },
+      "selectedBodySha256": "b836711a8d235a353795f93652cb2384f774cf1c25b1ac0d65197767b39aa4d8"
+    },
+    {
+      "key": "compact-css-cinematic",
+      "layout": "compact",
+      "backend": "css",
+      "state": "cinematic",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "2c0263e67287efc5ae260b2eb7e210444ef97aeb43d33322c5e47aeb940ca03e",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 7066,
+        "animatedElements": 5,
+        "loopingGroups": 1
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-css-cinematic/0.png",
+          "requestedMs": 0,
+          "beforeMs": 35.5,
+          "afterMs": 128.20000000298023,
+          "sha256": "131c9cd584f77a10816ab3dc8474f88a204878331a9b646e00de395274d5b4c9"
+        },
+        {
+          "file": "compact-css-cinematic/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2005.3999999985099,
+          "afterMs": 2076.10000000149,
+          "sha256": "6e7a84a0b67b8de7838a353bd109c89624be10bdb9ddfb0545bdc9795dda78c8"
+        },
+        {
+          "file": "compact-css-cinematic/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6006,
+          "afterMs": 6079.5,
+          "sha256": "4984903ff86c03af452f53a2ca6ef4e6084242e32bfa4a6792800dda4c1e7076"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 68,
+          "totalChannelDelta": 15332
+        },
+        {
+          "changedPixels": 342,
+          "totalChannelDelta": 154704
+        }
+      ],
+      "video": {
+        "file": "compact-css-cinematic/motion.webm",
+        "measuredVisibleDurationMs": 6079.5,
+        "fileSizeBytes": 119226,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "cfb7f89d36858ba92def62346999b01deb0925dfabf9224310af2584e5ba89b7"
+      },
+      "selectedBodySha256": "2c0263e67287efc5ae260b2eb7e210444ef97aeb43d33322c5e47aeb940ca03e"
+    },
+    {
+      "key": "compact-css-none",
+      "layout": "compact",
+      "backend": "css",
+      "state": "none",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 4823,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-css-none/0.png",
+          "requestedMs": 0,
+          "beforeMs": 20.600000001490116,
+          "afterMs": 109.39999999850988,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-css-none/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2011.2999999970198,
+          "afterMs": 2081.5,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-css-none/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6011.20000000298,
+          "afterMs": 6085.20000000298,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-css-none/motion.webm",
+        "measuredVisibleDurationMs": 6085.20000000298,
+        "fileSizeBytes": 167190,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "1a88f6b61a7a32052745c9a46335989e35af048439c345f7699dedbbfb61e3e1"
+      },
+      "selectedBodySha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9"
+    },
+    {
+      "key": "compact-css-stale",
+      "layout": "compact",
+      "backend": "css",
+      "state": "stale",
+      "source": {
+        "width": 640,
+        "height": 120
+      },
+      "svgSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "stillSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "counters": {
+        "bytes": 519,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-css-stale/0.png",
+          "requestedMs": 0,
+          "beforeMs": 28,
+          "afterMs": 115.70000000298023,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "compact-css-stale/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2018.5,
+          "afterMs": 2090.2999999970198,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "compact-css-stale/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6018.29999999702,
+          "afterMs": 6092.20000000298,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-css-stale/motion.webm",
+        "measuredVisibleDurationMs": 6092.20000000298,
+        "fileSizeBytes": 37725,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "377abb8fd45de5b03ce08f44d504bff9aefd19ef9032136f2adaf7795dc6e096"
+      },
+      "selectedBodySha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806"
+    },
+    {
+      "key": "compact-css-reduced",
+      "layout": "compact",
+      "backend": "css",
+      "state": "reduced",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "b836711a8d235a353795f93652cb2384f774cf1c25b1ac0d65197767b39aa4d8",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 6681,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "picture-none-twin",
+      "frames": [
+        {
+          "file": "compact-css-reduced/0.png",
+          "requestedMs": 0,
+          "beforeMs": 35.69999999552965,
+          "afterMs": 166.19999999552965,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-css-reduced/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2011,
+          "afterMs": 2091.39999999851,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-css-reduced/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6012.19999999553,
+          "afterMs": 6100.79999999702,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-css-reduced/motion.webm",
+        "measuredVisibleDurationMs": 6100.79999999702,
+        "fileSizeBytes": 159782,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "4b95a9fd080a69a2ec95e41c180e491967095506a50564f71884a56d2ef5747a"
+      },
+      "selectedBodySha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "reducedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      }
+    },
+    {
+      "key": "compact-smil-ambient",
+      "layout": "compact",
+      "backend": "smil",
+      "state": "ambient",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "cc01d6aeee2c1872fe3adff9ea7a8c9e6ff19b1cfb4665c469edc044c09c6078",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 6781,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-smil-ambient/0.png",
+          "requestedMs": 0,
+          "beforeMs": 37.29999999701977,
+          "afterMs": 172.89999999850988,
+          "sha256": "0aeb31f9837ef11d7a924fc032ecb35367a4cf24bd43f8ac1d57fc023047cc26"
+        },
+        {
+          "file": "compact-smil-ambient/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2011.2000000029802,
+          "afterMs": 2092.5,
+          "sha256": "d1a50f7d4534d283eb2d58f7e53c6017f3c39b8ca1a4b82cc55672d1725f7331"
+        },
+        {
+          "file": "compact-smil-ambient/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6011.60000000149,
+          "afterMs": 6102.39999999851,
+          "sha256": "210bdb315b48baae61407f53a7ffde7b7e53b21cb1a45fef58099ac119c9e4c7"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 3232,
+          "totalChannelDelta": 777150
+        },
+        {
+          "changedPixels": 3158,
+          "totalChannelDelta": 729711
+        }
+      ],
+      "video": {
+        "file": "compact-smil-ambient/motion.webm",
+        "measuredVisibleDurationMs": 6102.39999999851,
+        "fileSizeBytes": 222455,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "30bd94a5c7ebc750a72d19a5d39df16c6f8841766873042fbf23d7ea23150de8"
+      },
+      "selectedBodySha256": "cc01d6aeee2c1872fe3adff9ea7a8c9e6ff19b1cfb4665c469edc044c09c6078"
+    },
+    {
+      "key": "compact-smil-cinematic",
+      "layout": "compact",
+      "backend": "smil",
+      "state": "cinematic",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "eb0f78bbc4a029d6276e1f6111de92921146388e3a0c4aa8b40f76c55a190a4f",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 5888,
+        "animatedElements": 5,
+        "loopingGroups": 1
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-smil-cinematic/0.png",
+          "requestedMs": 0,
+          "beforeMs": 41.70000000298023,
+          "afterMs": 152.29999999701977,
+          "sha256": "2e316753f5249cd202dd044515d3746aef83010aa42251d87c693a65148dff33"
+        },
+        {
+          "file": "compact-smil-cinematic/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2006.5,
+          "afterMs": 2109.10000000149,
+          "sha256": "99511fb4e1b54d347c64079fe68fb972ab6afd054031b54c6e081e5dc6cf01ce"
+        },
+        {
+          "file": "compact-smil-cinematic/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6008,
+          "afterMs": 6068.79999999702,
+          "sha256": "fc9db2c466d8b16a3ee8273f310bf65ae83c04719ddd198f148d2eab04152762"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 88,
+          "totalChannelDelta": 21077
+        },
+        {
+          "changedPixels": 358,
+          "totalChannelDelta": 158709
+        }
+      ],
+      "video": {
+        "file": "compact-smil-cinematic/motion.webm",
+        "measuredVisibleDurationMs": 6068.79999999702,
+        "fileSizeBytes": 192636,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "40e376283e9a9451b204320f90c5066e3776ee7e32b33f0cd13f6730d2f3a8ab"
+      },
+      "selectedBodySha256": "eb0f78bbc4a029d6276e1f6111de92921146388e3a0c4aa8b40f76c55a190a4f"
+    },
+    {
+      "key": "compact-smil-none",
+      "layout": "compact",
+      "backend": "smil",
+      "state": "none",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 4823,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-smil-none/0.png",
+          "requestedMs": 0,
+          "beforeMs": 27.100000001490116,
+          "afterMs": 125.60000000149012,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-smil-none/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2022.6000000014901,
+          "afterMs": 2088.3000000044703,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-smil-none/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6015.20000000298,
+          "afterMs": 6086.5,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-smil-none/motion.webm",
+        "measuredVisibleDurationMs": 6086.5,
+        "fileSizeBytes": 98909,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "74cb747a2bdef365337b3bb13af75a7653b8b2d8c0ddf930169aae302e374af5"
+      },
+      "selectedBodySha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9"
+    },
+    {
+      "key": "compact-smil-stale",
+      "layout": "compact",
+      "backend": "smil",
+      "state": "stale",
+      "source": {
+        "width": 640,
+        "height": 120
+      },
+      "svgSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "stillSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "counters": {
+        "bytes": 519,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "compact-smil-stale/0.png",
+          "requestedMs": 0,
+          "beforeMs": 33.100000001490116,
+          "afterMs": 116.5,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "compact-smil-stale/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2015.5,
+          "afterMs": 2084.2000000029802,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "compact-smil-stale/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6015.60000000149,
+          "afterMs": 6091.20000000298,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-smil-stale/motion.webm",
+        "measuredVisibleDurationMs": 6091.20000000298,
+        "fileSizeBytes": 47983,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "8ba606de1c334256001fd137fc60931de4a270fce24be8ed99567e0e0563a020"
+      },
+      "selectedBodySha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806"
+    },
+    {
+      "key": "compact-smil-reduced",
+      "layout": "compact",
+      "backend": "smil",
+      "state": "reduced",
+      "source": {
+        "width": 480,
+        "height": 832
+      },
+      "svgSha256": "cc01d6aeee2c1872fe3adff9ea7a8c9e6ff19b1cfb4665c469edc044c09c6078",
+      "stillSha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "counters": {
+        "bytes": 6781,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "picture-none-twin",
+      "frames": [
+        {
+          "file": "compact-smil-reduced/0.png",
+          "requestedMs": 0,
+          "beforeMs": 30.100000001490116,
+          "afterMs": 112.39999999850988,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-smil-reduced/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2010.7999999970198,
+          "afterMs": 2080.7999999970198,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        },
+        {
+          "file": "compact-smil-reduced/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6011.19999999553,
+          "afterMs": 6086.89999999851,
+          "sha256": "f085ec56ba15bcf2ecbd2fa6b1714709abbc1f95fe953d95068b638674a398f0"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "compact-smil-reduced/motion.webm",
+        "measuredVisibleDurationMs": 6086.89999999851,
+        "fileSizeBytes": 98825,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "0c64de6c99640dd38d799ba1841f04bc909087c20c1e4931e7e058912f070eb7"
+      },
+      "selectedBodySha256": "398666632cae12a903f4476cf6f2c764e0490c1638824439315c24b244bebac9",
+      "reducedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      }
+    },
+    {
+      "key": "wide-css-ambient",
+      "layout": "wide",
+      "backend": "css",
+      "state": "ambient",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "d1342272919d19c999b7b4e890c3ea3892efa8311e6e74c3326fad56594c236e",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 6669,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-css-ambient/0.png",
+          "requestedMs": 0,
+          "beforeMs": 32.100000001490116,
+          "afterMs": 145.10000000149012,
+          "sha256": "c5dce141a4b5a379e507863f1b77ffa66fdff737dfe0c5374adc5daac03d80e3"
+        },
+        {
+          "file": "wide-css-ambient/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2013.3999999985099,
+          "afterMs": 2087.60000000149,
+          "sha256": "e52d4793c776a4897e3031b17d3ba6179a2b6505750fcf6b8887089051348074"
+        },
+        {
+          "file": "wide-css-ambient/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6013.19999999553,
+          "afterMs": 6111.19999999553,
+          "sha256": "2a9e806315e70e4148501e45dee96b67025d03bf94e55f360412dc2403181124"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 5446,
+          "totalChannelDelta": 1331878
+        },
+        {
+          "changedPixels": 5331,
+          "totalChannelDelta": 1249967
+        }
+      ],
+      "video": {
+        "file": "wide-css-ambient/motion.webm",
+        "measuredVisibleDurationMs": 6111.19999999553,
+        "fileSizeBytes": 350278,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "97b67c8eeef25a1e3ebf72663d7e944921ac63c43d2f4b78bec4ced16ee64126"
+      },
+      "selectedBodySha256": "d1342272919d19c999b7b4e890c3ea3892efa8311e6e74c3326fad56594c236e"
+    },
+    {
+      "key": "wide-css-cinematic",
+      "layout": "wide",
+      "backend": "css",
+      "state": "cinematic",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "92cf1658e77849599fccfed45f3297b235933707f84617454205647c80e81246",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 7054,
+        "animatedElements": 5,
+        "loopingGroups": 1
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-css-cinematic/0.png",
+          "requestedMs": 0,
+          "beforeMs": 36.600000001490116,
+          "afterMs": 148.60000000149012,
+          "sha256": "bd55f86ccf35f202022f40ea43cc530c2403c4a597abea011229f02d8e3e5d02"
+        },
+        {
+          "file": "wide-css-cinematic/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2017.1000000014901,
+          "afterMs": 2110.39999999851,
+          "sha256": "b1c79ef2d150a1e73f4f5e9237f5ab942d2cc0255e7a480b50caede05dda1a1d"
+        },
+        {
+          "file": "wide-css-cinematic/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6016.79999999702,
+          "afterMs": 6115.10000000149,
+          "sha256": "7d1c367828b62fd1710dceadc3f188183ddf443774cc72357f4a549314deea1d"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 94,
+          "totalChannelDelta": 24444
+        },
+        {
+          "changedPixels": 352,
+          "totalChannelDelta": 156178
+        }
+      ],
+      "video": {
+        "file": "wide-css-cinematic/motion.webm",
+        "measuredVisibleDurationMs": 6115.10000000149,
+        "fileSizeBytes": 152446,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "59fd6f915de3ae24c60e11248e3cf1516ac7e2362a3208e952cf623f1dc58f53"
+      },
+      "selectedBodySha256": "92cf1658e77849599fccfed45f3297b235933707f84617454205647c80e81246"
+    },
+    {
+      "key": "wide-css-none",
+      "layout": "wide",
+      "backend": "css",
+      "state": "none",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 4811,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-css-none/0.png",
+          "requestedMs": 0,
+          "beforeMs": 24.900000005960464,
+          "afterMs": 124.30000000447035,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-css-none/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2007.5,
+          "afterMs": 2077.9000000059605,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-css-none/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6007.5,
+          "afterMs": 6088.20000000298,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-css-none/motion.webm",
+        "measuredVisibleDurationMs": 6088.20000000298,
+        "fileSizeBytes": 187806,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "0853fca912382854f09d7acde0335d8ae53949ac526f20afcc742ecb363cfd11"
+      },
+      "selectedBodySha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9"
+    },
+    {
+      "key": "wide-css-stale",
+      "layout": "wide",
+      "backend": "css",
+      "state": "stale",
+      "source": {
+        "width": 640,
+        "height": 120
+      },
+      "svgSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "stillSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "counters": {
+        "bytes": 519,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-css-stale/0.png",
+          "requestedMs": 0,
+          "beforeMs": 28.399999998509884,
+          "afterMs": 97.79999999701977,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "wide-css-stale/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2011.5,
+          "afterMs": 2077.2999999970198,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "wide-css-stale/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6012.29999999702,
+          "afterMs": 6064.5999999940395,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-css-stale/motion.webm",
+        "measuredVisibleDurationMs": 6064.5999999940395,
+        "fileSizeBytes": 37725,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "94ad5d16d85a019d4fddb7d547ea91208c16d901a98739632f575aa7bb34ba4d"
+      },
+      "selectedBodySha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806"
+    },
+    {
+      "key": "wide-css-reduced",
+      "layout": "wide",
+      "backend": "css",
+      "state": "reduced",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "d1342272919d19c999b7b4e890c3ea3892efa8311e6e74c3326fad56594c236e",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 6669,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "picture-none-twin",
+      "frames": [
+        {
+          "file": "wide-css-reduced/0.png",
+          "requestedMs": 0,
+          "beforeMs": 42.600000001490116,
+          "afterMs": 143.5,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-css-reduced/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2021.6999999955297,
+          "afterMs": 2094.2999999970198,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-css-reduced/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6017.69999999553,
+          "afterMs": 6093,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-css-reduced/motion.webm",
+        "measuredVisibleDurationMs": 6093,
+        "fileSizeBytes": 187806,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "7730e480c4e2ab5db1de167599469540e3b78385e9e2b60f27534a6b6d200704"
+      },
+      "selectedBodySha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "reducedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      }
+    },
+    {
+      "key": "wide-smil-ambient",
+      "layout": "wide",
+      "backend": "smil",
+      "state": "ambient",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "0f1d4ce94b2999235b946fd250779e8bb7edce6b5037bb04971e98ea683ae9e9",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 6769,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-smil-ambient/0.png",
+          "requestedMs": 0,
+          "beforeMs": 34.5,
+          "afterMs": 137.90000000596046,
+          "sha256": "6e159432a48e5f88123c199f77c241c2bca2a0a66332b9d74411318cd9698998"
+        },
+        {
+          "file": "wide-smil-ambient/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2012.9000000059605,
+          "afterMs": 2158.7000000029802,
+          "sha256": "3162cfd68dfa9819a86762befaa08fd218b5be3a39a1a27f9de753bcfcb4fb5a"
+        },
+        {
+          "file": "wide-smil-ambient/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6012,
+          "afterMs": 6149.20000000298,
+          "sha256": "415e47cc04a606de9e03039455ecd67d6843520869296a977bb6dffd2a848f47"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 5522,
+          "totalChannelDelta": 1343509
+        },
+        {
+          "changedPixels": 5336,
+          "totalChannelDelta": 1262262
+        }
+      ],
+      "video": {
+        "file": "wide-smil-ambient/motion.webm",
+        "measuredVisibleDurationMs": 6149.20000000298,
+        "fileSizeBytes": 286022,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "d66dc0b59cf0a68aac1fb8405620284f1b38f09b55be37c2c7f34825cc11ba75"
+      },
+      "selectedBodySha256": "0f1d4ce94b2999235b946fd250779e8bb7edce6b5037bb04971e98ea683ae9e9"
+    },
+    {
+      "key": "wide-smil-cinematic",
+      "layout": "wide",
+      "backend": "smil",
+      "state": "cinematic",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "502c208d4fbdc0122f012c076298d11887ee63f149be693d9e4f7f89282704f4",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 5876,
+        "animatedElements": 5,
+        "loopingGroups": 1
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-smil-cinematic/0.png",
+          "requestedMs": 0,
+          "beforeMs": 30.600000001490116,
+          "afterMs": 147.80000000447035,
+          "sha256": "0ecdd122dbc49f5babad2c673fde58b8760f3523576bbedb733012751dde9622"
+        },
+        {
+          "file": "wide-smil-cinematic/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2016.2000000029802,
+          "afterMs": 2131,
+          "sha256": "4485f98b5f641f1c834c3b5812366d639c9602fdbb83bc1da55f302af46a328b"
+        },
+        {
+          "file": "wide-smil-cinematic/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6015.70000000298,
+          "afterMs": 6119.9000000059605,
+          "sha256": "e6ff100ead6d13779c14c9e2fbdae0823afeb770ea06fd56d12362b1495e25e6"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 99,
+          "totalChannelDelta": 27815
+        },
+        {
+          "changedPixels": 353,
+          "totalChannelDelta": 156415
+        }
+      ],
+      "video": {
+        "file": "wide-smil-cinematic/motion.webm",
+        "measuredVisibleDurationMs": 6119.9000000059605,
+        "fileSizeBytes": 220304,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "6379acdf66f9da7a04c4fb2fb82538d70a682eb22446e559aede25e0907c39ee"
+      },
+      "selectedBodySha256": "502c208d4fbdc0122f012c076298d11887ee63f149be693d9e4f7f89282704f4"
+    },
+    {
+      "key": "wide-smil-none",
+      "layout": "wide",
+      "backend": "smil",
+      "state": "none",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 4811,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-smil-none/0.png",
+          "requestedMs": 0,
+          "beforeMs": 25.700000002980232,
+          "afterMs": 143,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-smil-none/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2012.1000000014901,
+          "afterMs": 2126.7000000029802,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-smil-none/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6012.5,
+          "afterMs": 6101.80000000447,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-smil-none/motion.webm",
+        "measuredVisibleDurationMs": 6101.80000000447,
+        "fileSizeBytes": 106738,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "3d0a25c1a8aa43461e76a4db5dc86f4d63da99ef5015f6bbf320810bde3cec00"
+      },
+      "selectedBodySha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9"
+    },
+    {
+      "key": "wide-smil-stale",
+      "layout": "wide",
+      "backend": "smil",
+      "state": "stale",
+      "source": {
+        "width": 640,
+        "height": 120
+      },
+      "svgSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "stillSha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806",
+      "counters": {
+        "bytes": 519,
+        "animatedElements": 0,
+        "loopingGroups": 0
+      },
+      "selectedSource": "same-svg",
+      "frames": [
+        {
+          "file": "wide-smil-stale/0.png",
+          "requestedMs": 0,
+          "beforeMs": 29.799999997019768,
+          "afterMs": 108.60000000149012,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "wide-smil-stale/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2007.6000000014901,
+          "afterMs": 2069.7999999970198,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        },
+        {
+          "file": "wide-smil-stale/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6007.79999999702,
+          "afterMs": 6063.70000000298,
+          "sha256": "aeb17c0fede20dc6f5c83b77474fa1bb2c93f18ad882f1134853fe2a6d4f8704"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-smil-stale/motion.webm",
+        "measuredVisibleDurationMs": 6063.70000000298,
+        "fileSizeBytes": 47878,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "c3058f6aab516a6a48bfcc9811494772753c9f4be3cb36ce94283228bffaae5b"
+      },
+      "selectedBodySha256": "8af06418fb3b37c7f208aa74415a7fbc639d6041c19c4d331c1de789e27b4806"
+    },
+    {
+      "key": "wide-smil-reduced",
+      "layout": "wide",
+      "backend": "smil",
+      "state": "reduced",
+      "source": {
+        "width": 860,
+        "height": 684
+      },
+      "svgSha256": "0f1d4ce94b2999235b946fd250779e8bb7edce6b5037bb04971e98ea683ae9e9",
+      "stillSha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "counters": {
+        "bytes": 6769,
+        "animatedElements": 4,
+        "loopingGroups": 2
+      },
+      "selectedSource": "picture-none-twin",
+      "frames": [
+        {
+          "file": "wide-smil-reduced/0.png",
+          "requestedMs": 0,
+          "beforeMs": 24.30000000447035,
+          "afterMs": 85.5,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-smil-reduced/2000.png",
+          "requestedMs": 2000,
+          "beforeMs": 2018.2000000029802,
+          "afterMs": 2088.8000000044703,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        },
+        {
+          "file": "wide-smil-reduced/6000.png",
+          "requestedMs": 6000,
+          "beforeMs": 6018.10000000149,
+          "afterMs": 6099,
+          "sha256": "e13f62998fc5b037760e4f87acd07471a15bdcbd57d8a41a1962611f08cce84c"
+        }
+      ],
+      "differences": [
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        },
+        {
+          "changedPixels": 0,
+          "totalChannelDelta": 0
+        }
+      ],
+      "video": {
+        "file": "wide-smil-reduced/motion.webm",
+        "measuredVisibleDurationMs": 6099,
+        "fileSizeBytes": 106738,
+        "magicHex": "1a45dfa3",
+        "actualDurationVerified": false,
+        "durationBoundary": "measuredVisibleDurationMs is browser performance time from the harness anchor through final capture; WebM container duration is not parsed",
+        "sha256": "baf2fda6e0ccb6057f3cecaaffdd37806472ec9f087c88565a67a1e1f07d3460"
+      },
+      "selectedBodySha256": "7d48000c04b445028dcf79ca7560cdf8896429e4f725319d64e60c18002e8dd9",
+      "reducedVersusStill": {
+        "changedPixels": 0,
+        "totalChannelDelta": 0
+      }
+    }
+  ],
+  "boundaries": [
+    "requested zero is the first load-relative observation, not exact animation frame zero; structural motion stripping proves frame-zero geometry",
+    "both backends explicitly select the static none twin through picture; this does not qualify a direct-CSS media-query override inside an SVG image",
+    "Controlled emoji fallback in local Chromium141; upcoming clean hosted run must qualify its own pinned browser/fonts.",
+    "The preceding rejected clean run and rejected global-font-alias probe remain in the separate failure receipt."
+  ],
+  "directCssReducedDiagnostic": {
+    "browser": "141.0.7390.37",
+    "playwright": "1.57.0",
+    "beaconSvgSha256": "f64b2093314b2eff6c1d5a12f8c0799722dcde6d1789d5a83b5e36cc4f40293f",
+    "reportSha256": "b46dde789acf25ce72b7d44d8e3cc22201b46b0589fd9c1f13429a4ae57caa2e",
+    "scriptSha256": "93d520d6a50fd2c8201353cfa487c8b69c2f96b9759a8bb50695d70c9b8d6601",
+    "observed": "Parent reports reduce; tiny inline query paints green and stays still, while identical data/HTTP image queries paint red and animate. Beacon inline animations are disabled with zero pixel changes; data/HTTP images change.",
+    "conclusion": "Local image media emulation is unqualified; no compiler or default change is justified."
+  }
+}

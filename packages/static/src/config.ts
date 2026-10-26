@@ -11,6 +11,7 @@ import {
 import type { IdentityConfig, MotionProfile, ScenePack } from "@commit-atlas/svg";
 import { MAX_STATIC_SCENES, STATIC_SCENE_PACKS, staticSceneOptions } from "./scene-config.js";
 import { z } from "zod";
+import { configuredBeaconLabels } from "./beacon-input.js";
 
 export const STATIC_CARD_NAMES = [
   "atlas", "profile", "streak", "activity", "breakdown", "rhythm", "languages", "projects",
@@ -116,6 +117,9 @@ export function parseStaticConfig(input: unknown): StaticConfig {
   const manifest = parseManifest({ version: 1, projects: raw.projects });
   if (manifest.projects.some((project) => project.repo.split("/")[0]?.toLowerCase() !== user)) {
     throw new Error("Every v1 static project must be owned by the configured user");
+  }
+  if (sceneOptions.identity && sceneOptions.definitions.some(({ id }) => id === "identity-beacon")) {
+    configuredBeaconLabels(manifest.projects, sceneOptions.identity.focus);
   }
   return {
     version: 1,

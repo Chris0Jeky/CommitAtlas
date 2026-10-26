@@ -91,6 +91,74 @@ test('the name line fits the 860 and 480 plates without a webfont', () => {
   }
 });
 
+test('maximum identity text stays complete at readable sizes and all bodies clear the footer', () => {
+  for (const layout of ['compact', 'wide']) {
+    const value = inputs();
+    value.identity = svg.createIdentityConfig({ name: 'W'.repeat(40), tagline: 'W'.repeat(80), focus: ['Alpha', 'Beta', 'Gamma'] });
+    const result = render(value, { layout });
+    const [, , height] = result.svg.match(/viewBox="0 0 (\d+) (\d+)"/u);
+    const bodyPositions = [...result.svg.matchAll(/<g transform="translate\([\d.]+ ([\d.]+)\)"><g id="[^"]+-body\d"/gu)].map(match => Number(match[1]));
+    assert.equal(bodyPositions.length, 3, 'every matched focus remains a body');
+    assert.ok(Math.max(...bodyPositions) + 120 + 100 <= Number(height), 'body rows need reserved footer clearance');
+    assert.ok(Number(height) <= 1_000, 'existing frame limit remains unchanged');
+    for (const [section, text] of [['name', value.identity.name], ['tagline', value.identity.tagline]]) {
+      const group = result.svg.match(new RegExp(`<g id="[^"]+-${section}">([\\s\\S]*?)</g>`, 'u'));
+      assert.ok(group, `bounded ${section} needs its own readable wrapped region`);
+      assert.equal([...group[1].matchAll(/<text\b[^>]*>([^<]*)<\/text>/gu)].map(match => match[1]).join(''), svg.escapeXml(text));
+      assert.match(group[1], section === 'name' ? /font-size="28"/u : /font-size="16"/u);
+    }
+    for (const backend of ['css', 'smil']) for (const motion of ['ambient', 'cinematic']) {
+      assert.equal(stripSceneMotion(render(value, { layout, backend, motion }).svg), result.svg);
+    }
+  }
+});
+
+test('spaces around the wrap threshold retain all bounded text within the existing frame limit', () => {
+  for (const [nameWord, taglineWord] of [[10, 18], [11, 19], [12, 20]]) {
+    const value = inputs();
+    const words = (units, length) => `${'W'.repeat(length)} `.repeat(Math.ceil(units / (length + 1))).slice(0, units);
+    value.identity = svg.createIdentityConfig({ name: words(40, nameWord), tagline: words(80, taglineWord), focus: ['Alpha', 'Beta', 'Gamma'] });
+    const result = render(value, { layout: 'compact' });
+    const height = Number(result.svg.match(/viewBox="0 0 480 (\d+)"/u)[1]);
+    assert.ok(height <= 1_000);
+    for (const [section, text] of [['name', value.identity.name], ['tagline', value.identity.tagline]]) {
+      const group = result.svg.match(new RegExp(`<g id="[^"]+-${section}">([\\s\\S]*?)</g>`, 'u'))[1];
+      assert.equal([...group.matchAll(/<text\b[^>]*>([^<]*)<\/text>/gu)].map(match => match[1]).join(''), text);
+    }
+  }
+});
+
+test('emoji advance and soft-break lookahead preserve full BMP/astral identity in at most four lines', () => {
+  for (const glyph of ['😀', '⌚']) for (const spaced of [false, true]) {
+    const units = (maximum, length) => `${glyph.repeat(length)}${spaced ? ' ' : ''}`.repeat(maximum).slice(0, maximum);
+    const value = inputs();
+    value.identity = svg.createIdentityConfig({ name: units(40, 8), tagline: units(80, 14), focus: ['Alpha', 'Beta', 'Gamma'] });
+    const result = render(value, { layout: 'compact' });
+    assert.ok(Number(result.svg.match(/viewBox="0 0 480 (\d+)"/u)[1]) <= 1_000);
+    for (const [section, text, maximum] of [['name', value.identity.name, 11], ['tagline', value.identity.tagline, 20]]) {
+      const group = result.svg.match(new RegExp(`<g id="[^"]+-${section}">([\\s\\S]*?)</g>`, 'u'))[1];
+      const lines = [...group.matchAll(/<text\b[^>]*>([^<]*)<\/text>/gu)].map(match => match[1]);
+      assert.equal(lines.join(''), text);
+      assert.ok(lines.length <= 4);
+      if (!spaced) assert.ok(lines.every(line => [...line].length <= maximum), 'painted emoji advance must bound each line');
+    }
+  }
+});
+
+test('wide bodies adapt for full BMP and mixed emoji/ASCII labels and keep breathing centered', () => {
+  for (const label of ['⌚'.repeat(24), `${'⌚'.repeat(13)}${'W'.repeat(11)}`]) {
+  const value = inputs();
+  value.snapshot.projects.projects[0].name = label;
+  value.identity = svg.createIdentityConfig({ name: 'Ada', focus: [label, 'Beta', 'Gamma'] });
+  const still = render(value, { layout: 'wide' });
+  assert.ok(still.svg.includes(label));
+  assert.match(still.svg, /translate\(438 [\d.]+\)/u, 'second wide slot uses the 398px adaptive width');
+  const ambient = render(value, { layout: 'wide', backend: 'css', motion: 'ambient' });
+  assert.match(ambient.svg, /transform-origin:199px 38px/u);
+  assert.equal(stripSceneMotion(ambient.svg), still.svg);
+  }
+});
+
 const invalidEvidence = [
   ['missing root freshness', value => { delete value.snapshot.freshness; }],
   ['unknown root mode', value => { value.snapshot.freshness.mode = 'fresh'; }],
