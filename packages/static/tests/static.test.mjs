@@ -882,6 +882,7 @@ test("keeps the ownership record recoverable when cleanup is interrupted", async
     const withoutCatalog = parseStaticConfig({ ...rawConfig(), cards: ["atlas"] });
     await generateStaticFromSnapshot({ root, config: withCatalog, snapshot: snapshot() });
     const ownedManifest = await readFile(path.join(output, "manifest.json"), "utf8");
+    const ownedMarkdown = await readFile(path.join(output, "projects.md"));
 
     // Interrupt cleanup for real: a non-recursive rm over a directory throws, so the run aborts
     // partway through stale collection. The manifest must still be the one that records ownership.
@@ -891,9 +892,9 @@ test("keeps the ownership record recoverable when cleanup is interrupted", async
     await assert.rejects(generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() }));
     assert.equal(await readFile(path.join(output, "manifest.json"), "utf8"), ownedManifest);
 
-    // A crash anywhere in that window leaves the same state, so the next good run finishes the job.
+    // Restoring the exact recorded bytes makes the interrupted cleanup safe to retry.
     await rm(path.join(output, "projects.md"), { recursive: true, force: true });
-    await writeFile(path.join(output, "projects.md"), "stale catalog CommitAtlas wrote\n");
+    await writeFile(path.join(output, "projects.md"), ownedMarkdown);
     await generateStaticFromSnapshot({ root, config: withoutCatalog, snapshot: snapshot() });
     assert.deepEqual((await readdir(output)).sort(), ["atlas.svg", "manifest.json"]);
   } finally {
