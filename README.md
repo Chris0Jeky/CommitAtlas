@@ -46,7 +46,7 @@ The product direction is a deterministic, privacy-aware generative profile graph
 
 **Open:** differentiated ambient motion for existing cards (#126 and the remaining card work under #111), the complete GitHub/browser motion matrix (#113) and measured budgets (#114), further Lens scenes, research-finding scenes and the remaining catalogue under #111. The C0 projection reader (#145) and Chronograph's scoped browser acceptance (#344) are complete. Owner C1/profile publication remains disabled under #170 / Q-9 No. The implementation programme and source status are in [EXPANSION_PLAN.md](docs/EXPANSION_PLAN.md).
 
-Every push to `main` that passes CI deploys to Cloudflare Workers and is checked against the origin produced by that deployment.
+After successful CI for a `main` push, the deployment workflow attempts Cloudflare publication when its credentials are configured, then verifies the returned origin. A source or CI receipt alone is not a deployment receipt.
 
 ## The evidence model
 
