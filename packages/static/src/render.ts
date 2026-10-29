@@ -1,4 +1,4 @@
-import { calculateContributionMetrics, parseContributionCalendar } from "@commit-atlas/core";
+import { calculateContributionMetrics, parseContributionCalendar, selectContributionDisplayCalendar } from "@commit-atlas/core";
 import type {
   ContributionSnapshot,
   Freshness,
@@ -29,7 +29,8 @@ import { beaconSnapshot } from "./beacon-input.js";
 import type { StaticCardName, StaticConfig } from "./config.js";
 import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
 
-export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg" | SceneArtifactName;
+export type StaticStillArtifactName = "atlas-still.svg" | "atlas-compact-still.svg" | "atlas-wide-still.svg" | "activity-still.svg";
+export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg" | StaticStillArtifactName | SceneArtifactName;
 export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
 
 function toCardSource(freshness: Freshness): CardSource {
@@ -107,10 +108,17 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
   if (selected.has("atlas")) {
     const atlas = toAtlasCard(snapshot);
     artifacts["atlas.svg"] = renderAtlasCard(atlas, { ...common, width: dashboardWidth });
+    if (config.reducedMotion === true) {
+      artifacts["atlas-still.svg"] = renderAtlasCard(atlas, { ...common, motion: "none", width: dashboardWidth });
+    }
     if (config.responsiveAtlas) {
       const companion = config.layout === "compact" ? "atlas-wide.svg" : "atlas-compact.svg";
       const companionWidth = config.layout === "compact" ? 860 : 480;
       artifacts[companion] = renderAtlasCard(atlas, { ...common, width: companionWidth });
+      if (config.reducedMotion === true) {
+        const stillCompanion = config.layout === "compact" ? "atlas-wide-still.svg" : "atlas-compact-still.svg";
+        artifacts[stillCompanion] = renderAtlasCard(atlas, { ...common, motion: "none", width: companionWidth });
+      }
     }
   }
   if (selected.has("profile")) {
@@ -140,12 +148,17 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     }, { ...common, width });
   }
   if (selected.has("activity")) {
-    artifacts["activity.svg"] = renderActivityCard({
-      days: contributions.days,
-      total: metrics.total,
-      periodLabel: `${metrics.window.from} → ${metrics.window.to}`,
+    const display = selectContributionDisplayCalendar({ version: 1, days: contributions.days });
+    const activity = {
+      days: display.days,
+      total: display.days.reduce((total, day) => total + day.count, 0),
+      periodLabel: `${display.days[0]!.date} → ${display.days.at(-1)!.date}`,
       ...toCardEvidence(contributions.freshness),
-    }, { ...common, width });
+    };
+    artifacts["activity.svg"] = renderActivityCard(activity, { ...common, width });
+    if (config.reducedMotion === true) {
+      artifacts["activity-still.svg"] = renderActivityCard(activity, { ...common, motion: "none", width });
+    }
   }
   if (selected.has("breakdown")) {
     artifacts["breakdown.svg"] = renderContributionBreakdownCard({
@@ -258,7 +271,7 @@ function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
       direction: metrics.trend.direction,
     },
     rhythm: metrics.rhythm,
-    activity: contributions.days,
+    activity: selectContributionDisplayCalendar({ version: 1, days: contributions.days }).days,
     ...(profile.repositoriesTruncated ? {} : {
       languages: profile.primaryLanguages.map((language) => ({ name: language.name, percentage: language.share })),
     }),

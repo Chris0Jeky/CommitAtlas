@@ -30,9 +30,10 @@ function render(patch) {
 
 test("valid atlas dates stay visible", () => {
   const output = render({});
-  assert.match(output, />56D · 2026-02-25<\/text>/);
-  assert.match(output, />2026-01-01<\/text>/);
-  assert.match(output, />8 PEAK · 2026-02-25<\/text>/);
+  assert.match(output, />OBSERVED HISTORY · 56D<\/text>/);
+  assert.match(output, /Observed history 2026-01-01 to 2026-02-25/);
+  assert.match(output, />2026-02-25<\/text>/);
+  assert.match(output, />1 PEAK<\/text>/);
   assert.match(output, /Generated 2026-02-25T18:00:00\.000Z ·/);
   assert.doesNotMatch(output, /Generated unavailable/);
   assert.doesNotMatch(output, /date unavailable/);
@@ -40,25 +41,25 @@ test("valid atlas dates stay visible", () => {
 
 test("an invalid atlas window end is unavailable instead of the raw text", () => {
   const output = render({ window: { ...base.window, from: "", to: "not-a-date" } });
-  assert.match(output, />56D · unavailable<\/text>/);
+  assert.match(output, />OBSERVED HISTORY · dates unavailable<\/text>/);
   assert.doesNotMatch(output, /not-a-date/);
   assert.doesNotMatch(output, />2026-01-01<\/text>/);
-  assert.match(output, />unavailable<\/text>/);
+  assert.match(output, /Observed history unavailable to unavailable/);
 });
 
-test("an impossible peak day is unavailable instead of a calendar claim", () => {
+test("the calendar peak uses displayed observations instead of an invalid history peak", () => {
   for (const date of ["2026-02-31", "2026-13-40", ""]) {
     const output = render({ peakDay: { date, count: 8 } });
-    assert.match(output, />8 PEAK · date unavailable<\/text>/);
+    assert.match(output, />1 PEAK<\/text>/);
     assert.doesNotMatch(output, new RegExp(date ? date.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : />\s*PEAK ·\s*</));
     assert.doesNotMatch(output, />8 PEAK · 2026-02-31<\/text>/);
     assert.doesNotMatch(output, />8 PEAK · 2026-13-40<\/text>/);
   }
 });
 
-test("a missing peak count with an invalid date does not invent either", () => {
+test("missing history peak fields cannot replace an observed calendar peak", () => {
   const output = render({ peakDay: { date: "2026-02-31", count: Number.NaN } });
-  assert.match(output, />peak unavailable<\/text>/);
+  assert.match(output, />1 PEAK<\/text>/);
   assert.doesNotMatch(output, /2026-02-31/);
   assert.doesNotMatch(output, />0 PEAK/);
 });

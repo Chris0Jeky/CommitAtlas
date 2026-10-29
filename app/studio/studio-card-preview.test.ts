@@ -3,6 +3,18 @@ import test from "node:test";
 import * as preview from "./studio-scene-preview";
 import { parseCardResponseMetadata } from "@/lib/card-metadata";
 
+test("density card receipts accept bounded decorative loops and reject impossible counters", () => {
+  for (const card of ["atlas", "activity"] as const) {
+    const receipt = { version: 1, card, bytes: 100, animatedElements: 2, loopingGroups: 2, state: "ready" };
+    assert.equal(parseCardResponseMetadata(JSON.stringify(receipt), card, 100).loopingGroups, 2);
+    for (const patch of [{ loopingGroups: card === "atlas" ? 4 : 3 }, { loopingGroups: 1.5 }, { loopingGroups: -1 }, { animatedElements: 1 }]) {
+      assert.throws(() => parseCardResponseMetadata(JSON.stringify({ ...receipt, ...patch }), card, 100));
+    }
+  }
+  const atlas = { version: 1, card: "atlas", bytes: 100, animatedElements: 3, loopingGroups: 3, state: "ready" };
+  assert.equal(parseCardResponseMetadata(JSON.stringify(atlas), "atlas", 100).loopingGroups, 3);
+});
+
 const body = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200"><text>é card</text></svg>';
 const metadata = { version: 1, card: "profile", bytes: new TextEncoder().encode(body).length,
   animatedElements: 1, loopingGroups: 0, state: "ready" };

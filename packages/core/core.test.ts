@@ -13,6 +13,7 @@ import {
   parseRepo,
   parseRepositorySlug,
   resolveAutoWindow,
+  selectContributionDisplayCalendar,
 } from "./src/index.js";
 
 const calendar = {
@@ -202,6 +203,59 @@ describe("core contracts", () => {
 
   it("rejects automatic windows with invalid dates", () => {
     expect(() => resolveAutoWindow([{ date: "not-a-date", count: 1 }])).toThrow();
+  });
+
+  it("selects one year of observed calendar dates without changing the longer history", () => {
+    const days = Array.from({ length: 731 }, (_, index) => ({
+      date: new Date(Date.UTC(2024, 2, 2 - (730 - index))).toISOString().slice(0, 10),
+      count: index === 0 ? 0 : 1,
+      level: index === 0 ? 0 : 4,
+    })).reverse();
+    const input = { version: 1 as const, days };
+    const display = selectContributionDisplayCalendar(input);
+
+    expect(display.days).toHaveLength(365);
+    expect(display.days[0]).toEqual({ date: "2023-03-04", count: 1, level: 4 });
+    expect(display.days.at(-1)).toEqual({ date: "2024-03-02", count: 1, level: 4 });
+    expect(display.days.filter(({ date }) => date === "2024-02-29")).toHaveLength(1);
+    expect(input.days).toHaveLength(731);
+    expect(input.days[0]?.date).toBe("2024-03-02");
+    expect(calculateStreaks(input, { asOf: "2024-03-02" })).toMatchObject({ current: 730, longest: 730 });
+  });
+
+  it("bounds display by civil-date span even when fewer than 365 dates were observed", () => {
+    const display = selectContributionDisplayCalendar({
+      version: 1,
+      days: [
+        { date: "2023-03-03", count: 99 },
+        { date: "2023-03-04", count: 1 },
+        { date: "2024-02-29", count: 2 },
+        { date: "2024-03-02", count: 0 },
+      ],
+    });
+    expect(display.days).toEqual([
+      { date: "2023-03-04", count: 1, level: 0 },
+      { date: "2024-02-29", count: 2, level: 0 },
+      { date: "2024-03-02", count: 0, level: 0 },
+    ]);
+  });
+
+  it("keeps short display calendars tied to their observed end without filling gaps or future days", () => {
+    expect(selectContributionDisplayCalendar(calendar).days).toEqual(calendar.days);
+    const oneDay = selectContributionDisplayCalendar({ version: 1, days: [{ date: "2026-10-25", count: 0 }] });
+    expect(oneDay.days).toEqual([{ date: "2026-10-25", count: 0, level: 0 }]);
+  });
+
+  it("rejects empty or duplicate display history before trimming old dates", () => {
+    expect(() => selectContributionDisplayCalendar({ version: 1, days: [] })).toThrow();
+    expect(() => selectContributionDisplayCalendar({
+      version: 1,
+      days: [
+        { date: "2023-03-03", count: 0 },
+        { date: "2023-03-03", count: 1 },
+        { date: "2024-03-02", count: 0 },
+      ],
+    })).toThrow("Duplicate contribution date");
   });
 
   it("derives a transparent contribution summary without claiming a global rank", () => {

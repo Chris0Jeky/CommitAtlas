@@ -194,3 +194,63 @@ test("rejects mixed-user and incomplete portfolio sources", () => {
     /incomplete contribution window/,
   );
 });
+
+test("the Atlas calendar stays within one year while its observed streak history stays complete", () => {
+  const days = Array.from({ length: 731 }, (_, index) => ({
+    date: new Date(Date.UTC(2024, 2, 2 - (730 - index))).toISOString().slice(0, 10),
+    count: index === 0 ? 0 : 1,
+    level: index === 0 ? 0 : 2,
+  }));
+  const historical: ContributionSnapshot = {
+    ...contributions,
+    totalContributions: 730,
+    commits: 730,
+    issues: 0,
+    pullRequests: 0,
+    reviews: 0,
+    days: [...days].reverse(),
+    freshness: { generatedAt: "2024-03-02T12:00:00.000Z", source: "github-graphql", mode: "live" },
+  };
+  const snapshot = assemblePortfolioSnapshot(profile, historical);
+  const atlas = toAtlasCard(snapshot);
+
+  assert.equal(atlas.activity.length, 365);
+  assert.equal(atlas.activity[0]?.date, "2023-03-04");
+  assert.equal(atlas.activity.at(-1)?.date, "2024-03-02");
+  assert.equal(atlas.activity.filter(({ date }) => date === "2024-02-29").length, 1);
+  assert.equal(atlas.activity.reduce((total, { count }) => total + count, 0), 365);
+  assert.equal(snapshot.contributions.days.length, 731);
+  assert.equal(snapshot.metrics.window.days, 731);
+  assert.equal(atlas.window.days, 731);
+  assert.equal(atlas.total, 730);
+  assert.equal(atlas.currentStreak, 730);
+  assert.equal(atlas.longestStreak, 730);
+  assert.deepEqual(atlas.streakBoundary, { current: "closed", longest: "closed" });
+  assert.deepEqual(atlas.breakdown, { commits: 730, issues: 0, pullRequests: 0, reviews: 0 });
+  assert.equal(historical.days[0]?.date, "2024-03-02", "selecting a display window must not mutate history");
+});
+
+test("an annual Atlas calendar retains an earlier maximum and the actual stale last date", () => {
+  const days = Array.from({ length: 731 }, (_, index) => ({
+    date: new Date(Date.UTC(2026, 9, 25 - (730 - index))).toISOString().slice(0, 10),
+    count: index > 0 && index <= 400 ? 1 : index >= 729 ? 1 : 0,
+    level: index > 0 && index <= 400 ? 2 : index >= 729 ? 2 : 0,
+  }));
+  const historical: ContributionSnapshot = {
+    ...contributions,
+    totalContributions: 402,
+    days,
+    freshness: { generatedAt: "2026-10-25T12:00:00.000Z", source: "github-graphql", mode: "stale" },
+  };
+  const snapshot = assemblePortfolioSnapshot(profile, historical);
+  const atlas = toAtlasCard(snapshot);
+
+  assert.equal(atlas.activity.length, 365);
+  assert.equal(atlas.activity[0]?.date, "2025-10-26");
+  assert.equal(atlas.activity.at(-1)?.date, "2026-10-25");
+  assert.equal(atlas.activity.reduce((total, { count }) => total + count, 0), 37);
+  assert.equal(atlas.currentStreak, 2);
+  assert.equal(atlas.longestStreak, 400);
+  assert.equal(atlas.dataState, "stale");
+  assert.equal(atlas.generatedAt, "2026-10-25T12:00:00.000Z");
+});

@@ -3,7 +3,8 @@
 Small, dependency-free SVG renderers for GitHub portfolio cards. Renderers return a
 complete SVG string and are safe to put in a README or a static site: user text is XML
 escaped, links are restricted to `http`/`https`, and no scripts, images, or remote assets are
-emitted. Subtle motion uses only a bounded inline presentation style.
+emitted. Subtle motion uses a bounded inline presentation style; Atlas and Activity also support
+compiler-backed ambient motion with a static twin.
 
 The package includes eleven renderers: a rich developer Atlas, profile, streak, contribution breakdown,
 personal rhythm, activity, language, project signal-board (up to six projects), weekly cadence, and
@@ -16,12 +17,26 @@ percentages remain visibly labelled as percentages and not window-scoped. Rhythm
 within-window consistency summary, never a GitHub rank.
 
 All renderers accept the shared `MotionProfile` vocabulary: `none`, `subtle`, `ambient`, and
-`cinematic`. `none` emits no animation keyframes. In this compatibility slice, `subtle`, `ambient`,
-and `cinematic` intentionally emit byte-identical bounded load motion with a
-`prefers-reduced-motion: reduce` override. Hosted routes expose `none | subtle | ambient`; cinematic
-remains available only to package and static-generator callers until a dedicated backend lands.
-`motionRenderMetadata()` reports whether the current renderer output requires inline presentation
-styles, so HTTP routes do not duplicate profile-to-CSP rules.
+`cinematic`. `none` emits no animation nodes or styles. Atlas and Activity distinguish `ambient`
+from the brief `subtle` entrance: a 5.6-second marker steps between calendar columns and a
+12-second compass ornament turns beside the grid. Atlas also sweeps a bright 70px beam along its
+header separator every seven seconds. Readings and contribution cells stay still. These two or
+three decorative groups stop at 45 seconds and return to the finished static base. Stale,
+unavailable, empty, and entirely unobserved calendars never animate; an all-zero calendar is still.
+
+Atlas/Activity accept `motionBackend: "smil" | "css"` for ambient output, defaulting to SMIL for
+README delivery. SMIL needs a separate `motion: "none"` twin selected by the embedding page's
+reduced-motion `<picture>` source; CSS emits its own `prefers-reduced-motion: reduce` override.
+Removing the compiler's style/animation nodes produces the exact `none` twin. An optional
+`instanceNamespace` distinguishes identical cards inlined into one document; the default namespace
+is a deterministic hash of kind, theme, width, and displayed observations. It does not use a clock
+or randomness. Other cards retain the compatibility entrance for every non-`none` profile;
+Atlas/Activity also retain that entrance for package callers selecting `cinematic`.
+
+Hosted routes expose `none | subtle | ambient`. `motionRenderMetadata(motion, renderedSvg)` reports
+inline styles from actual SVG nodes; the one-argument form remains compatible with legacy callers.
+`measureCardMotion()` verifies the exact compiler/compatibility grammar and reports actual targets,
+looping groups, and UTF-8 bytes. Browser playback and GitHub/Camo transport need separate evidence.
 
 ```ts
 import { renderProfileCard } from "@commit-atlas/svg";
@@ -34,6 +49,39 @@ const svg = renderProfileCard({
   following: 18,
 }, { theme: "aurora" });
 ```
+
+## Contribution calendar and count bands
+
+Atlas and Activity display at most the latest **365 calendar days**, including the latest observed
+date. The cap is a date span, not the last 365 rows. Invalid dates and duplicate observations are
+excluded; missing dates stay missing. Atlas's overall contributions, active days, average, density,
+and streak statistics retain the full supplied history and are labelled **OBSERVED HISTORY**.
+The calendar has its own displayed date range, total, active days, density, average, and peak,
+computed only from its displayed observations. A streak longer than a year is never shortened to
+fit the visual grid.
+
+| Daily contributions | Presentation |
+| --- | --- |
+| 0 | Neutral square |
+| 1–200 | Copper square; four ascending shades |
+| 201–700 | Gold square with one cut corner; four ascending shades |
+| 701–1500 | Violet square with two cut corners; four ascending shades |
+| 1501+ | A date-selected spark, diamond, crest, comet, crown, or bolt |
+| Unknown or invalid count | Neutral dashed outline, described as unavailable |
+
+These are absolute count bands; upstream GitHub `level` values cannot override them. On dark
+themes each band's steps get brighter; on Paper they get darker. Every active band swatch meets
+3:1 against its theme's surface. The numeric key and distinct silhouettes preserve meaning without
+depending on hue. The six original vector glyphs are built into the renderer. An ISO date chooses
+one deterministically, so changing theme or raising an already-special day's count does not change
+its glyph. Glyph variety carries no additional rank, and contribution counts make no productivity
+or quality claim.
+
+The outer SVG description contains exact dates and counts: Activity uses chronological ISO dates;
+Atlas uses explicit month headings followed by exact `day=count` entries to preserve the same
+information within the instrument byte budget. Repeated geometry and the plate's edge texture are
+batched. Both calendar cards enforce the existing **less than 30,000 UTF-8 bytes** budget, including
+ambient motion. Atlas layouts are 860×380 by default and 480×608 in compact static generation.
 
 ## Deterministic scene seeds
 
@@ -63,8 +111,8 @@ package is source-installable but is not currently published to npm.
 
 ## Motion compiler
 
-`MotionPlan` is an additive primitive compiler; existing card renderers still use their unchanged
-compatibility motion. It performs no DOM edits, fetches, timers, or model generation. A scene binds
+`MotionPlan` is a primitive compiler used by scenes and the Atlas/Activity ambient profiles.
+It performs no DOM edits, fetches, timers, or model generation. A scene binds
 each returned `id` and `className` to an **identity-transform wrapper** around its finished base
 geometry, with wrapper base opacity 1, adds `style` once, and inserts `children` inside the matching wrapper. Keep those bindings
 in the `none` twin too: removing only `<style>` and `<animate*>` nodes then reproduces that twin
@@ -145,9 +193,9 @@ size at final compilation: the compiler cannot measure caller-owned geometry. Ov
 throw instead of truncating. Unsupported applications emit no animation and contribute no counters.
 
 Renderer inputs are bounded for portable README use: dimensions clamp to renderer-safe ranges,
-accessible title and description labels are length-limited, and activity cards accept up to a
-full 731-day window. One-year windows remain below the 30KB SVG output budget; the full
-two-year worst case (maxed counts) holds a measured 56KB budget. Caller-supplied prose on
+accessible title and description labels are length-limited, and the visual contribution calendar
+is capped to a 365-day span. Longer histories remain valid for summary/streak metrics; calendar
+geometry does not expand to match them. Caller-supplied prose on
 the insight cards is bounded the same way: breakdown `window.from` and `window.to` truncate to 24
 characters, and rhythm `rhythm.level` and `rhythm.basis` truncate to 24 and 120 characters. The
 atlas card shows `window.from` and `window.to` only when each is a valid `YYYY-MM-DD` calendar date and renders `unavailable` otherwise, bounds `rhythm.level` to 24 characters, and keeps

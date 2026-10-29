@@ -19,9 +19,12 @@ export function parseCardResponseMetadata(header: string, card: string, bytes: n
   const keys = ["version", "card", "bytes", "animatedElements", "loopingGroups", "state"];
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== keys.length ||
       Object.keys(value).some(key => !keys.includes(key))) throw invalid();
+  const maxLoops = card === "atlas" ? 3 : card === "activity" ? 2 : 0;
   if (value.version !== 1 || value.card !== card || value.bytes !== bytes || !Number.isSafeInteger(bytes) || bytes < 1 || bytes > 128 * 1024 ||
       typeof value.animatedElements !== "number" || !Number.isSafeInteger(value.animatedElements) || value.animatedElements < 0 || value.animatedElements > 96 ||
-      value.loopingGroups !== 0 || !["ready", "partial", "stale", "unavailable"].includes(value.state as string)) throw invalid();
+      typeof value.loopingGroups !== "number" || !Number.isSafeInteger(value.loopingGroups) || value.loopingGroups < 0 ||
+      value.loopingGroups > maxLoops || value.loopingGroups > value.animatedElements ||
+      !["ready", "partial", "stale", "unavailable"].includes(value.state as string)) throw invalid();
   return Object.freeze({ version: 1, card: card as CardId, bytes, animatedElements: value.animatedElements,
-    loopingGroups: 0, state: value.state as CardEvidenceState });
+    loopingGroups: value.loopingGroups, state: value.state as CardEvidenceState });
 }

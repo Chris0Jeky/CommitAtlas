@@ -22,6 +22,16 @@ import { parseOptions } from "@commit-atlas/core";
 const options = parseOptions({ theme: "dark" });
 ```
 
+## Contribution history and displayed calendars
+
+`selectContributionDisplayCalendar` validates and sorts an observed calendar, then selects the
+latest 365 UTC dates through its last observed date. Short histories stay short, missing dates
+stay missing, and no day is added to make old data appear current. The input is not mutated.
+
+This is a presentation window. Calculate streaks and historical contribution metrics from the
+complete validated history, which may extend to 731 days in automatic mode. A displayed annual
+calendar therefore does not cap current or longest observed streaks at 365 days.
+
 CommitAtlas is licensed under [GPL-3.0-only](LICENSE).
 
 ## Optional Lens contract entry point

@@ -3,6 +3,7 @@ import {
   calculateContributionMetrics,
   calculateStreaks,
   parseContributionCalendar,
+  selectContributionDisplayCalendar,
   type ContributionCalendar,
 } from "@/packages/core/src/index";
 import type {
@@ -105,7 +106,8 @@ export function toActivityCard(snapshot: ContributionSnapshot, days: number): Ac
   const calendar = contributionCalendar(snapshot);
   const asOf = latestContributionDate(calendar);
   const window = completeContributionWindow(calendar, asOf, days);
-  const series = calculateActivitySeries(window, { asOf, days });
+  const display = selectContributionDisplayCalendar(window);
+  const series = calculateActivitySeries(display, { asOf, days: display.days.length });
   return {
     days: series.points.map(({ date, count, level }) => ({ date, count, level })),
     total: series.total,

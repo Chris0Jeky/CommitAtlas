@@ -7,7 +7,8 @@ export async function cardSvgResponse(request: Request, body: string, options: P
   const state = mode === "live" || mode === "demo" ? "ready" : mode === "partial" || mode === "stale" ? mode : "unavailable";
   const counters = measureCardMotion(body, card);
   const metadata = parseCardResponseMetadata(JSON.stringify({ version: 1, card, ...counters, state }), card, counters.bytes);
-  const response = await svgResponse(request, body, options);
+  // SMIL ambient output has no stylesheet; a motion query alone must not loosen CSP.
+  const response = await svgResponse(request, body, { ...options, inlineStyles: /<style(?:\s|>)/u.test(body) });
   response.headers.set(CARD_METADATA_HEADER, JSON.stringify(metadata));
   response.headers.set("Access-Control-Expose-Headers", `ETag, ${CARD_METADATA_HEADER}`);
   return response;

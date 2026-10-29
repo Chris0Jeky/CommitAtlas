@@ -1,5 +1,6 @@
 import path from "node:path";
 import * as core from "@actions/core";
+import { GitHubApiError } from "@commit-atlas/github";
 import { generateStatic, generatedScenePaths } from "@commit-atlas/static";
 
 async function run(): Promise<void> {
@@ -67,5 +68,6 @@ function relative(root: string, target: string): string {
 }
 
 run().catch((error: unknown) => {
-  core.setFailed(error instanceof Error ? error.message : "CommitAtlas generation failed");
+  core.setFailed(error instanceof GitHubApiError ? `[${error.code}] ${error.message}`
+    : error instanceof Error ? error.message : "CommitAtlas generation failed");
 });

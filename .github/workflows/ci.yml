@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -35,6 +38,9 @@ jobs:
 
       - name: Run the repository gate
         run: npm run check
+
+      - name: Audit the complete locked toolchain
+        run: npm audit --audit-level=high
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high

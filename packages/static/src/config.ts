@@ -51,6 +51,7 @@ const RawStaticConfigSchema = z.object({
   motion: z.enum(["none", "subtle", "ambient", "cinematic"]).default("none"),
   layout: z.enum(["wide", "compact"]).default("wide"),
   responsiveAtlas: z.boolean().default(false),
+  reducedMotion: z.boolean().default(false),
   outputDir: RelativePathSchema,
   cards: z.array(z.enum(STATIC_CARD_NAMES)).min(1).max(STATIC_CARD_NAMES.length).default([...DEFAULT_STATIC_CARD_NAMES]),
   projects: z.array(z.unknown()).min(1).max(6),
@@ -69,6 +70,8 @@ export interface StaticConfig {
   readonly motion: MotionProfile;
   readonly layout: "wide" | "compact";
   readonly responsiveAtlas: boolean;
+  /** Emit motion:none companions for selected Atlas and Activity outputs. Defaults to false. */
+  readonly reducedMotion?: boolean;
   readonly outputDir: string;
   readonly cards: readonly StaticCardName[];
   readonly projects: ProjectManifest["projects"];
@@ -130,6 +133,7 @@ export function parseStaticConfig(input: unknown): StaticConfig {
     motion: raw.motion,
     layout: raw.layout,
     responsiveAtlas: raw.responsiveAtlas,
+    reducedMotion: raw.reducedMotion,
     outputDir,
     cards,
     projects: manifest.projects,

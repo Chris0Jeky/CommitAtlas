@@ -117,7 +117,7 @@ for (const [path, edgeSeconds] of tokenCacheRoutes) {
   });
 }
 
-test("automatic demo windows resolve to the observed two-year history", async () => {
+test("automatic demo windows retain two-year streak history beside an annual display calendar", async () => {
   const streak = await request("/api/v1/cards/streak.svg?user=octocat&demo=true&theme=aurora&days=auto&motion=none");
   assert.equal(streak.status, 200);
   assert.match(await streak.text(), /Longest in 730-day window/);
@@ -128,10 +128,14 @@ test("automatic demo windows resolve to the observed two-year history", async ()
   assert.ok(period, "activity card shows an automatic window period");
   const [from, to] = period.split(" → ");
   const span = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
-  assert.equal(span, 730);
+  assert.equal(span, 365);
+  assert.equal([...activityBody.matchAll(/data-cell-count="(\d+)"/gu)].reduce((sum, match) => sum + Number(match[1]), 0), 365);
   const atlas = await request("/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=auto&motion=none&layout=wide");
   assert.equal(atlas.status, 200);
-  assert.match(await atlas.text(), /730D/);
+  const atlasBody = await atlas.text();
+  assert.match(atlasBody, /730D/);
+  assert.match(atlasBody, /OBSERVED HISTORY/);
+  assert.equal([...atlasBody.matchAll(/data-cell-count="(\d+)"/gu)].reduce((sum, match) => sum + Number(match[1]), 0), 365);
 });
 
 test("routes fixed motion probe filenames through the built Worker", async () => {

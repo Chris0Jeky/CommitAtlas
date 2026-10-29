@@ -97,7 +97,7 @@ test("accepts two-year contribution windows and rejects wider ones", () => {
   assert.throws(() => parseStaticConfig({ ...rawConfig(), days: "automatic" }), /invalid/i);
 });
 
-test("two-year compact activity grids fit the 480px viewBox", () => {
+test("two-year history renders one year of activity within the compact viewBox", () => {
   const rendered = renderStaticArtifacts(snapshot(730), parseStaticConfig({
     ...rawConfig(),
     days: 730,
@@ -109,11 +109,17 @@ test("two-year compact activity grids fit the 480px viewBox", () => {
   assert.equal(width, 480);
   let right = 0;
   let cells = 0;
-  for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
-    cells += 1;
-    right = Math.max(right, Number(match[1]) + Number(match[3]));
+  // This fixture has counts 0..4, so every observed day remains a square. Batched
+  // paths may move relatively between squares; measure their actual geometry.
+  for (const path of output.matchAll(/<path\b[^>]*\bdata-cell-count="\d+"[^>]*\bd="([^"]+)"/g)) {
+    let x = 0;
+    for (const move of path[1].matchAll(/([Mm])(-?[\d.]+) (-?[\d.]+)h([\d.]+)v[\d.]+h-[\d.]+z/g)) {
+      x = move[1] === "M" ? Number(move[2]) : x + Number(move[2]);
+      cells += 1;
+      right = Math.max(right, x + Number(move[4]));
+    }
   }
-  assert.equal(cells, 730);
+  assert.equal(cells, 365);
   assert.ok(right < width, `compact grid overflows: ${right} of ${width}`);
 });
 
@@ -125,10 +131,122 @@ test("renders wide and compact Atlas variants from one snapshot", () => {
   }));
   assert.deepEqual(Object.keys(rendered).sort(), ["atlas-compact.svg", "atlas.svg"]);
   assert.match(rendered["atlas.svg"], /viewBox="0 0 860 380"/);
-  assert.match(rendered["atlas-compact.svg"], /viewBox="0 0 480 570"/);
+  assert.match(rendered["atlas-compact.svg"], /viewBox="0 0 480 608"/);
   const wideDescription = rendered["atlas.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
   const compactDescription = rendered["atlas-compact.svg"].match(/<desc>(.*?)<\/desc>/s)?.[1];
   assert.equal(compactDescription, wideDescription);
+});
+
+test("reduced-motion companions are opt-in and validate their boolean config", () => {
+  assert.equal(config().reducedMotion, false);
+  assert.equal(parseStaticConfig({ ...rawConfig(), reducedMotion: true }).reducedMotion, true);
+  for (const reducedMotion of ["true", 1, null]) {
+    assert.throws(() => parseStaticConfig({ ...rawConfig(), reducedMotion }));
+  }
+});
+
+test("reduced-motion companions match still controls for both responsive Atlas layouts and Activity", () => {
+  for (const layout of ["wide", "compact"]) {
+    for (const motion of ["none", "subtle", "ambient", "cinematic"]) {
+      const selected = {
+        ...config(), layout, motion, cards: ["atlas", "activity", "profile"],
+        responsiveAtlas: true, reducedMotion: true,
+      };
+      const base = snapshot(730);
+      const rendered = renderStaticArtifacts(base, selected);
+      const control = renderStaticArtifacts(base, { ...selected, motion: "none", reducedMotion: false });
+      const companion = layout === "wide" ? "compact" : "wide";
+      assert.deepEqual(Object.keys(rendered).sort(), [
+        "activity-still.svg", "activity.svg", `atlas-${companion}-still.svg`, `atlas-${companion}.svg`,
+        "atlas-still.svg", "atlas.svg", "profile.svg",
+      ].sort());
+      for (const [still, ordinary] of [
+        ["atlas-still.svg", "atlas.svg"],
+        [`atlas-${companion}-still.svg`, `atlas-${companion}.svg`],
+        ["activity-still.svg", "activity.svg"],
+      ]) {
+        assert.equal(rendered[still], control[ordinary]);
+        assert.doesNotMatch(rendered[still], /<(?:animate|animateTransform|set)\b|@keyframes/);
+      }
+      assert.equal(rendered["profile.svg"], renderStaticArtifacts(base, { ...selected, reducedMotion: false })["profile.svg"]);
+    }
+  }
+  assert.deepEqual(
+    Object.keys(renderStaticArtifacts(snapshot(), { ...config(), cards: ["profile"], reducedMotion: true })),
+    ["profile.svg"],
+  );
+});
+
+test("reduced-motion companions share their snapshot and verified manifests across themes and dry runs", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-still-pairs-"));
+  try {
+    const selected = {
+      ...config(), days: "auto", motion: "ambient", cards: ["atlas", "activity"],
+      responsiveAtlas: true, reducedMotion: true,
+      themes: [{ theme: "paper", outputDir: "assets/commitatlas/light" }],
+    };
+    const base = snapshot(731);
+    const dry = await generateStaticFromSnapshot({ root, config: selected, snapshot: base, dryRun: true });
+    assert.deepEqual(await readdir(root), []);
+    const result = await generateStaticFromSnapshot({ root, config: selected, snapshot: base });
+    assert.deepEqual(result.manifest, dry.manifest);
+    assert.deepEqual(result.variants[0].manifest, dry.variants[0].manifest);
+    const expected = [
+      "activity-still.svg", "activity.svg", "atlas-compact-still.svg", "atlas-compact.svg", "atlas-still.svg", "atlas.svg",
+    ];
+    for (const target of [result, ...result.variants]) {
+      assert.equal(target.manifest.window.days, 731);
+      assert.equal(target.manifest.generatedAt, base.freshness.generatedAt);
+      assert.deepEqual(target.manifest.artifacts.map(({ path }) => path).sort(), expected);
+      for (const artifact of target.manifest.artifacts) {
+        const bytes = await readFile(path.join(target.outputDir, artifact.path));
+        assert.equal(bytes.byteLength, artifact.bytes);
+        assert.equal(createHash("sha256").update(bytes).digest("hex"), artifact.sha256);
+      }
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reduced-motion cleanup removes owned companions while preserving unowned still files", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-still-cleanup-"));
+  try {
+    const selected = {
+      ...config(), cards: ["atlas", "activity"], responsiveAtlas: true, reducedMotion: true,
+    };
+    const output = path.join(root, selected.outputDir);
+    await mkdir(output, { recursive: true });
+    await writeFile(path.join(output, "atlas-wide-still.svg"), "caller-owned still image\n");
+    await generateStaticFromSnapshot({ root, config: selected, snapshot: snapshot() });
+    await generateStaticFromSnapshot({ root, config: { ...selected, reducedMotion: false }, snapshot: snapshot() });
+    assert.deepEqual((await readdir(output)).sort(), [
+      "activity.svg", "atlas-compact.svg", "atlas-wide-still.svg", "atlas.svg", "manifest.json",
+    ]);
+    assert.equal(await readFile(path.join(output, "atlas-wide-still.svg"), "utf8"), "caller-owned still image\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reduced-motion cleanup refuses a companion changed after its previous manifest", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-still-changed-"));
+  try {
+    const selected = { ...config(), cards: ["atlas"], reducedMotion: true };
+    const first = await generateStaticFromSnapshot({ root, config: selected, snapshot: snapshot() });
+    const manifestPath = path.join(first.outputDir, "manifest.json");
+    const previousManifest = await readFile(manifestPath, "utf8");
+    const stillPath = path.join(first.outputDir, "atlas-still.svg");
+    await writeFile(stillPath, "a caller changed this still image\n");
+    await assert.rejects(
+      generateStaticFromSnapshot({ root, config: { ...selected, reducedMotion: false }, snapshot: snapshot() }),
+      /stale artifact atlas-still\.svg no longer matches its prior manifest/,
+    );
+    assert.equal(await readFile(manifestPath, "utf8"), previousManifest);
+    assert.equal(await readFile(stillPath, "utf8"), "a caller changed this still image\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("static refresh can recover a calendar 503 after the hosted twelve-second budget", async (t) => {
@@ -212,7 +330,7 @@ test("renders all rich widgets deterministically from one snapshot", () => {
   assert.match(first["releases.svg"], /LATEST RELEASES/);
   assert.match(first["atlas.svg"], /PUBLIC PROFILE VIEW/);
   assert.match(first["atlas.svg"], /02 \/\/ PROFILE MIX · NOT WINDOW-SCOPED/);
-  assert.match(first["atlas.svg"], /CONTRIBUTION DENSITY/);
+  assert.match(first["atlas.svg"], /CONTRIBUTION CALENDAR/);
   assert.match(first["atlas.svg"], /RHYTHM/);
   assert.match(first["breakdown.svg"], /PUBLIC PROFILE %/);
   assert.match(first["breakdown.svg"], /Annual profile-view percentages · exact window counts unavailable/);

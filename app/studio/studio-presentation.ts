@@ -16,7 +16,7 @@ const STUDIO_GALLERY_CARDS: Readonly<Record<StudioCardKind, Omit<StudioGalleryCa
   atlas: {
     title: "Developer atlas",
     purpose: "A responsive overview of contribution rhythm, activity, languages, and project health.",
-    dimensions: "860 × 380 · 480 × 570 compact",
+    dimensions: "860 × 380 · 480 × 608 compact",
     span: "full",
     compact: false,
   },

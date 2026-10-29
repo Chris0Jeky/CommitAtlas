@@ -367,6 +367,21 @@ test("bounds public calendar 503 recovery to one retry", async () => {
   assert.equal(attempts, 2);
 });
 
+test("identifies the public calendar upstream status without exposing its error body", async () => {
+  for (const status of [500, 502, 503, 504]) {
+    await assert.rejects(new GitHubClient({ now: () => NOW, fetchImpl: async () =>
+      new Response("fixture-sensitive-upstream-detail", { status, headers: { "retry-after": "0" } }),
+    }).fetchPublicProfileContributions("octocat", 1), (error: unknown) => {
+      assert.ok(error instanceof GitHubApiError);
+      assert.equal(error.code, "github_unavailable");
+      assert.equal(error.status, 502);
+      assert.match(error.message, new RegExp(`HTTP ${status}\\b`));
+      assert.doesNotMatch(error.message, /fixture-sensitive|octocat|https?:|deadline/);
+      return true;
+    });
+  }
+});
+
 test("honors public calendar Retry-After seconds and HTTP dates before retrying", async () => {
   for (const retryAfterHeader of [() => "1", () => new Date(Math.ceil(Date.now() / 1_000) * 1_000 + 1_000).toUTCString()]) {
     const retryAfter = retryAfterHeader();

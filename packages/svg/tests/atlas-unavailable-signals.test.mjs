@@ -46,8 +46,8 @@ test("a non-finite atlas rhythm score is unavailable instead of 0/100", () => {
 test("a non-finite atlas rhythm score withholds the band with the number", () => {
   for (const score of [undefined, null, ...nonFinite]) {
     const output = render({ rhythm: { ...base.rhythm, score } });
-    assert.match(output, />UNAVAILABLE · PERSONAL CONSISTENCY<\/text>/);
-    assert.doesNotMatch(output, /STEADY · PERSONAL CONSISTENCY/);
+    assert.match(output, />UNAVAILABLE<\/text>/);
+    assert.doesNotMatch(output, />STEADY</);
     assert.doesNotMatch(output, /NaN|Infinity/);
   }
 });
@@ -55,7 +55,7 @@ test("a non-finite atlas rhythm score withholds the band with the number", () =>
 test("a known atlas rhythm score keeps its band", () => {
   const output = render({ rhythm: { ...base.rhythm, score: 44 } });
   assert.match(output, />44\/100<\/text>/);
-  assert.match(output, />STEADY · PERSONAL CONSISTENCY<\/text>/);
+  assert.match(output, />STEADY<\/text>/);
 });
 
 test("a real zero atlas rhythm score stays 0/100", () => {
@@ -85,18 +85,18 @@ test("a real zero atlas language percentage stays 0%", () => {
   assert.doesNotMatch(output, />TypeScript unavailable<\/text>/);
 });
 
-test("a non-finite peak count is unavailable instead of 0 PEAK", () => {
+test("an unobserved calendar count leaves the calendar peak unavailable", () => {
   for (const count of [undefined, null, ...nonFinite]) {
-    const output = render({ peakDay: { ...base.peakDay, count } });
-    assert.match(output, />peak unavailable · 2026-02-25<\/text>/);
+    const output = render({ activity: [{ date: base.peakDay.date, count }] });
+    assert.match(output, />peak unavailable<\/text>/);
     assert.doesNotMatch(output, />0 PEAK/);
     assert.doesNotMatch(output, /NaN|Infinity/);
   }
 });
 
 test("a real zero peak count stays 0 PEAK", () => {
-  const output = render({ peakDay: { ...base.peakDay, count: 0 } });
-  assert.match(output, />0 PEAK · 2026-02-25<\/text>/);
+  const output = render({ activity: [{ date: base.peakDay.date, count: 0 }] });
+  assert.match(output, />0 PEAK<\/text>/);
   assert.doesNotMatch(output, /peak unavailable/);
 });
 
@@ -113,7 +113,7 @@ test("a non-finite atlas window length is unavailable instead of 0 days", () => 
 
 test("a real zero atlas window length stays 0 days", () => {
   const output = render({ window: { ...base.window, days: 0 } });
-  assert.match(output, />0D · 2026-02-25<\/text>/);
+  assert.match(output, />OBSERVED HISTORY · 0D<\/text>/);
   assert.match(description(output), /across 0 days/);
   assert.doesNotMatch(description(output), /unavailable window/);
 });
@@ -158,14 +158,15 @@ test("real zero atlas counts stay zero together", () => {
     rhythm: { ...base.rhythm, score: 0 },
     languages: [{ name: "TypeScript", percentage: 0 }],
     peakDay: { ...base.peakDay, count: 0 },
+    activity: [{ date: base.peakDay.date, count: 0 }],
     window: { ...base.window, days: 0 },
     trend: { ...base.trend, recent28Days: 0 },
     breakdown: { ...base.breakdown, commits: 0 },
   });
   assert.match(output, />0\/100<\/text>/);
   assert.match(output, />TypeScript 0%<\/text>/);
-  assert.match(output, />0 PEAK · 2026-02-25<\/text>/);
-  assert.match(output, />0D · 2026-02-25<\/text>/);
+  assert.match(output, />0 PEAK<\/text>/);
+  assert.match(output, />OBSERVED HISTORY · 0D<\/text>/);
   assert.match(description(output), /across 0 days/);
   assert.match(output, />0 · \+33\.3% vs prior 28d<\/text>/);
   assert.match(description(output), /\b0 commits/);

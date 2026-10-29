@@ -35,6 +35,14 @@ The tracked v1 config selects any subset of the eleven cards for one public owne
 curated projects. `manifest.json` records the exact contribution window, provenance, byte size, and
 SHA-256 hash of every generated artifact.
 
+The Atlas and Activity calendars display at most the latest 365 UTC dates through the last
+observed date. A shorter history is displayed as observed. The `days` setting continues to control
+the fetched history: `"auto"` can retain up to 731 days, and explicit windows can reach 730 days.
+Current and longest streaks, history summaries, contribution breakdowns and the manifest keep that
+full history. Activity totals and the Atlas calendar's local summaries describe the displayed
+calendar, whose date range is labelled separately. Missing or future dates are never added to
+make a stale snapshot appear current.
+
 Set `"motion": "none"` for a static, keyframe-free output or `"motion": "subtle"` for short load
 motion with an SVG `prefers-reduced-motion` override. Rhythm remains a personal consistency score,
 not a GitHub rank, and Breakdown keeps its exact-count versus public-percentage basis visible.
@@ -43,6 +51,27 @@ Set `"responsiveAtlas": true` to render a companion layout from the same fetched
 primary Atlas adds `atlas-compact.svg`; a compact primary adds `atlas-wide.svg`. Both variants share
 the exact metrics, window, and generation time and are hashed in the same manifest, making them safe
 to use in a responsive HTML `<picture>` without desktop/mobile data drift.
+
+Set `"reducedMotion": true` to also emit still companions for the selected Atlas and Activity
+cards. This defaults to `false`, so existing configurations keep their artifact inventory. The
+additional files are `atlas-still.svg`, `activity-still.svg`, and, when `responsiveAtlas` is
+enabled, `atlas-compact-still.svg` or `atlas-wide-still.svg`. Each companion uses `motion: "none"`
+with the same snapshot, calendar, theme and geometry as its ordinary counterpart; all files are
+included in that directory's hash manifest. Theme variants receive their own matching companions.
+
+Select those still files explicitly for a reader's reduced-motion preference:
+
+```html
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/commitatlas/atlas-still.svg">
+  <img src="assets/commitatlas/atlas.svg" alt="GitHub contribution history and project signals">
+</picture>
+```
+
+When combining theme and layout choices, place their reduced-motion `<source>` entries before
+the animated choices. Turning the option off removes unchanged, previously managed companions;
+unowned files and files changed since the prior manifest retain the existing publication protections.
+This option covers Atlas and Activity cards. Scene outputs keep their separate motion contract.
 
 To render a dark/light pair without fetching GitHub twice, add bounded `themes` entries to the v1
 config. Each entry names an opposite-scheme card theme and an explicit contained output directory:

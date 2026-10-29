@@ -1,6 +1,7 @@
 import {
   calculateContributionMetrics,
   parseContributionCalendar,
+  selectContributionDisplayCalendar,
 } from "@/packages/core/src/index";
 import { GitHubClient, GitHubApiError } from "./github/client";
 import { demoContributions, demoProfile, demoProjects } from "./github/demo";
@@ -156,7 +157,7 @@ export function toAtlasCard(snapshot: PortfolioSnapshot): AtlasCardData {
       direction: metrics.trend.direction,
     },
     rhythm: metrics.rhythm,
-    activity: contributions.days,
+    activity: selectContributionDisplayCalendar({ version: 1, days: contributions.days }).days,
     ...(profile.repositoriesTruncated ? {} : {
       languages: profile.primaryLanguages.map((language) => ({ name: language.name, percentage: language.share })),
     }),
