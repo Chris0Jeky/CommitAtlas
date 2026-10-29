@@ -1,0 +1,88 @@
+name: Profile adoption browser evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/profile-adoption-browser-evidence.yml
+      - tests/profile-adoption-browser.mjs
+      - tests/profile-adoption-browser.test.mjs
+      - tests/fixtures/profile-adoption-target.json
+      - tests/motion-probes/capture.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: profile-adoption-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    if: github.repository == 'Chris0Jeky/CommitAtlas'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    env:
+      PROFILE_ADOPTION_ENGINE: ${{ matrix.browser }}
+      PROFILE_ADOPTION_OUTPUT: ${{ runner.temp }}/profile-adoption-evidence
+      PLAYWRIGHT_PREFIX: ${{ runner.temp }}/profile-adoption-playwright
+    steps:
+      - name: Check out exact evidence source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+
+      - name: Exercise local provenance and capture guards
+        run: node --test tests/profile-adoption-browser.test.mjs
+
+      - name: Require reviewed adoption target
+        run: node tests/profile-adoption-browser.mjs --check-target
+
+      - name: Install pinned external browser tooling
+        run: |
+          npm install --prefix "$PLAYWRIGHT_PREFIX" --ignore-scripts --no-audit --no-fund playwright@1.57.0
+          node "$PLAYWRIGHT_PREFIX/node_modules/playwright/cli.js" install --with-deps "$PROFILE_ADOPTION_ENGINE"
+
+      - name: Capture the real public profile and exact selected assets
+        run: node tests/profile-adoption-browser.mjs
+
+      - name: Preserve a setup-failure receipt
+        if: failure()
+        env:
+          EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          const directory = process.env.PROFILE_ADOPTION_OUTPUT;
+          fs.mkdirSync(directory, { recursive: true });
+          const file = path.join(directory, "report.json");
+          if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify({
+            version: 1, kind: "github-profile-adoption", issue: 144, complete: false,
+            phase: "workflow-setup", engine: process.env.PROFILE_ADOPTION_ENGINE,
+            sourceCommit: process.env.EVIDENCE_SOURCE_COMMIT, observedAt: new Date().toISOString(),
+            failure: "The workflow failed before the capture report was available; inspect the failed step log.",
+          }, null, 2) + "\n");
+          NODE
+
+      - name: Upload complete or partial evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: profile-adoption-${{ matrix.browser }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/profile-adoption-evidence
+          archive: true
+          include-hidden-files: false
+          if-no-files-found: error
+          retention-days: 14

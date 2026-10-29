@@ -22,12 +22,12 @@ GitHub public evidence ──┼─ interactive HTML Studio
 
 | Surface | Purpose | Delivery |
 | --- | --- | --- |
-| Atlas | Up-to-two-year density (7–730 days or `auto`), heatmap, streaks, activity mix, momentum, rhythm, languages, project health | SVG + Studio |
+| Atlas | Latest 365-day density grid; observed-history summary and streaks (7–730 days or `auto`), activity mix, momentum, rhythm, languages, project health | SVG + Studio |
 | Profile | Public repositories, stars, followers, following, contribution total | SVG + JSON |
-| Streak | Current and longest streak inside the exact displayed UTC window | SVG + JSON |
+| Streak | Current and longest streak inside the exact observed-history UTC window | SVG + JSON |
 | Breakdown | Exact categorized counts when available; otherwise non-window-scoped profile-view percentages | SVG + Studio |
 | Rhythm | Transparent within-window personal consistency, never a GitHub rank | SVG + Studio |
-| Activity | Bounded daily contribution graph and exact date window | SVG + JSON |
+| Activity | Latest 365-day contribution grid and exact observed date window | SVG + JSON |
 | Languages | Complete repository-language share, not proficiency | SVG + JSON |
 | Projects | Explicit lifecycle, named-workflow CI, release, freshness, and configured actions | SVG summary + HTML actions + JSON |
 | Cadence | UTC weekday contribution share and busiest day | Static SVG |
@@ -38,6 +38,11 @@ GitHub public evidence ──┼─ interactive HTML Studio
 An external SVG embedded in a README is one image link. Internal pseudo-buttons are not a reliable
 interaction surface, so a project card links as a whole to the Studio while individual Source, Docs,
 Install, Download, Release, and CI actions remain keyboard-accessible HTML.
+
+Atlas and Activity display at most 365 civil dates ending at the latest observed date, without
+inventing missing or future zero-count days. Density totals, active days, density, average and peak
+describe that displayed window. The Atlas history summary and current/longest streaks retain the
+full requested history; shortening the grid does not shorten those readings.
 
 ## Evidence sources
 
@@ -239,9 +244,12 @@ composition.
 
 The package and static config accept `none | subtle | ambient | cinematic`; hosted routes and the
 Studio accept `none | subtle | ambient`. Each scene further restricts those choices through its
-capability declaration. Existing cards retain their compatibility motion; compiler adoption for
-the Atlas and standalone cards remains #126/#127. Scene profiles already select different motion
-primitives. Renderer metadata determines whether SVG CSP permits inline presentation styles.
+capability declaration. Atlas and Activity use compiler-backed ambient density motion, with SMIL
+as the default backend; their other profiles and the remaining cards retain compatibility motion.
+The [density guide](./CONTRIBUTION_DENSITY.md) records the bounded decorative groups, still controls
+and browser-evidence scope. Remaining motion criteria under #126/#127 and the #113/#180 transport
+matrix stay open. Scene profiles select different motion primitives. Renderer metadata determines
+whether SVG CSP permits inline presentation styles.
 
 The [registry](../packages/svg/src/scene.ts) contains seven built-ins. The
 [hosted catalogue](../lib/hosted-scene-catalog.ts) exposes the first four through
