@@ -23,7 +23,7 @@ test("bounded publication codec exposes four explicit record operations", () => 
   for (const name of ["encodePublicationJournal", "decodePublicationJournal", "encodePublicationStatus", "decodePublicationStatus"]) {
     assert.equal(typeof codec[name], "function", `missing ${name}`);
   }
-  assert.equal(codec.MAX_PUBLICATION_JOURNAL_BYTES, 128 * 1024);
+  assert.equal(codec.MAX_PUBLICATION_JOURNAL_BYTES, 256 * 1024);
   assert.equal(codec.MAX_PUBLICATION_STATUS_BYTES, 512);
 });
 
@@ -113,7 +113,7 @@ test("schema validation remains mandatory for both encoders and decoders", () =>
 test("all bounded operations fit, while oversized journal names fail schema validation", () => {
   const maximum = { ...journal(), targets: Array.from({ length: 4 }, (_, i) => ({
     outputDir: `assets/theme-${i}`,
-    operations: Array.from({ length: 96 }, (_, j) => ({ name: `scene-example-${j}.svg`, action: "replace", previous: version, next: version })),
+    operations: Array.from({ length: 160 }, (_, j) => ({ name: `scene-example-${j}.still.svg`, action: "replace", previous: version, next: version })),
   })) };
   const encoded = codec.encodePublicationJournal(maximum);
   assert.ok(encoded.byteLength < codec.MAX_PUBLICATION_JOURNAL_BYTES);

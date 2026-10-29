@@ -407,7 +407,9 @@ Field shapes, bounds, denied content, fixtures, tests, and the required merge or
 
 **Source status:** the CLI and Node 24 Action generate registered scenes through
 `packages/static/src/generate.ts` and `render.ts`, validate each scene's pack/profile support,
-and report per-theme artifacts and manifests; the Action exposes the `scenes` output. Hosted
+and report per-theme artifacts and manifests; the Action exposes ordinary paths through `scenes`.
+Opt-in `reducedMotion` adds same-snapshot `scene-<id>.still.svg` companions and the separate
+`scene-stills` output, preserving the original aggregate. Hosted
 delivery currently allows only Evidence Coverage, Activity Terrain, Chronograph and Lifecycle
 Map. The target model below does not establish profile adoption or hosted Lens support (#111).
 Signature joins the shared static/Action source with its complete C0 projection requirement;

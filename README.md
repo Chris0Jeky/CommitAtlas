@@ -216,8 +216,12 @@ Beacon focus entries match configured project labels exactly; an ambiguous selec
 rejected, and unmatched focus stays plain text.
 Selected scenes render from one
 snapshot for every configured theme, with hashes in the existing manifest.
-The Action's `scenes` output is a JSON array of generated paths (`[]` when
-disabled), including during dry-run.
+With `reducedMotion: true`, each selected scene also produces a `motion: "none"` companion named
+`scene-<id>.still.svg` in every theme, from the same snapshot and with its own manifest integrity
+entry. The Action's `scenes` output remains a JSON array of ordinary generated paths; the separate
+`scene-stills` output lists the companions. Each is `[]` when no matching artifacts are selected,
+and both report planned paths during dry-run. See the [static package guide](packages/static/README.md)
+for the four named Atlas/Activity still outputs and reduced-motion `<picture>` source ordering.
 The Signature path is implemented in the shared static/Action source; its
 [integration receipt](docs/SIGNATURE_EVIDENCE.md) includes the rebuilt bundle and executed paired-output checks.
 
@@ -226,7 +230,8 @@ The Signature path is implemented in the shared static/Action source; its
 ```
 
 Add these fields to an existing complete config. Update any exact consumer
-artifact allowlist with selected `scene-<id>.svg` names before enabling them.
+artifact allowlist with selected `scene-<id>.svg` names and, when `reducedMotion` is enabled,
+`scene-<id>.still.svg` names before enabling them.
 See [the scene delivery contract](docs/STATIC_GENERATOR_PLAN.md#registered-scene-delivery)
 for identity limits, ownership rules and paired-theme behavior. The
 [evidence coverage guide](docs/EVIDENCE_COVERAGE_SCENE.md) documents the input-to-row

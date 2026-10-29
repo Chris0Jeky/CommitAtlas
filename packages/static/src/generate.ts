@@ -22,7 +22,7 @@ import { renderDeliveryCard, renderDeliveryEvidence } from "./delivery.js";
 import { assembleStaticPortfolio, renderStaticArtifacts, type StaticSvgArtifacts } from "./render.js";
 import { renderProjectCatalogArtifacts } from "./projects-catalog.js";
 import { loadStaticLensProjection } from "./lens.js";
-import { isSceneArtifactName } from "./scene-config.js";
+import { isSceneArtifactName, isSceneStillArtifactName } from "./scene-config.js";
 
 const MAX_ARTIFACT_BYTES = 96 * 1024;
 const MAX_TEXT_ARTIFACT_BYTES = 64 * 1024;
@@ -188,10 +188,19 @@ export async function generateStaticFromSnapshot(options: {
 
 /** Repository-relative paths for primary and variant scene outputs, also available during dry-run. */
 export function generatedScenePaths(result: GenerateStaticResult): readonly string[] {
+  return generatedScenePathsFor(result, isSceneArtifactName);
+}
+
+/** Repository-relative paths for opted-in none twins, separate from the ordinary scene output. */
+export function generatedSceneStillPaths(result: GenerateStaticResult): readonly string[] {
+  return generatedScenePathsFor(result, isSceneStillArtifactName);
+}
+
+function generatedScenePathsFor(result: GenerateStaticResult, selected: (name: unknown) => boolean): readonly string[] {
   const paths: string[] = [];
   for (const target of [result, ...result.variants]) {
     for (const artifact of target.manifest.artifacts) {
-      if (!isSceneArtifactName(artifact.path)) continue;
+      if (!selected(artifact.path)) continue;
       const relative = path.relative(result.root, path.join(target.outputDir, artifact.path)).replaceAll("\\", "/");
       if (!relative || relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) {
         throw new Error("scene output escaped the repository");
@@ -201,6 +210,10 @@ export function generatedScenePaths(result: GenerateStaticResult): readonly stri
     }
   }
   return Object.freeze(paths);
+}
+
+function isManagedSceneArtifactName(name: unknown): boolean {
+  return isSceneArtifactName(name) || isSceneStillArtifactName(name);
 }
 
 function validateDeliverySnapshot(
@@ -279,13 +292,13 @@ function validateArtifacts(rendered: StaticSvgArtifacts & Record<string, string>
   }).sort(([left], [right]) => left.localeCompare(right));
   if (payloads.length === 0) throw new Error("No static cards were selected");
   for (const [name, body] of payloads) {
-    if (!/^[a-z0-9-]+\.(svg|json|md)$/.test(name) || path.basename(name) !== name) {
+    if ((!/^[a-z0-9-]+\.(svg|json|md)$/.test(name) && !isSceneStillArtifactName(name)) || path.basename(name) !== name) {
       throw new Error(`Renderer returned an unsafe ${name} artifact`);
     }
     const bytes = Buffer.byteLength(body, "utf8");
     if (name.endsWith(".svg")) {
       if (!body.startsWith("<svg") || !body.endsWith("</svg>")) throw new Error(`Renderer returned an invalid ${name} artifact`);
-      if (bytes > (isSceneArtifactName(name) ? SCENE_MOTION_BUDGET.bytes : MAX_ARTIFACT_BYTES)) throw new Error(`${name} exceeded the static artifact size limit`);
+      if (bytes > (isManagedSceneArtifactName(name) ? SCENE_MOTION_BUDGET.bytes : MAX_ARTIFACT_BYTES)) throw new Error(`${name} exceeded the static artifact size limit`);
       if (/<script\b|<foreignObject\b|<image\b/i.test(body)) throw new Error(`${name} contains a forbidden SVG element`);
     } else {
       if (bytes > MAX_TEXT_ARTIFACT_BYTES) throw new Error(`${name} exceeded the static text artifact size limit`);
@@ -375,7 +388,7 @@ async function prepareArtifacts(root: string, target: StaticWriteTarget): Promis
   const owned = await previouslyWritten(target.outputDir);
   const current = new Set(target.payloads.map(({ name }) => name));
   const candidates = new Set<string>([
-    ...MANAGED_ARTIFACT_NAMES, ...[...owned.keys()].filter(isSceneArtifactName),
+    ...MANAGED_ARTIFACT_NAMES, ...[...owned.keys()].filter(isManagedSceneArtifactName),
   ]);
   const stale = [...candidates].filter((name) => !current.has(name) && owned.has(name)).map((name) => owned.get(name)!);
   const staged: StagedFile[] = [];
@@ -516,7 +529,7 @@ async function previouslyWritten(outputDir: string): Promise<ReadonlyMap<string,
     if (typeof artifactPath !== "string") continue;
     if (seen.has(artifactPath)) return new Map();
     seen.add(artifactPath);
-    const limit = isSceneArtifactName(artifactPath) ? SCENE_MOTION_BUDGET.bytes
+    const limit = isManagedSceneArtifactName(artifactPath) ? SCENE_MOTION_BUDGET.bytes
       : artifactPath.endsWith(".svg") ? MAX_ARTIFACT_BYTES : MAX_TEXT_ARTIFACT_BYTES;
     if (!artifact || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0 || artifact.bytes > limit ||
       typeof artifact.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(artifact.sha256)) continue;

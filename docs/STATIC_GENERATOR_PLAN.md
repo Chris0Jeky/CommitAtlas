@@ -221,13 +221,26 @@ are rendered before the first write; the existing writer's bounded failure and
 crash-recovery limitations are unchanged. Manifests remain version 1 and hash the
 scene bytes alongside cards. A dry-run lists the same artifacts without writing.
 
+Opting into `reducedMotion: true` adds a `motion: "none"` twin for every selected scene in every
+theme, named `scene-<id>.still.svg`. The ordinary and still render reuse the same validated inputs,
+snapshot, pack, theme, layout, backend and namespace. Scene IDs cannot contain dots, so the new
+namespace cannot collide with ordinary definitions whose ID ends in `-still`. The 48-character
+ID limit still applies, giving a maximum companion filename length of 64 characters. Unsupported
+`none` profiles fail before publication. Omitting or disabling `reducedMotion` keeps the prior
+inventory; enabling it with no scenes adds no scene files. C0 validation, stale/unavailable
+disclosures and the C1 publication prohibition are unchanged.
+
 The Action output `scenes` is a JSON array of repository-relative paths, ordered
 by the primary output then variants and each manifest's artifact ordering.
 It is `[]` for legacy configurations and also works in dry-run. Programmatic
 consumers can use `generatedScenePaths(result)` for the identical path contract.
-The Action's other outputs are unchanged.
+This existing output excludes still twins. The separate `scene-stills` output and
+`generatedSceneStillPaths(result)` follow the same ordering and containment checks for companions,
+returning `[]` when they are absent. The Action also declares `atlas-still`, `atlas-compact-still`,
+`atlas-wide-still`, and `activity-still` for the corresponding primary-theme card paths; each is
+an empty string when absent. Dry-run reports planned output paths without writing or deleting.
 
-Canonical `scene-*.svg` filenames are reserved generated names within an output
+Canonical `scene-<id>.svg` and `scene-<id>.still.svg` filenames are reserved generated names within an output
 directory. Stale cleanup never scans a wildcard: the prior CommitAtlas manifest
 must claim that exact canonical name with a bounded byte length and SHA-256.
 This also handles a retired scene no longer in the registry. Unclaimed files,
@@ -235,7 +248,7 @@ malformed scene entries and traversal names do not authorize scene deletion.
 Existing symlink/containment and cross-theme preflight checks still apply.
 
 **Profile consumers with an exact artifact allowlist must add the selected
-`scene-<id>.svg` entries before enabling scenes.** Merely enabling a broad wildcard
+`scene-<id>.svg` and opted-in `scene-<id>.still.svg` entries before enabling scenes.** Merely enabling a broad wildcard
 is not a substitute for reviewing the chosen definitions. Source tests and static
 rendering are not evidence that GitHub/Camo supports a motion backend.
 
@@ -246,4 +259,10 @@ reduced-motion/none-twin delivery requirements. Validated scene artifacts
 use the engine's scene byte ceiling (currently 120 KiB); individual scene
 definitions may impose smaller budgets. Existing fixed-card and text
 limits are unchanged. Prior scene ownership entries use the same ceiling
-so a valid large scene remains eligible for cleanup when disabled.
+so a valid large scene or still companion remains eligible for cleanup when disabled.
+
+The inactive publication-v2 planner and recovery codec accept the same canonical companion names.
+A complete turnover now requires 149 operations per theme: the fixed inventory, 32 retired and
+32 new scenes, their still twins, and the manifest. Its bound is 160 operations and 256 KiB per
+four-theme journal, with a separate 96-entry bound on each declared generation. These are test-only
+planning limits; production continues to use the existing integrity-aware v1 publisher.

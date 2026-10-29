@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { STATIC_CARD_NAMES } from "../dist/config.js";
-import { isSceneArtifactName, MAX_STATIC_SCENES } from "../dist/scene-config.js";
+import * as sceneNames from "../dist/scene-config.js";
 import { SCENE_MOTION_BUDGET } from "../../svg/dist/index.js";
 import { encodePublicationJournal, decodePublicationJournal, MAX_PUBLICATION_JOURNAL_BYTES } from "../dist/publication-codec.js";
 import { PUBLICATION_PHASES, planPublicationRecovery, validatePublicationJournal } from "../dist/publication-protocol.js";
 
 const before = { sha256: "a".repeat(64), bytes: 96 * 1024 };
 const after = { sha256: "b".repeat(64), bytes: 96 * 1024 };
+const { isSceneArtifactName, isSceneStillArtifactName, MAX_STATIC_SCENES } = sceneNames;
 const fixedNames = [
   ...STATIC_CARD_NAMES.map(name => `${name}.svg`), "atlas-compact.svg", "atlas-wide.svg",
   "atlas-still.svg", "atlas-compact-still.svg", "atlas-wide-still.svg", "activity-still.svg",
@@ -21,8 +22,14 @@ const journal = (operations, targets = 1) => ({
 });
 const inventory = () => [
   ...fixedNames.map(name => replace(name)),
-  ...Array.from({ length: MAX_STATIC_SCENES }, (_, i) => ({ name: `scene-retired-${i}.svg`, action: "remove", previous: before })),
-  ...Array.from({ length: MAX_STATIC_SCENES }, (_, i) => ({ name: `scene-next-${i}.svg`, action: "create", next: after })),
+  ...Array.from({ length: MAX_STATIC_SCENES }, (_, i) => [
+    { name: `scene-retired-${i}.svg`, action: "remove", previous: before },
+    { name: `scene-retired-${i}.still.svg`, action: "remove", previous: before },
+  ]).flat(),
+  ...Array.from({ length: MAX_STATIC_SCENES }, (_, i) => [
+    { name: `scene-next-${i}.svg`, action: "create", next: after },
+    { name: `scene-next-${i}.still.svg`, action: "create", next: after },
+  ]).flat(),
   replace("manifest.json"),
 ];
 function observations(record, next) {
@@ -34,7 +41,7 @@ function observations(record, next) {
 
 test("recovery records cover full fixed output plus old and new scene inventories", () => {
   const operations = inventory();
-  assert.equal(operations.length, 85, "review capacity whenever the static inventory changes");
+  assert.equal(operations.length, 149, "review capacity whenever the static inventory changes");
   const record = journal(operations, 4);
   const encoded = encodePublicationJournal(record);
   assert.deepEqual(decodePublicationJournal(encoded), record);
@@ -50,14 +57,16 @@ test("recovery records cover full fixed output plus old and new scene inventorie
 
 test("canonical scenes retain the engine 120 KiB ceiling in both recorded generations", () => {
   const large = { ...after, bytes: SCENE_MOTION_BUDGET.bytes };
-  const record = journal([replace("scene-evidence-coverage.svg", large, large)]);
+  const record = journal([replace("scene-evidence-coverage.svg", large, large), replace("scene-evidence-coverage.still.svg", large, large)]);
   assert.deepEqual(decodePublicationJournal(encodePublicationJournal(record)), record);
-  for (const bytes of [96 * 1024 + 1, SCENE_MOTION_BUDGET.bytes]) {
-    assert.doesNotThrow(() => validatePublicationJournal(journal([replace("scene-large.svg", { ...before, bytes }, { ...after, bytes })])));
-  }
-  for (const field of ["previous", "next"]) {
-    const op = replace("scene-large.svg"); op[field] = { ...after, bytes: SCENE_MOTION_BUDGET.bytes + 1 };
-    assert.throws(() => validatePublicationJournal(journal([op])), /byte length/);
+  for (const name of ["scene-large.svg", "scene-large.still.svg"]) {
+    for (const bytes of [96 * 1024 + 1, SCENE_MOTION_BUDGET.bytes]) {
+      assert.doesNotThrow(() => validatePublicationJournal(journal([replace(name, { ...before, bytes }, { ...after, bytes })])));
+    }
+    for (const field of ["previous", "next"]) {
+      const op = replace(name); op[field] = { ...after, bytes: SCENE_MOTION_BUDGET.bytes + 1 };
+      assert.throws(() => validatePublicationJournal(journal([op])), /byte length/);
+    }
   }
 });
 
@@ -65,25 +74,29 @@ test("larger scene capacity never expands fixed-card or malformed scene-name lim
   for (const name of ["atlas.svg", "manifest.json", "projects.json", "projects.md", "scene-9.svg", "scene-bad--id.svg", `scene-${"a".repeat(49)}.svg`]) {
     assert.throws(() => validatePublicationJournal(journal([replace(name, before, { ...after, bytes: 96 * 1024 + 1 })])), /byte length/, name);
   }
+  for (const name of ["atlas.still.svg", "scene-9.still.svg", "scene-bad--id.still.svg", "scene-a..still.svg", "scene-a.still.svg\n", "scene-a\n.still.svg", `scene-${"a".repeat(49)}.still.svg`]) {
+    assert.throws(() => validatePublicationJournal(journal([replace(name)])), /artifact name/, name);
+  }
 });
 
 test("artifact names and operation counts remain bounded before serialization", () => {
   assert.doesNotThrow(() => validatePublicationJournal(journal([replace(`${"a".repeat(60)}.svg`)])));
   assert.throws(() => validatePublicationJournal(journal([replace(`${"a".repeat(61)}.svg`)])), /artifact name/);
-  const bounded = Array.from({ length: 96 }, (_, i) => replace(`artifact-${i}.svg`));
+  const bounded = Array.from({ length: 160 }, (_, i) => replace(`artifact-${i}.svg`));
   assert.doesNotThrow(() => validatePublicationJournal(journal(bounded)));
   assert.throws(() => validatePublicationJournal(journal([...bounded, replace("overflow.svg")])), /operation count/);
 });
 
-test("largest bounded four-target records fit a 128 KiB canonical control record", () => {
-  assert.equal(MAX_PUBLICATION_JOURNAL_BYTES, 128 * 1024);
-  const ops = Array.from({ length: 96 }, (_, i) => replace(`${String(i).padStart(60, "a")}.svg`));
+test("largest bounded four-target records fit a 256 KiB canonical control record", () => {
+  assert.equal(MAX_PUBLICATION_JOURNAL_BYTES, 256 * 1024);
+  const large = { ...after, bytes: SCENE_MOTION_BUDGET.bytes };
+  const ops = Array.from({ length: 160 }, (_, i) => replace(`scene-${String(i).padStart(48, "a")}.still.svg`, large, large));
   const record = journal(ops, 4);
   record.transactionId = "t".repeat(64);
   // Six-byte JSON escapes exercise maximum per-code-unit expansion under the existing path schema.
   record.targets.forEach((target, i) => { target.outputDir = '\u0001'.repeat(239) + i; });
   const encoded = encodePublicationJournal(record);
-  assert.ok(encoded.length > 64 * 1024 && encoded.length < MAX_PUBLICATION_JOURNAL_BYTES);
+  assert.ok(encoded.length > 192 * 1024 && encoded.length < MAX_PUBLICATION_JOURNAL_BYTES);
   assert.deepEqual(decodePublicationJournal(encoded), record);
   const oversized = new Uint8Array(MAX_PUBLICATION_JOURNAL_BYTES + 1).fill(0xff);
   Object.defineProperty(oversized, "byteLength", { value: 1 });
@@ -100,9 +113,11 @@ test("small existing records retain their canonical wire representation", () => 
 
 test("recovery scene-name eligibility matches the static naming contract", () => {
   for (const id of ["a", "evidence-coverage", "a-0", "a".repeat(48), "a".repeat(49), "9", "a--b", "a_", "a-", "A", "../a"]) {
-    const name = `scene-${id}.svg`;
-    const record = journal([replace(name, before, { ...after, bytes: SCENE_MOTION_BUDGET.bytes })]);
-    if (isSceneArtifactName(name)) assert.doesNotThrow(() => validatePublicationJournal(record), name);
-    else assert.throws(() => validatePublicationJournal(record), /artifact name|byte length/, name);
+    for (const suffix of [".svg", ".still.svg"]) {
+      const name = `scene-${id}${suffix}`;
+      const record = journal([replace(name, before, { ...after, bytes: SCENE_MOTION_BUDGET.bytes })]);
+      if (isSceneArtifactName(name) || isSceneStillArtifactName(name)) assert.doesNotThrow(() => validatePublicationJournal(record), name);
+      else assert.throws(() => validatePublicationJournal(record), /artifact name|byte length/, name);
+    }
   }
 });

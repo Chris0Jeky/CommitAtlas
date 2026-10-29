@@ -70,7 +70,7 @@ export interface StaticConfig {
   readonly motion: MotionProfile;
   readonly layout: "wide" | "compact";
   readonly responsiveAtlas: boolean;
-  /** Emit motion:none companions for selected Atlas and Activity outputs. Defaults to false. */
+  /** Emit motion:none companions for selected Atlas, Activity and scene outputs. Defaults to false. */
   readonly reducedMotion?: boolean;
   readonly outputDir: string;
   readonly cards: readonly StaticCardName[];

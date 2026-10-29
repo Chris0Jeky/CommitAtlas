@@ -27,9 +27,9 @@ import {
 } from "@commit-atlas/svg";
 import { beaconSnapshot } from "./beacon-input.js";
 import type { StaticCardName, StaticConfig } from "./config.js";
-import { sceneArtifactName, staticSceneOptions, type SceneArtifactName } from "./scene-config.js";
+import { sceneArtifactName, sceneStillArtifactName, staticSceneOptions, type SceneArtifactName, type SceneStillArtifactName } from "./scene-config.js";
 
-export type StaticStillArtifactName = "atlas-still.svg" | "atlas-compact-still.svg" | "atlas-wide-still.svg" | "activity-still.svg";
+export type StaticStillArtifactName = "atlas-still.svg" | "atlas-compact-still.svg" | "atlas-wide-still.svg" | "activity-still.svg" | SceneStillArtifactName;
 export type StaticArtifactName = `${StaticCardName}.svg` | "atlas-compact.svg" | "atlas-wide.svg" | StaticStillArtifactName | SceneArtifactName;
 export type StaticSvgArtifacts = Readonly<Partial<Record<StaticArtifactName, string>>>;
 
@@ -220,14 +220,18 @@ export function renderStaticArtifacts(snapshot: PortfolioSnapshot, config: Stati
     }, { ...common, width });
   }
   for (const definition of scenes.definitions) {
-    const rendered = renderSceneDefinition(definition, {
+    const inputs = {
       snapshot: definition.id === "identity-beacon" && scenes.identity ? beaconSnapshot(snapshot, config.projects, scenes.identity.focus) : snapshot,
       ...(lens ? { lens } : {}), ...(scenes.identity ? { identity: scenes.identity } : {}),
-    }, {
+    };
+    const context = {
       theme: config.theme, pack: scenes.pack, motion: config.motion, backend: MOTION_BACKEND_DEFAULTS["github-readme"],
       layout: config.layout, instanceNamespace: "static", seed: "",
-    });
-    artifacts[sceneArtifactName(definition.id)] = rendered.svg;
+    } as const;
+    artifacts[sceneArtifactName(definition.id)] = renderSceneDefinition(definition, inputs, context).svg;
+    if (config.reducedMotion === true) {
+      artifacts[sceneStillArtifactName(definition.id)] = renderSceneDefinition(definition, inputs, { ...context, motion: "none" }).svg;
+    }
   }
   return artifacts;
 }

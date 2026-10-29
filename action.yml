@@ -28,6 +28,8 @@ inputs:
 outputs:
   scenes:
     description: JSON array of generated scene paths across the primary and paired themes, relative to the repository root.
+  scene-stills:
+    description: JSON array of generated scene-<id>.still.svg paths across all themes when reducedMotion is enabled; empty otherwise, also available during dry-run.
   manifest:
     description: Repository-relative path to the generated manifest.
   atlas:
@@ -36,12 +38,20 @@ outputs:
     description: Repository-relative path to atlas-compact.svg when responsiveAtlas adds it.
   atlas-wide:
     description: Repository-relative path to atlas-wide.svg when responsiveAtlas adds it.
+  atlas-still:
+    description: Repository-relative path to atlas-still.svg when atlas and reducedMotion are selected; empty otherwise.
+  atlas-compact-still:
+    description: Repository-relative path to atlas-compact-still.svg when responsiveAtlas and reducedMotion add it; empty otherwise.
+  atlas-wide-still:
+    description: Repository-relative path to atlas-wide-still.svg when responsiveAtlas and reducedMotion add it; empty otherwise.
   profile:
     description: Repository-relative path to profile.svg when selected.
   streak:
     description: Repository-relative path to streak.svg when selected.
   activity:
     description: Repository-relative path to activity.svg when selected.
+  activity-still:
+    description: Repository-relative path to activity-still.svg when activity and reducedMotion are selected; empty otherwise.
   breakdown:
     description: Repository-relative path to breakdown.svg when selected.
   rhythm:
