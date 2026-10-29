@@ -45,16 +45,16 @@ test("activity headline does not paint a non-finite total as zero contributions"
   const missing = renderActivityCard({
     days: [{ date: "2026-08-18", count: 4 }, { date: "2026-08-19", count: Number.NaN }, { date: "2026-08-20", count: 2 }],
   });
-  assert.match(missing, />6 contributions<\/text>/);
-  assert.doesNotMatch(missing, /Total unavailable/);
+  assert.match(missing, />Total unavailable<\/text>/);
+  assert.doesNotMatch(missing, />6 contributions<\/text>/);
 
   const zero = renderActivityCard({ days: [{ date: "2026-08-18", count: 3 }], total: 0 });
   assert.match(zero, />0 contributions<\/text>/);
   assert.doesNotMatch(zero, /Total unavailable/);
 
   const empty = renderActivityCard({ days: [] });
-  assert.match(empty, />0 contributions<\/text>/);
-  assert.doesNotMatch(empty, /Total unavailable/);
+  assert.match(empty, />Total unavailable<\/text>/);
+  assert.doesNotMatch(empty, />0 contributions<\/text>/);
 
   const unknownDays = renderActivityCard({
     days: [{ date: "2026-08-18", count: Number.NaN }, { date: "2026-08-19", count: Number.POSITIVE_INFINITY }],
@@ -109,7 +109,7 @@ test("atlas headline stats do not paint non-finite values as observed zeros", ()
     assert.equal(metric(output, "DENSITY"), "unavailable");
     assert.equal(metric(output, "AVERAGE / DAY"), "unavailable");
     assert.equal(metric(output, "CURRENT STREAK"), "unavailable");
-    assert.equal(metric(output, "LONGEST IN WINDOW"), "unavailable");
+    assert.equal(metric(output, "LONGEST IN HISTORY"), "unavailable");
     assert.match(output, /Total unavailable across 56 days/);
     assert.match(output, /Active days unavailable/);
     assert.doesNotMatch(output, /0 contributions|0 active days|0% density|0\+d|0d</);
@@ -129,7 +129,7 @@ test("atlas headline stats do not paint non-finite values as observed zeros", ()
   assert.equal(metric(zero, "DENSITY"), "0%");
   assert.equal(metric(zero, "AVERAGE / DAY"), "0.0");
   assert.equal(metric(zero, "CURRENT STREAK"), "0d");
-  assert.equal(metric(zero, "LONGEST IN WINDOW"), "0d");
+  assert.equal(metric(zero, "LONGEST IN HISTORY"), "0d");
   assert.match(zero, /0 contributions across 56 days/);
   assert.doesNotMatch(zero, /Total unavailable|Active days unavailable|density unavailable|streak unavailable/);
 });

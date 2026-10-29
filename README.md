@@ -84,14 +84,14 @@ Registered scenes use their canonical model as a deterministic visual seed, but 
 | Releases | Latest published release per curated project, absence stated | static-only `releases.svg` |
 | Delivery | Scoped public PR-flow evidence with unavailable benchmarks stated | static-only `delivery.svg`, `delivery.json` |
 
-The primary Atlas condenses a 365-day public activity window (extendable to two years with `days=730`, or `days=auto` for the full observed history up to two years) into one `860 × 380` SVG: contribution heatmap and totals, active-day density, peak day, streaks, public collaboration mix, twelve-bucket momentum, recent change, rhythm, language distribution, and configured project health.
+The primary Atlas combines a calendar of the latest 365 observed days with full-window streaks and history readings in an `860 × 380` SVG (`480 × 608` compact). `days=730` or `days=auto` extends the fetched history up to two years without extending the grid. The calendar prints its own date range and readings; history totals, streaks, public collaboration mix, momentum, rhythm, languages and project health retain their stated evidence window.
 
-Cards use one hue per quantitative scale. Colour says how much, not what kind. The Studio emits a `<picture>` pair for dark and light readers and keeps independent project actions in accessible HTML because a README-embedded SVG is one linked image, not a reliable mini-application.
+Daily contribution density uses copper at 1–200, gold at 201–700 and violet at 701–1500, with four ordered shades per band. Days above 1500 receive one of six stable vector glyphs. Numeric ranges and distinct cell shapes accompany the colours. Atlas and Activity `motion=ambient` now render visible bounded decorative motion; static generation can emit matching still companions with `reducedMotion: true`. See the [density and motion guide](docs/CONTRIBUTION_DENSITY.md). The Studio emits a `<picture>` pair for dark and light readers and keeps independent project actions in accessible HTML because a README-embedded SVG is one linked image.
 
 ## v0.4.0 highlights
 
 - **Truthful last-good resilience.** Eligible public hosted responses may reuse a validated representation for seven days during a supported anonymous-GitHub failure. The response is visibly stale, timestamped, and short-cached. Cold, expired, token-backed, synthetic, or mismatched requests never borrow it.
-- **Contribution fidelity.** GitHub’s Sunday-row geometry and supplied intensity levels are preserved, and an open final UTC day no longer erases a continuing streak.
+- **Contribution fidelity.** GitHub’s Sunday-row dates and exact daily counts are preserved, and an open final UTC day no longer erases a continuing streak. The density display applies the documented absolute count bands.
 - **One snapshot, two schemes.** Static dark/light outputs share the same source time and window while keeping independent manifests.
 - **Readability and product clarity.** The Studio distinguishes hosted routes, static cards, source distribution, and optional design explanations.
 - **Bounded research bridge.** A pinned Developer Lens C0 trial records a baseline/candidate result and unsupported claims without turning research into profile evidence.
@@ -100,7 +100,7 @@ Cards use one hue per quantitative scale. Colour says how much, not what kind. T
 
 The deterministic examples make no GitHub request and separate renderer behavior from upstream availability:
 
-- [Rich Atlas demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=subtle&layout=wide)
+- [Animated Atlas demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/atlas.svg?user=octocat&demo=true&theme=ember&days=365&motion=ambient&layout=wide)
 - [Profile demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/cards/profile.svg?user=octocat&demo=true&theme=paper&motion=none)
 - [Project board demo](https://commit-atlas.commit-atlas.workers.dev/api/v1/projects.svg?owner=octocat&repos=Hello-World,Spoon-Knife&states=Hello-World:active,Spoon-Knife:maintenance&demo=true&theme=paper)
 

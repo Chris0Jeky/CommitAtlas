@@ -29,7 +29,8 @@ for (const kind of Object.keys(routes) as StudioCardKind[]) for (const motion of
       assert.equal(metadata.version, 1); assert.equal(metadata.card, kind);
       assert.equal(metadata.bytes, new TextEncoder().encode(body).length);
       assert.equal(metadata.state, "ready");
-      assert.equal(metadata.loopingGroups, 0, "legacy cards have no loops");
+      const densityAmbient = motion === "ambient" && (kind === "atlas" || kind === "activity");
+      assert.equal(metadata.loopingGroups, densityAmbient ? kind === "atlas" ? 3 : 2 : 0);
       assert.equal(metadata.animatedElements > 0, motion !== "none");
       assert.match(response.headers.get("access-control-expose-headers") ?? "", /X-CommitAtlas-Card-Metadata/i);
       const conditional = await routes[kind](new Request(url, { headers: { "if-none-match": response.headers.get("etag")! } }));
@@ -64,6 +65,13 @@ test("metadata is additive: still/animated body, cache policy, ETag and CSP are 
       assert.equal(enriched.headers.get(name), existing.headers.get(name));
   }
 });
+test("card CSP follows the emitted stylesheet rather than a requested motion hint", async () => {
+  const { cardSvgResponse } = await import("@/lib/card-response");
+  const body = svg.renderProfileCard({ login: "test", name: "Test", repositories: 1, followers: 2, following: 3 }, { motion: "none" });
+  const response = await cardSvgResponse(new Request("https://example.test/card"), body,
+    { publicData: true, edgeSeconds: 300, inlineStyles: true }, "profile", "live");
+  assert.match(response.headers.get("content-security-policy") ?? "", /style-src 'none'/);
+});
 test("source state, not user text, controls freshness approval", async () => {
   const { cardSvgResponse } = await import("@/lib/card-response");
   const body = svg.renderProfileCard({ login: "demo", name: "STALE SNAPSHOT unavailable", repositories: 1, followers: 2, following: 3 });
@@ -78,14 +86,14 @@ test("invalid requests and canonical redirects do not carry a card receipt", asy
     assert.ok([308, 400].includes(response.status)); assert.equal(response.headers.has(header), false);
   }
 });
-test("Atlas counts batched geometry once, never days or matching selectors separately", async () => {
+test("Atlas receipts count the three decorative wrappers, independently of calendar cells", async () => {
   const { fetchPortfolioSnapshot, toAtlasCard } = await import("@/lib/portfolio");
   const { parseSceneXml } = await import("@/packages/svg/src/scene-svg");
   const data = toAtlasCard(await fetchPortfolioSnapshot({ user: "octocat", demo: true, days: 730, token: "" }));
   for (const width of [480, 860]) {
     const body = svg.renderAtlasCard(data, { motion: "ambient", width });
-    const expected = parseSceneXml(body).nodes.filter(node => /(?:^|\s)(?:atlas-enter|atlas-cell|atlas-bar)(?:$|\s)/u.test(node.attrs.class ?? "")).length;
+    const expected = parseSceneXml(body).nodes.filter(node => /-element-(?:scan|ornament|beam)$/u.test(node.attrs.id ?? "")).length;
     assert.equal(svg.measureCardMotion(body, "atlas").animatedElements, expected);
-    assert.ok(expected > 7 && expected < 96);
+    assert.equal(expected, 3);
   }
 });

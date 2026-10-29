@@ -5,6 +5,39 @@ Release/profile receipt last verified: 2026-08-30 (v0.4.0 released, production a
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Profile calendar, density and refresh work — 2026-10-29
+
+The profile freeze was traced to its committed-asset workflow: it still pinned producer
+`5cb95cd` and seven scheduled runs failed after the successful Sunday snapshot of 25 October.
+The current producer already contains the bounded public-calendar retry and the static
+30-second deadline; the consumer must adopt that producer and stop gating refresh on public
+PushEvents. Failed generation continues to preserve the last committed assets. The new failure
+regression checks the executed Action bundle and its classified, sanitized diagnostics.
+
+Atlas and Activity now separate the latest 365-day display window from full observed history.
+The display includes its actual end date and annual readings; the header and streaks retain the
+longer history. Copper, gold and violet tiers use absolute daily thresholds, increasing contrast
+and distinct shapes. Six deterministic original vector glyphs distinguish days above 1,500.
+Atlas compiles three bounded ambient decorative groups and Activity two, using SMIL by default;
+`none`, stale, unavailable and zero-activity outputs remain still. Opt-in `reducedMotion` static
+companions share each snapshot and its integrity manifest. The [density guide](./CONTRIBUTION_DENSITY.md)
+records the design and the direct-image browser harness's scope.
+
+Independent source review found and resolved a cropped-calendar partial-total error, verified
+80 exact still-geometry comparisons and 72 rejected motion mutations, and found no remaining
+blocking issue. The final SVG suite passes 700 tests. The full integrated gate, immutable-head
+browser receipts, production deployment and consumer adoption are still separate acceptance
+steps at this source checkpoint. This work advances #126, #127 and #144; it does not complete
+their broader acceptance criteria or the #113/#180 transport matrix.
+
+[Dependency repair #451](https://github.com/Chris0Jeky/CommitAtlas/pull/451) merged as `6ef6666`,
+closing #447. Its complete local gate passed 2,058 tests and
+[PR CI 40806311483](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40806311483) passed.
+Both full-toolchain and production audits report zero findings at the recorded observation.
+The [audit evidence](./evidence/dependency-audit-2026-10-29/README.md) preserves before/after reports,
+paths and digests. CI now also checks the full installed toolchain for high-severity advisories
+and explicitly checks out the immutable PR head; successful main pushes remain the deployment gate.
+
 ## Appearance integration and Developer Signature — 2026-10-26
 
 **Gallery and Studio appearance.** [#448](https://github.com/Chris0Jeky/CommitAtlas/pull/448)

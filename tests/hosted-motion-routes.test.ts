@@ -78,9 +78,14 @@ test("every hosted SVG route accepts ambient and rejects cinematic before networ
       assert.equal(ambient.status, 200, `${route.name} ambient status`);
       assert.match(
         ambient.headers.get("content-security-policy") ?? "",
-        /style-src 'unsafe-inline'/,
+        route.name === "atlas" || route.name === "activity" ? /style-src 'none'/ : /style-src 'unsafe-inline'/,
         `${route.name} ambient CSP`,
       );
+      const ambientBody = await ambient.text();
+      if (route.name === "atlas" || route.name === "activity") {
+        assert.match(ambientBody, /<animateTransform/u);
+        assert.match(ambientBody, /repeatDur="45s"/u);
+      }
 
       const cinematic = await route.get(new Request(`https://example.test/api/v1/${route.name}?${route.query("cinematic")}`));
       assert.equal(cinematic.status, 400, `${route.name} cinematic status`);

@@ -631,7 +631,7 @@ export class GitHubClient {
 
   private async readHtmlResponse(response: Response): Promise<string> {
     if (!response.ok) {
-      throw await this.transportError(response, "GitHub public profile is currently unavailable");
+      throw await this.transportError(response, `GitHub public profile is currently unavailable (HTTP ${response.status})`);
     }
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     if (contentType && !contentType.startsWith("text/html")) {

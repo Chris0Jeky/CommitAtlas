@@ -24,8 +24,11 @@ export {
   README_MOTION_INTERVAL_MS, ENTRANCE_MIN_DELAY_MS, SUBTLE_MAX_DURATION_MS, MOTION_TIMINGS,
 } from "./motion/profile.js";
 export type { MotionProfile, MotionBackend, MotionTarget, MotionFamily, MotionBudgetClass } from "./motion/profile.js";
-import type { MotionProfile } from "./motion/profile.js";
+import type { MotionProfile, MotionBackend } from "./motion/profile.js";
 import { parseSceneXml } from "./scene-svg.js";
+import { stableHash } from "./seed.js";
+import { densityMotion, measureDensityMotion } from "./density-motion.js";
+import { CONTRIBUTION_DENSITY_BANDS, CONTRIBUTION_DENSITY_DESCRIPTION, contributionDensity, contributionFill, contributionShape, renderContributionCells } from "./density.js";
 
 export type ThemeName = "aurora" | "midnight" | "paper" | "ember";
 export type HostedMotionProfile = Exclude<MotionProfile, "cinematic">;
@@ -34,7 +37,8 @@ export interface MotionRenderMetadata {
   readonly inlineStyles: boolean;
 }
 
-export function motionRenderMetadata(motion: MotionProfile | undefined): MotionRenderMetadata {
+export function motionRenderMetadata(motion: MotionProfile | undefined, renderedSvg?: string): MotionRenderMetadata {
+  if (renderedSvg !== undefined) return { inlineStyles: parseSceneXml(renderedSvg).nodes.some(node => node.name === "style") };
   return { inlineStyles: motion !== undefined && motion !== "none" };
 }
 
@@ -51,7 +55,8 @@ export interface SvgTheme {
   /** Chassis chrome: mono labels, section numerals, rules. */
   readonly chrome: string;
   /**
-   * The density ramp: ONE hue at four ascending steps, level 1 through level 4.
+   * The legacy scene density ramp: one hue at four ascending steps.
+   * Atlas/Activity use the separate absolute daily count bands in density.ts.
    *
    * Never four different hues. Hue carries no order — nothing about orange, green and yellow
    * says "more" — and the previous ramp additionally borrowed `accent`, `positive` and `warning`,
@@ -137,6 +142,10 @@ export interface RenderOptions {
   readonly title?: string;
   readonly description?: string;
   readonly motion?: MotionProfile;
+  /** Atlas/activity ambient backend; GitHub README output defaults to bounded SMIL. */
+  readonly motionBackend?: MotionBackend;
+  /** Distinguish identical inline Atlas/activity instances; default is a deterministic model hash. */
+  readonly instanceNamespace?: string;
 }
 
 export type CardSource = "public-github" | "public-profile" | "synthetic-demo" | "public-pulse";
@@ -180,7 +189,7 @@ export interface StreakCardData extends SourceLabelledCardData {
 export interface ActivityDay {
   readonly date: string;
   readonly count: number;
-  /** Upstream GitHub intensity, when available. Falls back to a local scale for direct callers. */
+  /** Upstream intensity retained for compatibility; daily contribution bands use the exact count. */
   readonly level?: number;
 }
 
@@ -457,6 +466,7 @@ const MAX_TITLE_LENGTH = 96;
 const MAX_DESCRIPTION_LENGTH = 180;
 const MAX_ACTIVITY_PERIOD_LENGTH = 32;
 const MAX_ACTIVITY_DAYS = 731;
+const MAX_DISPLAY_CALENDAR_DAYS = 365;
 /**
  * Window boundary labels are ISO calendar dates (`YYYY-MM-DD`, 10 characters). The cap leaves
  * headroom for other bounded date spellings while stopping a direct caller from pushing an
@@ -608,6 +618,59 @@ function calendarGrid(days: readonly ActivityDay[]): { readonly cells: readonly 
   return { cells, columns: Math.max(1, (cells.at(-1)?.column ?? 0) + 1) };
 }
 
+/** Visual dates are independent of the full observation window used for streaks and totals. */
+function displayCalendarDays(input: readonly ActivityDay[]): readonly ActivityDay[] {
+  const seen = new Set<string>();
+  const days = input.filter(day => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).filter(day => {
+    if (seen.has(day.date)) return false;
+    seen.add(day.date);
+    return true;
+  });
+  const latest = days.at(-1);
+  if (!latest) return [];
+  const cutoff = Date.parse(`${latest.date}T00:00:00Z`) - (MAX_DISPLAY_CALENDAR_DAYS - 1) * 86_400_000;
+  return days.filter(day => Date.parse(`${day.date}T00:00:00Z`) >= cutoff);
+}
+
+function calendarReading(days: readonly ActivityDay[]) {
+  const known = days.filter(day => Number.isSafeInteger(day.count) && day.count >= 0);
+  const complete = known.length > 0 && known.length === days.length;
+  const sum = known.reduce((total, day) => total + day.count, 0);
+  const total = complete && Number.isSafeInteger(sum) ? sum : null;
+  const active = complete ? known.filter(day => day.count > 0).length : null;
+  const peak = complete ? known.reduce((highest, day) => day.count > highest.count ? day : highest, known[0]!) : null;
+  const monthCounts = new Map<string, string[]>();
+  for (const day of days) {
+    const month = day.date.slice(0, 7);
+    const values = monthCounts.get(month) ?? [];
+    values.push(`${day.date.slice(8)}=${Number.isSafeInteger(day.count) && day.count >= 0 ? day.count : "unavailable"}`);
+    monthCounts.set(month, values);
+  }
+  return {
+    from: days[0]?.date ?? "unavailable", to: days.at(-1)?.date ?? "unavailable",
+    observed: known.length, total, active, peak,
+    density: active === null ? null : active / days.length * 100,
+    average: total === null ? null : total / days.length,
+    description: days.map(day => `${day.date} ${Number.isSafeInteger(day.count) && day.count >= 0 ? formatNumber(day.count, false) : "unavailable"}`).join("; "),
+    compactDescription: [...monthCounts.entries()].map(([month, values]) => `${month}: ${values.join(", ")}`).join("; "),
+  };
+}
+
+function calendarNamespace(kind: "atlas" | "activity", days: readonly ActivityDay[], width: number, theme: SvgTheme, options?: RenderOptions): string {
+  return options?.instanceNamespace ?? `card${stableHash(JSON.stringify([kind, width, theme.background, days.map(day => [day.date, day.count])])).slice(0, 12)}`;
+}
+
+function densityCardMotionEnabled(data: SourceLabelledCardData, days: readonly ActivityDay[]): boolean {
+  return data.dataState !== "stale" && data.dataState !== "unavailable" && days.some(day => Number.isSafeInteger(day.count) && day.count > 0);
+}
+
+/** Inherit the unchanged mono font once to keep a year of shapes and exact readings under 30KB. */
+function finishDensityCard(output: string, motion: ReturnType<typeof densityMotion>): string {
+  const result = output.replaceAll(` font-family="${MONO}"`, "").replaceAll(' font-weight="500"', "").replaceAll(' text-anchor="start"', "").replace(' fill="none">', ` fill="none" font-family="${MONO}" font-weight="500">`);
+  motion.plan.compile({ baseBytes: new TextEncoder().encode(result).length - motion.compiled.counters.bytesAdded });
+  return result;
+}
+
 function svgStart(
   width: number,
   height: number,
@@ -682,33 +745,20 @@ function plate(width: number, height: number, theme: SvgTheme, cut = 22): string
   for (let y = -8; y < height; y += 11) {
     bars.push(`M0 ${y}l4 0l-4 11l0 -11Z`);
   }
-  out += `<g aria-hidden="true" opacity="0.18">${bars.map((b) => `<path d="${b}" fill="${theme.chrome}"/>`).join("")}</g>`;
+  out += `<g aria-hidden="true" opacity="0.18"><path d="${bars.join("")}" fill="${theme.chrome}"/></g>`;
   return out;
 }
 
-/**
- * Map a contribution level to a fill. The ONLY place in this module that decision is made.
- *
- * Level 0 is the neutral socket, never the faintest step of the ramp. A non-finite or negative
- * level also resolves to the socket rather than indexing past the end — an unreadable signal must
- * never render as the strongest reading, which is the inversion this product exists to refuse.
- */
-function densityFill(level: number, theme: SvgTheme): string {
-  if (!Number.isFinite(level)) return theme.socket;
-  const step = Math.trunc(level);
-  if (step <= 0) return theme.socket;
-  return theme.density[Math.min(3, step - 1)]!;
-}
-
-/** The Less…More key every density surface prints, so the ramp is self-describing. */
-function densityKey(x: number, y: number, theme: SvgTheme, size = 8, labelSize = size >= 8 ? 10 : 8): string {
-  let out = mono(x, y + size, "LESS", labelSize, theme.muted, 500, "end");
-  const swatches = [theme.socket, ...theme.density];
-  swatches.forEach((fill, index) => {
-    out += `<rect x="${x + 6 + index * (size + 3)}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
-  });
-  out += mono(x + 12 + swatches.length * (size + 3), y + size, "MORE", labelSize, theme.muted);
-  return out;
+/** Numeric ranges and silhouettes explain the three hues without relying on colour alone. */
+function densityKey(x: number, y: number, width: number, theme: SvgTheme, labelSize = 8): string {
+  const readings = [contributionDensity(0, "2026-01-01"), ...CONTRIBUTION_DENSITY_BANDS.map(band => contributionDensity(band.max, "2026-01-01")), { band: "special", step: 0, glyph: "spark" }] as const;
+  const labels = ["0", ...CONTRIBUTION_DENSITY_BANDS.map(band => band.label), "1501+"];
+  const offsets = [0, 31, 104, 188, 282];
+  const scale = Math.min(1, width / 342);
+  return `<g aria-hidden="true">` + readings.map((reading, index) => {
+    const left = x + offsets[index]! * scale;
+    return `<path fill="${contributionFill(reading, theme)}" d="M${left} ${y}${contributionShape(reading, 6)}"/>` + mono(left + 10, y + 6, labels[index], labelSize, theme.muted, 500, "start", 0);
+  }).join("") + "</g>";
 }
 
 function statusColor(state: CiState, theme: SvgTheme): string {
@@ -896,66 +946,44 @@ export function renderStreakCard(data: StreakCardData, options?: RenderOptions):
 }
 
 export function renderActivityCard(data: ActivityCardData, options?: RenderOptions): string {
-  // One calendar day is one observation. A second row for the same date is not added again,
-  // so two copies of one day cannot paint twice the contributions or two cells.
-  const seenDates = new Set<string>();
-  const days = data.days
-    .filter((day) => isValidIsoDate(day.date))
-    .sort((left, right) => left.date.localeCompare(right.date))
-    .filter((day) => {
-      if (seenDates.has(day.date)) return false;
-      seenDates.add(day.date);
-      return true;
-    })
-    .slice(-MAX_ACTIVITY_DAYS);
-  const max = Math.max(1, ...days.map((day) => finite(day.count)));
-  const periodLabel = boundedLabel(data.periodLabel, "ACTIVITY", MAX_ACTIVITY_PERIOD_LENGTH);
-  const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280); const t = o.theme; const width = o.width;
+  const days = displayCalendarDays(data.days);
+  const reading = calendarReading(days);
+  const periodLabel = boundedLabel(data.periodLabel, "CONTRIBUTION CALENDAR", MAX_ACTIVITY_PERIOD_LENGTH);
+  const o = optionsFor(options, 220, "Contribution activity", "A compact contribution activity map with text labels for accessible status.", 180, 280);
+  const t = o.theme; const width = o.width;
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
-  const accessibilitySummary = days.map((day) => `${day.date} ${formatNumber(day.count, false)}`).join("; ");
-  const accessibleDescription = accessibilitySummary
-    ? `${metadata.description} Contributions by date, chronologically: ${accessibilitySummary}`
-    : metadata.description;
+  const accessibleDescription = `${metadata.description} ${CONTRIBUTION_DENSITY_DESCRIPTION} Displayed calendar: ${reading.from} to ${reading.to}, ${reading.observed} observed days, at most the latest 365 calendar days. Contributions by date, chronologically: ${reading.description || "unavailable"}`;
+  const grid = calendarGrid(days);
+  const columns = grid.columns;
+  const gap = 2;
+  // Reserve the key and dated scope even when a caller requests the minimum height.
+  const cell = Math.max(2, Math.min(11, Math.floor((width - 86 - gap * (columns - 1)) / columns), Math.floor((o.height - 112) / 7) - 2));
+  const start = 40; const top = 66;
+  const actualWidth = columns * cell + Math.max(0, columns - 1) * gap;
+  const gridHeight = 7 * (cell + 2) - 2;
+  const canMove = densityCardMotionEnabled(data, days);
+  const ambient = densityMotion({ kind: "activity", namespace: calendarNamespace("activity", days, width, t, options), backend: options?.motionBackend ?? "smil", columns, pitch: cell + gap, left: start, top, height: gridHeight, width: actualWidth, frameWidth: width, ink: t.chrome }, options?.motion === "ambient" && canMove);
+  const compatibility = options?.motion === "ambient" || !canMove ? "" : cardMotionStyle(options?.motion);
   let out = svgStart(width, o.height, t, metadata.title, metadata.description, accessibleDescription);
-  out += cardMotionStyle(options?.motion) + `<g class="card-enter">`;
+  out += compatibility + ambient.compiled.style + `<g class="card-enter">`;
   out += panel(16, 16, width - 32, o.height - 32, t) + numeral(34, 48, 1, periodLabel, t);
   out += sourceMarker(data.source, data.dataState, width - 34, 29, t);
-  // NaN is not nullish, so a non-finite total must not fall through into the day sum or into 0.
-  // A missing total still sums finite day counts. Non-finite days are left out of that sum, and a
-  // window whose counts are all non-finite is unavailable rather than an observed zero.
-  let summedCounts = 0;
-  let finiteDayCounts = 0;
-  for (const day of days) {
-    if (!Number.isFinite(day.count)) continue;
-    finiteDayCounts += 1;
-    summedCounts += day.count;
-  }
-  const headlineTotal = typeof data.total === "number"
-    ? data.total
-    : days.length > 0 && finiteDayCounts === 0
-      ? Number.NaN
-      : summedCounts;
-  const contributionsLabel = Number.isFinite(headlineTotal)
-    ? `${formatNumber(headlineTotal)} contributions`
-    : "Total unavailable";
+  // Adapter totals already describe the displayed year. Direct callers with longer input get
+  // the same annual sum, rather than labelling the shorter calendar with an older-history total.
+  const cropped = data.days.some(day => isValidIsoDate(day.date) && day.date < reading.from);
+  const suppliedTotalUnknown = data.total !== undefined && (!Number.isSafeInteger(data.total) || data.total < 0);
+  const headlineTotal = suppliedTotalUnknown ? Number.NaN
+    : data.total !== undefined && !cropped ? data.total
+      : reading.total ?? Number.NaN;
+  const contributionsLabel = Number.isFinite(headlineTotal) ? `${formatNumber(headlineTotal)} contributions` : "Total unavailable";
   out += text(width - 34, 50, contributionsLabel, 12, t.text, 600, "end");
-  const grid = calendarGrid(days);
-  const columns = grid.columns; const columnGap = columns > 70 ? 1 : 2; const cell = Math.max(2, Math.min(11, Math.floor((width - 86 - columnGap * (columns - 1)) / columns)));
-  const start = 40; const top = 66;
-  // Quartiles of the observed peak, so the four steps describe THIS window rather than an
-  // absolute scale no reader can see. A zero day is level 0 and takes the neutral socket.
-  const cells: string[] = [];
-  grid.cells.forEach(({ day, column, row }) => {
-    const count = finite(day.count);
-    const level = Number.isFinite(day.level)
-      ? Math.max(0, Math.min(4, Math.round(day.level as number)))
-      : count <= 0 ? 0 : Math.max(1, Math.min(4, Math.ceil((count / max) * 4)));
-    const x = start + column * (cell + columnGap); const y = top + row * (cell + 2);
-    cells.push(`<path fill="${densityFill(level, t)}" d="M${x} ${y}h${cell}v${cell}H${x}"/>`);
-  });
-  out += `<g aria-hidden="true">${cells.join("")}</g>`;
-  out += `<g aria-hidden="true">${densityKey(width - 118, top + 7 * (cell + 2) + 10, t)}</g>`;
-  return out + `</g>` + svgEnd();
+  out += `<g aria-hidden="true">${renderContributionCells(grid.cells.map(({ day, column, row }) => ({ date: day.date, count: day.count, x: start + column * (cell + gap), y: top + row * (cell + 2) })), cell, t, "activity-cell")}</g>`;
+  out += ambient.fragment;
+  const bottom = top + gridHeight;
+  out += mono(start, bottom + 15, `${reading.from} — ${reading.to}`, 9.5, t.muted, 500, "start", 0);
+  out += mono(width - 36, bottom + 15, `${reading.observed} observed days`, 9.5, t.muted, 500, "end", 0);
+  out += densityKey(start, bottom + 25, width - 80, t, 9.5);
+  return finishDensityCard(out + `</g>` + svgEnd(), ambient);
 }
 
 const breakdownLabels = [
@@ -1221,8 +1249,8 @@ export function renderProjectBoard(data: ProjectBoardData, options?: RenderOptio
 
 function atlasMotionStyle(motion: RenderOptions["motion"]): string {
   if (!motionRenderMetadata(motion).inlineStyles) return "";
-  // Chromium never runs CSS animations inside an SVG rendered through <img> — GitHub's README
-  // pipeline — so the card must be finished before any keyframe applies. That means fill-mode
+  // Image embedding can freeze or ignore CSS (as the earlier GitHub profile probe did), so the
+  // card must be finished before any keyframe applies. That means fill-mode
   // none with a small delay, never "both": a renderer that ignores or freezes the animation sits
   // in the delay phase and shows the natural, final geometry, while an animating renderer still
   // gets the rise. Bars overlay static tracks, so their pre-run state must be exact, not close.
@@ -1896,7 +1924,7 @@ export function renderPulseCard(data: PulseCardData, options: PulseRenderOptions
 export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): string {
   const normalizedWidth = dimension(options?.width, 860, MIN_WIDTH, MAX_WIDTH);
   const narrow = normalizedWidth < 620;
-  const defaultHeight = narrow ? 570 : 380;
+  const defaultHeight = narrow ? 608 : 380;
   const o = optionsFor(
     { ...options, width: options?.width ?? 860 },
     defaultHeight,
@@ -1908,6 +1936,18 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   const t = o.theme;
   const width = o.width;
   const height = o.height;
+  const days = displayCalendarDays(data.activity);
+  const calendar = calendarReading(days);
+  const heatmapTop = narrow ? 191 : 154;
+  const heatmapLeft = 24;
+  const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
+  const grid = calendarGrid(days);
+  const columns = grid.columns;
+  const columnGap = 2;
+  const cell = Math.max(2, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * columnGap) / columns)));
+  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
+  const canMove = densityCardMotionEnabled(data, days);
+  const ambient = densityMotion({ kind: "atlas", namespace: calendarNamespace("atlas", days, width, t, options), backend: options?.motionBackend ?? "smil", columns, pitch: cell + columnGap, left: heatmapLeft, top: heatmapTop, height: 7 * (cell + 2) - 2, width: heatmapActualWidth, frameWidth: width, ink: t.chrome }, options?.motion === "ambient" && canMove);
   const name = truncateText(data.profile.name || data.profile.login || "GitHub user", narrow ? 22 : 30);
   const login = truncateText(String(data.profile.login ?? "").replace(/^@/, ""), 32);
   const effectiveState = effectiveDataState(data.source, data.dataState);
@@ -1950,14 +1990,15 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ? `${currentStreakOpen ? "at least " : ""}${formatNumber(data.currentStreak, false)} day current streak${currentStreakThrough ? ` through ${currentStreakThrough}` : ""}`
     : "current streak unavailable";
   const longestStreakText = Number.isFinite(data.longestStreak)
-    ? `${formatNumber(data.longestStreak, false)} day longest streak in this window`
+    ? `${formatNumber(data.longestStreak, false)} day longest streak in the observed history`
     : "longest streak unavailable";
-  const accessibleDescription = `${o.description} ${contributionText} across ${windowSpan}; ${activeDayText}; ${densityText}; ${currentStreakText} and ${longestStreakText}. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank.`;
+  const calendarSummary = calendar.total === null ? "Calendar summary unavailable" : `${formatNumber(calendar.total, false)} contributions, ${calendar.active} active days, ${calendar.density!.toFixed(1)}% active-day density, ${calendar.average!.toFixed(1)} average per observed day, peak ${formatNumber(calendar.peak!.count, false)} on ${calendar.peak!.date}`;
+  const accessibleDescription = `${o.description} Observed history ${windowFrom} to ${windowTo}: ${contributionText} across ${windowSpan}; ${activeDayText}; ${densityText}; ${currentStreakText} and ${longestStreakText}. Earlier streak history is not observed. ${breakdownQualifier}: ${atlasBreakdownValue(data.breakdown.commits, data.breakdownBasis)} commits, ${atlasBreakdownValue(data.breakdown.pullRequests, data.breakdownBasis)} pull requests, ${atlasBreakdownValue(data.breakdown.reviews, data.breakdownBasis)} reviews, and ${atlasBreakdownValue(data.breakdown.issues, data.breakdownBasis)} issues. Rhythm is a CommitAtlas consistency score, not a GitHub rank. Displayed calendar ${calendar.from} to ${calendar.to}, ${calendar.observed} observed days, at most the latest 365 calendar days: ${calendarSummary}. ${CONTRIBUTION_DENSITY_DESCRIPTION} Contributions by month, with exact day=count readings: ${calendar.compactDescription || "unavailable"}`;
   const metadata = sourceMetadata(data.source, data.dataState, o.title, o.description);
   const stateLead = sourceDescriptionLead(effectiveState);
   const accessibleWithState = stateLead ? `${stateLead} ${accessibleDescription}` : accessibleDescription;
   let out = svgStart(width, height, t, metadata.title, metadata.description, accessibleWithState);
-  out += atlasMotionStyle(options?.motion);
+  out += (options?.motion === "ambient" || !canMove ? "" : atlasMotionStyle(options?.motion)) + ambient.compiled.style;
   out += `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="17" stroke="${t.border}"/>`;
   out += `<g class="atlas-enter"><circle cx="30" cy="32" r="16" fill="${t.accent}"/>`;
   out += text(30, 38, ([...name][0] ?? "?").toUpperCase(), 16, t.background, 800, "middle");
@@ -1969,7 +2010,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
       : data.source === "public-github" || data.source === "public-profile" ? t.positive : t.muted;
   out += text(width - 22, 28, sourceLabel, 9, sourceColor, 700, "end");
   const windowHeader = windowDaysKnown
-    ? `${windowDays}D · ${windowTo}`
+    ? windowFromKnown && windowToKnown ? `OBSERVED HISTORY · ${windowDays}D` : "OBSERVED HISTORY · dates unavailable"
     : windowToKnown ? `unavailable · ${windowTo}` : "unavailable";
   out += text(width - 22, 45, windowHeader, 9, t.muted, 550, "end");
   out += `</g><line x1="22" y1="62" x2="${width - 22}" y2="62" stroke="${t.border}"/>`;
@@ -1983,7 +2024,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     ["Density", Number.isFinite(data.density) ? `${finite(data.density).toFixed(1).replace(/\.0$/, "")}%` : "unavailable"],
     ["Average / day", Number.isFinite(data.averagePerDay) ? finite(data.averagePerDay).toFixed(1) : "unavailable"],
     [currentStreakLabel, Number.isFinite(data.currentStreak) ? `${formatNumber(data.currentStreak, false)}${currentStreakOpen ? "+" : ""}d` : "unavailable"],
-    ["Longest in window", Number.isFinite(data.longestStreak) ? `${formatNumber(data.longestStreak, false)}d` : "unavailable"],
+    ["Longest in history", Number.isFinite(data.longestStreak) ? `${formatNumber(data.longestStreak, false)}d` : "unavailable"],
   ] as const;
   if (narrow) {
     const metricWidth = (width - 44) / 3;
@@ -1999,47 +2040,20 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     out += `<line x1="22" y1="122" x2="${width - 22}" y2="122" stroke="${t.border}"/>`;
   }
 
-  const heatmapTop = narrow ? 191 : 154;
-  const heatmapLeft = 24;
-  const heatmapWidth = narrow ? width - 48 : Math.floor(width * .61) - 34;
-  const days = data.activity.filter((day) => isValidIsoDate(day.date)).sort((left, right) => left.date.localeCompare(right.date)).slice(-MAX_ACTIVITY_DAYS);
-  const grid = calendarGrid(days);
-  const columns = grid.columns;
-  const columnGap = columns > 70 ? 1 : 2;
-  const cell = Math.max(2, Math.min(7, Math.floor((heatmapWidth - Math.max(0, columns - 1) * columnGap) / columns)));
-  const heatmapActualWidth = columns * cell + Math.max(0, columns - 1) * columnGap;
-  out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION DENSITY", t, 9);
-  const peakKnown = Number.isFinite(data.peakDay.count);
-  const peakDateKnown = isValidIsoDate(data.peakDay.date);
-  const peakDate = peakDateKnown ? truncateText(data.peakDay.date, 10) : "";
-  const peakLabel = peakKnown && peakDateKnown
-    ? `${formatNumber(data.peakDay.count, false)} PEAK · ${peakDate}`
-    : peakKnown
-      ? `${formatNumber(data.peakDay.count, false)} PEAK · date unavailable`
-      : peakDateKnown
-        ? `peak unavailable · ${peakDate}`
-        : "peak unavailable";
+  out += numeral(heatmapLeft, heatmapTop - 14, 1, "CONTRIBUTION CALENDAR", t, 9);
+  const peakLabel = calendar.peak ? `${formatNumber(calendar.peak.count, false)} PEAK` : "peak unavailable";
   out += mono(heatmapLeft + heatmapWidth, heatmapTop - 14, peakLabel, 8.5, t.muted, 500, "end", 0.1);
-  const heatmapPaths = new Map<string, string[]>();
-  grid.cells.forEach(({ day, column, row }) => {
-    const level = Number.isFinite(day.level) ? Math.max(0, Math.min(4, Math.round(day.level as number))) : day.count > 0 ? 2 : 0;
-    const x = heatmapLeft + column * (cell + columnGap);
-    const y = heatmapTop + row * (cell + 2);
-    const fill = densityFill(level, t);
-    const paths = heatmapPaths.get(fill) ?? [];
-    paths.push(`M${x} ${y}h${cell}v${cell}H${x}Z`);
-    heatmapPaths.set(fill, paths);
-  });
-  out += [...heatmapPaths.entries()].map(([fill, paths]) => `<path class="atlas-cell" fill="${fill}" d="${paths.join("")}"/>`).join("");
+  out += `<g aria-hidden="true">${renderContributionCells(grid.cells.map(({ day, column, row }) => ({ date: day.date, count: day.count, x: heatmapLeft + column * (cell + columnGap), y: heatmapTop + row * (cell + 2) })), cell, t, "atlas-cell")}</g>`;
+  out += ambient.fragment;
   const heatmapBottom = heatmapTop + 7 * (cell + 2);
-  out += mono(heatmapLeft, heatmapBottom + 13, windowFrom, 8, t.muted, 500, "start", 0.08);
-  out += mono(heatmapLeft + heatmapActualWidth, heatmapBottom + 13, windowTo, 8, t.muted, 500, "end", 0.08);
-  // The key sits under the grid it explains, so the ramp never needs to be inferred.
-  const densityKeyX = Math.max(heatmapLeft, heatmapLeft + heatmapActualWidth - 118);
-  out += `<g aria-hidden="true">${densityKey(densityKeyX, heatmapBottom + 22, t, 6)}</g>`;
+  out += mono(heatmapLeft, heatmapBottom + 11, calendar.from, 8, t.muted, 500, "start", 0.08);
+  out += mono(heatmapLeft + heatmapWidth, heatmapBottom + 11, calendar.to, 8, t.muted, 500, "end", 0.08);
+  const compactCalendarSummary = calendar.total === null ? "Calendar summary unavailable" : `${formatNumber(calendar.total)} total · ${calendar.active} active · ${calendar.density!.toFixed(1)}% · ${formatNumber(calendar.average!)} / day`;
+  out += mono(heatmapLeft, heatmapBottom + 25, compactCalendarSummary, 8, t.muted, 500, "start", 0);
+  out += densityKey(heatmapLeft, heatmapBottom + 35, heatmapWidth, t);
 
   const breakdownX = narrow ? 24 : Math.floor(width * .64);
-  const breakdownY = narrow ? 290 : 144;
+  const breakdownY = narrow ? 322 : 144;
   const breakdownWidth = width - breakdownX - 24;
   // One ink for all four rows. The bar's LENGTH is the variable, so its colour is free to stay
   // constant — and holding it constant is what stops this panel handing the reader a second,
@@ -2064,7 +2078,7 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
     out += mono(width - 24, y + 8, atlasBreakdownValue(value, data.breakdownBasis), 9, t.text, 600, "end", 0.04);
   });
 
-  const footerTop = narrow ? 408 : 282;
+  const footerTop = narrow ? 440 : 282;
   out += `<line x1="22" y1="${footerTop - 12}" x2="${width - 22}" y2="${footerTop - 12}" stroke="${t.border}"/>`;
   const trendX = 24;
   const trendWidth = narrow ? Math.floor((width - 60) * .58) : Math.floor(width * .34);
@@ -2090,8 +2104,9 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
   out += text(rhythmX, footerTop + 2, "RHYTHM", 10, t.muted, 700);
   out += text(rhythmX, footerTop + 27, rhythmScoreKnown ? `${Math.round(finite(data.rhythm.score))}/100` : "unavailable", rhythmScoreKnown ? 23 : 12, t.text, rhythmScoreKnown ? 780 : 700);
   // The band is a function of the score, so it is withheld with it, as the evidence record withholds its band.
-  const rhythmBand = rhythmScoreKnown ? `${rhythmLevel.toUpperCase()} · PERSONAL CONSISTENCY` : "UNAVAILABLE · PERSONAL CONSISTENCY";
+  const rhythmBand = rhythmScoreKnown ? rhythmLevel.toUpperCase() : "UNAVAILABLE";
   out += mono(rhythmX, footerTop + 43, rhythmBand, 7.5, t.muted, 600, "start", 0.08);
+  out += mono(rhythmX, footerTop + 54, "PERSONAL CONSISTENCY", 7.5, t.muted, 600, "start", 0.08);
 
   const detailX = narrow ? 24 : Math.floor(width * .60);
   const detailY = narrow ? footerTop + 78 : footerTop;
@@ -2129,8 +2144,8 @@ export function renderAtlasCard(data: AtlasCardData, options?: RenderOptions): s
       : text(detailX, detailY + 53, "Project health unavailable", 9, t.muted, 550);
   // pulseTimestampValue rejects a non-timestamp and an impossible calendar day. Do not print the raw string.
   const generatedLabel = pulseTimestampValue(data.generatedAt) !== null ? truncateText(data.generatedAt, 25) : "unavailable";
-  out += text(width - 22, height - 10, `Generated ${generatedLabel} · longest streak is window-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
-  return out + svgEnd();
+  out += text(width - 22, height - 10, `Generated ${generatedLabel} · longest streak is history-bounded · rhythm is not a GitHub rank`, 8, t.muted, 500, "end");
+  return finishDensityCard(out + svgEnd(), ambient);
 }
 
 export const renderProfile = renderProfileCard;
@@ -2144,7 +2159,7 @@ export const renderRhythm = renderRhythmCard;
 export const renderAtlas = renderAtlasCard;
 
 
-/** Inspect only this renderer's legacy motion grammar, not arbitrary CSS or browser playback.
+/** Inspect the renderer's compiler and compatibility motion grammars, not browser playback.
  * Unknown motion fails closed so a future renderer change must update its receipt contract too.
  * No SVG bytes are changed, and multiple matching classes on one node count as one target.
  */
@@ -2156,6 +2171,13 @@ export function measureCardMotion(output: string, kind: string): {
   }
   const document = parseSceneXml(output);
   if (document.root.name !== "svg") throw new Error("Card motion contract requires SVG");
+  if (document.nodes.some(node => /(?:animation|transition)/iu.test(node.attrs.style ?? ""))) throw new Error("Unsupported card motion contract or stylesheet");
+  const density = measureDensityMotion(document, kind);
+  if (density && density.counters.animatedElements > 0) return {
+    bytes: new TextEncoder().encode(output).length,
+    animatedElements: density.counters.animatedElements,
+    loopingGroups: density.counters.loopingGroups,
+  };
   const styles = document.nodes.filter(node => node.name === "style");
   const expectedStyle = kind === "atlas" ? atlasMotionStyle("subtle") : cardMotionStyle("subtle");
   if (styles.length > 1 || styles.some(node => node.raw !== expectedStyle) ||

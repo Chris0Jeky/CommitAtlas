@@ -180,6 +180,20 @@ export function contributionCalendarDays(input: unknown): ContributionDay[] {
   return parseContributionCalendar(input).days;
 }
 
+export const CONTRIBUTION_DISPLAY_DAYS = 365;
+
+/**
+ * Select a single year for calendar presentation without shortening the history
+ * used for streaks and other metrics. Bounds follow the latest observed UTC date,
+ * not the wall clock; missing dates remain missing rather than becoming zeros.
+ */
+export function selectContributionDisplayCalendar(input: unknown): ContributionCalendar {
+  const calendar = parseContributionCalendar(input);
+  const last = calendar.days.at(-1)!;
+  const first = addUtcDays(last.date, -(CONTRIBUTION_DISPLAY_DAYS - 1));
+  return { ...calendar, days: calendar.days.filter((day) => day.date >= first) };
+}
+
 /**
  * Automatic windows grow back over observed history instead of taking a fixed
  * size: the window spans from the earliest active day through `asOf`, clamped

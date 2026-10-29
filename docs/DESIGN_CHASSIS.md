@@ -165,16 +165,18 @@ all animation and the result is a complete page, not a degraded one.
 
 The card renderer now shares the four-profile vocabulary `none | subtle | ambient | cinematic`.
 Hosted URLs and the Studio expose `none | subtle | ambient`; static/package callers may also select
-`cinematic`. This slice changes the contract rather than the visuals: `subtle`, `ambient`, and
-`cinematic` remain byte-identical, transform-only load motion, while `none` remains still.
+`cinematic`. Atlas and Activity now differentiate `ambient`: a scan follows the calendar gaps,
+a compass ornament turns, and the Atlas adds a seven-second beam on the header separator.
+Their stale, unavailable, empty and all-zero views remain still. Other cards retain the compatible
+transform-only entrance; `none` remains a complete still view everywhere.
 
-The additive `MotionPlan` compiler now encodes M1/M3–M7 in CSS and SMIL without applying them to
-existing cards. M3 stagger is 400 ms/14 ms; M4/M5/M6 remain 4.5/2.4/7 s. Decorative-only scale,
+The `MotionPlan` compiler encodes M1/M3–M7 in CSS and SMIL and now supplies Atlas/Activity ambient
+output. M3 stagger is 400 ms/14 ms; M4/M5/M6 remain 4.5/2.4/7 s. Decorative-only scale,
 opacity, rotation, and path motion preserve underlying readings. README loops are bounded to
 45 seconds with fill none/remove; CSS supplies a reduced-motion override and SMIL requires a static
 twin. Per-target backend defaults remain provisional until #113 completes the matrix.
-The [expansion programme](./EXPANSION_PLAN.md) will differentiate the renderer compatibility
-profiles only after github.com `<img>` evidence supports that backend.
+The [density guide](./CONTRIBUTION_DENSITY.md) distinguishes direct-image browser evidence from
+the separate, still-incomplete github.com/Camo transport matrix.
 Any new motion ref a scene introduces is recorded in the table here as M10 onward.
 
 ## Where this departs from the handoff
@@ -210,18 +212,21 @@ the reader's page rather than part of it.
 
 ### The density ramp
 
-One hue at four steps, plus a neutral socket for a day with nothing observed.
+The owner's 29 October brief replaces the single relative ramp on Atlas and Activity with absolute
+daily bands: copper squares for 1–200, gold squares with one cut corner for 201–700, violet squares
+with two cut corners for 701–1500, and one of six original vector glyphs above 1500. Each band has
+four ordered shades. Numeric keys and shape differences carry the tier boundary independently of
+hue; a neutral socket means observed zero, while an invalid count receives an unavailable mark.
 
-Never four hues. Hue carries no order — nothing about orange, green and yellow says *more* — and
-the ramp this replaced also borrowed `accent`, `positive` and `warning`, which are the three colours
-the contribution mix prints one panel to the right. A square's colour therefore named a category it
-did not mean. In greyscale that ramp inverted between levels 3 and 4, so it failed outright for
-anyone reading without colour.
+`packages/svg/src/density.ts` owns thresholds, palettes, shape paths and deterministic date-based
+glyph selection. The same date retains its glyph through theme and count updates while it remains
+above the threshold. The old theme-level `density` ramp remains available to other consumers;
+upstream relative intensity levels no longer determine these two cards' cell colours.
 
-`densityFill` is the only place a level becomes a colour, and a non-finite level resolves to the
-socket rather than indexing past the end of the ramp: an unreadable signal must never paint as the
-busiest day. `svg.test.mjs` asserts monotonic luminance, a ≥1.25× separation at every step, and that
-no step collides with the mix ink or a status colour.
+Regression checks cover every threshold, invalid counts, per-band luminance order and at least
+3:1 contrast against the card surface, date-stable glyphs and full-year byte budgets. The calendar
+and its summary use at most the latest 365 observed civil dates; history/streak metrics keep their
+full supplied window. Exact observed date/count values remain in the accessible SVG description.
 
 The direction follows the ground. On a dark card more activity is **brighter**; on a light card it
 is **darker**. The socket stays neutral either way, because a pale tint of the activity colour reads

@@ -21,6 +21,10 @@ import {
 } from "../dist/index.js";
 import { aggregateLanguages } from "../../core/dist/index.js";
 import { deliveryFixture } from "./delivery.fixture.mjs";
+import { parseSceneXml } from "../dist/scene-svg.js";
+import { CONTRIBUTION_DENSITY_PALETTES } from "../dist/density.js";
+const densityCells = output => parseSceneXml(output).nodes.filter(node => ["atlas-cell", "activity-cell"].includes(node.attrs.class));
+const densityCellCount = output => densityCells(output).reduce((sum, node) => sum + Number(node.attrs["data-cell-count"]), 0);
 
 const injection = `<img src=x onerror="alert(1)"><script>alert(2)</script>&"'\u0000\u0008\ud800`;
 
@@ -29,7 +33,11 @@ function assertSafeSvg(output, { allowStyle = false, budget = 30_000 } = {}) {
   assert.match(output, /aria-label="[^"]+"/);
   assert.match(output, /<title>/);
   assert.match(output, /<desc>/);
-  assert.doesNotMatch(output, /\bid=/);
+  const ids = parseSceneXml(output).nodes.filter(node => node.attrs.id).map(node => node.attrs.id);
+  if (output.includes('data-density-motion="')) {
+    assert.equal(new Set(ids).size, ids.length);
+    assert.ok(ids.every(id => /^ca-\d+-[A-Za-z][A-Za-z0-9_-]*-\d+-(?:atlas|activity)-density-/u.test(id)));
+  } else assert.equal(ids.length, 0);
   assert.match(output, /viewBox="0 0 \d+ \d+"/);
   assert.match(output, /<\/svg>$/);
   const forbiddenPatterns = [/<script/i, /<foreignObject/i, /<image/i, /\bon[a-z]+\s*=\s*["']/i, /javascript:/i, /data:/i];
@@ -110,7 +118,8 @@ test("every standalone card supports subtle motion with a reduced-motion fallbac
   ];
   for (const render of renderers) {
     const animated = render("subtle");
-    assert.equal(render("ambient"), animated);
+    if (animated.includes('data-density-motion="')) assert.notEqual(render("ambient"), animated);
+    else assert.equal(render("ambient"), animated);
     assert.equal(render("cinematic"), animated);
     assert.match(animated, /@keyframes card-enter/);
     assert.match(animated, /prefers-reduced-motion:reduce/);
@@ -288,20 +297,21 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
 
   assertSafeSvg(staticAtlas);
   assertSafeSvg(animatedAtlas, { allowStyle: true });
-  assert.equal(ambientAtlas, animatedAtlas);
+  assert.notEqual(ambientAtlas, animatedAtlas);
+  assert.match(ambientAtlas, /repeatDur="45s"/);
   assert.equal(cinematicAtlas, animatedAtlas);
   assertSafeSvg(narrowAtlas);
-  assert.match(staticAtlas, /CONTRIBUTION DENSITY/);
+  assert.match(staticAtlas, /CONTRIBUTION CALENDAR/);
   assert.match(staticAtlas, /CONTRIBUTION MIX/);
   assert.match(staticAtlas, /Commits/);
   assert.match(staticAtlas, /Pull requests/);
   assert.match(staticAtlas, /RHYTHM/);
   assert.match(staticAtlas, /not a GitHub rank/);
-  assert.match(staticAtlas, /longest streak is window-bounded/);
+  assert.match(staticAtlas, /longest streak is history-bounded/);
   assert.match(staticAtlas, />30\+d<\/text>/);
   assert.match(staticAtlas, /at least 30 day current streak/);
   assert.match(animatedAtlas, /prefers-reduced-motion:reduce/);
-  assert.doesNotMatch(animatedAtlas, /@import|url\s*\(/i);
+  assert.doesNotMatch(animatedAtlas, /@import|url\s*\((?!#)/i);
   // Chromium never runs CSS animations when the SVG arrives through <img> (GitHub's README
   // pipeline). Fill-mode "both"/"backwards" would pin such a renderer to the `from` state, so
   // motion must use fill-mode none (a delay keeps animating renderers from flashing), and no
@@ -309,7 +319,7 @@ test("atlas card composes density, breakdown, trend, bounded streak, and honest 
   assert.doesNotMatch(animatedAtlas, /from\{[^}]*opacity/);
   assert.doesNotMatch(animatedAtlas, /from\{[^}]*scale/);
   assert.doesNotMatch(animatedAtlas, /\bboth\b|backwards/);
-  assert.match(narrowAtlas, /viewBox="0 0 420 570"/);
+  assert.match(narrowAtlas, /viewBox="0 0 420 608"/);
 
   const publicProfileAtlas = renderAtlasCard({
     ...data,
@@ -334,10 +344,9 @@ test("atlas heatmap uses GitHub weekday geometry and labels an open-day streak h
     currentStreak: 3,
     currentStreakThrough: "2026-08-22",
   }), { theme: "ember", motion: "none" });
-  assert.match(output, /<path class="atlas-cell" fill="#5c2a17" d="M24 190h7v7H24Z"\/>/);
-  assert.match(output, /<path class="atlas-cell" fill="#ff7a45" d="M24 199h7v7H24Z"\/>/);
-  assert.match(output, /<path class="atlas-cell" fill="#97431f" d="M24 208h7v7H24Z"\/>/);
-  assert.match(output, /<path class="atlas-cell" fill="#d05e2f" d="M33 154h7v7H33Z"\/>/);
+  const cells = densityCells(output);
+  assert.equal(cells.find(cell => cell.attrs["data-density-band"] === "violet").attrs.d, "M26 190h5v5l-2 2h-5v-5z");
+  assert.equal(cells.find(cell => cell.attrs["data-density-band"] === "copper").attrs.d, "M24 199h7v7h-7zm0 9h7v7h-7zm9 -54h7v7h-7z");
   assert.match(output, />STREAK TO 08-22<\/text>/);
   assert.doesNotMatch(output, /\sx="-/);
   assert.match(output, /3 day current streak through 2026-08-22/);
@@ -426,71 +435,33 @@ test("activity dates are valid, bounded, and full supported windows stay below 3
     assert.ok(bytes < 30_000, `${label} SVG exceeded budget (${bytes} UTF-8 bytes)`);
   }
   assert.match(activity366, /<desc>[^<]*2026-01-01 5/);
-  assert.match(escapedOutputs[0][1], /<desc>[^<]*2025-01-01 100,000/);
-  assert.match(escapedOutputs[2][1], /<desc>[^<]*2025-01-01 100,000/);
-  assert.match(escapedOutputs[0][1], /2025-01-01 100,000/);
+  assert.match(escapedOutputs[0][1], /<desc>[^<]*2025-01-02 100,000/);
+  assert.match(escapedOutputs[2][1], /<desc>[^<]*2025-01-02 100,000/);
+  assert.match(escapedOutputs[0][1], /2025-01-02 100,000/);
   assert.doesNotMatch(activity366, /2025-02-29: 99 contributions|not-a-date/);
   // Still bounded — the label just follows the section numeral now.
   assert.match(activity364, />01 \/\/ P{31}…<\/text>/);
 });
 
-test("full two-year activity windows render every day inside the card", () => {
-  const days = Array.from({ length: 731 }, (_, index) => ({
-    date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10), count: 100000,
-  }));
-  // Static compact generation renders activity at 480px, so the grid must fit
-  // every allowed width — not just the 720 default.
-  for (const widthOption of [720, 560, 480, 420]) {
-    const output = renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }, { width: widthOption });
-    // Worst-case two-year activity (maxed counts) holds a measured 56KB budget:
-    // the same adversarial input measures 48,271 bytes (15% headroom).
-    assertSafeSvg(output, { budget: 56_000 });
-    const width = Number(/width="(\d+)"/.exec(output)?.[1]);
-    assert.equal(width, widthOption);
-    let right = 0;
-    let cells = 0;
-    for (const match of output.matchAll(/M(\d+) (\d+)h(\d+)v\d+H\d+/g)) {
-      cells += 1;
-      right = Math.max(right, Number(match[1]) + Number(match[3]));
-    }
-    assert.equal(cells, 731);
-    assert.ok(right < width, `width-${widthOption} grid overflows: ${right} of ${width}`);
+test("long activity histories display the latest year inside every supported width", () => {
+  const days = Array.from({ length: 731 }, (_, index) => ({ date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10), count: 100000 }));
+  for (const width of [720, 560, 480, 420]) {
+    const output = renderActivityCard({ days, source: "synthetic-demo" }, { width });
+    assertSafeSvg(output); assert.equal(densityCellCount(output), 365);
+    const grid = parseSceneXml(output).nodes.find(node => node.attrs["data-density-motion"] === "activity");
+    assert.ok(Number(grid.attrs["data-motion-left"]) + Number(grid.attrs["data-motion-width"]) + 15 < width);
+    assert.match(output, /2025-01-01/); assert.match(output, /2025-12-31/); assert.doesNotMatch(output, /2024-01-01/);
   }
-  assert.match(renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }), /2024-01-01/);
-  assert.match(renderActivityCard({ days, windowDays: 731, source: "synthetic-demo" }), /2025-12-31/);
 });
 
-test("full two-year atlas windows render every day inside the card", () => {
-  const activity = Array.from({ length: 731 }, (_, index) => ({
-    date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10),
-    count: 100000,
-    level: 4,
-  }));
-  const data = atlasFixture({
-    activity,
-    window: { from: activity[0].date, to: activity.at(-1).date, days: 731 },
-    total: 73100000, activeDays: 731, density: 100, averagePerDay: 100000,
-    currentStreak: 731, longestStreak: 731,
-    peakDay: { date: activity[11].date, count: 100000 },
-  });
-  for (const widthOption of [860, 560]) {
-    const output = renderAtlasCard(data, { width: widthOption });
-    assertSafeSvg(output);
-    const width = Number(/width="(\d+)"/.exec(output)?.[1]);
-    assert.equal(width, widthOption);
-    // Same-fill cells share one batched path: count the subpaths, not the elements.
-    const batched = [...output.matchAll(/<path class="atlas-cell"[^>]*d="([^"]*)"/g)];
-    assert.ok(batched.length >= 1, "atlas heatmap has no batched cell paths");
-    const cells = batched.flatMap((path) => [...path[1].matchAll(/M(-?\d+) (-?\d+)h(\d+)v(\d+)H-?\d+Z/g)]);
-    assert.equal(cells.length, 731);
-    for (const cell of cells) {
-      assert.ok(Number(cell[1]) >= 0, `atlas width-${widthOption} cell has a negative x`);
-      const right = Number(cell[1]) + Number(cell[3]);
-      const bottom = Number(cell[2]) + Number(cell[4]);
-      assert.ok(right <= width + 0.5, `atlas width-${widthOption} cell overflows horizontally`);
-      const height = Number(/height="(\d+)"/.exec(output)?.[1]);
-      assert.ok(bottom <= height + 0.5, `atlas width-${widthOption} cell overflows vertically`);
-    }
+test("long Atlas histories keep history metrics while displaying only one calendar year", () => {
+  const activity = Array.from({ length: 731 }, (_, index) => ({ date: new Date(Date.UTC(2024, 0, 1 + index)).toISOString().slice(0, 10), count: 100000, level: 4 }));
+  const data = atlasFixture({ activity, window: { from: activity[0].date, to: activity.at(-1).date, days: 731 }, total: 73100000, activeDays: 731, density: 100, averagePerDay: 100000, currentStreak: 731, longestStreak: 731, peakDay: { date: activity[11].date, count: 100000 } });
+  for (const width of [860, 560]) {
+    const output = renderAtlasCard(data, { width }); assertSafeSvg(output); assert.equal(densityCellCount(output), 365);
+    assert.match(output, /OBSERVED HISTORY · 731D/); assert.match(output, />731d<\/text>/); assert.match(output, /Displayed calendar 2025-01-01 to 2025-12-31/);
+    const grid = parseSceneXml(output).nodes.find(node => node.attrs["data-density-motion"] === "atlas");
+    assert.ok(Number(grid.attrs["data-motion-left"]) + Number(grid.attrs["data-motion-width"]) + 15 < width);
   }
 });
 
@@ -498,41 +469,24 @@ test("activity accessibility summary belongs to the outer SVG description", () =
   const output = renderActivityCard({ days: [
     { date: "2026-08-19", count: 9 }, { date: "2026-08-18", count: 1 },
   ] });
-  assert.match(output, /<desc>A compact contribution activity map with text labels for accessible status\. Contributions by date, chronologically: 2026-08-18 1; 2026-08-19 9<\/desc>/);
+  assert.match(output, /<desc>A compact contribution activity map with text labels for accessible status\.[^<]*Contributions by date, chronologically: 2026-08-18 1; 2026-08-19 9<\/desc>/);
   assert.doesNotMatch(output, /<g role="group"/);
   assert.match(output, /2026-08-18 1; 2026-08-19 9/);
   assert.ok(output.indexOf("2026-08-18 1") < output.indexOf("2026-08-19 9"));
-  assert.match(output, /<g aria-hidden="true"><path fill=/);
+  assert.match(output, /<g aria-hidden="true"><path class="activity-cell"/);
 });
 
-test("activity cells preserve chronological DOM order across alternating intensities", () => {
-  const output = renderActivityCard({ days: [
-    { date: "2026-08-21", count: 9 }, { date: "2026-08-18", count: 0 },
-    { date: "2026-08-20", count: 5 }, { date: "2026-08-19", count: 1 },
-  ] }, { theme: "midnight" });
-  const paths = [...output.matchAll(/<path fill="([^"]+)" d="[^"]+"\/>/g)];
-  assert.equal(paths.length, 4);
-  assert.notEqual(paths[0][1], paths[1][1]);
-  assert.notEqual(paths[1][1], paths[2][1]);
-  assert.notEqual(paths[2][1], paths[3][1]);
-  assert.match(output, /<desc>[^<]*Contributions by date, chronologically: 2026-08-18 0; 2026-08-19 1; 2026-08-20 5; 2026-08-21 9<\/desc>/);
-  assert.ok(output.indexOf("2026-08-18 0") < output.indexOf("2026-08-19 1"));
-  assert.ok(output.indexOf("2026-08-19 1") < output.indexOf("2026-08-20 5"));
-  assert.ok(output.indexOf("2026-08-20 5") < output.indexOf("2026-08-21 9"));
+test("activity accessibility preserves chronological order while geometry is batched", () => {
+  const output = renderActivityCard({ days: [{ date: "2026-08-21", count: 900 }, { date: "2026-08-18", count: 0 }, { date: "2026-08-20", count: 500 }, { date: "2026-08-19", count: 100 }] }, { theme: "midnight" });
+  assert.equal(densityCellCount(output), 4); assert.equal(new Set(densityCells(output).map(cell => cell.attrs["data-density-band"])).size, 4);
+  assert.match(output, /Contributions by date, chronologically: 2026-08-18 0; 2026-08-19 100; 2026-08-20 500; 2026-08-21 900<\/desc>/);
 });
 
-test("activity cells use Sunday rows and preserve GitHub's supplied intensity levels", () => {
-  const output = renderActivityCard({ days: [
-    { date: "2026-08-20", count: 999, level: 1 },
-    { date: "2026-08-21", count: 1, level: 4 },
-    { date: "2026-08-22", count: 8, level: 2 },
-    { date: "2026-08-23", count: 7, level: 3 },
-  ] }, { theme: "ember" });
-  // Thursday, Friday, and Saturday remain in the first week column. Sunday begins the next one.
-  assert.match(output, /<path fill="#5c2a17" d="M40 118h11v11H40"\/>/);
-  assert.match(output, /<path fill="#ff7a45" d="M40 131h11v11H40"\/>/);
-  assert.match(output, /<path fill="#97431f" d="M40 144h11v11H40"\/>/);
-  assert.match(output, /<path fill="#d05e2f" d="M53 66h11v11H53"\/>/);
+test("activity cells use Sunday rows and fixed count bands independent of supplied levels", () => {
+  const output = renderActivityCard({ days: [{ date: "2026-08-20", count: 999, level: 1 }, { date: "2026-08-21", count: 1, level: 4 }, { date: "2026-08-22", count: 8, level: 2 }, { date: "2026-08-23", count: 7, level: 3 }] }, { theme: "ember" });
+  const cells = densityCells(output);
+  assert.equal(cells.find(cell => cell.attrs["data-density-band"] === "violet").attrs.d, "M43 118h8v8l-3 3h-8v-8z");
+  assert.equal(cells.find(cell => cell.attrs["data-density-band"] === "copper").attrs.d, "M40 131h11v11h-11zm0 13h11v11h-11zm13 -78h11v11h-11z");
   assertSafeSvg(output);
 });
 
@@ -906,8 +860,9 @@ test("atlas card bounds hostile direct-caller text at the package boundary", () 
   assertNoLoneSurrogate(astral);
   // Valid adapter-shaped values stay verbatim, so bounding never rewrites a truthful label.
   const valid = renderAtlasCard(atlasFixture(), { motion: "none" });
-  assert.match(valid, /RELENTLESS · PERSONAL CONSISTENCY/);
-  assert.match(valid, new RegExp(`365D · ${isoDaysAgo(0)}`));
+  assert.match(valid, />RELENTLESS<\/text>/);
+  assert.match(valid, />PERSONAL CONSISTENCY<\/text>/);
+  assert.match(valid, /OBSERVED HISTORY · 365D/);
   assert.doesNotMatch(valid, /…/);
 });
 
@@ -965,7 +920,8 @@ test("atlas card keeps non-finite direct-caller numerics out of the rendered SVG
   const coerced = renderAtlasCard(atlasFixture({ rhythm: { score: 44, level: 42 } }), { motion: "none" });
   assertSafeSvg(coerced);
   assertWellFormedXml(coerced);
-  assert.match(coerced, /42 · PERSONAL CONSISTENCY/);
+  assert.match(coerced, />42<\/text>/);
+  assert.match(coerced, />PERSONAL CONSISTENCY<\/text>/);
   assert.doesNotMatch(coerced, /undefined/);
 });
 
@@ -1296,22 +1252,9 @@ test("releases card deduplicates a large adversarial list within its output/time
   assert.match(output, />6 of 20000 shown</);
 });
 
-test("activity density clamps out-of-range finite levels to the ramp ends", () => {
-  const output = renderActivityCard({
-    days: [
-      { date: "2026-01-01", count: 5, level: 99 },
-      { date: "2026-01-02", count: 5, level: -2 },
-    ],
-  }, { theme: "ember" });
-  assertSafeSvg(output);
-  const fills = [...output.matchAll(/<path fill="([^"]+)" d="[^"]+"\/>/g)].map((match) => match[1]);
-  assert.equal(fills.length, 2);
-  assert.equal(fills[0], themes.ember.density[3]);
-  assert.equal(fills[0], "#ff7a45");
-  assert.equal(fills[1], themes.ember.socket);
-  assert.equal(fills[1], "#1c1f19");
-  assert.match(output, /<path fill="#ff7a45" d="/);
-  assert.match(output, /<path fill="#1c1f19" d="/);
+test("activity intensity hints cannot override the exact daily contribution count", () => {
+  const output = renderActivityCard({ days: [{ date: "2026-01-01", count: 5, level: 99 }, { date: "2026-01-02", count: 5, level: -2 }] }, { theme: "ember" }); assertSafeSvg(output);
+  const cells = densityCells(output); assert.equal(cells.length, 1); assert.equal(cells[0].attrs.fill, CONTRIBUTION_DENSITY_PALETTES.dark.copper[0]); assert.equal(Number(cells[0].attrs["data-cell-count"]), 2);
 });
 
 test("project board maps CI state to status dot colour", () => {
@@ -1385,29 +1328,16 @@ test("profile card omits the anchor for unsafe or missing websites", () => {
   assert.doesNotMatch(missing, /href=/);
 });
 
-test("activity density key prints LESS, five ember swatches, and MORE", () => {
-  const output = renderActivityCard({ days: [{ date: "2026-08-20", count: 3 }] }, { theme: "ember" });
-  assertSafeSvg(output);
-  assert.match(output, />LESS</);
-  assert.match(output, />MORE</);
-  assert.ok(output.indexOf(">LESS<") < output.indexOf(">MORE<"), "LESS must precede MORE in the key");
-  for (const fill of [themes.ember.socket, ...themes.ember.density]) {
-    assert.match(output, new RegExp(`fill="${fill}"`), `key must print swatch ${fill}`);
-  }
-  assert.equal(themes.ember.socket, "#1c1f19");
-  assert.deepEqual([...themes.ember.density], ["#5c2a17", "#97431f", "#d05e2f", "#ff7a45"]);
+test("numeric activity key is present with observations", () => {
+  const output = renderActivityCard({ days: [{ date: "2026-08-20", count: 3 }] }, { theme: "ember" }); assertSafeSvg(output);
+  for (const label of ["0", "1–200", "201–700", "701–1500", "1501+"]) assert.ok(output.includes(`>${label}</text>`));
+  for (const fill of [themes.ember.socket, ...["copper", "gold", "violet"].map(band => CONTRIBUTION_DENSITY_PALETTES.dark[band][3]), CONTRIBUTION_DENSITY_PALETTES.dark.special]) assert.ok(output.includes(`fill="${fill}"`));
 });
 
-test("activity density key still prints with no days", () => {
-  const output = renderActivityCard({ days: [] }, { theme: "ember" });
-  assertSafeSvg(output);
-  assert.match(output, />LESS</);
-  assert.match(output, />MORE</);
-  const swatches = output.match(/<rect[^>]*width="8" height="8"[^>]*>/g) ?? [];
-  assert.equal(swatches.length, 5);
-  for (const fill of ["#1c1f19", "#5c2a17", "#97431f", "#d05e2f", "#ff7a45"]) {
-    assert.match(output, new RegExp(`fill="${fill}"`));
-  }
+test("numeric activity key is present with no observations", () => {
+  const output = renderActivityCard({ days: [] }, { theme: "ember" }); assertSafeSvg(output);
+  for (const label of ["0", "1–200", "201–700", "701–1500", "1501+"]) assert.ok(output.includes(`>${label}</text>`));
+  for (const fill of [themes.ember.socket, ...["copper", "gold", "violet"].map(band => CONTRIBUTION_DENSITY_PALETTES.dark[band][3]), CONTRIBUTION_DENSITY_PALETTES.dark.special]) assert.ok(output.includes(`fill="${fill}"`));
 });
 
 test("languages card caps display at eight languages", () => {
@@ -1626,42 +1556,12 @@ test("atlas card prints Project health not configured when projects are absent",
   assert.doesNotMatch(unknown, /CI passing/);
 });
 
-test("atlas heatmap without a level uses the fallback density step for positive counts and the socket for zero", () => {
-  const fixed = {
-    window: { from: "2026-08-20", to: "2026-08-21", days: 2 },
-    peakDay: { date: "2026-08-20", count: 5 },
-    generatedAt: "2026-08-21T18:00:00.000Z",
-  };
-  const output = renderAtlasCard(atlasFixture({
-    ...fixed,
-    activity: [
-      { date: "2026-08-20", count: 5 },
-      { date: "2026-08-21", count: 0 },
-    ],
-  }), { theme: "aurora", motion: "none" });
-  assertSafeSvg(output);
-  assert.equal(themes.aurora.density[1], "#1a6b60");
-  assert.equal(themes.aurora.socket, "#101e2c");
-  assert.match(output, /<path class="atlas-cell" fill="#1a6b60"/);
-  assert.match(output, /<path class="atlas-cell" fill="#101e2c"/);
-  const explicit = renderAtlasCard(atlasFixture({
-    ...fixed,
-    activity: [
-      { date: "2026-08-20", count: 5, level: 4 },
-      { date: "2026-08-21", count: 0, level: 0 },
-    ],
-  }), { theme: "aurora", motion: "none" });
-  assertSafeSvg(explicit);
-  assert.match(explicit, /<path class="atlas-cell" fill="#58e6be"/);
-  assert.doesNotMatch(explicit, /<path class="atlas-cell" fill="#1a6b60"/);
-  const bad = renderAtlasCard(atlasFixture({
-    ...fixed,
-    activity: [
-      { date: "2026-08-20", count: Number.NaN },
-      { date: "not-a-date", count: 5 },
-    ],
-  }), { theme: "aurora", motion: "none" });
-  assertSafeSvg(bad);
-  assert.match(bad, /<path class="atlas-cell" fill="#101e2c"/);
-  assert.doesNotMatch(bad, /NaN/);
+test("Atlas count bands ignore intensity hints and keep unknown counts distinct from observed zero", () => {
+  const data = atlasFixture({ activity: [{ date: "2026-08-20", count: 5 }, { date: "2026-08-21", count: 0 }] });
+  const output = renderAtlasCard(data, { theme: "aurora", motion: "none" }); assertSafeSvg(output);
+  assert.equal(densityCells(output).find(cell => cell.attrs["data-density-band"] === "copper").attrs.fill, CONTRIBUTION_DENSITY_PALETTES.dark.copper[0]);
+  assert.equal(densityCells(output).find(cell => cell.attrs["data-density-band"] === "zero").attrs.fill, themes.aurora.socket);
+  assert.equal(output, renderAtlasCard({ ...data, activity: data.activity.map(day => ({ ...day, level: 4 })) }, { theme: "aurora", motion: "none" }));
+  const bad = renderAtlasCard({ ...data, activity: [{ date: "2026-08-20", count: NaN }, { date: "not-a-date", count: 5 }] }); assertSafeSvg(bad);
+  assert.equal(densityCellCount(bad), 1); assert.equal(densityCells(bad)[0].attrs["data-density-band"], "unavailable"); assert.match(bad, /20=unavailable/); assert.doesNotMatch(bad, /NaN/);
 });

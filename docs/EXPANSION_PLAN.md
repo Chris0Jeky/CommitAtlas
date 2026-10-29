@@ -141,9 +141,10 @@ Adapters stay where they are: `lib/svg-adapters.ts` for the hosted app and
 ## 5. Motion system
 
 **Source status:** #125's `MotionPlan` compiler is exported with CSS and SMIL backends and
-structural tests. The table below describes the target behaviors: existing cards still alias
-non-`none` profiles to Subtle, while registered scenes declare their own supported profiles and
-textures. Atlas adoption remains #126; other card textures remain under #111. Backend defaults
+structural tests. Atlas and Activity now compile real `ambient` decoration with bounded README
+playback and still companions. Other existing cards retain their Subtle compatibility output,
+while registered scenes declare their own supported profiles and textures. The broader #126/#127
+acceptance and transport evidence remain tracked individually. Backend defaults
 and budgets are explicitly provisional pending #113/#114, not proof of browser playback.
 
 ### 5.1 Profiles
@@ -312,7 +313,7 @@ its browser behavior verified.
 
 | Scene id | Family | Data basis | Focal motion / ambient texture | Notes |
 | --- | --- | --- | --- | --- |
-| *(atlas, ambient)* | instrument | existing `AtlasCardData` | M3 density scan / M6 survey beam, M4 reticle breathe | Open #126; current cards retain compatibility motion |
+| *(atlas, ambient)* | instrument | existing `AtlasCardData` | M3 density scan / M6 survey beam and rotating compass ornament | Bounded README implementation added on 2026-10-29; #126 remains open for Studio target behavior, narrow-grid scan acceptance and transport qualification |
 | *(standalone cards, ambient)* | instrument | existing card data | one texture each: plotter head (activity), needle settle (rhythm), pending pulse (projects), beam (profile) | Open under #111; each card keeps its exact geometry |
 | `identity-beacon` | scene | `identity` config + configured projects + freshness | survey beam crossing the field / matched project bodies breathing | Qualified #134, static-only; bounded identity and up to three matched bodies; `none`, `ambient`, `cinematic`. [Receipt](./IDENTITY_BEACON_EVIDENCE.md): 864 measured layouts and 20 CSS/SMIL playback/control rows; one-shot cinematic introduction with a delayed 12-second beam cycle; #113 transport remains separate |
 | `evidence-coverage` | instrument | contribution source and basis, per-project CI state, `releaseState`, freshness mode | scan illuminates available rows and leaves unavailable rows dark | Implemented #133, hosted + static; observed coverage and neutral unavailable rows |

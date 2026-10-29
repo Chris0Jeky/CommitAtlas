@@ -8,7 +8,11 @@ import { PUBLICATION_PHASES, planPublicationRecovery, validatePublicationJournal
 
 const before = { sha256: "a".repeat(64), bytes: 96 * 1024 };
 const after = { sha256: "b".repeat(64), bytes: 96 * 1024 };
-const fixedNames = [...STATIC_CARD_NAMES.map(name => `${name}.svg`), "atlas-compact.svg", "atlas-wide.svg", "projects.json", "projects.md", "delivery.json"];
+const fixedNames = [
+  ...STATIC_CARD_NAMES.map(name => `${name}.svg`), "atlas-compact.svg", "atlas-wide.svg",
+  "atlas-still.svg", "atlas-compact-still.svg", "atlas-wide-still.svg", "activity-still.svg",
+  "projects.json", "projects.md", "delivery.json",
+];
 const replace = (name, previous = before, next = after) => ({ name, action: "replace", previous, next });
 const journal = (operations, targets = 1) => ({
   version: 1, generator: "CommitAtlas", transactionId: "tx-scene-capacity",
@@ -30,7 +34,7 @@ function observations(record, next) {
 
 test("recovery records cover full fixed output plus old and new scene inventories", () => {
   const operations = inventory();
-  assert.equal(operations.length, 81, "review capacity whenever the static inventory changes");
+  assert.equal(operations.length, 85, "review capacity whenever the static inventory changes");
   const record = journal(operations, 4);
   const encoded = encodePublicationJournal(record);
   assert.deepEqual(decodePublicationJournal(encoded), record);

@@ -236,7 +236,7 @@ test("specimenCards prints the demo readings and survives a boardless snapshot",
   assert.equal(byKind.get("profile")?.note, "24 REPOS · 312 FOLLOWERS · 487 STARS");
   assert.equal(byKind.get("rhythm")?.note, "72/100 · NOT A RANK");
   assert.equal(byKind.get("projects")?.note, "SIX HEALTH STATES · UNKNOWN ≠ FINE");
-  assert.deepEqual([byKind.get("atlas")?.width, byKind.get("atlas")?.height], [480, 570]);
+  assert.deepEqual([byKind.get("atlas")?.width, byKind.get("atlas")?.height], [480, 608]);
   assert.deepEqual([byKind.get("profile")?.width, byKind.get("profile")?.height], [720, 190]);
 
   // Boundary: with no declared board the tray still plates all eight cards from profile/metrics.
