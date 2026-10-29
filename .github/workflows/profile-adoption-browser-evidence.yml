@@ -28,9 +28,12 @@ jobs:
         browser: [chromium, firefox]
     env:
       PROFILE_ADOPTION_ENGINE: ${{ matrix.browser }}
-      PROFILE_ADOPTION_OUTPUT: ${{ runner.temp }}/profile-adoption-evidence
-      PLAYWRIGHT_PREFIX: ${{ runner.temp }}/profile-adoption-playwright
     steps:
+      - name: Initialize external evidence paths
+        run: |
+          printf 'PROFILE_ADOPTION_OUTPUT=%s\n' "$RUNNER_TEMP/profile-adoption-evidence" >> "$GITHUB_ENV"
+          printf 'PLAYWRIGHT_PREFIX=%s\n' "$RUNNER_TEMP/profile-adoption-playwright" >> "$GITHUB_ENV"
+
       - name: Check out exact evidence source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
