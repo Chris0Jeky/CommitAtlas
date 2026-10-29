@@ -36,7 +36,8 @@ There is no forced audit repair, dependency downgrade, new override, or audit
 threshold change. The existing `fflate@0.7.5` and `sharp@0.35.5` overrides remain.
 Workerd moves to the version selected by the patched Cloudflare parents. The
 plugin selects `ws@8.22.0`; Miniflare retains its own `ws@8.21.0` requirement.
-The lockfile also records npm 11's libc metadata for unchanged platform packages.
+The lockfile normalization also removes 18 libc metadata fields from unchanged
+platform packages; their versions and integrity hashes remain unchanged.
 
 The isolated candidate was produced with:
 
@@ -73,6 +74,11 @@ The Worker source does not import Miniflare or Wrangler. This source inspection
 does not turn npm's `dev` flag into a general claim that tooling cannot affect
 shipped code.
 
+The final local candidate Worker source map contains 82 source modules, with no
+Undici, Miniflare, or Wrangler source entry, and its generated external-import
+manifest is empty. `validation.json` binds this inspection to the local Worker
+bundle hash; it is not a claim about a deployed artifact.
+
 The separate Actions chain does enter the generated Action. `@actions/core`
 imports its OIDC helper, which imports `@actions/http-client`; that module imports
 Undici's `ProxyAgent`. The checked Action bundle contains Undici and EventSource
@@ -89,6 +95,11 @@ lockfile update does not replace Node's built-in implementation.
 ## Validation
 
 The candidate full and production-only audits are both clean, and the clean
-locked installation succeeds. The generated Action rebuild and full local gate
-are recorded in `validation.json` when complete. Hosted CI must qualify the exact
-published candidate before merge; this local receipt does not claim deployment.
+locked installation succeeds. `npm run check` passes all **2,058 tests** on the
+observed Node 24.22.1 / npm 11.9.0 runtime, including type generation, TypeScript,
+lint, all package/source suites, the rebuilt Action comparison, packaging, and
+100 built-product checks. The fresh Action bundle is 952,087 bytes with SHA-256
+`79a1194f1b5b2d4b4b617b5296f42e3407ebb2e2c7967a25818c5794ae15e03f`.
+`validation.json` records the exact local candidate and log hash. Hosted CI must
+qualify the published candidate before merge; this local receipt does not claim
+deployment.

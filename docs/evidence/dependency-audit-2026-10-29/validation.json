@@ -12,7 +12,45 @@
   "actionBuild": "passed",
   "fullGate": {
     "command": "npm run check",
-    "status": "running"
+    "status": "passed",
+    "exitCode": 0,
+    "finishedAt": "2026-10-29T02:22:49.071Z",
+    "nodeTestCounts": [
+      16,
+      59,
+      44,
+      12,
+      109,
+      41,
+      1,
+      368,
+      122,
+      686,
+      361,
+      31,
+      9,
+      4,
+      26,
+      100
+    ],
+    "vitestTestCounts": [
+      69
+    ],
+    "totalTests": 2058,
+    "logSha256": "d1971289a8058466d4d6c2e09f051dc1dfbba2c71312eaf4e80f0ef820e3b6ae",
+    "gitCandidateAtGate": "12ac4fb0388ee2897c23f63c9cd98acd4f9033c7"
   },
-  "hostedCI": "not yet run"
+  "hostedCI": {
+    "head": "5134e290dcf2ab40e60ca25508264734cdb54c58",
+    "run": "https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40805854932",
+    "conclusion": "success",
+    "scope": "Exact published candidate code before the final validation-receipt-only update"
+  },
+  "workerInspection": {
+    "sha256": "74f1a99224452833e9ee2047588f43708b5ed65bce8fc18e8ff77433cd32840b",
+    "sourceMapSources": 82,
+    "affectedDependencySources": [],
+    "externalImports": [],
+    "scope": "Local candidate build, not deployed Worker attestation"
+  }
 }
