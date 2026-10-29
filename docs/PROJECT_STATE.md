@@ -1,13 +1,54 @@
 # CommitAtlas project state
 
-Release/profile receipt last verified: 2026-10-29 (renderer #452 deployed; profile #21 refreshed successfully; scene adoption remains in progress)
+Release/profile receipt last verified: 2026-10-29 (producer #454 deployed; profile #23 and its automatic scene refresh passed; scoped browser acceptance is in progress)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
 
+## Profile scene adoption and browser acceptance — 2026-10-29
+
+[Profile #23](https://github.com/Chris0Jeky/Chris0Jeky/pull/23) merged as
+`7eb8a0251e7ca5cc21961b284f3755a0de264a84` after all 166 consumer tests, complete paired preview
+validation and independent review. It replaces the external header with Identity Beacon, places
+Evidence Coverage under the Atlas, and adds Activity Terrain to the generated-signals details.
+The existing written profile remains. Dark/light pictures select explicit still companions for
+reduced motion, and every owned SVG URL includes its manifest-derived fingerprint. The complete
+47-file preview was committed before merge, so a failed first refresh could not leave missing
+image sources.
+
+The automatic [Refresh 40814155674](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/40814155674)
+passed generation, complete 22-artifact-per-theme validation, catalog rendering, fingerprinting
+and publication. Its direct child commit `76b50e74b03a271813b1223eb454e133acd22f58` contains the
+paired `2026-10-29T03:48:06.689Z` snapshot, covering 730 observed days through 29 October.
+The Atlas grid stays at 365 cells and its current/longest streak is 596 days at this observation.
+[Main Tests 40814155663](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/40814155663) also passed.
+The existing fail-before-commit refresh ordering and last-good-snapshot preservation remain in
+place and have consumer regression coverage.
+
+The first real preview exposed the existing Beacon's broad rejection of a partial project board.
+[Producer #454](https://github.com/Chris0Jeky/CommitAtlas/pull/454), merged as `2177748`, now retains
+validated public issue/PR counts while visibly disclosing a partial snapshot; no matched counts
+are distinguished explicitly. CI/release health is not inferred from those counts. All source,
+timestamp, age/skew and count guards remain. The complete 2,140-test gate passes locally and in
+[exact-head CI 40812894109](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40812894109), with
+96 complete live/synthetic SVG controls independently unchanged. Density and Signature browser
+regressions also pass. [Main CI 40813346455](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40813346455)
+and [Deploy 40813633746](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40813633746) pass;
+the deployment passes all 21 checks against expected build `2177748`.
+
+The new read-only `profile-adoption-browser-evidence.yml` workflow qualifies the actual logged-out
+profile in pinned Chromium 143.0.7499.4 and Firefox 144.0.2. Its checked-in target binds the exact
+published profile commit and successful refresh, and it checks selected URL/body hashes, semantic
+readings, responsive geometry, stable DOM identity, measured ambient movement and exact still
+frames. The independent source review resolves responsive-width, wrong-card acceptance, refresh
+provenance and failed-response diagnostic gaps. Live capture acceptance remains pending at this
+source checkpoint; #144 stays open until the resulting receipts are recorded. This scope is dark
+desktop profile adoption, not the complete #113/#180 transport matrix or Lens/C1 publication.
+
 ## Static scene still companions — 2026-10-29
 
-The static source extends opt-in `reducedMotion` to every selected registered scene in each theme.
+[Producer #453](https://github.com/Chris0Jeky/CommitAtlas/pull/453), merged as `1f08d12`, extends
+opt-in `reducedMotion` to every selected registered scene in each theme.
 `scene-<id>.still.svg` shares the ordinary scene's snapshot and validated presentation inputs with
 `motion: "none"`; the dot separates companions from legal IDs ending in `-still`. The Action keeps
 `scenes` unchanged and exposes a separate `scene-stills` aggregate plus four explicit Atlas/Activity
@@ -22,7 +63,10 @@ in four themes; the per-generation inventory bound stays 96. Production remains 
 The [static delivery contract](./STATIC_GENERATOR_PLAN.md#registered-scene-delivery) records the
 filename, Action output and consumer-allowlist changes. This source checkpoint advances the
 producer prerequisite for #144; profile scene adoption and browser qualification remain separate.
-C1 publication stays disabled under Q-9 No.
+C1 publication stays disabled under Q-9 No. The uninterrupted [exact-head gate](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40811434261)
+passes 2,118 tests and both zero-finding audits; [main CI](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40811789100)
+and [Deploy 40812215014](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40812215014) also pass,
+including 21/21 checks against expected build `1f08d12`.
 
 ## Profile calendar, density and refresh work — 2026-10-29
 
@@ -743,22 +787,26 @@ implied by this producer checkpoint.
   shared value genuinely failed.
 
 - Eight selectable SVG card surfaces: Atlas, Profile, Streak, Breakdown, Rhythm, Activity, Languages,
-  and Projects, plus four hosted scenes and two static-only scenes listed in the current source
+  and Projects, plus four hosted scenes and three static-only scenes listed in the current source
   inventory above. The synthetic `/gallery` groups registered outputs by family.
-- Atlas combines an up-to-two-year density heatmap (7–730 days or `auto`, default 365), total and active days, average and peak, current and
-  window-bounded longest streaks, contribution mix, 28-day momentum, public-repository languages,
-  project health, and the transparent Rhythm score.
+- Atlas and Activity display at most the latest 365 civil dates ending at the actual observed date;
+  missing or future dates never become invented zero-count days. Density totals, active days,
+  density, average and peak describe that grid. The Atlas history summary and current/longest
+  streaks retain the full requested history (7–730 days or `auto`, default 365), alongside
+  contribution mix, 28-day momentum, public-repository languages, project health, and the
+  transparent Rhythm score.
 - Breakdown distinguishes exact categorized counts from GitHub public-profile percentages. Public
   percentages are visibly and accessibly labelled as annual profile-view data, not requested-window
   counts. Rhythm is explicitly a personal consistency signal, not a GitHub rank.
-- Wide 860x380 and compact 480x570 Atlas layouts plus responsive focused cards. Ember, Aurora,
+- Wide 860x380 and compact 480x608 Atlas layouts plus responsive focused cards. Ember, Aurora,
   Midnight, and Paper themes support hosted `motion=none|subtle|ambient`; package and static
-  callers additionally accept `cinematic`. This compatibility slice deliberately maps every
-  non-`none` card profile to the same transform-only Subtle motion, with essential content visible
-  at frame zero and a reduced-motion override. Defaults remain Atlas `subtle`, other hosted
-  cards `none`, and static generation `none`. The CSS/SMIL compiler already drives registered
-  scenes; differentiated card textures (#126 and remaining card work under #111) and
-  the GitHub/WebKit evidence gates (#113/#180) remain unfinished.
+  callers additionally accept `cinematic`. Atlas and Activity use compiler-backed ambient density
+  motion with SMIL by default; their `none`, stale, unavailable and zero-activity outputs remain
+  still. Their other profiles and the remaining cards retain compatibility motion, with essential
+  content visible at frame zero and a reduced-motion override. Defaults remain Atlas `subtle`,
+  other hosted cards `none`, and static generation `none`. Registered scenes also use the CSS/SMIL
+  compiler. Remaining motion criteria (#126/#127) and the GitHub/WebKit evidence gates (#113/#180)
+  remain unfinished; these source changes do not complete the broader #143 Phase 1 acceptance.
 - Responsive landing page and interactive Studio with synthetic and supported live-public modes,
   theme/layout/motion controls, bounded six-project configuration, lazy selected-card previews,
   provenance, errors, and copyable README Markdown.
