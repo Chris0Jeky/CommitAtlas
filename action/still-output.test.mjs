@@ -5,7 +5,7 @@ import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
@@ -25,7 +25,7 @@ function outputValue(outputs, name) {
   assert.ok(match, `the executed Action must set ${name}, including when it is empty`);
   return match[2];
 }
-async function execute({ changes = {}, dryRun = false, outputDir = "" } = {}, inspect) {
+async function execute({ changes = {}, dryRun = false, outputDir = "", unavailableOptional } = {}, inspect) {
   const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-action-stills-"));
   try {
     await exec("git", ["init", "-q"], { cwd: root, windowsHide: true });
@@ -35,7 +35,31 @@ async function execute({ changes = {}, dryRun = false, outputDir = "" } = {}, in
     const output = path.join(root, "outputs.txt"), summary = path.join(root, "summary.md");
     await writeFile(output, "");
     await writeFile(summary, "");
-    await exec(process.execPath, ["--import", new URL("./evidence-network.fixture.mjs", import.meta.url).href,
+    let networkFixture = new URL("./evidence-network.fixture.mjs", import.meta.url).href;
+    if (unavailableOptional) {
+      assert.ok(["ci", "release"].includes(unavailableOptional));
+      const fixture = path.join(root, "partial-network.mjs");
+      await writeFile(fixture, `import ${JSON.stringify(networkFixture)};
+const fallback = globalThis.fetch;
+const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
+const missing = ${JSON.stringify(unavailableOptional)};
+const head = "a".repeat(40);
+globalThis.fetch = async (input, init) => {
+  const url = new URL(input instanceof Request ? input.url : String(input));
+  if (new Headers(init?.headers).has("authorization")) throw new Error("Synthetic Action must not receive a credential");
+  if (url.origin === "https://api.github.com") {
+    if (url.pathname === "/repos/scene-demo/atlas") return json({ name: "atlas", private: false, default_branch: "main", stargazers_count: 0, forks_count: 0, open_issues_count: 17 });
+    if (url.pathname === "/repos/scene-demo/atlas/branches/main") return json({ name: "main", commit: { sha: head } });
+    if (url.pathname === "/repos/scene-demo/atlas/actions/workflows/ci.yml/runs") return missing === "ci" ? json({}, 403)
+      : json({ workflow_runs: [{ head_sha: head, status: "completed", conclusion: "success", updated_at: "2026-01-07T00:00:00Z", html_url: "https://github.com/scene-demo/atlas/actions/runs/1" }] });
+    if (url.pathname === "/repos/scene-demo/atlas/releases/latest" && missing === "release") return json({}, 403);
+  }
+  return fallback(input, init);
+};
+`);
+      networkFixture = pathToFileURL(fixture).href;
+    }
+    await exec(process.execPath, ["--import", networkFixture,
       fileURLToPath(new URL("./dist/index.js", import.meta.url))], {
       cwd: root, timeout: 20_000, windowsHide: true,
       env: { ...process.env, GITHUB_WORKSPACE: root, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary,
@@ -82,6 +106,36 @@ for (const layout of ["wide", "compact"]) test(`executed Action exposes ${layout
     for (const id of sceneIds) {
       assert.notEqual(manifests[0].artifacts.find(a => a.path === `scene-${id}.still.svg`).sha256,
         manifests[1].artifacts.find(a => a.path === `scene-${id}.still.svg`).sha256);
+    }
+  });
+});
+
+for (const missing of ["ci", "release"]) test(`executed Action retains Beacon and its still with truthful partial ${missing} evidence`, async () => {
+  await execute({ unavailableOptional: missing, changes: {
+    cards: [...base.cards, "projects"], projects: [{ ...base.projects[0], workflow: "ci.yml" }],
+  } }, async ({ root, primary, outputs }) => {
+    assert.deepEqual(JSON.parse(outputValue(outputs, "scenes")), scenePaths(primary, sceneIds, ".svg"));
+    assert.deepEqual(JSON.parse(outputValue(outputs, "scene-stills")), scenePaths(primary, sceneIds, ".still.svg"));
+    for (const directory of [primary, base.themes[0].outputDir]) {
+      const manifest = JSON.parse(await readFile(path.join(root, directory, "manifest.json"), "utf8"));
+      for (const suffix of [".svg", ".still.svg"]) {
+        const name = `scene-identity-beacon${suffix}`;
+        const body = await readFile(path.join(root, directory, name), "utf8");
+        assert.match(body, /<text\b[^>]*>PARTIAL SNAPSHOT · ISSUE\/PR COUNTS OBSERVED<\/text>/u);
+        assert.match(body, /Synthetic owner/u);
+        assert.match(body, /<text\b[^>]*>Atlas<\/text>/u);
+        assert.doesNotMatch(body, /identity-beacon: unavailable/u);
+        assert.match(body, /CI and release health are not represented/u);
+        const record = manifest.artifacts.find(artifact => artifact.path === name);
+        assert.equal(Buffer.byteLength(body), record.bytes);
+        assert.equal(hash(body), record.sha256);
+        if (suffix === ".still.svg") assert.doesNotMatch(body, /<style\b|<animate|<set\b/u);
+        else assert.match(body, /<animate/u);
+      }
+      const coverage = await readFile(path.join(root, directory, "scene-evidence-coverage.svg"), "utf8");
+      assert.match(coverage, missing === "ci" ? /CI: 1 UNAVAILABLE/u : /RELEASES: 1 UNAVAILABLE/u);
+      const catalog = JSON.parse(await readFile(path.join(root, directory, "projects.json"), "utf8"));
+      assert.equal(catalog.projects[0].ci.state, missing === "ci" ? "unavailable" : "passing");
     }
   });
 });

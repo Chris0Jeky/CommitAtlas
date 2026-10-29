@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as svg from '../dist/index.js';
 import { assertSceneContract, assertWellFormedXml, stripSceneMotion } from './scene-harness.mjs';
 import { sceneContext, sceneInputs } from './scene.fixture.mjs';
+import { parseSceneXml, sceneVisibleText } from '../dist/scene-svg.js';
 
 function project(name, issues) {
   return {
@@ -163,7 +164,7 @@ const invalidEvidence = [
   ['missing root freshness', value => { delete value.snapshot.freshness; }],
   ['unknown root mode', value => { value.snapshot.freshness.mode = 'fresh'; }],
   ['stale root', value => { value.snapshot.freshness.mode = 'stale'; }],
-  ['partial root', value => { value.snapshot.freshness.mode = 'partial'; }],
+  ['partial root with synthetic source', value => { value.snapshot.freshness.mode = 'partial'; }],
   ['missing root date', value => { delete value.snapshot.freshness.generatedAt; }],
   ['invalid root date', value => { value.snapshot.freshness.generatedAt = 'not-a-date'; }],
   ['impossible root date', value => { value.snapshot.freshness.generatedAt = '2026-02-30T00:00:00Z'; }],
@@ -176,7 +177,7 @@ const invalidEvidence = [
   ['missing project freshness', value => { delete value.snapshot.projects.freshness; }],
   ['unavailable project board with residual rows', value => { value.snapshot.projects.freshness.mode = 'unavailable'; }],
   ['stale project board with residual rows', value => { value.snapshot.projects.freshness.mode = 'stale'; }],
-  ['partial project board', value => { value.snapshot.projects.freshness.mode = 'partial'; }],
+  ['partial project board with synthetic source', value => { value.snapshot.projects.freshness.mode = 'partial'; }],
   ['unknown project mode', value => { value.snapshot.projects.freshness.mode = 'ready'; }],
   ['invalid project date', value => { value.snapshot.projects.freshness.generatedAt = '2026-01-14Tnot-a-time'; }],
   ['impossible project date', value => { value.snapshot.projects.freshness.generatedAt = '2026-02-30T00:00:00.000Z'; }],
@@ -226,6 +227,88 @@ test('beacon validates component clocks independently and attributes counts to t
   assert.equal(model.generatedAt, '2026-01-14T00:00:01.500Z');
   assert.equal(model.disclosure, 'public');
   assert.equal(render(value).unavailable, false);
+});
+
+function publicInputs(rootMode = 'live', boardMode = 'live') {
+  const value = inputs();
+  Object.assign(value.snapshot.freshness, { source: 'github-profile-html', mode: rootMode });
+  Object.assign(value.snapshot.projects.freshness, { source: 'github-rest', mode: boardMode });
+  return value;
+}
+
+for (const [rootMode, boardMode] of [['partial', 'live'], ['live', 'partial'], ['partial', 'partial']]) {
+  test(`beacon retains observed counts with explicit partial disclosure for ${rootMode} root / ${boardMode} board`, () => {
+    const value = publicInputs(rootMode, boardMode);
+    value.snapshot.projects.projects[0].ci = { state: 'unavailable', label: 'CI unavailable', workflow: 'ci.yml', url: null, checkedAt: null, headSha: null };
+    value.snapshot.projects.projects[1].releaseState = 'unavailable';
+    const original = JSON.stringify(value);
+    const model = definition().buildModel(value);
+    assert.notEqual(model.state, 'unavailable', 'partial optional signals do not erase valid repository counts');
+    assert.deepEqual(model.bodies.map(({ name, issues, size }) => ({ name, issues, size })), [
+      { name: 'Alpha', issues: 4, size: 1 }, { name: 'Beta', issues: 2, size: 0.5 },
+    ]);
+    assert.equal(model.source, 'github-rest');
+    assert.equal(model.generatedAt, value.snapshot.projects.freshness.generatedAt);
+    for (const layout of ['wide', 'compact']) {
+      const still = render(value, { layout });
+      assert.equal(still.unavailable, false);
+      assertWellFormedXml(still.svg);
+      assert.match(sceneVisibleText(parseSceneXml(still.svg).root), /PARTIAL SNAPSHOT · ISSUE\/PR COUNTS OBSERVED/u);
+      assert.match(still.svg, /CI and release health are not represented/u);
+      assert.match(still.svg, />OBSERVED</u);
+      assert.doesNotMatch(still.svg, />PASSING<|>HEALTHY<|<style|<animate/u);
+      for (const backend of ['css', 'smil']) for (const motion of ['ambient', 'cinematic']) {
+        const moving = render(value, { layout, backend, motion });
+        assert.equal(moving.unavailable, false);
+        assert.equal(stripSceneMotion(moving.svg), still.svg, 'partial disclosure and readings survive the exact still control');
+      }
+    }
+    assert.equal(JSON.stringify(value), original, 'rendering must not upgrade or rewrite the source evidence');
+  });
+}
+
+for (const emptyBoard of [true, false]) test(`partial disclosure distinguishes ${emptyBoard ? 'observed empty board' : 'all unmatched focus'} from matched counts`, () => {
+  const value = publicInputs('live', 'partial');
+  if (emptyBoard) value.snapshot.projects.projects = [];
+  else value.identity = svg.createIdentityConfig({ name: 'Ada', focus: ['Missing', 'Unmatched'] });
+  const model = definition().buildModel(value);
+  assert.deepEqual(model.bodies, []);
+  assert.deepEqual(model.unmatched, value.identity.focus);
+  for (const layout of ['wide', 'compact']) {
+    const still = render(value, { layout });
+    assert.equal(still.unavailable, false);
+    assert.match(sceneVisibleText(parseSceneXml(still.svg).root), /PARTIAL SNAPSHOT · NO MATCHED COUNTS/u);
+    assert.match(still.svg, /No matched project counts are shown; CI and release health are not represented/u);
+    assert.doesNotMatch(still.svg, /ISSUE\/PR COUNTS OBSERVED|Body size uses observed/u);
+    for (const backend of ['css', 'smil']) for (const motion of ['ambient', 'cinematic']) {
+      assert.equal(stripSceneMotion(render(value, { layout, backend, motion }).svg), still.svg);
+    }
+  }
+});
+
+for (const [name, change] of [
+  ['stale root', value => { value.snapshot.freshness.mode = 'stale'; }],
+  ['unavailable root', value => { value.snapshot.freshness.mode = 'unavailable'; }],
+  ['stale board', value => { value.snapshot.projects.freshness.mode = 'stale'; }],
+  ['unavailable board', value => { value.snapshot.projects.freshness.mode = 'unavailable'; }],
+  ['unknown root source', value => { value.snapshot.freshness.source = 'invented'; }],
+  ['unknown board source', value => { value.snapshot.projects.freshness.source = 'invented'; }],
+  ['invalid root date', value => { value.snapshot.freshness.generatedAt = '2026-02-30T00:00:00Z'; }],
+  ['invalid board date', value => { value.snapshot.projects.freshness.generatedAt = 'not-a-date'; }],
+  ['old board', value => { value.snapshot.projects.freshness.generatedAt = '2026-01-03T23:59:59.999Z'; }],
+  ['future board', value => { value.snapshot.projects.freshness.generatedAt = '2026-01-07T00:01:00.001Z'; }],
+  ['missing count', value => { delete value.snapshot.projects.projects[0].openIssuesAndPullRequests; }],
+  ['negative count', value => { value.snapshot.projects.projects[0].openIssuesAndPullRequests = -1; }],
+  ['fractional count', value => { value.snapshot.projects.projects[0].openIssuesAndPullRequests = 0.5; }],
+]) test(`partial mode does not bypass ${name} rejection`, () => {
+  const value = publicInputs('partial', 'partial');
+  change(value);
+  for (const motion of ['none', 'ambient', 'cinematic']) {
+    const result = render(value, { motion });
+    assert.equal(result.unavailable, true);
+    assert.equal(result.counters.animatedElements, 0);
+    assert.doesNotMatch(result.svg, />OBSERVED<|PARTIAL SNAPSHOT|<style|<animate/u);
+  }
 });
 
 test('beacon keeps genuinely observed zero issue counts available', () => {

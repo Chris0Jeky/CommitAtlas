@@ -156,6 +156,30 @@ containing markup. The injection case preserves the escaped literal, observed 2/
 project board's independent timestamp/source. This adapter evidence is separate from the synthetic
 direct-image browser matrix; both are needed for the static scene's acceptance.
 
+## Partial public observations
+
+A current public project board can be partial when an optional CI or latest-release lookup is
+unavailable even though GitHub supplied valid repository metadata and open-issue/PR counts.
+Beacon retains those observed counts when either the root or the board has public `partial`
+freshness. It prints `PARTIAL SNAPSHOT · ISSUE/PR COUNTS OBSERVED` in the reserved footer and
+explains in its accessible description that CI and release health are not represented. Other
+cards, Coverage, catalog records and the original snapshot keep their independent health states.
+An observed empty board or entirely unmatched focus list instead says `PARTIAL SNAPSHOT · NO
+MATCHED COUNTS`, with the same distinction in its accessible description.
+
+This does not relax the provenance or reading boundary: root and board still require known,
+consistent public sources and canonical UTC dates; board observations must remain within the
+existing 72-hour age and 60-second forward-skew bounds of the snapshot clock. Stale or unavailable
+observations, malformed counts and synthetic/public mode mismatches remain unavailable, with no
+observed badge or motion. Complete live and valid synthetic output retains its existing bytes.
+
+The source regressions exercise both partial inputs and the unchanged rejection boundaries.
+Mock public GitHub responses pass through the real client and assembly paths, and the executed
+Action covers both an unavailable CI lookup and an unavailable release lookup. Both themes retain
+the identity, counted bodies, partial disclosure and integrity-checked `none` companions. This
+extends the source and bundled-delivery contract; the earlier synthetic browser receipt above
+does not qualify the new partial footer or real-profile transport.
+
 ## Existing motion semantics and reduced-motion limit
 
 This repair preserves the current cinematic implementation: acquisition and body entrances are
