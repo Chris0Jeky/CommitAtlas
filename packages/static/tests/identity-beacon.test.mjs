@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -45,7 +46,8 @@ test('a configured identity with observed projects renders the beacon instead of
 const blockedBoards = [
   ['missing board', snapshot => { delete snapshot.projects; }],
   ['null board', snapshot => { snapshot.projects = null; }],
-  ...['unavailable', 'stale', 'partial'].map(mode => [mode, snapshot => { snapshot.projects.freshness.mode = mode; }]),
+  ...['unavailable', 'stale'].map(mode => [mode, snapshot => { snapshot.projects.freshness.mode = mode; }]),
+  ['partial mode with synthetic source', snapshot => { snapshot.projects.freshness.mode = 'partial'; }],
   ['malformed date', snapshot => { snapshot.projects.freshness.generatedAt = '2026-01-07Tinvalid'; }],
   ['unknown source', snapshot => { snapshot.projects.freshness.source = 'untrusted'; }],
   ['missing reading', snapshot => { delete snapshot.projects.projects[0].openIssuesAndPullRequests; }],
@@ -83,6 +85,58 @@ test('static generation attributes issue counts to the board clock and source', 
   assert.match(artifacts['scene-identity-beacon.svg'], /2026-01-07T00:00:01\.500Z/);
   assert.match(artifacts['scene-identity-beacon.svg'], /github-rest/);
   assert.doesNotMatch(artifacts['scene-identity-beacon.svg'], /github-profile-html/);
+});
+
+for (const missing of ['ci', 'release']) test(`real client ${missing} lookup failure preserves observed Beacon counts through paired publication`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'commitatlas-beacon-partial-'));
+  try {
+    const now = new Date('2026-01-07T00:00:00Z');
+    const head = 'a'.repeat(40);
+    const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
+    const fetchImpl = async input => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      assert.equal(url.origin, 'https://api.github.com');
+      if (url.pathname === '/repos/scene-demo/atlas') return json({ name: 'atlas', private: false, default_branch: 'main', stargazers_count: 0, forks_count: 0, open_issues_count: 17 });
+      if (url.pathname.endsWith('/releases/latest')) return json({}, missing === 'release' ? 403 : 404);
+      if (url.pathname.endsWith('/branches/main')) return json({ name: 'main', commit: { sha: head } });
+      if (url.pathname.endsWith('/actions/workflows/ci.yml/runs')) return missing === 'ci' ? json({}, 403)
+        : json({ workflow_runs: [{ head_sha: head, status: 'completed', conclusion: 'success', updated_at: now.toISOString(), html_url: 'https://github.com/scene-demo/atlas/actions/runs/1' }] });
+      assert.fail(`unexpected synthetic lookup: ${url.pathname}`);
+    };
+    const board = await new GitHubClient({ fetchImpl, now: () => now }).fetchProjects('scene-demo', ['atlas'], new Map([['atlas', 'active']]), new Map([['atlas', 'ci.yml']]));
+    assert.equal(board.freshness.mode, 'partial');
+    assert.equal(board.projects[0].openIssuesAndPullRequests, 17);
+    assert.equal(board.projects[0].ci.state, missing === 'ci' ? 'unavailable' : 'passing');
+    assert.equal(board.projects[0].releaseState, missing === 'release' ? 'unavailable' : 'none');
+    const profile = demoProfile('scene-demo', now), contributions = demoContributions('scene-demo', 7, now);
+    Object.assign(profile.freshness, { source: 'github-rest', mode: 'live' });
+    Object.assign(contributions.freshness, { source: 'github-graphql', mode: 'live' });
+    const snapshot = staticApi.assembleStaticPortfolio(profile, contributions, board);
+    assert.equal(snapshot.freshness.mode, 'live', 'real assembly retains the independently observed calendar state');
+    const original = JSON.stringify(snapshot);
+    const selected = config({ motion: 'ambient', reducedMotion: true, cards: ['profile', 'projects'], scenes: ['identity-beacon', 'evidence-coverage'],
+      projects: [{ ...raw.projects[0], workflow: 'ci.yml' }], themes: [{ theme: 'paper', outputDir: 'assets/commitatlas/light' }] });
+    const result = await staticApi.generateStaticFromSnapshot({ root, snapshot, config: selected });
+    for (const target of [result, ...result.variants]) {
+      for (const name of ['scene-identity-beacon.svg', 'scene-identity-beacon.still.svg']) {
+        const record = target.manifest.artifacts.find(item => item.path === name);
+        assert.ok(record);
+        const content = await readFile(path.join(target.outputDir, name), 'utf8');
+        assert.deepEqual(bodyLabels(content), ['Atlas']);
+        assert.match(sceneVisibleText(parseSceneXml(content).root), /PARTIAL SNAPSHOT · ISSUE\/PR COUNTS OBSERVED/u);
+        assert.doesNotMatch(content, /identity-beacon: unavailable/u);
+        assert.match(content, /github-rest/u);
+        assert.equal(Buffer.byteLength(content), record.bytes);
+        assert.equal(createHash('sha256').update(content).digest('hex'), record.sha256);
+        if (name.endsWith('.still.svg')) assert.doesNotMatch(content, /<style|<animate|<set\b/u);
+      }
+      const coverage = await readFile(path.join(target.outputDir, 'scene-evidence-coverage.svg'), 'utf8');
+      assert.match(coverage, missing === 'ci' ? /CI: 1 UNAVAILABLE/u : /RELEASES: 1 UNAVAILABLE/u);
+      const catalog = JSON.parse(await readFile(path.join(target.outputDir, 'projects.json'), 'utf8'));
+      assert.equal(catalog.projects[0].ci.state, missing === 'ci' ? 'unavailable' : 'passing');
+    }
+    assert.equal(JSON.stringify(snapshot), original, 'partial inputs stay unchanged for other consumers');
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('paired publication preserves the unavailable beacon in both manifests', async () => {

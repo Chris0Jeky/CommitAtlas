@@ -23,6 +23,7 @@ interface BeaconModel {
   readonly generatedAt: string;
   readonly source: string;
   readonly disclosure: 'public' | 'synthetic';
+  readonly partial?: true;
 }
 
 function num(value: number): string {
@@ -70,7 +71,7 @@ function issuesOf(project: ProjectSnapshot): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1_000_000 ? value : null;
 }
 /** Validate the UTC wire value rather than accepting Date.parse's rolled dates. */
-function observation(value: unknown): { time: number; source: string } | null {
+function observation(value: unknown): { time: number; source: string; partial: boolean } | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const stamp = record.generatedAt;
@@ -78,9 +79,9 @@ function observation(value: unknown): { time: number; source: string } | null {
   const normalized = stamp.includes('.') ? stamp.replace(/\.(\d+)Z$/u, (_, digits: string) => `.${digits.padEnd(3, '0')}Z`) : stamp.replace(/Z$/u, '.000Z');
   const time = Date.parse(stamp);
   if (!Number.isFinite(time) || new Date(time).toISOString() !== normalized) return null;
-  if (!(SOURCES as readonly unknown[]).includes(record.source) || (record.mode !== 'live' && record.mode !== 'demo')) return null;
+  if (!(SOURCES as readonly unknown[]).includes(record.source) || (record.mode !== 'live' && record.mode !== 'demo' && record.mode !== 'partial')) return null;
   if ((record.mode === 'demo') !== (record.source === 'synthetic-demo')) return null;
-  return { time, source: record.source as string };
+  return { time, source: record.source as string, partial: record.mode === 'partial' };
 }
 function buildBeacon({ snapshot, identity }: SceneInputs): BeaconModel | SceneUnavailable {
   if (!identity || !isIdentityConfig(identity)) return unavailable('A beacon without an identity is not rendered.');
@@ -95,6 +96,9 @@ function buildIdentified(snapshot: PortfolioSnapshot, identity: IdentityConfig):
   if (root.time - board.time > STALE_MS || board.time - root.time > MAX_FORWARD_SKEW_MS) return unavailable('Project observations fall outside the snapshot window.');
   const projects = readProjects(snapshot);
   if (projects === null) return unavailable('Configured projects are unavailable.');
+  // A public board may be partial because optional CI/release observations failed.
+  // Only the independently validated repository counts size these bodies; keep the
+  // incomplete snapshot explicit without upgrading those unrelated health signals.
   const used = new Set<number>();
   const matched: { readonly name: string; readonly issues: number }[] = [];
   const unmatched: string[] = [];
@@ -110,6 +114,7 @@ function buildIdentified(snapshot: PortfolioSnapshot, identity: IdentityConfig):
     bodies: matched.map(body => ({ ...body, size: peak === 0 ? 0 : body.issues / peak })),
     generatedAt: new Date(board.time).toISOString(), source: board.source,
     disclosure: board.source === 'synthetic-demo' ? 'synthetic' : 'public',
+    ...(root.partial || board.partial ? { partial: true } as const : {}),
   };
 }
 function readProjects(snapshot: PortfolioSnapshot): readonly ProjectSnapshot[] | null {
@@ -122,9 +127,11 @@ function accessibility(model: BeaconModel): { title: string; description: string
   const bodies = model.bodies.map(body => body.name).join(', ') || 'none';
   const plain = model.unmatched.join(', ');
   const tagline = model.tagline ? `${model.tagline}. ` : '';
+  const counts = model.bodies.length ? 'Body size uses observed open-issue and pull-request counts' : 'No matched project counts are shown';
   return {
     title: model.name,
-    description: `${model.name}. ${tagline}${plain}. ${bodies}. Coordinate grid. OPEN ISSUES AND PULL REQUESTS. Survey beam crosses the field. Project bodies breathe under ambient. ${model.generatedAt}. ${model.source}.`,
+    description: `${model.name}. ${tagline}${plain}. ${bodies}. Coordinate grid. OPEN ISSUES AND PULL REQUESTS. Survey beam crosses the field. Project bodies breathe under ambient. ${model.generatedAt}. ${model.source}.` +
+      (model.partial ? ` Partial snapshot. ${counts}; CI and release health are not represented.` : ''),
   };
 }
 function renderBeacon(model: BeaconModel, context: RenderContext, text: { title: string; description: string }): string {
@@ -183,7 +190,9 @@ function renderBeacon(model: BeaconModel, context: RenderContext, text: { title:
   model.unmatched.forEach((label, index) => {
     output += `<text class="${sceneClassName(context, 'unmatched')}" x="24" y="${focusTop + index * 18}" fill="${theme.muted}" font-family="${SANS}" font-size="12">${escapeXml(label)}</text>`;
   });
-  output += `<g id="${sceneElementId(context, 'footer')}">${['BODY SIZE · OPEN ISSUES AND PULL REQUESTS', model.generatedAt, `SOURCE · ${model.source}`].map((line, index) => `<text x="24" y="${height - 100 + index * 16}" fill="${theme.muted}" font-family="${SANS}" font-size="11">${escapeXml(line)}</text>`).join('')}</g>`;
+  const footer = ['BODY SIZE · OPEN ISSUES AND PULL REQUESTS', model.generatedAt, `SOURCE · ${model.source}`];
+  if (model.partial) footer.unshift(model.bodies.length ? 'PARTIAL SNAPSHOT · ISSUE/PR COUNTS OBSERVED' : 'PARTIAL SNAPSHOT · NO MATCHED COUNTS');
+  output += `<g id="${sceneElementId(context, 'footer')}">${footer.map((line, index) => `<text x="24" y="${height - 100 + (index - (footer.length - 3)) * 16}" fill="${theme.muted}" font-family="${SANS}" font-size="11">${escapeXml(line)}</text>`).join('')}</g>`;
   output += evidenceLabel(context, 'observed', { x: width - 160, y: height - 40 });
   return `${output}</svg>`;
 }
