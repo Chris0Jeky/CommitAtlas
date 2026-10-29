@@ -1,0 +1,71 @@
+{
+  "version": "0.4.0",
+  "name": "commit-atlas",
+  "dependencies": {
+    "@actions/core": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@actions/core/-/core-3.0.1.tgz",
+      "overridden": false,
+      "dependencies": {
+        "@actions/http-client": {
+          "version": "4.0.1",
+          "resolved": "https://registry.npmjs.org/@actions/http-client/-/http-client-4.0.1.tgz",
+          "overridden": false,
+          "dependencies": {
+            "undici": {
+              "version": "6.29.0",
+              "resolved": "https://registry.npmjs.org/undici/-/undici-6.29.0.tgz",
+              "overridden": false
+            }
+          }
+        }
+      }
+    },
+    "@cloudflare/vite-plugin": {
+      "version": "1.64.0",
+      "resolved": "https://registry.npmjs.org/@cloudflare/vite-plugin/-/vite-plugin-1.64.0.tgz",
+      "overridden": false,
+      "dependencies": {
+        "miniflare": {
+          "version": "5.20261012.0-beta",
+          "resolved": "https://registry.npmjs.org/miniflare/-/miniflare-5.20261012.0-beta.tgz",
+          "overridden": false,
+          "dependencies": {
+            "undici": {
+              "version": "7.29.1",
+              "resolved": "https://registry.npmjs.org/undici/-/undici-7.29.1.tgz",
+              "overridden": false
+            }
+          }
+        },
+        "wrangler": {
+          "version": "4.151.0",
+          "resolved": "https://registry.npmjs.org/wrangler/-/wrangler-4.151.0.tgz",
+          "overridden": false,
+          "dependencies": {
+            "miniflare": {
+              "version": "5.20261012.0-beta"
+            }
+          }
+        }
+      }
+    },
+    "wrangler": {
+      "version": "4.152.0",
+      "resolved": "https://registry.npmjs.org/wrangler/-/wrangler-4.152.0.tgz",
+      "overridden": false,
+      "dependencies": {
+        "miniflare": {
+          "version": "5.20261019.2-beta",
+          "resolved": "https://registry.npmjs.org/miniflare/-/miniflare-5.20261019.2-beta.tgz",
+          "overridden": false,
+          "dependencies": {
+            "undici": {
+              "version": "7.29.1"
+            }
+          }
+        }
+      }
+    }
+  }
+}
