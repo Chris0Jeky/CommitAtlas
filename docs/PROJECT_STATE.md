@@ -1,18 +1,46 @@
 # CommitAtlas project state
 
-Release/profile receipt last verified: 2026-08-30 (v0.4.0 released, production and profile evidence current at that checkpoint)
+Release/profile receipt last verified: 2026-10-29 (renderer #452 deployed; profile #21 refreshed successfully; scene adoption remains in progress)
 
 This is the authoritative checkpoint for the public demonstration. Git, hosted CI, Cloudflare
 deployment state, and the live profile outrank this file after any ref or deployment moves.
+
+## Static scene still companions — 2026-10-29
+
+The static source extends opt-in `reducedMotion` to every selected registered scene in each theme.
+`scene-<id>.still.svg` shares the ordinary scene's snapshot and validated presentation inputs with
+`motion: "none"`; the dot separates companions from legal IDs ending in `-still`. The Action keeps
+`scenes` unchanged and exposes a separate `scene-stills` aggregate plus four explicit Atlas/Activity
+still outputs. Both enabled and disabled output contracts are exercised against the rebuilt Action,
+including planned paths during dry-run. All seven built-ins match their exact none controls across
+themes, layouts and supported profiles. Ownership checks preserve foreign or changed companions,
+and a scene without none support fails before publication.
+
+The inactive publication-v2 planner and codec also recognize the strict companion namespace.
+Their 160-operation / 256 KiB journal bounds cover a complete 149-operation scene-and-still turnover
+in four themes; the per-generation inventory bound stays 96. Production remains on the v1 writer.
+The [static delivery contract](./STATIC_GENERATOR_PLAN.md#registered-scene-delivery) records the
+filename, Action output and consumer-allowlist changes. This source checkpoint advances the
+producer prerequisite for #144; profile scene adoption and browser qualification remain separate.
+C1 publication stays disabled under Q-9 No.
 
 ## Profile calendar, density and refresh work — 2026-10-29
 
 The profile freeze was traced to its committed-asset workflow: it still pinned producer
 `5cb95cd` and seven scheduled runs failed after the successful Sunday snapshot of 25 October.
-The current producer already contains the bounded public-calendar retry and the static
-30-second deadline; the consumer must adopt that producer and stop gating refresh on public
-PushEvents. Failed generation continues to preserve the last committed assets. The new failure
+[Profile #21](https://github.com/Chris0Jeky/Chris0Jeky/pull/21) now pins merged producer `2c2a1af`,
+adopts its bounded public-calendar retry and static 30-second deadline, and removes the public
+PushEvent gate. The automatic [refresh 40809039152](https://github.com/Chris0Jeky/Chris0Jeky/actions/runs/40809039152)
+passed generation, complete paired validation and publication. Commit `08de8a2` carries the
+`2026-10-29T02:54:02.646Z` snapshot: 730 observed days, a 365-day grid and a 596-day current/longest
+streak. Failed generation continues to preserve the last committed assets. The new failure
 regression checks the executed Action bundle and its classified, sanitized diagnostics.
+
+Live profile inspection separately found the old Sunday SVG still displayed behind its unchanged
+image URL; a content-versioned URL immediately displayed the new snapshot. The follow-up
+[profile #22](https://github.com/Chris0Jeky/Chris0Jeky/pull/22) versions owned URLs from manifest
+hashes and checks README reproducibility. That observation establishes a stale image cache key,
+not a cache TTL or a completed GitHub/Camo transport qualification.
 
 Atlas and Activity now separate the latest 365-day display window from full observed history.
 The display includes its actual end date and annual readings; the header and streaks retain the
@@ -25,10 +53,18 @@ records the design and the direct-image browser harness's scope.
 
 Independent source review found and resolved a cropped-calendar partial-total error, verified
 80 exact still-geometry comparisons and 72 rejected motion mutations, and found no remaining
-blocking issue. The final SVG suite passes 700 tests. The full integrated gate, immutable-head
-browser receipts, production deployment and consumer adoption are still separate acceptance
-steps at this source checkpoint. This work advances #126, #127 and #144; it does not complete
-their broader acceptance criteria or the #113/#180 transport matrix.
+blocking issue. [#452](https://github.com/Chris0Jeky/CommitAtlas/pull/452) merged as `2c2a1af` after
+the complete 2,090-test gate and exact-head [CI 40807674405](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40807674405).
+The [density browser run](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40807674398) at
+`b9099fb` passes 64 measured layouts and 24 playback/control rows in pinned Chromium 143.0.7499.4.
+All 72 pixel comparisons and 160 PNG/SVG hashes were independently recomputed; eight ambient rows
+move and return exactly to their still controls, and all reduced-motion frames match the still
+control. The [canonical receipt](./evidence/profile-density-2026-10-29/README.md) records provenance
+and limits. The merged [main CI](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40808392149)
+passes; [Deploy 40808696362](https://github.com/Chris0Jeky/CommitAtlas/actions/runs/40808696362)
+then passes all 21 deployed-origin checks with expected build `2c2a1af`.
+This work advances #126, #127 and #144; it does not complete their broader acceptance criteria or
+the #113/#180 transport matrix.
 
 [Dependency repair #451](https://github.com/Chris0Jeky/CommitAtlas/pull/451) merged as `6ef6666`,
 closing #447. Its complete local gate passed 2,058 tests and

@@ -1,7 +1,7 @@
 import path from "node:path";
 import * as core from "@actions/core";
 import { GitHubApiError } from "@commit-atlas/github";
-import { generateStatic, generatedScenePaths } from "@commit-atlas/static";
+import { generateStatic, generatedScenePaths, generatedSceneStillPaths } from "@commit-atlas/static";
 
 async function run(): Promise<void> {
   const root = process.env.GITHUB_WORKSPACE;
@@ -23,14 +23,19 @@ async function run(): Promise<void> {
   const outputRoot = relative(root, result.outputDir);
   core.setOutput("manifest", `${outputRoot}/manifest.json`);
   core.setOutput("scenes", JSON.stringify(generatedScenePaths(result)));
+  core.setOutput("scene-stills", JSON.stringify(generatedSceneStillPaths(result)));
   const generated = new Set(result.manifest.artifacts.map((artifact) => artifact.path));
   for (const [output, artifact] of [
     ["atlas", "atlas.svg"],
     ["atlas-compact", "atlas-compact.svg"],
     ["atlas-wide", "atlas-wide.svg"],
+    ["atlas-still", "atlas-still.svg"],
+    ["atlas-compact-still", "atlas-compact-still.svg"],
+    ["atlas-wide-still", "atlas-wide-still.svg"],
     ["profile", "profile.svg"],
     ["streak", "streak.svg"],
     ["activity", "activity.svg"],
+    ["activity-still", "activity-still.svg"],
     ["breakdown", "breakdown.svg"],
     ["rhythm", "rhythm.svg"],
     ["languages", "languages.svg"],

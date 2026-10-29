@@ -194,22 +194,22 @@ test("shadow retains detached results for frozen/null-prototype input and revali
 });
 
 test("shadow applies the existing bounded union and scene-byte budgets without truncation", () => {
-  const previous = Array.from({ length: 32 }, (_, i) => named(`scene-old-${i}.svg`, A));
-  const next = Array.from({ length: 32 }, (_, i) => named(`scene-new-${i}.svg`, { ...B, bytes: 120 * 1024 }));
+  const previous = Array.from({ length: 32 }, (_, i) => [named(`scene-old-${i}.svg`, A), named(`scene-old-${i}.still.svg`, A)]).flat();
+  const next = Array.from({ length: 32 }, (_, i) => [named(`scene-new-${i}.svg`, { ...B, bytes: 120 * 1024 }), named(`scene-new-${i}.still.svg`, { ...B, bytes: 120 * 1024 })]).flat();
   next.push(named("manifest.json", B));
   const targets = Array.from({ length: 4 }, (_, i) => target(previous, next, `assets/theme-${i}`));
   const observations = targets.flatMap((_, i) => [...previous.map(p => observed(i, p.name, p)), ...next.map(n => observed(i, n.name))]);
   const result = plan(declaration(targets), observations);
   assert.equal(result.kind, "planned");
-  assert.equal(result.journal.targets[3].operations.length, 65);
-  assert.ok(encodePublicationJournal(result.journal).byteLength < 128 * 1024);
+  assert.equal(result.journal.targets[3].operations.length, 129);
+  assert.ok(encodePublicationJournal(result.journal).byteLength < 256 * 1024);
   const maximum = [...Array.from({ length: 95 }, (_, i) => named(`card-${i}.svg`, B)), named("manifest.json", B)];
   const bounded = plan(declaration([target([], maximum)]), maximum.map(a => observed(0, a.name)));
   assert.equal(bounded.journal.targets[0].operations.length, 96);
   const tooMany = declaration([target([], Array.from({ length: 97 }, (_, i) => named(i === 96 ? "manifest.json" : `card-${i}.svg`, B)))]);
   assert.throws(() => plan(tooMany, []), /count|limit/);
-  const union = declaration([target(Array.from({ length: 48 }, (_, i) => named(`old-${i}.svg`, A)),
-    [...Array.from({ length: 48 }, (_, i) => named(`new-${i}.svg`, B)), named("manifest.json", B)])]);
+  const union = declaration([target(Array.from({ length: 80 }, (_, i) => named(`old-${i}.svg`, A)),
+    [...Array.from({ length: 80 }, (_, i) => named(`new-${i}.svg`, B)), named("manifest.json", B)])]);
   assert.throws(() => plan(union, []), /operation count/);
   const tooLarge = declaration([target([], [named("scene-nebula.svg", { ...B, bytes: 120 * 1024 + 1 }), named("manifest.json", B)])]);
   assert.throws(() => plan(tooLarge, []), /byte length/);

@@ -4,6 +4,7 @@ import type { StaticConfig } from "./config.js";
 export const STATIC_SCENE_PACKS = ["orbital", "survey", "spectral", "terminal"] as const;
 export const MAX_STATIC_SCENES = 32;
 export type SceneArtifactName = `scene-${string}.svg`;
+export type SceneStillArtifactName = `scene-${string}.still.svg`;
 
 function isSceneId(value: unknown): value is string {
   return typeof value === "string" && value.length <= 48 && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u.test(value);
@@ -16,8 +17,18 @@ export function sceneArtifactName(id: string): SceneArtifactName {
   return `scene-${id}.svg`;
 }
 
+// A dot cannot occur in a scene ID, so a still twin never collides with a normal scene,
+// including a definition whose ID ends in -still. Keep each ID's existing 48-character bound.
+export function isSceneStillArtifactName(value: unknown): value is SceneStillArtifactName {
+  return typeof value === "string" && value.startsWith("scene-") && value.endsWith(".still.svg") && isSceneId(value.slice(6, -10));
+}
+export function sceneStillArtifactName(id: string): SceneStillArtifactName {
+  if (!isSceneId(id)) throw new Error("invalid static scene id");
+  return `scene-${id}.still.svg`;
+}
+
 /** Recheck programmatic configs as well as parsed JSON before a renderer can touch output paths. */
-export function staticSceneOptions(config: Pick<StaticConfig, "scenes" | "scenePack" | "motion"> & { readonly identity?: unknown }): {
+export function staticSceneOptions(config: Pick<StaticConfig, "scenes" | "scenePack" | "motion" | "reducedMotion"> & { readonly identity?: unknown }): {
   readonly definitions: readonly SceneDefinition<unknown>[];
   readonly pack: ScenePack;
   readonly identity?: IdentityConfig;
@@ -41,6 +52,9 @@ export function staticSceneOptions(config: Pick<StaticConfig, "scenes" | "sceneP
     }
     if (!definition.supportedPacks.includes(pack)) throw new Error(`unsupported static scene pack: ${id}`);
     if (!definition.supportedMotion.includes(config.motion)) throw new Error(`unsupported static scene motion: ${id}`);
+    if (config.reducedMotion === true && !definition.supportedMotion.includes("none")) {
+      throw new Error(`static scene reduced-motion companion requires none support: ${id}`);
+    }
     definitions.push(definition);
   }
   const identity = config.identity === undefined ? undefined : createIdentityConfig(config.identity);

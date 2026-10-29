@@ -53,11 +53,14 @@ the exact metrics, window, and generation time and are hashed in the same manife
 to use in a responsive HTML `<picture>` without desktop/mobile data drift.
 
 Set `"reducedMotion": true` to also emit still companions for the selected Atlas and Activity
-cards. This defaults to `false`, so existing configurations keep their artifact inventory. The
-additional files are `atlas-still.svg`, `activity-still.svg`, and, when `responsiveAtlas` is
-enabled, `atlas-compact-still.svg` or `atlas-wide-still.svg`. Each companion uses `motion: "none"`
-with the same snapshot, calendar, theme and geometry as its ordinary counterpart; all files are
-included in that directory's hash manifest. Theme variants receive their own matching companions.
+cards and registered scenes. This defaults to `false`, so existing configurations keep their
+artifact inventory. The card companions are `atlas-still.svg`, `activity-still.svg`, and, when
+`responsiveAtlas` is enabled, `atlas-compact-still.svg` or `atlas-wide-still.svg`. A selected scene
+adds `scene-<id>.still.svg` beside `scene-<id>.svg`; the dot keeps companions distinct from legal
+scene IDs ending in `-still`. Each companion uses `motion: "none"` with the same snapshot, theme
+and geometry as its ordinary counterpart; all files are included in that directory's hash
+manifest. Theme variants receive matching companions, including when ordinary motion is already
+`none`. A selected scene that does not support `none` rejects the option before publication.
 
 Select those still files explicitly for a reader's reduced-motion preference:
 
@@ -71,7 +74,15 @@ Select those still files explicitly for a reader's reduced-motion preference:
 When combining theme and layout choices, place their reduced-motion `<source>` entries before
 the animated choices. Turning the option off removes unchanged, previously managed companions;
 unowned files and files changed since the prior manifest retain the existing publication protections.
-This option covers Atlas and Activity cards. Scene outputs keep their separate motion contract.
+
+The Action declares `atlas-still`, `atlas-compact-still`, `atlas-wide-still`, and `activity-still`
+outputs for the generated paths in the primary theme, or an empty string when that file is absent.
+Its `scene-stills` output is a JSON array of companion paths across the primary and paired themes;
+`scenes` retains only the ordinary scene paths. Both arrays follow theme order and each manifest's
+artifact order, and are `[]` when no matching files are selected. All outputs also report planned
+paths during dry-run, which renders and validates without writing or deleting files.
+Programmatic consumers can use `generatedSceneStillPaths(result)` and `generatedScenePaths(result)`.
+Exact consumer allowlists must include each selected companion before enabling the option.
 
 To render a dark/light pair without fetching GitHub twice, add bounded `themes` entries to the v1
 config. Each entry names an opposite-scheme card theme and an explicit contained output directory:

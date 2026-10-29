@@ -82,11 +82,22 @@ const PHASE_INDEX = new Map<PublicationPhase, number>(
 const COMMITTED_INDEX = PHASE_INDEX.get("committed")!;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TRANSACTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
-const MAX_OPERATIONS_PER_TARGET = 96;
+// Fixed outputs plus a full turnover of 32 ordinary scenes and 32 none twins need 149 slots.
+const MAX_OPERATIONS_PER_TARGET = 160;
 const MAX_ARTIFACT_NAME_LENGTH = 64;
 // Pure protocol mirror of canonical scene names; capacity tests bind this to static delivery.
-const SCENE_ARTIFACT_NAME = /^scene-[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.svg$/;
+const SCENE_ARTIFACT_NAME = /^scene-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\.(?:still\.)?svg$/;
 const ARTIFACT_NAME = /^[a-z0-9][a-z0-9-]*\.(?:svg|json|md)$/;
+
+function isSceneArtifact(name: string): boolean {
+  const match = SCENE_ARTIFACT_NAME.exec(name);
+  return !!match && match[1]!.length <= 48;
+}
+
+function isArtifactName(value: unknown): value is string {
+  return typeof value === "string" && value.length <= MAX_ARTIFACT_NAME_LENGTH &&
+    (ARTIFACT_NAME.test(value) || isSceneArtifact(value));
+}
 
 export function assertPublicationPhase(value: unknown): PublicationPhase {
   if (typeof value !== "string" || !PHASE_INDEX.has(value as PublicationPhase)) {
@@ -277,7 +288,7 @@ export function validatePublicationObservation(value: unknown): PublicationObser
   if (typeof target !== "number" || !Number.isSafeInteger(target) || target < 0) {
     throw new Error("publication observation target is invalid");
   }
-  if (typeof name !== "string" || name.length > MAX_ARTIFACT_NAME_LENGTH || !ARTIFACT_NAME.test(name)) {
+  if (!isArtifactName(name)) {
     throw new Error("publication observation has an unsafe artifact name");
   }
   if (kind !== "missing" && kind !== "file" && kind !== "other") {
@@ -298,14 +309,13 @@ export function validatePublicationObservation(value: unknown): PublicationObser
 
 function validateOperation(input: unknown, target: number, index: number): PublicationOperation {
   const value = recordFields(input, ["name", "action", "previous", "next"], `publication operation ${target}:${index}`);
-  if (typeof value.name !== "string" || value.name.length > MAX_ARTIFACT_NAME_LENGTH || !ARTIFACT_NAME.test(value.name)) {
+  if (!isArtifactName(value.name)) {
     throw new Error(`publication operation ${target}:${index} has an unsafe artifact name`);
   }
   if (value.action !== "create" && value.action !== "replace" && value.action !== "remove") {
     throw new Error(`publication operation ${target}:${index} has an invalid action`);
   }
-  // The scene ID is at most 48 characters, plus the scene- prefix and .svg suffix.
-  const byteLimit = value.name.length <= 58 && SCENE_ARTIFACT_NAME.test(value.name) ? 120 * 1024 : 96 * 1024;
+  const byteLimit = isSceneArtifact(value.name) ? 120 * 1024 : 96 * 1024;
   const previous = value.previous === undefined ? undefined : validateVersion(value.previous, "previous", byteLimit);
   const next = value.next === undefined ? undefined : validateVersion(value.next, "next", byteLimit);
   if (value.action === "create" && (previous !== undefined || next === undefined)) {

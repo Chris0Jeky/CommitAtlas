@@ -16,7 +16,8 @@ test("action keeps delivery credentials optional and exposes generated evidence 
   assert.match(metadata, /github-token:\r?\n[\s\S]*?required: false/);
   assert.match(metadata, /dry-run:/);
   for (const output of [
-    "scenes", "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
+    "scenes", "scene-stills", "manifest", "atlas", "atlas-compact", "atlas-wide", "profile", "streak", "activity", "breakdown",
+    "atlas-still", "atlas-compact-still", "atlas-wide-still", "activity-still",
     "rhythm", "languages", "projects", "cadence", "releases", "delivery", "delivery-json",
     "projects-json", "projects-markdown",
   ]) {

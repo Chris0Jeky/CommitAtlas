@@ -210,13 +210,16 @@ test("modified stale fixed cards and scenes block publication before either them
 });
 
 test("stale cleanup preserves caller replacements that are links instead of owned files", async t => {
-  for (const kind of ["symlink", "hardlink"]) await t.test(kind, async t => {
+  const cases = ["projects.svg", "scene-evidence-coverage.still.svg"].flatMap(name =>
+    ["symlink", "hardlink"].map(kind => ({ name, kind })),
+  );
+  for (const { name, kind } of cases) await t.test(`${name}: ${kind}`, async t => {
     const root = await mkdtemp(path.join(os.tmpdir(), "commitatlas-stale-link-"));
     t.after(() => rm(root, { recursive: true, force: true }));
     const first = await generateStaticFromSnapshot({ root, snapshot: portfolio(),
-      config: staticConfig({ cards: ["atlas", "projects"] }),
+      config: staticConfig({ cards: ["atlas", "projects"], scenes: ["evidence-coverage"], reducedMotion: true }),
     });
-    const stale = path.join(first.outputDir, "projects.svg");
+    const stale = path.join(first.outputDir, name);
     const body = await readFile(stale);
     const manifest = await readFile(path.join(first.outputDir, "manifest.json"));
     const atlas = await readFile(path.join(first.outputDir, "atlas.svg"));
