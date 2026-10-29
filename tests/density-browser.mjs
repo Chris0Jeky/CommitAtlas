@@ -27,7 +27,7 @@ const report = {
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
   sourceWorkingTreeDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()),
   observedAt: new Date().toISOString(), node: process.version, playwright: require("playwright/package.json").version,
-  sourceFiles, browser: null, browserExecutable: process.env.CHROME_BIN ?? chromium.executablePath(),
+  sourceFiles, browser: null, browserExecutable: process.env.DENSITY_CHROMIUM_EXECUTABLE ?? chromium.executablePath(),
   expectedBrowserVersion: process.env.DENSITY_EXPECTED_BROWSER_VERSION ?? "143.0.7499.4",
   layouts: [], images: [], playback: [], pageErrors: [], complete: false,
   frameTimes: [0, 1500, 6000, 46000], maximumLateMs: 1500,
@@ -44,7 +44,7 @@ const dataUrl = body => `data:image/svg+xml;base64,${Buffer.from(body).toString(
 const checkpoint = () => writeFile(path.join(out, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 let browser;
 try {
-  browser = await chromium.launch({ ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : {}), headless: true });
+  browser = await chromium.launch({ executablePath: report.browserExecutable, headless: true });
   report.browser = browser.version();
   assert.equal(report.browser, report.expectedBrowserVersion);
   const page = await browser.newPage();
