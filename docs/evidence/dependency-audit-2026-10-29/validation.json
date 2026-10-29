@@ -1,0 +1,18 @@
+{
+  "upstreamBaseline": "7dd3b2bfb3ef11bbb9c910d011667ba541e5ac36",
+  "observedAt": "2026-10-29T02:18:58.192Z",
+  "node": "24.22.1",
+  "npm": "11.9.0",
+  "candidateLockSha256": "8f4970b4d474de54524f90248a13eb16d4f9c900545298736fa5441eec116524",
+  "candidateActionSha256": "79a1194f1b5b2d4b4b617b5296f42e3407ebb2e2c7967a25818c5794ae15e03f",
+  "candidateActionBytes": 952087,
+  "cleanInstall": "passed",
+  "fullAudit": "zero findings",
+  "productionAudit": "zero findings",
+  "actionBuild": "passed",
+  "fullGate": {
+    "command": "npm run check",
+    "status": "running"
+  },
+  "hostedCI": "not yet run"
+}

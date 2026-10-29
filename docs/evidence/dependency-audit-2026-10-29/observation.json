@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-10-29T02:13:05Z",
+  "sourceGithubCommit": "7dd3b2bfb3ef11bbb9c910d011667ba541e5ac36",
+  "localBaselineCommit": "bbd2a08cd48f53dcbfb04f2dc6453c58a7e42404",
+  "lockGitBlob": "89d9811f5efc7e2346c7213c6126f09187570dba",
+  "lockSha256": "e32f5aa76f65aa8426b9d2920f43ebfe2466312b0c0a42aff78ebf0f396aeeeb",
+  "node": "24.22.1",
+  "npm": "11.9.0",
+  "nativeUndici": "7.30.1",
+  "sourceWorkingTree": "Parallel feature changes present; package.json/package-lock.json unmodified from baseline during audit.",
+  "commands": [
+    "npm audit --json",
+    "npm audit --omit=dev --json",
+    "npm ls undici miniflare wrangler @cloudflare/vite-plugin @actions/core @actions/http-client --all --json"
+  ]
+}
